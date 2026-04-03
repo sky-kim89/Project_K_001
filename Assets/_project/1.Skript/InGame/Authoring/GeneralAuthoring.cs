@@ -66,6 +66,7 @@ namespace BattleGame.Units
                 {
                     BuffStat   = authoring.PassiveSkill.PassiveBuffStat,
                     BuffValue  = authoring.PassiveSkill.PassiveBuffValue,
+                    BuffMode   = EffectMode.Add,   // 패시브는 절대값 증가 (필요 시 SO 에 필드 추가)
                     AuraRadius = authoring.PassiveSkill.PassiveAuraRadius,
                 });
             }

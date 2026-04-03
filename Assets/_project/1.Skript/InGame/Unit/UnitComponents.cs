@@ -181,6 +181,7 @@ namespace BattleGame.Units
         public float  AttackCooldown;   // 다음 공격까지 남은 시간
         public Entity TargetEntity;
         public bool   HasTarget;
+        public uint   RandomSeed;       // 크리티컬 판정용 per-entity 랜덤 시드
     }
 
     /// <summary>

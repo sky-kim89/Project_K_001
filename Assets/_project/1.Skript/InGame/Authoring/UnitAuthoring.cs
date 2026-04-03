@@ -7,16 +7,16 @@ using UnityEngine;
 //  UnitAuthoring.cs
 //  모든 유닛 Authoring 의 공통 베이스 클래스 + 공통 Baker
 //
-//  파생 클래스 목록 (Authoring/ 폴더):
+//  파생 클래스 (Authoring/ 폴더):
 //    GeneralAuthoring  — 장군 (병사 스폰, 스킬)
-//    SoldierAuthoring  — 병사 (장군 소속, 스탯은 스폰 시 확정)
+//    SoldierAuthoring  — 병사 (스탯은 스폰 시 장군 기반으로 확정)
 //    EnemyAuthoring    — 일반 적 (독립 전투)
 //    EliteAuthoring    — 엘리트 (독립 강화, 스킬)
 //    BossAuthoring     — 보스 (페이즈, 스킬 목록)
 //
-//  Baker 구조:
-//    UnitBakerBase<T>  — 공통 ECS 컴포넌트 추가 (BakeCommon)
-//    각 파생 Baker     — 타입 전용 컴포넌트 추가
+//  스탯 흐름:
+//    BaseStats(Inspector) → UnitStat → StatBlock → StatComponent.Base
+//    인게임 버프/디버프 → StatComponent.Final (UnitStatusEffectSystem 이 매 프레임 재계산)
 // ============================================================
 
 namespace BattleGame.Units
@@ -59,14 +59,15 @@ namespace BattleGame.Units
 
     /// <summary>
     /// 모든 유닛 Baker 의 공통 베이스.
-    /// BakeCommon() 을 호출하면 공통 ECS 컴포넌트를 일괄 추가한다.
+    /// BakeCommon() 으로 공통 ECS 컴포넌트를 일괄 추가한다.
     /// </summary>
     public abstract class UnitBakerBase<T> : Baker<T> where T : UnitAuthoring
     {
         protected void BakeCommon(T authoring, Entity entity, UnitType unitType)
         {
-            UnitStat stat = authoring.BuildStat();
+            UnitStat unitStat = authoring.BuildStat();
 
+            // ── 식별 정보 ──────────────────────────────────────
             AddComponent(entity, new UnitIdentityComponent
             {
                 UnitId = authoring.UnitId,
@@ -74,14 +75,25 @@ namespace BattleGame.Units
                 Type   = unitType,
             });
 
+            // ── 스텟 컴포넌트 ──────────────────────────────────
+            // UnitStat 계산 결과를 StatBlock 으로 변환해 Base 에 저장.
+            // Final 은 UnitStatusEffectSystem 이 첫 프레임에 Base 로 초기화.
+            var statBase = StatBlock.FromUnitStat(unitStat);
+            AddComponent(entity, new StatComponent
+            {
+                Base  = statBase,
+                Final = statBase,   // 첫 프레임 전까지 Final = Base 로 초기화
+            });
+
+            // ── 이동 ───────────────────────────────────────────
+            // MoveSpeed 는 StatComponent 에 있으므로 MovementComponent 에는 없음
             AddComponent(entity, new MovementComponent
             {
-                MoveSpeed        = stat.Get(StatType.MoveSpeed),
-                StoppingDistance = authoring.StoppingDistance,
+                Velocity         = float3.zero,
                 Destination      = float3.zero,
+                StoppingDistance = authoring.StoppingDistance,
                 IsMoving         = false,
             });
-            AddComponent(entity, new VelocityComponent { Value = float3.zero });
             AddComponent(entity, new FormationSlotComponent
             {
                 Row          = authoring.Row,
@@ -89,24 +101,21 @@ namespace BattleGame.Units
                 SlotPosition = float3.zero,
             });
 
-            float maxHp = stat.Get(StatType.MaxHp);
+            // ── 체력 (CurrentHp 만 — MaxHp / Defense → StatComponent) ──
             AddComponent(entity, new HealthComponent
             {
-                CurrentHp = maxHp,
-                MaxHp     = maxHp,
-                Defense   = stat.GetClamped(StatType.Defense, 0f, 1f),
-                IsDead    = false,
+                CurrentHp = unitStat.Get(StatType.MaxHp),
             });
 
+            // ── 공격 (쿨다운·타겟만 — 수치 → StatComponent) ───
             AddComponent(entity, new AttackComponent
             {
-                AttackDamage   = stat.Get(StatType.Attack),
-                AttackRange    = stat.Get(StatType.AttackRange),
-                AttackSpeed    = stat.Get(StatType.AttackSpeed),
                 AttackCooldown = 0f,
                 HasTarget      = false,
+                RandomSeed     = (uint)math.abs(authoring.UnitId) * 2654435761u + 1u,
             });
 
+            // ── 상태 / 피격 / Grid ────────────────────────────
             AddComponent(entity, new UnitStateComponent
             {
                 Current    = UnitState.Idle,
@@ -126,6 +135,7 @@ namespace BattleGame.Units
                 PrevCell = int2.zero,
             });
 
+            // ── 동적 버퍼 ─────────────────────────────────────
             AddBuffer<HitEventBufferElement>(entity);
             AddBuffer<StatusEffectBufferElement>(entity);
         }

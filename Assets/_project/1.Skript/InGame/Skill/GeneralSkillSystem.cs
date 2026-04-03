@@ -11,20 +11,21 @@ using Unity.Transforms;
 //  ① SoldierSpawnSystem          [InitializationSystemGroup]
 //     - SpawnSoldiersRequest 가 붙은 장군 Entity 를 찾아
 //       지정 프리팹을 Count 만큼 인스턴스화
-//     - 각 병사에 GeneralEntity / StatScaleRatio 주입 후 스탯 스케일 적용
+//     - 장군 StatComponent.Final 을 기반으로 병사 StatComponent.Base 를 결정
+//       (비율 적용: 병사 스텟 = 장군 스텟 × StatScaleRatio)
 //     - 처리 완료 후 SpawnSoldiersRequest 제거
 //
 //  ② PassiveSkillAuraSystem       [SimulationSystemGroup]
 //     - 1초마다 실행
-//     - GeneralPassiveSkillComponent 를 가진 장군의
-//       CommandRadius 내 소속 병사에게 StatusEffectBufferElement 갱신
-//     - 버프 Duration = RefreshDuration(2초), 1초마다 갱신 → 만료 없이 유지
-//       장군 사망 / 범위 이탈 시 2초 후 자연 만료
+//     - GeneralPassiveSkillComponent 를 가진 장군의 CommandRadius 내
+//       소속 병사에게 StatusEffectBufferElement 갱신
+//     - 버프 Duration = 2초, 1초마다 갱신 → 만료 없이 유지
+//       장군 사망·범위 이탈 시 2초 후 자연 만료
 //
 //  ③ ActiveSkillCooldownSystem    [SimulationSystemGroup]
 //     - 매 프레임 쿨다운 감소
 //     - UseActiveSkillTag 발동 시: 쿨다운 리셋 + 태그 제거
-//       실제 스킬 실행(트윈/이동/공격 제어)은 별도 스킬 실행기에서 수행
+//       실제 스킬 실행(트윈·이동·공격 제어)은 별도 스킬 실행기에서 수행
 // ============================================================
 
 namespace BattleGame.Units
@@ -47,29 +48,25 @@ namespace BattleGame.Units
         {
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
-            foreach (var (request, identity, health, attack, movement, generalEntity)
+            foreach (var (request, identity, stat, generalEntity)
                      in SystemAPI.Query<
                             RefRO<SpawnSoldiersRequest>,
                             RefRO<UnitIdentityComponent>,
-                            RefRO<HealthComponent>,
-                            RefRO<AttackComponent>,
-                            RefRO<MovementComponent>>()
+                            RefRO<StatComponent>>()
                         .WithEntityAccess())
             {
-                // 장군 스탯 스냅샷
-                float genMaxHp        = health.ValueRO.MaxHp;
-                float genDefense      = health.ValueRO.Defense;
-                float genAttackDamage = attack.ValueRO.AttackDamage;
-                float genAttackRange  = attack.ValueRO.AttackRange;
-                float genAttackSpeed  = attack.ValueRO.AttackSpeed;
-                float genMoveSpeed    = movement.ValueRO.MoveSpeed;
+                // SoldierCount — StatComponent 에 값이 있으면 우선 사용, 없으면 Authoring 값
+                StatBlock generalStat  = stat.ValueRO.Final;
+                float     statCount    = generalStat[StatType.SoldierCount];
+                int       count        = statCount > 0f ? (int)statCount : request.ValueRO.Count;
 
-                float ratio  = request.ValueRO.StatScaleRatio;
-                int   count  = request.ValueRO.Count;
-                Entity prefab = request.ValueRO.SoldierPrefab;
-                TeamType team = identity.ValueRO.Team;
+                // CommandPower — 1포인트당 병사 스텟 1% 증가 (기본 StatScaleRatio 에 곱)
+                float commandPower = generalStat[StatType.CommandPower];
+                float ratio        = request.ValueRO.StatScaleRatio * (1f + commandPower * 0.01f);
 
-                // 병사 스폰
+                Entity   prefab = request.ValueRO.SoldierPrefab;
+                TeamType team   = identity.ValueRO.Team;
+
                 for (int i = 0; i < count; i++)
                 {
                     Entity soldier = ecb.Instantiate(prefab);
@@ -82,29 +79,28 @@ namespace BattleGame.Units
                         Type   = UnitType.Soldier,
                     });
 
-                    // 장군 스탯 × 비율로 스탯 덮어쓰기
-                    float soldierMaxHp = genMaxHp * ratio;
+                    // 장군 스텟 × 비율로 병사 Base 스텟 결정
+                    // 사거리(AttackRange)는 비율 적용 제외 — 진형 설계상 동일 사거리 사용
+                    var soldierBase = new StatBlock();
+                    soldierBase[StatType.MaxHp]       = generalStat[StatType.MaxHp]       * ratio;
+                    soldierBase[StatType.Defense]     = generalStat[StatType.Defense]     * ratio;
+                    soldierBase[StatType.Attack]      = generalStat[StatType.Attack]      * ratio;
+                    soldierBase[StatType.AttackRange] = generalStat[StatType.AttackRange];
+                    soldierBase[StatType.AttackSpeed] = generalStat[StatType.AttackSpeed] * ratio;
+                    soldierBase[StatType.MoveSpeed]   = generalStat[StatType.MoveSpeed]   * ratio;
+                    soldierBase[StatType.CritChance]  = generalStat[StatType.CritChance];
+                    soldierBase[StatType.CritDamage]  = generalStat[StatType.CritDamage];
+
+                    ecb.SetComponent(soldier, new StatComponent
+                    {
+                        Base  = soldierBase,
+                        Final = soldierBase,  // 첫 버프 계산 전까지 Final = Base
+                    });
+
+                    // 체력 초기화
                     ecb.SetComponent(soldier, new HealthComponent
                     {
-                        CurrentHp = soldierMaxHp,
-                        MaxHp     = soldierMaxHp,
-                        Defense   = genDefense * ratio,
-                        IsDead    = false,
-                    });
-                    ecb.SetComponent(soldier, new AttackComponent
-                    {
-                        AttackDamage   = genAttackDamage * ratio,
-                        AttackRange    = genAttackRange,      // 사거리는 비율 적용 제외
-                        AttackSpeed    = genAttackSpeed * ratio,
-                        AttackCooldown = 0f,
-                        HasTarget      = false,
-                    });
-                    ecb.SetComponent(soldier, new MovementComponent
-                    {
-                        MoveSpeed        = genMoveSpeed * ratio,
-                        StoppingDistance = 0.5f,
-                        Destination      = float3.zero,
-                        IsMoving         = false,
+                        CurrentHp = soldierBase[StatType.MaxHp],
                     });
 
                     // 소속 장군 링크
@@ -113,6 +109,14 @@ namespace BattleGame.Units
                         GeneralEntity  = generalEntity,
                         StatScaleRatio = ratio,
                         IsInitialized  = true,
+                    });
+
+                    // 병사별 고유 랜덤 시드 (크리티컬 판정용)
+                    ecb.SetComponent(soldier, new AttackComponent
+                    {
+                        AttackCooldown = 0f,
+                        HasTarget      = false,
+                        RandomSeed     = (uint)(i + 1) * 2654435761u,
                     });
                 }
 
@@ -135,8 +139,8 @@ namespace BattleGame.Units
     {
         // 1초마다 버프를 갱신하고, 버프 지속시간은 2초로 설정한다.
         // → 갱신이 한 번 누락되면 2초 후 자연 만료 (장군 사망·범위 이탈 처리)
-        const float RefreshInterval   = 1f;
-        const float BuffDuration      = 2f;
+        const float RefreshInterval = 1f;
+        const float BuffDuration    = 2f;
 
         float _timer;
 
@@ -170,11 +174,12 @@ namespace BattleGame.Units
 
                 auraList.Add(new AuraInfo
                 {
-                    Team       = identity.ValueRO.Team,
-                    Position   = transform.ValueRO.Position,
-                    Radius     = radius,
-                    EffectType = StatToStatusEffect(passive.ValueRO.BuffStat),
-                    BuffValue  = passive.ValueRO.BuffValue,
+                    Team      = identity.ValueRO.Team,
+                    Position  = transform.ValueRO.Position,
+                    Radius    = radius,
+                    Stat      = passive.ValueRO.BuffStat,
+                    Delta     = passive.ValueRO.BuffValue,
+                    Mode      = EffectMode.Add,
                 });
             }
 
@@ -211,22 +216,23 @@ namespace BattleGame.Units
                         continue;
 
                     // ── Step 3. 이미 같은 버프가 있으면 지속시간만 갱신,
-                    //           없으면 새로 추가 ──────────────────────
+                    //           없으면 새로 추가 ──────────────────────────
                     bool alreadyHasBuff = false;
 
                     for (int j = 0; j < activeBuffs.Length; j++)
                     {
                         StatusEffectBufferElement existingBuff = activeBuffs[j];
 
-                        bool sameType  = existingBuff.EffectType == aura.EffectType;
-                        bool sameValue = math.abs(existingBuff.Magnitude - aura.BuffValue) < 0.01f;
+                        bool sameStat  = existingBuff.Stat == aura.Stat;
+                        bool sameMode  = existingBuff.Mode == aura.Mode;
+                        bool sameDelta = math.abs(existingBuff.Delta - aura.Delta) < 0.01f;
 
-                        if (sameType && sameValue)
+                        if (sameStat && sameMode && sameDelta)
                         {
-                            existingBuff.Remaining  = BuffDuration;
-                            existingBuff.Duration   = BuffDuration;
-                            activeBuffs[j]          = existingBuff;
-                            alreadyHasBuff          = true;
+                            existingBuff.Remaining = BuffDuration;
+                            existingBuff.Duration  = BuffDuration;
+                            activeBuffs[j]         = existingBuff;
+                            alreadyHasBuff         = true;
                             break;
                         }
                     }
@@ -235,10 +241,11 @@ namespace BattleGame.Units
                     {
                         activeBuffs.Add(new StatusEffectBufferElement
                         {
-                            EffectType = aura.EffectType,
-                            Magnitude  = aura.BuffValue,
-                            Duration   = BuffDuration,
-                            Remaining  = BuffDuration,
+                            Stat      = aura.Stat,
+                            Delta     = aura.Delta,
+                            Mode      = aura.Mode,
+                            Duration  = BuffDuration,
+                            Remaining = BuffDuration,
                         });
                     }
                 }
@@ -246,23 +253,16 @@ namespace BattleGame.Units
 
             auraList.Dispose();
         }
-
-        static StatusEffectType StatToStatusEffect(StatType stat) => stat switch
-        {
-            StatType.Attack    => StatusEffectType.AttackBuff,
-            StatType.Defense   => StatusEffectType.DefenseBuff,
-            StatType.MoveSpeed => StatusEffectType.SpeedBuff,
-            _                  => StatusEffectType.AttackBuff,
-        };
     }
 
     internal struct AuraInfo
     {
-        public TeamType          Team;
-        public float3            Position;
-        public float             Radius;
-        public StatusEffectType  EffectType; // BuffStat 을 미리 변환해 저장 (루프 내 변환 제거)
-        public float             BuffValue;
+        public TeamType   Team;
+        public float3     Position;
+        public float      Radius;
+        public StatType   Stat;    // 버프 대상 스텟
+        public float      Delta;   // 버프 수치
+        public EffectMode Mode;    // Add / Multiply
     }
 
     // ══════════════════════════════════════════
@@ -292,7 +292,7 @@ namespace BattleGame.Units
             }
 
             // UseActiveSkillTag 처리 — 쿨다운 리셋 + 태그 제거
-            // 실제 스킬 실행(트윈/이동/공격 제어)은 외부 스킬 실행기에서 수행
+            // 실제 스킬 실행(트윈·이동·공격 제어)은 외부 스킬 실행기에서 수행
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             foreach (var (skill, entity)

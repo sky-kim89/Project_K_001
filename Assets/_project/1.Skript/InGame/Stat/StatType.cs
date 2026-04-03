@@ -15,8 +15,10 @@ public enum StatType
     AttackRange  = 3,
     AttackSpeed  = 4,   // 초당 공격 횟수
     MoveSpeed    = 5,
-    CritChance   = 6,   // 크리티컬 확률 0~1
-    CritDamage   = 7,   // 크리티컬 배율 (기본 1.5)
+    CritChance    = 6,   // 크리티컬 확률 0~1
+    CritDamage    = 7,   // 크리티컬 배율 (기본 1.5)
+    SoldierCount  = 8,   // 장군이 지휘하는 병사 수
+    CommandPower  = 9,   // 병사 지휘력 — 1포인트당 병사 스텟 1% 증가
     // 새 스텟은 여기에 순서대로 추가 — 다른 코드 수정 불필요 (최대 127개)
 }
 

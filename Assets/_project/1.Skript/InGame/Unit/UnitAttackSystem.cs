@@ -2,6 +2,7 @@ using Unity.Entities;
 using Unity.Transforms;
 using Unity.Mathematics;
 using Unity.Burst;
+using Unity.Collections;
 
 // ============================================================
 //  UnitAttackSystem.cs
@@ -121,12 +122,22 @@ namespace BattleGame.Units
             attack.AttackCooldown = 1f / stat.Final[StatType.AttackSpeed];
             ChangeState(ref unitState, UnitState.Attacking);
 
+            // 크리티컬 판정 (CritChance / CritDamage → StatFinal)
+            var   rng       = new Random(attack.RandomSeed == 0u ? 1u : attack.RandomSeed);
+            float roll      = rng.NextFloat();
+            attack.RandomSeed = rng.state; // 다음 공격을 위해 시드 갱신
+
+            float baseDamage = stat.Final[StatType.Attack];
+            float finalDamage = roll < stat.Final[StatType.CritChance]
+                ? baseDamage * stat.Final[StatType.CritDamage]
+                : baseDamage;
+
             float3 toTarget = targetPos - transform.Position;
             float3 hitDir   = math.lengthsq(toTarget) > 0f ? math.normalize(toTarget) : float3.zero;
 
             Ecb.AppendToBuffer(chunkIndex, attack.TargetEntity, new HitEventBufferElement
             {
-                Damage         = stat.Final[StatType.Attack],
+                Damage         = finalDamage,
                 HitDirection   = hitDir,
                 AttackerEntity = entity,
             });
