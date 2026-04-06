@@ -14,9 +14,10 @@ public enum TeamType : byte
 // ── 오브젝트 풀 ──────────────────────────────────────────────
 public enum PoolType
 {
-    UI     = 0,
-    Unit   = 1,
-    Effect = 2
+    UI         = 0,
+    Unit       = 1,
+    Effect     = 2,
+    Projectile = 3,   // 기본 공격 발사체 (Arrow, MagicBolt 등)
 }
 
 // ── 게임 상태 ─────────────────────────────────────────────────

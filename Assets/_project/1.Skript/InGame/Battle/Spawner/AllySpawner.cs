@@ -67,8 +67,9 @@ public class AllySpawner : MonoBehaviour
                 }
                 else
                 {
-                    // UnitName(= PoolKey)을 시드로 장군 스텟 초기화
-                    unit.GetComponent<GeneralRuntimeBridge>()?.Initialize(entry.PoolKey);
+                    string unitName = string.IsNullOrEmpty(entry.UnitName) ? entry.PoolKey : entry.UnitName;
+                    if (unit.TryGetComponent<GeneralRuntimeBridge>(out var bridge))
+                        bridge.Initialize(unitName, entry.Level);
                 }
 
                 slotIndex++;

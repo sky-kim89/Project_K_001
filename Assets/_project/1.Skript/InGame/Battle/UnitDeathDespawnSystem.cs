@@ -41,33 +41,40 @@ namespace BattleGame.Units
     [UpdateAfter(typeof(UnitHitSystem))]
     public partial class UnitDeathDespawnSystem : SystemBase
     {
+        // GO 반납 목록 — ForEach 외부에서 처리하기 위해 캐싱
+        readonly System.Collections.Generic.List<(GameObject obj, TeamType team)> _pending = new();
+
         protected override void OnUpdate()
         {
-            // DeadTag + UnitPoolLinkComponent 가 모두 있는 Entity 를 처리
-            // UnitPoolLinkComponent 제거 → 다음 프레임에 중복 처리되지 않음
+            _pending.Clear();
+
+            // ── ① 사망 유닛 수집 + 링크 컴포넌트 제거 예약 ─────
             var ecb = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
 
             Entities
                 .WithAll<DeadTag>()
-                .WithoutBurst()   // managed 호출 때문에 Burst 비활성화
+                .WithoutBurst()
                 .ForEach((Entity entity,
                           UnitPoolLinkComponent link,
                           in UnitIdentityComponent identity) =>
                 {
-                    // ① BattleManager 에 사망 알림 (카운트 갱신)
-                    BattleManager.Instance?.OnUnitDead(identity.Team);
-
-                    // ② 풀로 반납
-                    if (link.LinkedObject != null)
-                        PoolController.Instance?.Despawn(link.LinkedObject);
-
-                    // ③ 링크 컴포넌트 제거 (이 시스템이 다음 프레임에 다시 처리하지 않도록)
+                    // ForEach 안에서는 GO 반납 금지 (SetActive → EntityLink.OnDisable → AddComponent 구조적 변경 오류)
+                    // 대신 목록에 담아 두고 ForEach 완료 후 처리
+                    _pending.Add((link.LinkedObject, identity.Team));
                     ecb.RemoveComponent<UnitPoolLinkComponent>(entity);
                 })
                 .Run();
 
             ecb.Playback(EntityManager);
             ecb.Dispose();
+
+            // ── ② ForEach 완료 후 GO 반납 (이 시점은 Entity 순회 밖이므로 안전) ──
+            foreach (var (obj, team) in _pending)
+            {
+                BattleManager.Instance?.OnUnitDead(team);
+                if (obj != null)
+                    PoolController.Instance?.Despawn(obj);  // → SetActive(false) → EntityLink.OnDisable → Disabled 추가 (안전)
+            }
         }
     }
 }

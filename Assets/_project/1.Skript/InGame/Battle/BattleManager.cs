@@ -36,6 +36,9 @@ public class BattleManager : Singleton<BattleManager>
 
     // ── 공개 API ─────────────────────────────────────────────
 
+    /// <summary>아군이 전멸했는지 여부. ECS 시스템에서 프레임마다 읽는다.</summary>
+    public bool IsAllyDefeated => _context?.IsAllyDefeated ?? false;
+
     /// <summary>배틀을 시작한다.</summary>
     public void StartBattle(BattleModeBase mode)
     {

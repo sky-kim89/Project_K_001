@@ -22,29 +22,32 @@ public static class EnemyStatRoller
 
     static readonly StatRanges EnemyRanges = new()
     {
-        Hp          = (100f,  400f),
-        Attack      = (10f,   50f),
-        Defense     = (0.05f, 0.15f),
-        AttackSpeed = (0.5f,  1.5f),
-        MoveSpeed   = (2.0f,  4.0f),
+        Hp           = (100f,  400f),
+        Attack       = (10f,   50f),
+        Defense      = (0.05f, 0.15f),
+        AttackRange  = (1.2f,  2.5f),
+        AttackSpeed  = (0.5f,  1.5f),
+        MoveSpeed    = (2.0f,  4.0f),
     };
 
     static readonly StatRanges EliteRanges = new()
     {
-        Hp          = (400f,  1200f),
-        Attack      = (50f,   150f),
-        Defense     = (0.10f, 0.30f),
-        AttackSpeed = (0.8f,  2.0f),
-        MoveSpeed   = (2.5f,  4.5f),
+        Hp           = (400f,  1200f),
+        Attack       = (50f,   150f),
+        Defense      = (0.10f, 0.30f),
+        AttackRange  = (1.5f,  3.0f),
+        AttackSpeed  = (0.8f,  2.0f),
+        MoveSpeed    = (2.5f,  4.5f),
     };
 
     static readonly StatRanges BossRanges = new()
     {
-        Hp          = (2000f, 8000f),
-        Attack      = (150f,  400f),
-        Defense     = (0.20f, 0.45f),
-        AttackSpeed = (0.4f,  1.2f),
-        MoveSpeed   = (1.5f,  3.0f),
+        Hp           = (2000f, 8000f),
+        Attack       = (150f,  400f),
+        Defense      = (0.20f, 0.45f),
+        AttackRange  = (2.0f,  4.0f),
+        AttackSpeed  = (0.4f,  1.2f),
+        MoveSpeed    = (1.5f,  3.0f),
     };
 
     // 고정 스텟 (전 타입 공통)
@@ -73,6 +76,7 @@ public static class EnemyStatRoller
         stat.Set(StatType.MaxHp,       Lerp(range.Hp,          rng.NextFloat()));
         stat.Set(StatType.Attack,      Lerp(range.Attack,      rng.NextFloat()));
         stat.Set(StatType.Defense,     Lerp(range.Defense,     rng.NextFloat()));
+        stat.Set(StatType.AttackRange, Lerp(range.AttackRange, rng.NextFloat()));
         stat.Set(StatType.AttackSpeed, Lerp(range.AttackSpeed, rng.NextFloat()));
         stat.Set(StatType.MoveSpeed,   Lerp(range.MoveSpeed,   rng.NextFloat()));
         stat.Set(StatType.CritChance,  FixedCritChance);
@@ -103,6 +107,7 @@ public static class EnemyStatRoller
         public (float min, float max) Hp;
         public (float min, float max) Attack;
         public (float min, float max) Defense;
+        public (float min, float max) AttackRange;
         public (float min, float max) AttackSpeed;
         public (float min, float max) MoveSpeed;
     }

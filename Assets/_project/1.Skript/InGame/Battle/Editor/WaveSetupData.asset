@@ -14,9 +14,27 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Waves:
   - EnemyEntries:
-    - PoolKey: 
+    - PoolKey: Enemy
+      UnitName: 
+      Level: 1
       UnitType: 2
-      Count: 1
-      DelayBetween: 0.5
+      Count: 200
+      DelayBetween: 0.02
+      DelayBefore: 0
+    - PoolKey: Enemy
+      UnitName: 
+      Level: 1
+      UnitType: 2
+      Count: 200
+      DelayBetween: 0.02
+      DelayBefore: 0
+    GoldReward: 100
+  - EnemyEntries:
+    - PoolKey: Enemy
+      UnitName: 
+      Level: 1
+      UnitType: 2
+      Count: 200
+      DelayBetween: 0.02
       DelayBefore: 0
     GoldReward: 100

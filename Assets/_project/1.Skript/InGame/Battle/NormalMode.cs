@@ -40,7 +40,9 @@ public class NormalMode : BattleModeBase
         {
             entries.Add(new SpawnEntry
             {
-                PoolKey      = unit.UnitName,
+                PoolKey      = SpawnUnitType.General.ToString(),
+                UnitName     = unit.UnitName,   // 직업·스텟 시드
+                Level        = unit.Level,
                 UnitType     = SpawnUnitType.General,
                 Count        = 1,
                 DelayBetween = 0f,

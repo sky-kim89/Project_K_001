@@ -66,6 +66,11 @@ public class UnitData : ISaveSection
     public void SetDefaults()
     {
         _raw = new UnitRawData();
+        _raw.Units.Add(new UnitEntry { UnitName = "General", Level = 100, Exp = 0, SkillId = -1 });
+        _raw.Units.Add(new UnitEntry { UnitName = "General1123", Level = 100, Exp = 0, SkillId = -1 });
+        _raw.Units.Add(new UnitEntry { UnitName = "General2123", Level = 100, Exp = 0, SkillId = -1 });
+        _raw.Units.Add(new UnitEntry { UnitName = "General3123", Level = 100, Exp = 0, SkillId = -1 });
+        _raw.Units.Add(new UnitEntry { UnitName = "General4123", Level = 100, Exp = 0, SkillId = -1 });
     }
 
     // ── 직렬화 전용 내부 클래스 ──────────────────────────────
@@ -82,8 +87,10 @@ public class UnitData : ISaveSection
 [Serializable]
 public class UnitEntry
 {
-    public string UnitName;          // PoolController 풀 키와 동일하게 저장 (스폰 시 PoolKey 로 사용)
-    public int    Level  = 1;
-    public int    Exp    = 0;
-    public int    SkillId = -1;   // -1 = 장착 없음
+    public string    UnitName;         // PoolController 풀 키와 동일하게 저장 (스폰 시 PoolKey 로 사용)
+    public int       Level   = 1;
+    public int       Exp     = 0;
+    public int       SkillId = -1;     // -1 = 장착 없음
+    public UnitGrade Grade   = UnitGrade.Normal;
+    // 직업(UnitJob)은 UnitName 시드로 결정적 배정 — UnitJobRoller.GetJob(UnitName) 으로 조회
 }

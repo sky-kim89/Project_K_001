@@ -137,6 +137,7 @@ namespace BattleGame.Units
         {
             float  closestDistSq  = float.MaxValue;
             Entity closestEntity  = Entity.Null;
+            float3 closestPos     = float3.zero;
 
             for (int dx = -SearchRadius; dx <= SearchRadius; dx++)
             for (int dy = -SearchRadius; dy <= SearchRadius; dy++)
@@ -156,6 +157,7 @@ namespace BattleGame.Units
                     {
                         closestDistSq = distSq;
                         closestEntity = entry.Entity;
+                        closestPos    = entry.Position;
                     }
                 }
                 while (GridMap.TryGetNextValue(out entry, ref it));
@@ -163,8 +165,9 @@ namespace BattleGame.Units
 
             if (closestEntity != Entity.Null)
             {
-                attack.TargetEntity = closestEntity;
-                attack.HasTarget    = true;
+                attack.TargetEntity   = closestEntity;
+                attack.TargetPosition = closestPos;
+                attack.HasTarget      = true;
             }
             else
             {

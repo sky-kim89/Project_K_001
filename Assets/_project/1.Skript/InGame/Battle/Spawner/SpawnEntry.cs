@@ -15,6 +15,12 @@ public class SpawnEntry
     [Tooltip("PoolController 에 등록된 유닛 풀 키 (프리팹 이름과 동일)")]
     public string PoolKey;
 
+    [Tooltip("직업·스텟 결정에 사용할 고유 유닛 이름 (비어있으면 PoolKey 로 대체)")]
+    public string UnitName;
+
+    [Tooltip("유닛 레벨 — 스텟 배율에 반영")]
+    public int Level = 1;
+
     [Tooltip("스폰할 유닛 종류 — 스포너 분류 및 추후 테이블용")]
     public SpawnUnitType UnitType;
 

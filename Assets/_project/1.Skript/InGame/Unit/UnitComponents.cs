@@ -180,6 +180,7 @@ namespace BattleGame.Units
     {
         public float  AttackCooldown;   // 다음 공격까지 남은 시간
         public Entity TargetEntity;
+        public float3 TargetPosition;   // 타겟 마지막 위치 캐시 (Chasing 이동용, 3프레임마다 갱신)
         public bool   HasTarget;
         public uint   RandomSeed;       // 크리티컬 판정용 per-entity 랜덤 시드
     }
@@ -266,6 +267,19 @@ namespace BattleGame.Units
     // 공간 분할용 Grid 컴포넌트
     // ──────────────────────────────────────────
 
+    // ──────────────────────────────────────────
+    // 화면 경계 상태
+    // ──────────────────────────────────────────
+
+    /// <summary>
+    /// 유닛이 한 번이라도 화면 안에 들어왔으면 HasEnteredScreen = true.
+    /// ScreenClampSystem 이 이 값을 보고 화면 밖으로 나가지 않게 위치를 클램프한다.
+    /// </summary>
+    public struct ScreenStateComponent : IComponentData
+    {
+        public bool HasEnteredScreen;
+    }
+
     /// <summary>
     /// 유닛이 현재 속한 Grid 셀 좌표.
     /// SpatialGridSystem 이 매 프레임 갱신.
@@ -274,6 +288,16 @@ namespace BattleGame.Units
     {
         public int2 Cell;      // 현재 셀
         public int2 PrevCell;  // 직전 프레임 셀 (변경 감지용)
+    }
+
+    /// <summary>
+    /// 유닛의 물리적 크기 반경.
+    /// GameObject.transform.localScale 에서 계산 (Max(x,y) * 0.5f).
+    /// SeparationJob 에서 두 유닛의 반경 합을 밀어낼 거리로 사용한다.
+    /// </summary>
+    public struct UnitSizeComponent : IComponentData
+    {
+        public float Radius;
     }
 
     // ──────────────────────────────────────────
@@ -285,4 +309,48 @@ namespace BattleGame.Units
 
     /// <summary>죽은 유닛에 붙이는 태그 — 각 시스템에서 이 태그로 필터링해 연산 제외.</summary>
     public struct DeadTag : IComponentData { }
+
+    // ──────────────────────────────────────────
+    // 직업 컴포넌트
+    // ──────────────────────────────────────────
+
+    /// <summary>
+    /// 유닛 직업 컴포넌트.
+    /// GeneralRuntimeBridge.AddComponents() 에서 설정.
+    /// 적은 직업 시스템 도입 시 EnemyRuntimeBridge.AddComponents() 에서 설정 예정.
+    /// </summary>
+    public struct UnitJobComponent : IComponentData
+    {
+        public UnitJob Job;
+    }
+
+    // ──────────────────────────────────────────
+    // 원거리 공격 태그
+    // ──────────────────────────────────────────
+
+    /// <summary>
+    /// 원거리 공격(발사체 사용) 유닛 마커.
+    /// UnitJob.Archer / UnitJob.Mage 인 경우에만 추가.
+    /// RangedAttackJob 필터링 및 ProjectileLaunchRequest 버퍼 추가 여부에 사용.
+    /// </summary>
+    public struct RangedTag : IComponentData { }
+
+    // ──────────────────────────────────────────
+    // 발사체 발사 요청 버퍼
+    // ──────────────────────────────────────────
+
+    /// <summary>
+    /// 원거리 유닛(RangedTag 보유) entity 에만 추가되는 버퍼.
+    /// RangedAttackJob 이 공격마다 추가 → ProjectileSpawnSystem 이 같은 프레임에 처리 후 Clear.
+    /// </summary>
+    [InternalBufferCapacity(2)]
+    public struct ProjectileLaunchRequest : IBufferElementData
+    {
+        public Entity   TargetEntity;
+        public float3   AttackerPos;
+        public float3   TargetPos;
+        public float    Damage;
+        public float    Speed;
+        public TeamType Team;
+    }
 }
