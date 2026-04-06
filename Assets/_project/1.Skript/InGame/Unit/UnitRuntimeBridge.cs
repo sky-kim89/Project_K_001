@@ -150,9 +150,21 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
         if (em.HasComponent<DeadTag>(entity))
             em.RemoveComponent<DeadTag>(entity);
 
-        // 풀 키 갱신
+        // 풀 링크 갱신 — 사망 처리 시 UnitDeathDespawnSystem 이 제거하므로 없으면 재추가
         if (em.HasComponent<BattleGame.Units.UnitPoolLinkComponent>(entity))
-            em.GetComponentObject<BattleGame.Units.UnitPoolLinkComponent>(entity).PoolKey = _unitName;
+        {
+            var poolLink = em.GetComponentObject<BattleGame.Units.UnitPoolLinkComponent>(entity);
+            poolLink.PoolKey      = _unitName;
+            poolLink.LinkedObject = gameObject;
+        }
+        else
+        {
+            em.AddComponentObject(entity, new BattleGame.Units.UnitPoolLinkComponent
+            {
+                PoolKey      = _unitName,
+                LinkedObject = gameObject,
+            });
+        }
 
         // 버퍼 클리어
         em.GetBuffer<HitEventBufferElement>(entity).Clear();

@@ -27,10 +27,43 @@ public class ProjectileView : MonoBehaviour
 
     void Awake() => _link = GetComponent<EntityLink>();
 
+    // EntityLink.LateUpdate 가 position 을 동기화한 뒤 Arrow 회전을 추가 갱신
+    // MagicBolt(ArcHeight=0) 는 발사 시 고정 각도를 그대로 유지
+    void LateUpdate()
+    {
+        if (_link.Entity == Entity.Null) return;
+
+        World world = World.DefaultGameObjectInjectionWorld;
+        if (world == null) return;
+
+        EntityManager em = world.EntityManager;
+        if (!em.Exists(_link.Entity)) return;
+
+        var proj = em.GetComponentData<BattleGame.Projectiles.ProjectileComponent>(_link.Entity);
+        if (proj.ArcHeight <= 0f) return; // MagicBolt 는 회전 고정
+
+        // 포물선 접선 방향 계산
+        // y(t) = lerp(startY, targetY, t) + ArcHeight * sin(t * PI)
+        // dy/dt = (targetY - startY) + ArcHeight * PI * cos(t * PI)
+        // x(t) = lerp(startX, targetX, t)
+        // dx/dt = (targetX - startX)
+        float t  = proj.TotalTime > 0f ? math.saturate(proj.ElapsedTime / proj.TotalTime) : 1f;
+        float dx = proj.TargetPos.x - proj.StartPos.x;
+        float dy = (proj.TargetPos.y - proj.StartPos.y)
+                 + proj.ArcHeight * math.PI * math.cos(t * math.PI);
+
+        if (math.abs(dx) > 0.001f || math.abs(dy) > 0.001f)
+        {
+            float angle = math.degrees(math.atan2(dy, dx));
+            transform.rotation = Quaternion.Euler(0f, 0f, angle);
+        }
+    }
+
     // ── 공개 API ─────────────────────────────────────────────
 
     /// <summary>ProjectileSpawnSystem 이 풀에서 꺼낸 직후 호출.</summary>
-    public void Launch(in ProjectileLaunchRequest req)
+    /// <param name="arcHeight">포물선 최대 높이. 0이면 직선(MagicBolt), >0이면 포물선(Arrow).</param>
+    public void Launch(in ProjectileLaunchRequest req, float arcHeight = 0f)
     {
         World world = World.DefaultGameObjectInjectionWorld;
         if (world == null) return;
@@ -49,6 +82,9 @@ public class ProjectileView : MonoBehaviour
         // GO 초기 위치
         transform.position = new Vector3(req.AttackerPos.x, req.AttackerPos.y, req.AttackerPos.z);
 
+        float initDist  = math.distance(req.AttackerPos, req.TargetPos);
+        float totalTime = req.Speed > 0.0001f ? initDist / req.Speed : 1f;
+
         var projData = new ProjectileComponent
         {
             TargetEntity = req.TargetEntity,
@@ -57,6 +93,10 @@ public class ProjectileView : MonoBehaviour
             Speed        = req.Speed,
             Lifetime     = Lifetime,
             Team         = req.Team,
+            StartPos     = req.AttackerPos,
+            ArcHeight    = arcHeight,
+            TotalTime    = totalTime,
+            ElapsedTime  = 0f,
         };
 
         if (_link.Entity != Entity.Null && em.Exists(_link.Entity))

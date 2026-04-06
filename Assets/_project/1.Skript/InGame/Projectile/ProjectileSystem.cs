@@ -84,7 +84,10 @@ namespace BattleGame.Projectiles
                 }
 
                 if (go.TryGetComponent<ProjectileView>(out var view))
-                    view.Launch(req);
+                {
+                    float arcHeight = poolKey == ArrowPoolKey ? 1.5f : 0f;
+                    view.Launch(req, arcHeight);
+                }
             }
         }
     }
@@ -153,21 +156,57 @@ namespace BattleGame.Projectiles
                 return;
             }
 
-            // 타겟 생존 중이면 위치 갱신 (추적)
-            if (TransformLookup.HasComponent(proj.TargetEntity) &&
-                HealthLookup.HasComponent(proj.TargetEntity)    &&
-                HealthLookup[proj.TargetEntity].CurrentHp > 0f)
+            // 타겟 생존 확인 — 사망 즉시 Entity.Null 로 무효화
+            // 이유: 유닛은 풀 반납 후 같은 Entity 로 재사용되므로,
+            //       무효화하지 않으면 재스폰된 유닛을 계속 추적하는 버그 발생
+            if (proj.TargetEntity != Entity.Null)
             {
-                proj.TargetPos = TransformLookup[proj.TargetEntity].Position;
+                bool alive = TransformLookup.HasComponent(proj.TargetEntity) &&
+                             HealthLookup.HasComponent(proj.TargetEntity)    &&
+                             HealthLookup[proj.TargetEntity].CurrentHp > 0f;
+
+                if (alive)
+                {
+                    proj.TargetPos = TransformLookup[proj.TargetEntity].Position;
+                }
+                else
+                {
+                    // TargetPos 는 이미 마지막 위치로 캐시됨 — Entity 만 무효화
+                    proj.TargetEntity = Entity.Null;
+
+                    // Arrow: 남은 거리 기반으로 TotalTime 재계산 (속도 일정하게 유지)
+                    if (proj.ArcHeight > 0f)
+                    {
+                        float remaining = math.distance(transform.Position, proj.TargetPos);
+                        proj.TotalTime  = proj.ElapsedTime +
+                                          (proj.Speed > 0.0001f ? remaining / proj.Speed : 0.1f);
+                    }
+                }
             }
 
-            // 이동
-            float3 diff = proj.TargetPos - transform.Position;
-            float  dist = math.length(diff);
-            if (dist < 0.01f) return; // 도달 직전 — HitJob 이 처리
+            if (proj.ArcHeight > 0f)
+            {
+                // ── Arrow: 포물선 이동 ─────────────────────────────
+                // t=0(발사) → t=1(도달), sin 곡선으로 Y 오프셋 추가
+                proj.ElapsedTime += DeltaTime;
+                float t = proj.TotalTime > 0.0001f
+                    ? math.saturate(proj.ElapsedTime / proj.TotalTime)
+                    : 1f;
 
-            float step = proj.Speed * DeltaTime;
-            transform.Position += math.normalize(diff) * math.min(step, dist);
+                float3 basePos = math.lerp(proj.StartPos, proj.TargetPos, t);
+                basePos.y += proj.ArcHeight * math.sin(t * math.PI);
+                transform.Position = basePos;
+            }
+            else
+            {
+                // ── MagicBolt: 직선 이동 ──────────────────────────
+                float3 diff = proj.TargetPos - transform.Position;
+                float  dist = math.length(diff);
+                if (dist < 0.01f) return;
+
+                float step = proj.Speed * DeltaTime;
+                transform.Position += math.normalize(diff) * math.min(step, dist);
+            }
         }
     }
 
@@ -228,7 +267,10 @@ namespace BattleGame.Projectiles
             float3 targetPos;
             bool   targetAlive = false;
 
-            if (TransformLookup.HasComponent(proj.TargetEntity) &&
+            // Entity.Null 체크 — MoveJob 이 사망 감지 시 이미 무효화했으므로
+            // 재스폰된 유닛(같은 Entity ID)을 살아있는 타겟으로 오판하지 않음
+            if (proj.TargetEntity != Entity.Null          &&
+                TransformLookup.HasComponent(proj.TargetEntity) &&
                 HealthLookup.HasComponent(proj.TargetEntity)    &&
                 HealthLookup[proj.TargetEntity].CurrentHp > 0f)
             {

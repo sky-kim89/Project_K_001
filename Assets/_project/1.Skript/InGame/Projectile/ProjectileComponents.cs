@@ -21,11 +21,18 @@ namespace BattleGame.Projectiles
     public struct ProjectileComponent : IComponentData
     {
         public Entity   TargetEntity;
-        public float3   TargetPos;   // 타겟 마지막 위치 캐시 (사망 후에도 계속 날아감)
+        public float3   TargetPos;    // 타겟 마지막 위치 캐시 (사망 후 고정)
         public float    Damage;
         public float    Speed;
-        public float    Lifetime;    // 남은 유효 시간 — 0 이하 시 소멸
+        public float    Lifetime;     // 남은 유효 시간 — 0 이하 시 소멸
         public TeamType Team;
+        // ── 이동 방식 ───────────────────────────────────────────
+        // ArcHeight > 0 : 포물선 이동 (Arrow)
+        // ArcHeight = 0 : 직선 이동   (MagicBolt)
+        public float3 StartPos;    // 발사 위치 (포물선 보간 기준점)
+        public float  ArcHeight;   // 포물선 최대 높이 (0이면 직선)
+        public float  TotalTime;   // 예상 비행 시간 = InitialDist / Speed
+        public float  ElapsedTime; // 경과 시간
     }
 
     // ── GO 링크 (managed component) ───────────────────────────────
