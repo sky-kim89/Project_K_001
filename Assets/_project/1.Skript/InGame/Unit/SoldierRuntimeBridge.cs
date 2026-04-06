@@ -13,21 +13,32 @@ using BattleGame.Units;
 
 public class SoldierRuntimeBridge : UnitRuntimeBridge
 {
-    float   _statScaleRatio;
-    Entity  _generalEntity;
-    UnitJob _job;
+    float     _statScaleRatio;
+    Entity    _generalEntity;
+    UnitJob   _job;
 
     // ── 공개 API ─────────────────────────────────────────────
 
     /// <summary>GeneralRuntimeBridge 가 병사 스폰 직후 호출.</summary>
     public void Initialize(string unitName, UnitStat generalStat,
-                           float statScaleRatio, Entity generalEntity, UnitJob generalJob)
+                           float statScaleRatio, Entity generalEntity,
+                           UnitJob generalJob, string generalName, UnitGrade generalGrade)
     {
         _unitName       = unitName;
         _statScaleRatio = statScaleRatio;
         _generalEntity  = generalEntity;
         _job            = generalJob;
         _stat           = ScaleFromGeneral(generalStat, statScaleRatio);
+
+        // 병사 등급 = 장군 등급 - 1 (Normal 하한)
+        // Normal  → Normal / Uncommon → Normal / Rare → Uncommon / Unique → Rare / Epic → Unique
+        UnitGrade soldierGrade = generalGrade > UnitGrade.Normal
+            ? (UnitGrade)((int)generalGrade - 1)
+            : UnitGrade.Normal;
+
+        // 외형: 장군 이름 시드 사용 → 같은 장군 소속 병사는 동일 외형
+        GetComponent<UnitAppearanceBridge>()?.ApplyAlly(generalName, generalJob, soldierGrade);
+
         SpawnEntity();
     }
 
@@ -39,6 +50,7 @@ public class SoldierRuntimeBridge : UnitRuntimeBridge
         _generalEntity  = Entity.Null;
         _statScaleRatio = 0f;
         _job            = UnitJob.Knight;
+        // 외형은 Initialize() 에서 ApplyAlly() 를 통해 항상 새로 설정됨
     }
 
     protected override TeamType GetTeam()     => TeamType.Ally;

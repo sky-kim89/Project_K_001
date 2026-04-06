@@ -71,9 +71,18 @@ namespace BattleGame.Units
             // ── ② ForEach 완료 후 GO 반납 (이 시점은 Entity 순회 밖이므로 안전) ──
             foreach (var (obj, team) in _pending)
             {
+                // 생존 카운트 즉시 갱신 (승패 판정은 연출과 무관하게 바로 처리)
                 BattleManager.Instance?.OnUnitDead(team);
-                if (obj != null)
-                    PoolController.Instance?.Despawn(obj);  // → SetActive(false) → EntityLink.OnDisable → Disabled 추가 (안전)
+
+                if (obj == null) continue;
+
+                // UnitAnimationSync 가 있으면 사망 연출(날아가기 + 대기) 후 자체 디스폰.
+                // 없으면 즉시 디스폰.
+                var animSync = obj.GetComponent<UnitAnimationSync>();
+                if (animSync != null)
+                    animSync.TriggerDeath();
+                else
+                    PoolController.Instance?.Despawn(obj);
             }
         }
     }

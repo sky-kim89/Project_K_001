@@ -141,7 +141,8 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
         // 유닛 크기 갱신 (풀 재사용 시 스케일이 달라질 수 있음)
         Vector3 scale  = transform.localScale;
         float   radius = Mathf.Max(scale.x, scale.y) * 0.5f;
-        em.SetComponentData(entity, new UnitSizeComponent { Radius = radius });
+        float   mass   = GetUnitType() == UnitType.General ? 5f : 1f;
+        em.SetComponentData(entity, new UnitSizeComponent { Radius = radius, Mass = mass });
 
         // 화면 진입 상태 초기화 (재스폰 시 다시 진입 판정)
         em.SetComponentData(entity, new ScreenStateComponent { HasEnteredScreen = false });
@@ -244,10 +245,11 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
             PrevCell = int2.zero,
         });
 
-        // ── 유닛 크기 (분리 반경) ──────────────────────────────
+        // ── 유닛 크기 (분리 반경 + 질량) ──────────────────────────────
         Vector3 scale  = transform.localScale;
         float   radius = Mathf.Max(scale.x, scale.y) * 0.5f;
-        em.AddComponentData(entity, new UnitSizeComponent { Radius = radius });
+        float   mass   = GetUnitType() == UnitType.General ? 5f : 1f;
+        em.AddComponentData(entity, new UnitSizeComponent { Radius = radius, Mass = mass });
 
         // ── 화면 경계 ─────────────────────────────────────────
         em.AddComponentData(entity, new ScreenStateComponent { HasEnteredScreen = false });

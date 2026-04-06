@@ -32,4 +32,7 @@ public class SpawnEntry
 
     [Tooltip("이 항목 시작 전 대기 시간 (초)")]
     public float DelayBefore = 0f;
+
+    [Tooltip("적군 종족 (EnemySpawner 전용 — 아군 항목에서는 무시됨)")]
+    public EnemyRace EnemyRace = EnemyRace.Orc;
 }

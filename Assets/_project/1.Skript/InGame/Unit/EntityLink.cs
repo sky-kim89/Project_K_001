@@ -18,11 +18,18 @@ public class EntityLink : MonoBehaviour
 {
     [HideInInspector] public Entity Entity;
 
+    /// <summary>
+    /// false 로 설정하면 LateUpdate 의 ECS→Transform 위치 동기화를 건너뜁니다.
+    /// UnitFeedback 이 사망 연출 중 자체적으로 위치를 이동할 때 사용합니다.
+    /// </summary>
+    [HideInInspector] public bool SyncPosition = true;
+
     // 한 프레임에 CompleteAllTrackedJobs 를 여러 번 호출하지 않도록 프레임 캐싱
     static int _lastCompletedFrame = -1;
 
     void LateUpdate()
     {
+        if (!SyncPosition) return;
         if (Entity == Entity.Null) return;
 
         World world = World.DefaultGameObjectInjectionWorld;
@@ -40,6 +47,11 @@ public class EntityLink : MonoBehaviour
 
         float3 pos = em.GetComponentData<LocalTransform>(Entity).Position;
         transform.position = new Vector3(pos.x, pos.y, pos.z);
+    }
+
+    void OnEnable()
+    {
+        SyncPosition = true;
     }
 
     void OnDisable()

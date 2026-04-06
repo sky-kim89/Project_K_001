@@ -298,6 +298,11 @@ namespace BattleGame.Units
     public struct UnitSizeComponent : IComponentData
     {
         public float Radius;
+        /// <summary>
+        /// 분리 질량. 클수록 다른 유닛에게 밀리지 않고 더 강하게 밀어낸다.
+        /// General = 5, Soldier/Enemy = 1
+        /// </summary>
+        public float Mass;
     }
 
     // ──────────────────────────────────────────

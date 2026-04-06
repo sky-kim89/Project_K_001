@@ -68,8 +68,8 @@ public class EnemySpawner : MonoBehaviour
                 }
                 else
                 {
-                    // PoolKey(= UnitName)를 시드로 적 스텟 초기화
-                    unit.GetComponent<EnemyRuntimeBridge>()?.Initialize(entry.PoolKey, entry.UnitType);
+                    // PoolKey(= UnitName)를 시드로 적 스텟 초기화 + 종족 외형 적용
+                    unit.GetComponent<EnemyRuntimeBridge>()?.Initialize(entry.PoolKey, entry.UnitType, entry.EnemyRace);
                 }
 
                 if (i < entry.Count - 1 && entry.DelayBetween > 0f)

@@ -39,6 +39,24 @@ public class BattleManager : Singleton<BattleManager>
     /// <summary>아군이 전멸했는지 여부. ECS 시스템에서 프레임마다 읽는다.</summary>
     public bool IsAllyDefeated => _context?.IsAllyDefeated ?? false;
 
+    /// <summary>적군이 전멸했는지 여부(웨이브 클리어). ECS 시스템에서 프레임마다 읽는다.</summary>
+    public bool IsEnemyDefeated => _context?.IsEnemyClear ?? false;
+
+    // ── Unity 생명주기 ─────────────────────────────────────────
+
+    protected override void Awake()
+    {
+        base.Awake();
+
+        // URP 2D 환경에서는 Camera Inspector에 Transparency Sort 옵션이 없으므로
+        // 스크립트로 직접 Y축 정렬을 적용한다.
+        if (Camera.main != null)
+        {
+            Camera.main.transparencySortMode = TransparencySortMode.CustomAxis;
+            Camera.main.transparencySortAxis = new Vector3(0f, 1f, 0f);
+        }
+    }
+
     /// <summary>배틀을 시작한다.</summary>
     public void StartBattle(BattleModeBase mode)
     {

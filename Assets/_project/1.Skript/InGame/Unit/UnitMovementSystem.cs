@@ -29,6 +29,7 @@ namespace BattleGame.Units
         public Entity Entity;
         public float3 Position;
         public float  Radius;   // GameObject.transform.localScale 기반 반경
+        public float  Mass;     // 분리 질량 (General = 5, 나머지 = 1)
     }
 
     [UpdateInGroup(typeof(SimulationSystemGroup))]
@@ -53,8 +54,9 @@ namespace BattleGame.Units
 
         public void OnUpdate(ref SystemState state)
         {
-            float deltaTime    = SystemAPI.Time.DeltaTime;
-            bool  allyDefeated = BattleManager.Instance != null && BattleManager.Instance.IsAllyDefeated;
+            float deltaTime     = SystemAPI.Time.DeltaTime;
+            bool  allyDefeated  = BattleManager.Instance != null && BattleManager.Instance.IsAllyDefeated;
+            bool  enemyDefeated = BattleManager.Instance != null && BattleManager.Instance.IsEnemyDefeated;
 
             // ① 분리 그리드 빌드 (아군 + 적군 전체) ─────────────
             _sepGrid.Clear();
@@ -88,8 +90,9 @@ namespace BattleGame.Units
             // ③ 목적지 이동 ────────────────────────────────────────
             new MoveToDestinationJob
             {
-                DeltaTime    = deltaTime,
-                AllyDefeated = allyDefeated,
+                DeltaTime     = deltaTime,
+                AllyDefeated  = allyDefeated,
+                EnemyDefeated = enemyDefeated,
             }.ScheduleParallel();
 
             // ④ 넉백 ─────────────────────────────────────────────
@@ -116,6 +119,7 @@ namespace BattleGame.Units
                 Entity   = entity,
                 Position = transform.Position,
                 Radius   = size.Radius,
+                Mass     = size.Mass,
             });
         }
     }
@@ -140,6 +144,7 @@ namespace BattleGame.Units
                             in UnitSizeComponent size, in UnitStateComponent unitState)
         {
             float  myRadius = size.Radius;
+            float  myMass   = math.max(size.Mass, 0.01f);
             int2   myCell   = (int2)math.floor(transform.Position.xy / CellSize);
             float3 push     = float3.zero;
 
@@ -162,7 +167,12 @@ namespace BattleGame.Units
                     {
                         float dist    = math.sqrt(distSq);
                         float overlap = pushDist - dist;
-                        push += diff / dist * overlap * Strength;
+
+                        // 질량 기반 분리: 상대 질량이 클수록 나는 더 많이 밀림
+                        // push 비율 = otherMass / (myMass + otherMass)
+                        float otherMass  = math.max(entry.Mass, 0.01f);
+                        float massRatio  = otherMass / (myMass + otherMass);
+                        push += diff / dist * overlap * Strength * massRatio;
                     }
                 }
                 while (Grid.TryGetNextValue(out entry, ref it));
@@ -185,7 +195,8 @@ namespace BattleGame.Units
     public partial struct MoveToDestinationJob : IJobEntity
     {
         public float DeltaTime;
-        public bool  AllyDefeated;  // 아군 전멸 시 적 진군 중지용
+        public bool  AllyDefeated;   // 아군 전멸 시 적 진군 중지용
+        public bool  EnemyDefeated;  // 적 전멸(웨이브 클리어) 시 아군 이동 중지용
 
         public void Execute(
             ref LocalTransform         transform,
@@ -206,6 +217,16 @@ namespace BattleGame.Units
             }
 
             float moveSpeed = stat.Final[StatType.MoveSpeed];
+
+            // 아군 + 적 전멸 → 제자리 정지 (승리 후 (0,0) 몰림 방지)
+            if (identity.Team == TeamType.Ally && EnemyDefeated)
+            {
+                movement.Velocity = float3.zero;
+                movement.IsMoving = false;
+                if (unitState.Current != UnitState.Idle)
+                    ChangeState(ref unitState, UnitState.Idle);
+                return;
+            }
 
             // 적팀 + 타겟 없음 → 진군 or 정지
             if (identity.Team == TeamType.Enemy && !attack.HasTarget)

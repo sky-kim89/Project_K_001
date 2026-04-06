@@ -16,11 +16,15 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
     // ── 공개 API ─────────────────────────────────────────────
 
     /// <summary>EnemySpawner 가 스폰 직후 호출.</summary>
-    public void Initialize(string unitName, SpawnUnitType unitType)
+    public void Initialize(string unitName, SpawnUnitType unitType, EnemyRace race)
     {
         _unitName = unitName;
         _unitType = unitType;
         _stat     = EnemyStatRoller.Roll(unitName, unitType);
+
+        // 외형 적용 (ECS Entity 생성과 독립적으로 실행)
+        GetComponent<UnitAppearanceBridge>()?.ApplyEnemy(race, unitName);
+
         SpawnEntity();
     }
 

@@ -40,6 +40,10 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         _grade    = UnitJobRoller.RollGrade();
         _job      = UnitJobRoller.GetJob(unitName);
         _stat     = GeneralStatRoller.Roll(unitName, _level, _grade);
+
+        // 외형 적용 (ECS Entity 생성과 독립적으로 실행)
+        GetComponent<UnitAppearanceBridge>()?.ApplyAlly(unitName, _job, _grade);
+
         SpawnEntity();
         SpawnSoldiers();
     }
@@ -114,7 +118,7 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
             }
 
             if (soldierGO.TryGetComponent<SoldierRuntimeBridge>(out var soldier))
-                soldier.Initialize(_soldierPoolKey, _stat, statScaleRatio, link.Entity, _job);
+                soldier.Initialize(_soldierPoolKey, _stat, statScaleRatio, link.Entity, _job, _unitName, _grade);
         }
 
         Debug.Log($"[GeneralRuntimeBridge] '{_unitName}' 스폰 " +
