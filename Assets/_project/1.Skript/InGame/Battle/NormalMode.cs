@@ -40,8 +40,7 @@ public class NormalMode : BattleModeBase
         {
             entries.Add(new SpawnEntry
             {
-                PoolKey      = SpawnUnitType.General.ToString(),
-                UnitName     = unit.UnitName,   // 직업·스텟 시드
+                Name         = unit.UnitName,   // 직업·스텟 시드
                 Level        = unit.Level,
                 UnitType     = SpawnUnitType.General,
                 Count        = 1,
@@ -58,13 +57,17 @@ public class NormalMode : BattleModeBase
         return data?.EnemyEntries;
     }
 
-    public override void ApplyWaveReward(int wave)
+    public override void ApplyStageClearReward()
     {
-        WaveData data = GetWaveData(wave);
-        if (data == null) return;
+        int total = 0;
+        for (int w = 1; w <= _waves.Count; w++)
+        {
+            WaveData data = GetWaveData(w);
+            if (data != null) total += data.GoldReward;
+        }
 
-        Context.PendingGold += data.GoldReward;
-        Debug.Log($"[NormalMode] 웨이브 {wave} 클리어 보상: 골드 +{data.GoldReward} (누적: {Context.PendingGold})");
+        Context.PendingGold += total;
+        Debug.Log($"[NormalMode] 스테이지 클리어 보상: 골드 +{total}");
     }
 
     // ── 훅 오버라이드 ─────────────────────────────────────────
@@ -112,6 +115,11 @@ public class NormalMode : BattleModeBase
 [System.Serializable]
 public class WaveData
 {
+    [Tooltip("이 웨이브 적군의 기본 종족.\n" +
+             "항목을 새로 추가하면 이 종족으로 초기화된다.\n" +
+             "항목별로 개별 변경도 가능하다.")]
+    public EnemyRace DefaultRace = EnemyRace.Orc;
+
     [Tooltip("이 웨이브에서 스폰할 적군 목록")]
     public List<SpawnEntry> EnemyEntries = new();
 

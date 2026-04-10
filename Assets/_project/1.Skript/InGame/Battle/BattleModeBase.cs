@@ -56,10 +56,10 @@ public abstract class BattleModeBase
     public abstract List<SpawnEntry> GetEnemySpawnEntries(int wave);
 
     /// <summary>
-    /// 웨이브 클리어 시 지급할 보상을 계산해 context 에 누적한다.
+    /// 스테이지 클리어(전 웨이브 완료) 시 보상을 계산해 context 에 누적한다.
     /// 파생 클래스에서 보상 종류(골드·아이템 등)를 다르게 구성할 수 있다.
     /// </summary>
-    public abstract void ApplyWaveReward(int wave);
+    public abstract void ApplyStageClearReward();
 
     // ── 파생 클래스에서 오버라이드 가능한 훅 ─────────────────
 

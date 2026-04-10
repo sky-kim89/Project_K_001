@@ -273,7 +273,7 @@ Camera:
   far clip plane: 1000
   field of view: 34
   orthographic: 1
-  orthographic size: 8
+  orthographic size: 10
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -337,6 +337,9 @@ MonoBehaviour:
   WaveSetup: {fileID: 11400000, guid: 8c3a5f0e8b10d2845b73e8477946b519, type: 2}
   StartMode: 0
   AutoStartDelay: 2
+  _passiveSkillDatabase: {fileID: 11400000, guid: 2ead0c07766becb44999d4417aa0e0ee, type: 2}
+  _activeSkillDatabase: {fileID: 0}
+  _gameplayConfig: {fileID: 11400000, guid: 2941226b5ef588e4bab2f9fa4b0f116b, type: 2}
 --- !u!4 &536232108
 Transform:
   m_ObjectHideFlags: 0
@@ -596,6 +599,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Type: 1
   Prefabs:
+  - {fileID: 30510183860061211, guid: f7f16c482aab2e241911161c9109b0a3, type: 3}
+  - {fileID: 30510183860061211, guid: 0cfc252353eaa204c8672cf39e8d1fd5, type: 3}
   - {fileID: 30510183860061211, guid: 08d7bf555742ede41b194ee75a09011b, type: 3}
   - {fileID: 632327241898942296, guid: 0c8099c7b4200a54aa7d8c8c165e6011, type: 3}
   - {fileID: 2989257194862494817, guid: 1469889d81543a84bb1561b956db91b0, type: 3}

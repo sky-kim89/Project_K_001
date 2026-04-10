@@ -13,31 +13,37 @@ MonoBehaviour:
   m_Name: WaveSetupData
   m_EditorClassIdentifier: 
   Waves:
-  - EnemyEntries:
-    - PoolKey: Enemy
-      UnitName: 
+  - DefaultRace: 5
+    EnemyEntries:
+    - Name: zombie
+      Level: 1
+      UnitType: 2
+      Count: 500
+      DelayBefore: 0
+      DelayBetween: 0.01
+      EnemyRace: 5
+    - Name: zombie2
       Level: 1
       UnitType: 2
       Count: 200
-      DelayBetween: 0.02
       DelayBefore: 0
-      EnemyRace: 0
-    - PoolKey: Enemy
-      UnitName: 
+      DelayBetween: 0.01
+      EnemyRace: 8
+    - Name: Elite
       Level: 1
-      UnitType: 2
-      Count: 200
-      DelayBetween: 0.02
+      UnitType: 3
+      Count: 50
       DelayBefore: 0
-      EnemyRace: 0
+      DelayBetween: 0.01
+      EnemyRace: 13
     GoldReward: 100
-  - EnemyEntries:
-    - PoolKey: Enemy
-      UnitName: 
+  - DefaultRace: 2
+    EnemyEntries:
+    - Name: skeleton
       Level: 1
-      UnitType: 2
-      Count: 200
-      DelayBetween: 0.02
+      UnitType: 4
+      Count: 100
       DelayBefore: 0
-      EnemyRace: 0
+      DelayBetween: 0.01
+      EnemyRace: 2
     GoldReward: 100

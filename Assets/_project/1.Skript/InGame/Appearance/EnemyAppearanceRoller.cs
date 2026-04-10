@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.Mathematics;
 
 // ============================================================
@@ -12,10 +13,16 @@ using Unity.Mathematics;
 //  ■ Lizard / FireLizard 종족
 //    CharacterBuilder.BuildLayers() 에서 Lizard 계열 Head 감지 시
 //    Hair / Helmet / Mask 를 자동으로 제거하므로 별도 처리 불필요.
+//
+//  ■ 캐시
+//    (race, unitName) 조합은 항상 동일한 외형을 반환하므로 static 캐시로 재사용.
 // ============================================================
 
 public static class EnemyAppearanceRoller
 {
+    // (EnemyRace, unitName) → UnitAppearanceData 캐시
+    static readonly Dictionary<(EnemyRace, string), UnitAppearanceData> _cache = new();
+
     // ── 적군 공통 무기 풀 (unitName 시드 기반) ────────────────
 
     static readonly string[] EnemyWeapons =
@@ -32,15 +39,20 @@ public static class EnemyAppearanceRoller
     /// <summary>
     /// 종족으로 신체를 결정하고 unitName 시드로 무기를 결정한다.
     /// 신체 색상은 에셋 기본값(디폴트) 유지.
+    /// 동일한 (race, unitName) 조합은 캐시된 인스턴스를 반환한다.
     /// </summary>
     public static UnitAppearanceData Roll(EnemyRace race, string unitName)
     {
+        var key = (race, unitName);
+        if (_cache.TryGetValue(key, out var cached))
+            return cached;
+
         uint seed = ComputeSeed(unitName);
         var  rng  = new Random(seed);
 
         string raceName = race.ToString();
 
-        return new UnitAppearanceData
+        var data = new UnitAppearanceData
         {
             Body   = raceName,
             Head   = raceName,
@@ -49,6 +61,9 @@ public static class EnemyAppearanceRoller
             Weapon = EnemyWeapons[rng.NextInt(0, EnemyWeapons.Length)],
             // 나머지 슬롯: 기본값 empty
         };
+
+        _cache[key] = data;
+        return data;
     }
 
     // ── 내부 ─────────────────────────────────────────────────

@@ -24,11 +24,12 @@ namespace BattleGame.Units
     [UpdateBefore(typeof(UnitHitSystem))]
     public partial struct UnitStatusEffectSystem : ISystem
     {
-        [BurstCompile]
+        // [BurstCompile] — GameplayConfig(관리형 객체) 접근이 필요해 Burst 제외
         public void OnUpdate(ref SystemState state)
         {
-            float deltaTime = SystemAPI.Time.DeltaTime;
-            new StatusEffectTickJob { DeltaTime = deltaTime }.ScheduleParallel();
+            float deltaTime  = SystemAPI.Time.DeltaTime;
+            float defenseMax = GameplayConfig.Current != null ? GameplayConfig.Current.DefenseMax : 0.95f;
+            new StatusEffectTickJob { DeltaTime = deltaTime, DefenseMax = defenseMax }.ScheduleParallel();
         }
     }
 
@@ -37,6 +38,7 @@ namespace BattleGame.Units
     public partial struct StatusEffectTickJob : IJobEntity
     {
         public float DeltaTime;
+        public float DefenseMax;
 
         public void Execute(
             ref StatComponent                            stat,
@@ -96,7 +98,7 @@ namespace BattleGame.Units
             float moveSpeed  = stat.Final[StatType.MoveSpeed];
             float attack     = stat.Final[StatType.Attack];
 
-            stat.Final[StatType.Defense]     = math.clamp(defense,   0f, 0.95f);
+            stat.Final[StatType.Defense]     = math.clamp(defense,   0f, DefenseMax);
             stat.Final[StatType.AttackSpeed] = math.max(atkSpeed,    0.1f);
             stat.Final[StatType.MoveSpeed]   = math.max(moveSpeed,   0.1f);
             stat.Final[StatType.Attack]      = math.max(attack,      0f);

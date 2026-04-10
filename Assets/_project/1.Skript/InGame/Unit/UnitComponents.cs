@@ -107,6 +107,11 @@ namespace BattleGame.Units
         public int   CurrentPhase;    // 현재 페이즈 (1부터 시작)
         public float Phase2HpRatio;   // 2페이즈 전환 체력 비율 (예: 0.5 = 50%)
         public float Phase3HpRatio;   // 3페이즈 전환 체력 비율 (PhaseCount < 3 이면 무시)
+
+        /// <summary>행동불능(스턴) 내성. 0 = 없음, 1 = 완전 면역. 스턴 지속 시간을 (1-값)배로 감소.</summary>
+        public float CCResistance;
+        /// <summary>넉백 내성. 0 = 없음, 1 = 완전 면역. 넉백 벡터를 (1-값)배로 감소.</summary>
+        public float KnockbackResistance;
     }
 
     // ──────────────────────────────────────────
@@ -147,6 +152,7 @@ namespace BattleGame.Units
         public float3 Velocity;          // 현재 프레임 이동 벡터 (VelocityComponent 대체)
         public float3 Destination;       // 목적지 (전선 위치 등)
         public float  StoppingDistance;  // 이 거리 안으로 들어오면 이동 중지
+        public float  MoveDelay;         // 스폰 후 이동 시작까지 대기 시간 (초). 0이면 즉시 이동.
         public bool   IsMoving;
     }
 

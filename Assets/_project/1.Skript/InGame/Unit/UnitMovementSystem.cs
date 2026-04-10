@@ -207,6 +207,15 @@ namespace BattleGame.Units
             in  UnitIdentityComponent  identity,
             in  StatComponent          stat)
         {
+            // 스폰 대기 중 — 이동 억제
+            if (movement.MoveDelay > 0f)
+            {
+                movement.MoveDelay -= DeltaTime;
+                movement.Velocity   = float3.zero;
+                movement.IsMoving   = false;
+                return;
+            }
+
             if (unitState.Current == UnitState.Hit      ||
                 unitState.Current == UnitState.Dead     ||
                 unitState.Current == UnitState.Attacking)
@@ -218,13 +227,24 @@ namespace BattleGame.Units
 
             float moveSpeed = stat.Final[StatType.MoveSpeed];
 
-            // 아군 + 적 전멸 → 제자리 정지 (승리 후 (0,0) 몰림 방지)
+            // 아군 + 적 전멸 → 제자리 정지 (승리 후 몰림 방지)
             if (identity.Team == TeamType.Ally && EnemyDefeated)
             {
                 movement.Velocity = float3.zero;
                 movement.IsMoving = false;
                 if (unitState.Current != UnitState.Idle)
                     ChangeState(ref unitState, UnitState.Idle);
+                return;
+            }
+
+            // 아군 + 타겟 없음 → +X 전진 (Y 유지, 원점으로 끌려가지 않음)
+            if (identity.Team == TeamType.Ally && !attack.HasTarget)
+            {
+                movement.Velocity  = new float3(1f, 0f, 0f) * moveSpeed;
+                transform.Position += movement.Velocity * DeltaTime;
+                movement.IsMoving  = true;
+                if (unitState.Current != UnitState.Moving)
+                    ChangeState(ref unitState, UnitState.Moving);
                 return;
             }
 
@@ -250,7 +270,18 @@ namespace BattleGame.Units
                 return;
             }
 
-            bool   isChasing  = unitState.Current == UnitState.Chasing && attack.HasTarget;
+            bool isChasing = unitState.Current == UnitState.Chasing && attack.HasTarget;
+
+            // 타겟이 있지만 추격 상태가 아닌 경우 (피격 후 Idle 복귀 직후 등)
+            // SlotPosition(0,0,0) 쪽으로 이동하면 Velocity.x < 0 이 되어
+            // UnitAnimationSync 의 _lastFacingX 가 뒤집히므로 제자리 대기한다.
+            if (attack.HasTarget && !isChasing)
+            {
+                movement.Velocity = float3.zero;
+                movement.IsMoving = false;
+                return;
+            }
+
             float3 destination = isChasing ? attack.TargetPosition : slot.SlotPosition;
 
             // 추격 중에는 공격 사거리를 정지 거리로 사용 (Archer·Mage 근접 방지)

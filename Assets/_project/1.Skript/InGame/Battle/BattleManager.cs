@@ -26,8 +26,6 @@ public class BattleManager : Singleton<BattleManager>
     public AllySpawner  AllySpawner;
     public EnemySpawner EnemySpawner;
 
-    [Header("웨이브 간 대기 시간 (초)")]
-    public float WaveStartDelay = 2f;
 
     // ── 내부 상태 ─────────────────────────────────────────────
 
@@ -44,19 +42,6 @@ public class BattleManager : Singleton<BattleManager>
 
     // ── Unity 생명주기 ─────────────────────────────────────────
 
-    protected override void Awake()
-    {
-        base.Awake();
-
-        // URP 2D 환경에서는 Camera Inspector에 Transparency Sort 옵션이 없으므로
-        // 스크립트로 직접 Y축 정렬을 적용한다.
-        if (Camera.main != null)
-        {
-            Camera.main.transparencySortMode = TransparencySortMode.CustomAxis;
-            Camera.main.transparencySortAxis = new Vector3(0f, 1f, 0f);
-        }
-    }
-
     /// <summary>배틀을 시작한다.</summary>
     public void StartBattle(BattleModeBase mode)
     {
@@ -64,7 +49,31 @@ public class BattleManager : Singleton<BattleManager>
         _mode    = mode;
         _mode.Initialize(_context, AllySpawner, EnemySpawner);
 
-        StartCoroutine(BattleRoutine());
+        StartCoroutine(StartBattleRoutine());
+    }
+
+    // 1웨이브 적군을 미리 풀에 준비한 뒤 배틀 루틴을 시작한다.
+    IEnumerator StartBattleRoutine()
+    {
+        List<SpawnEntry> wave1Enemies = _mode.GetEnemySpawnEntries(1);
+        if (wave1Enemies is { Count: > 0 })
+            yield return StartCoroutine(EnemySpawner.Prewarm(wave1Enemies));
+
+        yield return StartCoroutine(BattleRoutine());
+    }
+
+    /// <summary>
+    /// 병사처럼 스포너 외부에서 추가 스폰되는 유닛을 카운트에 반영한다.
+    /// GeneralRuntimeBridge.SpawnSoldiers() 에서 병사 스폰 성공 시 호출.
+    /// </summary>
+    public void OnUnitSpawned(TeamType team)
+    {
+        if (_context == null) return;
+
+        if (team == TeamType.Ally)
+            _context.AliveAllyCount++;
+        else
+            _context.AliveEnemyCount++;
     }
 
     /// <summary>
@@ -83,15 +92,7 @@ public class BattleManager : Singleton<BattleManager>
         EvaluateBattleState();
     }
 
-    /// <summary>보상 창이 닫힌 후 UI 에서 호출 — 다음 웨이브로 진행.</summary>
-    public void OnWaveRewardClosed()
-    {
-        _waitingForRewardClose = false;
-    }
-
     // ── 배틀 메인 루틴 ────────────────────────────────────────
-
-    bool _waitingForRewardClose;
 
     IEnumerator BattleRoutine()
     {
@@ -107,24 +108,15 @@ public class BattleManager : Singleton<BattleManager>
             // 웨이브 클리어 처리
             _context.State = BattleState.WaveClear;
             _mode.OnWaveClear(_context.CurrentWave);
-            _mode.ApplyWaveReward(_context.CurrentWave);
 
-            // 보상 창 오픈 후 닫힐 때까지 대기
-            OpenWaveRewardPopup();
-            _waitingForRewardClose = true;
-            yield return new WaitUntil(() => !_waitingForRewardClose);
-
-            // 마지막 웨이브면 승리
+            // 마지막 웨이브면 승리 + 스테이지 클리어 보상 지급
             if (_context.IsLastWave)
             {
+                _mode.ApplyStageClearReward();
                 _context.State = BattleState.BattleVictory;
                 _mode.OnBattleVictory();
                 yield break;
             }
-
-            // 다음 웨이브 준비 대기
-            _context.State = BattleState.Preparing;
-            yield return new WaitForSeconds(WaveStartDelay);
         }
     }
 
@@ -169,6 +161,9 @@ public class BattleManager : Singleton<BattleManager>
         if (_context.IsAllyDefeated)
         {
             _context.State = BattleState.BattleDefeat;
+            Debug.Log($"[BattleManager] 패배 — 웨이브 {_context.CurrentWave}/{_context.TotalWaves}" +
+                      $"  아군 생존: {_context.AliveAllyCount}" +
+                      $"  적군 잔존: {_context.AliveEnemyCount}");
             _mode.OnBattleDefeat();
         }
         else if (_context.IsEnemyClear)
@@ -186,10 +181,5 @@ public class BattleManager : Singleton<BattleManager>
         return total;
     }
 
-    void OpenWaveRewardPopup()
-    {
-        // TODO: PopupManager 또는 UI 시스템 연결
-        // 예: PopupManager.Instance.Open(PopupType.WaveReward, _context.PendingGold);
-        Debug.Log($"[BattleManager] 보상 창 오픈 — 골드: {_context.PendingGold}");
-    }
+
 }

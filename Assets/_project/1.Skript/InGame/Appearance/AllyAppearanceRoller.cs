@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.Mathematics;
 
 // ============================================================
@@ -20,10 +21,15 @@ using Unity.Mathematics;
 //    케이프: 항상 empty
 //    무기:   직업별 풀에서 랜덤
 //    Crossbow: Archer 20% 확률로 Firearm 슬롯에 추가
+//
+//  ■ 캐시
+//    (unitName, job, grade) 조합은 항상 동일한 외형을 반환하므로 static 캐시로 재사용.
 // ============================================================
 
 public static class AllyAppearanceRoller
 {
+    // (unitName, job, grade) → UnitAppearanceData 캐시
+    static readonly Dictionary<(string, UnitJob, UnitGrade), UnitAppearanceData> _cache = new();
     // ── 종족 ────────────────────────────────────────────────
 
     static readonly string[] AllyRaces = { "Human", "Elf" };
@@ -159,9 +165,14 @@ public static class AllyAppearanceRoller
     /// <summary>
     /// unitName 시드로 외형 데이터를 결정적으로 생성한다.
     /// 같은 unitName + job + grade 는 항상 동일한 외형을 반환.
+    /// 동일한 조합은 캐시된 인스턴스를 반환한다.
     /// </summary>
     public static UnitAppearanceData Roll(string unitName, UnitJob job, UnitGrade grade)
     {
+        var key = (unitName, job, grade);
+        if (_cache.TryGetValue(key, out var cached))
+            return cached;
+
         uint seed = ComputeSeed(unitName);
         var  rng  = new Random(seed);
 
@@ -273,6 +284,7 @@ public static class AllyAppearanceRoller
                 break;
         }
 
+        _cache[key] = data;
         return data;
     }
 

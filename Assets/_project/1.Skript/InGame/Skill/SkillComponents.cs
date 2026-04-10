@@ -68,4 +68,19 @@ namespace BattleGame.Units
     /// ActiveSkillCooldownSystem 이 처리 후 자동 제거.
     /// </summary>
     public struct UseActiveSkillTag : IComponentData { }
+
+    // ──────────────────────────────────────────
+    // 스킬 실행 이벤트 버퍼
+    // ──────────────────────────────────────────
+
+    /// <summary>
+    /// ActiveSkillCooldownSystem 이 스킬 발동 조건이 충족될 때 이 버퍼에 이벤트를 추가.
+    /// ActiveSkillExecuteSystem(managed) 이 같은 프레임에 읽어 Execute() 를 호출 후 Clear.
+    /// </summary>
+    [InternalBufferCapacity(1)]
+    public struct ActiveSkillExecuteEvent : IBufferElementData
+    {
+        public int   SkillId;       // 발동할 스킬 ID (ActiveSkillId enum)
+        public Entity TargetEntity; // 현재 공격 타겟 (없으면 Entity.Null)
+    }
 }

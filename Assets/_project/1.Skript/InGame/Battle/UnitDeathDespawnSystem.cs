@@ -42,7 +42,8 @@ namespace BattleGame.Units
     public partial class UnitDeathDespawnSystem : SystemBase
     {
         // GO 반납 목록 — ForEach 외부에서 처리하기 위해 캐싱
-        readonly System.Collections.Generic.List<(GameObject obj, TeamType team)> _pending = new();
+        // generalEntity: 병사 사망 시 소속 장군 알림용 (병사 아니면 Entity.Null)
+        readonly System.Collections.Generic.List<(GameObject obj, TeamType team, Entity generalEntity)> _pending = new();
 
         protected override void OnUpdate()
         {
@@ -60,7 +61,17 @@ namespace BattleGame.Units
                 {
                     // ForEach 안에서는 GO 반납 금지 (SetActive → EntityLink.OnDisable → AddComponent 구조적 변경 오류)
                     // 대신 목록에 담아 두고 ForEach 완료 후 처리
-                    _pending.Add((link.LinkedObject, identity.Team));
+
+                    // 병사 사망 시 소속 장군 Entity 캡처
+                    Entity generalEntity = Entity.Null;
+                    if (identity.Type == UnitType.Soldier
+                        && EntityManager.HasComponent<SoldierComponent>(entity))
+                    {
+                        generalEntity = EntityManager
+                            .GetComponentData<SoldierComponent>(entity).GeneralEntity;
+                    }
+
+                    _pending.Add((link.LinkedObject, identity.Team, generalEntity));
                     ecb.RemoveComponent<UnitPoolLinkComponent>(entity);
                 })
                 .Run();
@@ -68,8 +79,20 @@ namespace BattleGame.Units
             ecb.Playback(EntityManager);
             ecb.Dispose();
 
-            // ── ② ForEach 완료 후 GO 반납 (이 시점은 Entity 순회 밖이므로 안전) ──
-            foreach (var (obj, team) in _pending)
+            // ── ② 병사 사망 이벤트 → 소속 장군에게 알림 ─────────
+            // SoldierDeathEvent 버퍼가 있는 장군에게 사망 이벤트를 추가한다.
+            // PassiveSkillRuntimeSystem 이 다음 프레임에 이 버퍼를 처리한다.
+            foreach (var (_, _, generalEntity) in _pending)
+            {
+                if (generalEntity == Entity.Null) continue;
+                if (!EntityManager.Exists(generalEntity)) continue;
+                if (!EntityManager.HasBuffer<SoldierDeathEvent>(generalEntity)) continue;
+
+                EntityManager.GetBuffer<SoldierDeathEvent>(generalEntity).Add(default);
+            }
+
+            // ── ③ ForEach 완료 후 GO 반납 (이 시점은 Entity 순회 밖이므로 안전) ──
+            foreach (var (obj, team, _) in _pending)
             {
                 // 생존 카운트 즉시 갱신 (승패 판정은 연출과 무관하게 바로 처리)
                 BattleManager.Instance?.OnUnitDead(team);

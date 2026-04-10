@@ -62,6 +62,9 @@ public class UnitAnimationSync : MonoBehaviour
     bool      _isDying;
     Coroutine _hitCoroutine;
 
+    UnitJob   _job;
+    bool      _jobCached;
+
     // EntityLink 와 공유하는 CompleteAllTrackedJobs 프레임 캐시
     static int _lastCompletedFrame = -1;
 
@@ -90,6 +93,7 @@ public class UnitAnimationSync : MonoBehaviour
         _lastFacingX  = 1f;
         _isDying      = false;
         _hitCoroutine = null;
+        _jobCached    = false;
 
         if (_renderer != null) _renderer.color = Color.white;
     }
@@ -124,7 +128,16 @@ public class UnitAnimationSync : MonoBehaviour
             float cooldown = em.GetComponentData<AttackComponent>(_link.Entity).AttackCooldown;
 
             if (current == UnitState.Attacking && cooldown > _prevCooldown + 0.05f)
-                _animator.SetTrigger("Slash");
+            {
+                if (!_jobCached)
+                {
+                    _job = em.HasComponent<BattleGame.Units.UnitJobComponent>(_link.Entity)
+                        ? em.GetComponentData<BattleGame.Units.UnitJobComponent>(_link.Entity).Job
+                        : UnitJob.Knight;
+                    _jobCached = true;
+                }
+                _animator.SetTrigger(_job == UnitJob.Archer ? "Shot" : "Slash");
+            }
 
             _prevCooldown = cooldown;
         }

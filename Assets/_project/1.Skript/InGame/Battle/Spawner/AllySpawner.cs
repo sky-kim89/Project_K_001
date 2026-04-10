@@ -67,7 +67,7 @@ public class AllySpawner : MonoBehaviour
                 }
                 else
                 {
-                    string unitName = string.IsNullOrEmpty(entry.UnitName) ? entry.PoolKey : entry.UnitName;
+                    string unitName = string.IsNullOrEmpty(entry.Name) ? entry.PoolKey : entry.Name;
                     if (unit.TryGetComponent<GeneralRuntimeBridge>(out var bridge))
                         bridge.Initialize(unitName, entry.Level);
                 }

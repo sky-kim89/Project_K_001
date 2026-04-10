@@ -16,8 +16,9 @@ using UnityEngine;
 //    먼저 실행해 RebuildOnStart = false 를 선점한다.
 //    이렇게 하면 SpriteCollection / Character 가 없어도 NullReference 가 발생하지 않는다.
 //
-//  풀 재사용 대응:
-//    Apply* 호출 시 항상 새 외형을 빌드한다.
+//  풀 재사용 최적화:
+//    마지막으로 적용한 외형 키를 기억해 동일한 조합이면 Rebuild() 를 스킵한다.
+//    OnDisable() 에서 키를 초기화해 다음 스폰 시 첫 Rebuild 는 항상 수행한다.
 // ============================================================
 
 [DefaultExecutionOrder(-100)]
@@ -25,6 +26,17 @@ using UnityEngine;
 public class UnitAppearanceBridge : MonoBehaviour
 {
     CharacterBuilder _builder;
+
+    // ── 적군 외형 캐시 키 ─────────────────────────────────────
+    EnemyRace _lastEnemyRace;
+    string    _lastEnemyUnitName;
+    bool      _hasAppliedEnemy;
+
+    // ── 아군 외형 캐시 키 ─────────────────────────────────────
+    string    _lastAllyUnitName;
+    UnitJob   _lastAllyJob;
+    UnitGrade _lastAllyGrade;
+    bool      _hasAppliedAlly;
 
     void Awake()
     {
@@ -41,8 +53,19 @@ public class UnitAppearanceBridge : MonoBehaviour
         EnsureBuilder();
         if (_builder == null) return;
 
-        UnitAppearanceData data = AllyAppearanceRoller.Roll(unitName, job, grade);
-        Apply(data);
+        // 동일한 조합이면 Rebuild 스킵
+        if (_hasAppliedAlly
+            && _lastAllyUnitName == unitName
+            && _lastAllyJob      == job
+            && _lastAllyGrade    == grade)
+            return;
+
+        _lastAllyUnitName = unitName;
+        _lastAllyJob      = job;
+        _lastAllyGrade    = grade;
+        _hasAppliedAlly   = true;
+
+        Apply(AllyAppearanceRoller.Roll(unitName, job, grade));
     }
 
     /// <summary>적군 외형 적용 (종족 고정 + unitName 시드 무기).</summary>
@@ -51,8 +74,17 @@ public class UnitAppearanceBridge : MonoBehaviour
         EnsureBuilder();
         if (_builder == null) return;
 
-        UnitAppearanceData data = EnemyAppearanceRoller.Roll(race, unitName);
-        Apply(data);
+        // 동일한 조합이면 Rebuild 스킵
+        if (_hasAppliedEnemy
+            && _lastEnemyRace     == race
+            && _lastEnemyUnitName == unitName)
+            return;
+
+        _lastEnemyRace     = race;
+        _lastEnemyUnitName = unitName;
+        _hasAppliedEnemy   = true;
+
+        Apply(EnemyAppearanceRoller.Roll(race, unitName));
     }
 
     // ── 내부 ─────────────────────────────────────────────────

@@ -291,25 +291,31 @@ namespace BattleGame.Units
                     skill.ValueRW.CooldownRemaining -= dt;
             }
 
-            // UseActiveSkillTag 처리 — 쿨다운 리셋 + 태그 제거
-            // 실제 스킬 실행(트윈·이동·공격 제어)은 외부 스킬 실행기에서 수행
+            // UseActiveSkillTag 처리 — 쿨다운 확인 + 실행 이벤트 버퍼에 추가
+            // 실제 스킬 실행(트윈·이동·공격 제어)은 ActiveSkillExecuteSystem(managed) 에서 수행
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
-            foreach (var (skill, entity)
-                     in SystemAPI.Query<RefRW<GeneralActiveSkillComponent>>()
+            foreach (var (skill, attack, entity)
+                     in SystemAPI.Query<
+                            RefRW<GeneralActiveSkillComponent>,
+                            RefRO<AttackComponent>>()
                         .WithAll<UseActiveSkillTag>()
                         .WithNone<DeadTag>()
                         .WithEntityAccess())
             {
+                ecb.RemoveComponent<UseActiveSkillTag>(entity);
+
                 if (!skill.ValueRO.IsReady)
-                {
-                    // 쿨다운 미완료 — 요청 무시
-                    ecb.RemoveComponent<UseActiveSkillTag>(entity);
-                    continue;
-                }
+                    continue;  // 쿨다운 미완료 — 요청 무시
 
                 skill.ValueRW.CooldownRemaining = skill.ValueRO.Cooldown;
-                ecb.RemoveComponent<UseActiveSkillTag>(entity);
+
+                // 실행 이벤트 버퍼에 추가 → ActiveSkillExecuteSystem 이 다음에 처리
+                ecb.AppendToBuffer(entity, new ActiveSkillExecuteEvent
+                {
+                    SkillId      = skill.ValueRO.SkillId,
+                    TargetEntity = attack.ValueRO.TargetEntity,
+                });
             }
 
             ecb.Playback(state.EntityManager);

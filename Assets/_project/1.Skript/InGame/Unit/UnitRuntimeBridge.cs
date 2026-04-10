@@ -25,6 +25,9 @@ using BattleGame.Units;
 
 public abstract class UnitRuntimeBridge : MonoBehaviour
 {
+    // 아군 스폰 후 이동 시작까지 대기 시간
+    const float AllySpawnMoveDelay = 1f;
+
     // 파생 클래스가 Initialize() 에서 설정
     protected string   _unitName;
     protected UnitStat _stat;
@@ -112,6 +115,7 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
             Velocity         = float3.zero,
             Destination      = float3.zero,
             StoppingDistance = 0.5f,
+            MoveDelay        = GetTeam() == TeamType.Ally ? AllySpawnMoveDelay : 0f,
             IsMoving         = false,
         });
         em.SetComponentData(entity, new FormationSlotComponent
@@ -210,6 +214,7 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
             Velocity         = float3.zero,
             Destination      = float3.zero,
             StoppingDistance = 0.5f,
+            MoveDelay        = GetTeam() == TeamType.Ally ? AllySpawnMoveDelay : 0f,
             IsMoving         = false,
         });
         em.AddComponentData(entity, new FormationSlotComponent

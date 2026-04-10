@@ -29,6 +29,15 @@ namespace BattleGame.Units
         [Range(0.01f, 0.99f)]
         public float Phase3HpRatio = 0.25f;
 
+        [Header("보스 — 내성")]
+        [Tooltip("행동불능(스턴) 내성 (0 = 없음, 1 = 완전 면역)")]
+        [Range(0f, 1f)]
+        public float CCResistance = 1f;
+
+        [Tooltip("넉백 내성 (0 = 없음, 1 = 완전 면역)")]
+        [Range(0f, 1f)]
+        public float KnockbackResistance = 1f;
+
         [Header("보스 — 스킬 목록 (페이즈별 최대 3개, 없으면 비워두기)")]
         public SkillData SkillPhase1;
         public SkillData SkillPhase2;
@@ -44,10 +53,12 @@ namespace BattleGame.Units
 
             AddComponent(entity, new BossComponent
             {
-                PhaseCount    = authoring.PhaseCount,
-                CurrentPhase  = 1,
-                Phase2HpRatio = authoring.Phase2HpRatio,
-                Phase3HpRatio = authoring.Phase3HpRatio,
+                PhaseCount           = authoring.PhaseCount,
+                CurrentPhase         = 1,
+                Phase2HpRatio        = authoring.Phase2HpRatio,
+                Phase3HpRatio        = authoring.Phase3HpRatio,
+                CCResistance         = authoring.CCResistance,
+                KnockbackResistance  = authoring.KnockbackResistance,
             });
 
             // 1페이즈 스킬을 초기 액티브 스킬로 설정

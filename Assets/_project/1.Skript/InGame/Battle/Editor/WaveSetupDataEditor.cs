@@ -93,7 +93,8 @@ public class WaveSetupDataEditor : Editor
         // 웨이브 헤더 (접기/펼치기)
         string header = $"Wave {waveIndex + 1}  " +
                         $"(적군 {TotalCount(wave.EnemyEntries)}  " +
-                        $"골드 {wave.GoldReward})";
+                        $"골드 {wave.GoldReward}  " +
+                        $"종족 {wave.DefaultRace})";
 
         _waveFoldouts[waveIndex] = EditorGUILayout.BeginFoldoutHeaderGroup(
             _waveFoldouts[waveIndex], header, _waveHeader);
@@ -102,14 +103,26 @@ public class WaveSetupDataEditor : Editor
         {
             EditorGUI.indentLevel++;
 
-            // 골드 보상
+            // 골드 보상 / 기본 종족
             Undo.RecordObject(data, "Edit Wave");
-            wave.GoldReward = EditorGUILayout.IntField("골드 보상", wave.GoldReward);
+            wave.GoldReward  = EditorGUILayout.IntField("골드 보상", wave.GoldReward);
+            wave.DefaultRace = (EnemyRace)EditorGUILayout.EnumPopup("기본 종족", wave.DefaultRace);
+
+            // 기본 종족을 모든 적군 항목에 일괄 적용
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("전체 항목에 종족 적용", _btnAdd, GUILayout.Width(150)))
+            {
+                Undo.RecordObject(data, "Apply DefaultRace");
+                foreach (var e in wave.EnemyEntries) e.EnemyRace = wave.DefaultRace;
+                EditorUtility.SetDirty(data);
+            }
+            EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space(4);
 
             // 적군 항목
-            DrawEntryList(data, wave.EnemyEntries,
+            DrawEntryList(data, wave, wave.EnemyEntries,
                 label: "적군 스폰 항목", addLabel: "+ 적군 추가", defaultType: SpawnUnitType.Enemy);
 
             // 웨이브 삭제 버튼
@@ -137,7 +150,7 @@ public class WaveSetupDataEditor : Editor
 
     // ── SpawnEntry 목록 그리기 ────────────────────────────────
 
-    void DrawEntryList(WaveSetupData data, List<SpawnEntry> entries,
+    void DrawEntryList(WaveSetupData data, WaveData wave, List<SpawnEntry> entries,
                        string label, string addLabel, SpawnUnitType defaultType)
     {
         EditorGUILayout.LabelField(label, EditorStyles.boldLabel);
@@ -152,7 +165,7 @@ public class WaveSetupDataEditor : Editor
             // 항목 헤더
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField(
-                $"[{i}]  {entry.UnitType}  ×{entry.Count}  \"{entry.PoolKey}\"",
+                $"[{i}]  {entry.UnitType}  ×{entry.Count}  \"{entry.Name}\"  ({entry.EnemyRace})",
                 EditorStyles.miniLabel);
 
             if (GUILayout.Button("×", _btnRemove, GUILayout.Width(20), GUILayout.Height(18)))
@@ -168,8 +181,9 @@ public class WaveSetupDataEditor : Editor
 
             // 항목 필드
             Undo.RecordObject(data, "Edit SpawnEntry");
-            entry.PoolKey       = EditorGUILayout.TextField("Pool Key", entry.PoolKey);
+            entry.Name          = EditorGUILayout.TextField("Name (시드)", entry.Name);
             entry.UnitType      = (SpawnUnitType)EditorGUILayout.EnumPopup("Unit Type", entry.UnitType);
+            entry.EnemyRace     = (EnemyRace)EditorGUILayout.EnumPopup("Enemy Race", entry.EnemyRace);
             entry.Count         = EditorGUILayout.IntField("Count", entry.Count);
             entry.DelayBefore   = EditorGUILayout.FloatField("Delay Before (초)", entry.DelayBefore);
             entry.DelayBetween  = EditorGUILayout.FloatField("Delay Between (초)", entry.DelayBetween);
@@ -181,7 +195,7 @@ public class WaveSetupDataEditor : Editor
         if (GUILayout.Button(addLabel, _btnAdd))
         {
             Undo.RecordObject(data, "Add SpawnEntry");
-            entries.Add(new SpawnEntry { UnitType = defaultType, Count = 1, DelayBetween = 0.5f });
+            entries.Add(new SpawnEntry { UnitType = defaultType, Count = 1, DelayBetween = 0.5f, EnemyRace = wave.DefaultRace });
             EditorUtility.SetDirty(data);
         }
 

@@ -30,10 +30,26 @@ public class InGameManager : MonoBehaviour
     [Min(0f)]
     public float AutoStartDelay = 0f;
 
+    [Header("스킬 데이터베이스")]
+    [Tooltip("패시브 스킬 전체 목록 (PassiveSkillDatabase SO 할당)")]
+    [SerializeField] PassiveSkillDatabase _passiveSkillDatabase;
+
+    [Tooltip("액티브 스킬 전체 목록 (ActiveSkillDatabase SO 할당)")]
+    [SerializeField] ActiveSkillDatabase _activeSkillDatabase;
+
+    [Header("게임플레이 설정")]
+    [Tooltip("인게임 밸런스 수치 중앙 저장소 (GameplayConfig SO 할당)")]
+    [SerializeField] GameplayConfig _gameplayConfig;
+
     // ── Unity 생명주기 ────────────────────────────────────────
 
     void Awake()
     {
+        // 전역 참조 주입 — ValidateDependencies 보다 먼저 실행
+        PassiveSkillDatabase.Current = _passiveSkillDatabase;
+        ActiveSkillDatabase.Current  = _activeSkillDatabase;
+        GameplayConfig.Current       = _gameplayConfig;
+
         ValidateDependencies();
     }
 
