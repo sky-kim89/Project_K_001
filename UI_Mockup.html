@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project K - InGame UI Mockup</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #1a1a2e;
+    font-family: 'Segoe UI', sans-serif;
+    color: #eee;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ───────── TOP BAR ───────── */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(180deg, #0d0d1a 0%, #12122a 100%);
+    border-bottom: 1px solid #2a2a4a;
+    padding: 6px 14px;
+    height: 46px;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+
+  .stage-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .stage-badge {
+    background: #16213e;
+    border: 1px solid #4a6fa5;
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #7ec8e3;
+    letter-spacing: 1px;
+  }
+  .wave-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .wave-text {
+    font-size: 11px;
+    color: #aaa;
+  }
+  .wave-bar-wrap {
+    width: 140px;
+    height: 6px;
+    background: #222240;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .wave-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #4a9eff, #7ec8e3);
+    border-radius: 4px;
+    width: 40%;
+    transition: width 0.3s;
+  }
+  .next-wave {
+    font-size: 11px;
+    color: #f0a500;
+    white-space: nowrap;
+  }
+
+  .top-center {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .boss-hp-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .boss-label {
+    font-size: 10px;
+    color: #ff6b6b;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .boss-bar-outer {
+    width: 220px;
+    height: 12px;
+    background: #1a0a0a;
+    border: 1px solid #6b0000;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .boss-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, #8b0000, #ff4444, #ff7070);
+    border-radius: 6px;
+    width: 62%;
+    position: relative;
+  }
+  .boss-bar-inner::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 6px; right: 6px;
+    height: 3px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 2px;
+  }
+
+  .top-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .speed-btn {
+    background: #16213e;
+    border: 1px solid #4a6fa5;
+    border-radius: 6px;
+    color: #7ec8e3;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+  .speed-btn.active {
+    background: #4a6fa5;
+    color: #fff;
+  }
+  .opt-btn {
+    background: #16213e;
+    border: 1px solid #4a4a6a;
+    border-radius: 6px;
+    color: #aaa;
+    font-size: 16px;
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+
+  /* ───────── BATTLE AREA ───────── */
+  .battle-area {
+    flex: 1;
+    background:
+      radial-gradient(ellipse at 50% 60%, #1a2a1a 0%, #0d1a0d 60%, #0a120a 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* floating dmg */
+  .float-dmg {
+    position: absolute;
+    font-size: 18px;
+    font-weight: 900;
+    color: #ff4444;
+    text-shadow: 0 0 6px #ff0000, 1px 1px 0 #000;
+    animation: floatUp 1.2s ease-out forwards;
+    pointer-events: none;
+  }
+  .float-dmg.crit { color: #ffcc00; font-size: 22px; }
+  .float-dmg.heal { color: #44ff88; }
+  @keyframes floatUp {
+    0%   { opacity:1; transform: translateY(0); }
+    100% { opacity:0; transform: translateY(-48px); }
+  }
+
+  /* unit dots */
+  .unit {
+    position: absolute;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    border: 2px solid;
+    transition: transform 0.1s;
+  }
+  .unit-hp {
+    position: absolute;
+    bottom: -7px; left: -2px;
+    width: calc(100% + 4px);
+    height: 4px;
+    background: #333;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .unit-hp-fill { height: 100%; border-radius: 2px; }
+
+  /* ───────── BOTTOM HUD ───────── */
+  .bottom-hud {
+    background: linear-gradient(180deg, #0d0d1a 0%, #080812 100%);
+    border-top: 2px solid #2a2a4a;
+    padding: 8px 10px 6px;
+    flex-shrink: 0;
+  }
+
+  .generals-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  /* ── General Panel ── */
+  .general-panel {
+    background: linear-gradient(180deg, #16182e 0%, #101228 100%);
+    border: 1px solid #2a2a4a;
+    border-radius: 10px;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 190px;
+    position: relative;
+    transition: border-color 0.2s;
+  }
+  .general-panel.active {
+    border-color: #4a9eff;
+    box-shadow: 0 0 10px rgba(74,158,255,0.25);
+  }
+  .general-panel.dead {
+    opacity: 0.45;
+    filter: grayscale(0.8);
+    border-color: #3a3a3a;
+  }
+
+  /* portrait + info row */
+  .panel-top {
+    display: flex;
+    gap: 7px;
+    align-items: flex-start;
+  }
+  .portrait {
+    width: 44px; height: 44px;
+    border-radius: 7px;
+    border: 2px solid #333;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  .portrait .class-badge {
+    position: absolute;
+    bottom: 0; right: 0;
+    font-size: 9px;
+    background: rgba(0,0,0,0.75);
+    padding: 1px 3px;
+    border-radius: 3px 0 0 0;
+    color: #ddd;
+    font-weight: 700;
+  }
+
+  .panel-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .general-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: #ddd;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .hp-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .hp-bar-wrap {
+    flex: 1;
+    height: 7px;
+    background: #111122;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid #222240;
+  }
+  .hp-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s;
+    position: relative;
+  }
+  .hp-bar::after {
+    content: '';
+    position: absolute;
+    top: 1px; left: 3px; right: 3px;
+    height: 2px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 1px;
+  }
+  .hp-text {
+    font-size: 9px;
+    color: #aaa;
+    white-space: nowrap;
+    min-width: 28px;
+    text-align: right;
+  }
+
+  /* soldier count */
+  .soldier-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .soldier-icon { font-size: 11px; }
+  .soldier-bar-wrap {
+    flex: 1;
+    height: 5px;
+    background: #111122;
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid #222240;
+  }
+  .soldier-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #3d9970, #2ecc71);
+    border-radius: 3px;
+    transition: width 0.3s;
+  }
+  .soldier-text {
+    font-size: 9px;
+    color: #2ecc71;
+    white-space: nowrap;
+    min-width: 28px;
+    text-align: right;
+  }
+
+  /* skills row */
+  .skills-row {
+    display: flex;
+    gap: 4px;
+  }
+  .skill-slot {
+    position: relative;
+    width: 38px; height: 38px;
+    border-radius: 7px;
+    background: #0d0d20;
+    border: 1px solid #2a2a4a;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    overflow: hidden;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .skill-slot:hover { border-color: #5a5a8a; }
+  .skill-slot.ready { border-color: #4a9eff; box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+  .skill-cooldown {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #bbb;
+    height: 16px;
+  }
+  .skill-cooldown.ready { color: #4a9eff; background: rgba(0,20,60,0.6); font-size: 9px; }
+  .cd-overlay {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,0.55);
+    border-radius: 0 0 6px 6px;
+  }
+
+  /* buffs row */
+  .buffs-row {
+    display: flex;
+    gap: 3px;
+    min-height: 14px;
+  }
+  .buff-icon {
+    font-size: 12px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 3px;
+    padding: 1px 3px;
+    position: relative;
+  }
+  .buff-icon .buff-timer {
+    position: absolute;
+    bottom: -1px; right: 1px;
+    font-size: 7px;
+    color: #ccc;
+  }
+
+  /* kill badge */
+  .kill-badge {
+    position: absolute;
+    top: 5px; right: 7px;
+    background: rgba(0,0,0,0.6);
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 9px;
+    color: #ff8888;
+    padding: 1px 4px;
+  }
+
+  /* ───────── STATUS PANEL (right side overlay) ───────── */
+  .status-panel {
+    position: absolute;
+    top: 8px; right: 10px;
+    background: rgba(10,10,22,0.85);
+    border: 1px solid #2a2a4a;
+    border-radius: 8px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 100px;
+    backdrop-filter: blur(4px);
+  }
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+  }
+  .stat-label { color: #888; }
+  .stat-val   { color: #ddd; font-weight: 700; }
+
+  /* ───────── COLOR THEMES ───────── */
+  /* Warrior */  .portrait.warrior  { background: linear-gradient(135deg,#3d1515,#6b2020); border-color:#8b4444; }
+  /* Shield  */  .portrait.shield   { background: linear-gradient(135deg,#153d3d,#206b6b); border-color:#448b8b; }
+  /* Archer  */  .portrait.archer   { background: linear-gradient(135deg,#1a3d15,#2e6b20); border-color:#448b44; }
+  /* Mage    */  .portrait.mage     { background: linear-gradient(135deg,#1a1560,#2a208b); border-color:#4444cc; }
+  /* Support */  .portrait.support  { background: linear-gradient(135deg,#3d3015,#6b5520); border-color:#8b7744; }
+
+  .hp-bar.warrior  { background: linear-gradient(90deg,#cc2222,#ff4444); }
+  .hp-bar.shield   { background: linear-gradient(90deg,#1199aa,#22ccdd); }
+  .hp-bar.archer   { background: linear-gradient(90deg,#119933,#22cc55); }
+  .hp-bar.mage     { background: linear-gradient(90deg,#4422cc,#6644ff); }
+  .hp-bar.support  { background: linear-gradient(90deg,#cc9922,#ffcc33); }
+
+  /* ───────── TABS ───────── */
+  .tab-row {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 4px;
+  }
+  .tab-btn {
+    background: #16182e;
+    border: 1px solid #2a2a4a;
+    border-radius: 6px 6px 0 0;
+    color: #888;
+    font-size: 11px;
+    padding: 4px 16px;
+    cursor: pointer;
+    border-bottom: none;
+  }
+  .tab-btn.active { background: #1e2040; color: #7ec8e3; border-color: #4a6fa5; }
+
+  /* ── LABEL ── */
+  .mockup-label {
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: #555;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  /* ───────── WAVE ANNOUNCE ───────── */
+  .wave-announce {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.75);
+    border: 1px solid #4a6fa5;
+    border-radius: 10px;
+    padding: 12px 30px;
+    text-align: center;
+    animation: fadeIn 0.3s ease;
+  }
+  .wave-announce .wa-title { font-size: 13px; color: #888; }
+  .wave-announce .wa-num   { font-size: 32px; font-weight: 900; color: #ff6b6b; text-shadow: 0 0 16px #ff0000; }
+  @keyframes fadeIn { from { opacity:0; transform: translate(-50%,-60%); } to { opacity:1; transform: translate(-50%,-50%); } }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     MOCKUP A — 하단 HUD (5 제너럴)
+══════════════════════════════════════════ -->
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="stage-info">
+    <div class="stage-badge">STAGE 3 · WAVE 2/5</div>
+    <div class="wave-info">
+      <span class="wave-text">다음 웨이브까지</span>
+      <div class="wave-bar-wrap"><div class="wave-bar" style="width:40%"></div></div>
+    </div>
+    <span class="next-wave">⏱ 12s</span>
+  </div>
+
+  <div class="top-center">
+    <div class="boss-hp-wrap">
+      <span class="boss-label">⚠ 보스</span>
+      <div class="boss-bar-outer">
+        <div class="boss-bar-inner" style="width:62%"></div>
+      </div>
+    </div>
+    <span style="font-size:11px;color:#ff6b6b;">오크 대군주 · 62%</span>
+  </div>
+
+  <div class="top-right">
+    <span style="font-size:11px;color:#888;">처치:</span>
+    <span style="font-size:13px;font-weight:700;color:#ffcc44;">🗡 47</span>
+    <button class="speed-btn">1x</button>
+    <button class="speed-btn active">2x</button>
+    <button class="speed-btn">3x</button>
+    <button class="opt-btn">⚙</button>
+  </div>
+</div>
+
+<!-- BATTLE AREA -->
+<div class="battle-area" id="battleArea">
+
+  <!-- floating damage numbers -->
+  <div class="float-dmg" style="left:38%;top:25%">-42</div>
+  <div class="float-dmg crit" style="left:55%;top:35%">-127 CRIT!</div>
+  <div class="float-dmg heal" style="left:25%;top:45%">+38</div>
+
+  <!-- ally units -->
+  <div class="unit" style="width:28px;height:28px;background:#1a4a1a;border-color:#2ecc71;left:22%;top:55%;font-size:12px;">⚔<div class="unit-hp"><div class="unit-hp-fill" style="width:75%;background:#2ecc71"></div></div></div>
+  <div class="unit" style="width:28px;height:28px;background:#1a4a1a;border-color:#2ecc71;left:25%;top:62%;font-size:12px;">⚔<div class="unit-hp"><div class="unit-hp-fill" style="width:55%;background:#f39c12"></div></div></div>
+  <div class="unit" style="width:28px;height:28px;background:#1a4a1a;border-color:#2ecc71;left:30%;top:50%;font-size:12px;">🛡<div class="unit-hp"><div class="unit-hp-fill" style="width:90%;background:#2ecc71"></div></div></div>
+  <div class="unit" style="width:28px;height:28px;background:#1a4a1a;border-color:#2ecc71;left:28%;top:68%;font-size:12px;">🏹<div class="unit-hp"><div class="unit-hp-fill" style="width:30%;background:#e74c3c"></div></div></div>
+  <div class="unit" style="width:34px;height:34px;background:#1a2a4a;border-color:#4a9eff;left:20%;top:57%;font-size:16px;">👑<div class="unit-hp"><div class="unit-hp-fill" style="width:82%;background:#4a9eff"></div></div></div>
+
+  <!-- enemy units -->
+  <div class="unit" style="width:30px;height:30px;background:#4a1a1a;border-color:#e74c3c;left:62%;top:42%;font-size:13px;">☠<div class="unit-hp"><div class="unit-hp-fill" style="width:40%;background:#e74c3c"></div></div></div>
+  <div class="unit" style="width:30px;height:30px;background:#4a1a1a;border-color:#e74c3c;left:68%;top:50%;font-size:13px;">☠<div class="unit-hp"><div class="unit-hp-fill" style="width:70%;background:#e74c3c"></div></div></div>
+  <div class="unit" style="width:30px;height:30px;background:#4a1a1a;border-color:#e74c3c;left:65%;top:58%;font-size:13px;">☠<div class="unit-hp"><div class="unit-hp-fill" style="width:15%;background:#e74c3c"></div></div></div>
+  <div class="unit" style="width:42px;height:42px;background:#5a1010;border-color:#ff4444;left:72%;top:45%;font-size:20px;">👹<div class="unit-hp"><div class="unit-hp-fill" style="width:62%;background:#ff4444"></div></div></div>
+
+  <!-- wave announce overlay -->
+  <div class="wave-announce">
+    <div class="wa-title">웨이브</div>
+    <div class="wa-num">2</div>
+    <div style="font-size:12px;color:#aaa;margin-top:4px;">적 12마리 등장</div>
+  </div>
+
+  <!-- right side status panel -->
+  <div class="status-panel">
+    <div style="font-size:11px;font-weight:700;color:#7ec8e3;margin-bottom:2px;">전투 현황</div>
+    <div class="stat-row"><span class="stat-label">남은 적</span><span class="stat-val" style="color:#ff8888">8</span></div>
+    <div class="stat-row"><span class="stat-label">처치</span><span class="stat-val" style="color:#ffcc44">47</span></div>
+    <div class="stat-row"><span class="stat-label">경과</span><span class="stat-val">1:32</span></div>
+    <div class="stat-row"><span class="stat-label">아군 사망</span><span class="stat-val" style="color:#e74c3c">3</span></div>
+    <hr style="border-color:#2a2a4a;margin:2px 0">
+    <div class="stat-row"><span class="stat-label">활성 스킬</span><span class="stat-val" style="color:#7ec8e3">9</span></div>
+  </div>
+
+  <div class="mockup-label">[ 전투 영역 — 카메라 뷰 ]</div>
+</div>
+
+<!-- BOTTOM HUD -->
+<div class="bottom-hud">
+  <div class="generals-row">
+
+    <!-- ── General 1: Warrior ── -->
+    <div class="general-panel active">
+      <div class="panel-top">
+        <div class="portrait warrior">⚔<span class="class-badge">전사</span></div>
+        <div class="panel-info">
+          <div class="general-name">카이로스</div>
+          <div class="hp-row">
+            <div class="hp-bar-wrap"><div class="hp-bar warrior" style="width:78%"></div></div>
+            <span class="hp-text">78%</span>
+          </div>
+          <div class="soldier-row">
+            <span class="soldier-icon">♟</span>
+            <div class="soldier-bar-wrap"><div class="soldier-bar" style="width:65%"></div></div>
+            <span class="soldier-text">13/20</span>
+          </div>
+        </div>
+      </div>
+      <div class="skills-row">
+        <div class="skill-slot ready">⚡<div class="skill-cooldown ready">READY</div></div>
+        <div class="skill-slot">🌀<div class="skill-cooldown">7s</div></div>
+        <div class="skill-slot ready">🔥<div class="skill-cooldown ready">READY</div></div>
+        <div class="skill-slot">💥<div class="skill-cooldown">12s</div></div>
+      </div>
+      <div class="buffs-row">
+        <span class="buff-icon" title="공격력 증가">⚔<span class="buff-timer">4s</span></span>
+        <span class="buff-icon" title="속도 증가">💨<span class="buff-timer">2s</span></span>
+      </div>
+      <div class="kill-badge">🗡 18</div>
+    </div>
+
+    <!-- ── General 2: Shield ── -->
+    <div class="general-panel">
+      <div class="panel-top">
+        <div class="portrait shield">🛡<span class="class-badge">방패</span></div>
+        <div class="panel-info">
+          <div class="general-name">에이든</div>
+          <div class="hp-row">
+            <div class="hp-bar-wrap"><div class="hp-bar shield" style="width:91%"></div></div>
+            <span class="hp-text">91%</span>
+          </div>
+          <div class="soldier-row">
+            <span class="soldier-icon">♟</span>
+            <div class="soldier-bar-wrap"><div class="soldier-bar" style="width:90%"></div></div>
+            <span class="soldier-text">18/20</span>
+          </div>
+        </div>
+      </div>
+      <div class="skills-row">
+        <div class="skill-slot">🛡<div class="skill-cooldown">3s</div></div>
+        <div class="skill-slot ready">⚔<div class="skill-cooldown ready">READY</div></div>
+        <div class="skill-slot">🌊<div class="skill-cooldown">15s</div></div>
+        <div class="skill-slot">🔰<div class="skill-cooldown">8s</div></div>
+      </div>
+      <div class="buffs-row">
+        <span class="buff-icon" title="방어력 증가">🛡<span class="buff-timer">6s</span></span>
+      </div>
+      <div class="kill-badge">🗡 9</div>
+    </div>
+
+    <!-- ── General 3: Archer ── -->
+    <div class="general-panel">
+      <div class="panel-top">
+        <div class="portrait archer">🏹<span class="class-badge">궁수</span></div>
+        <div class="panel-info">
+          <div class="general-name">실바나</div>
+          <div class="hp-row">
+            <div class="hp-bar-wrap"><div class="hp-bar archer" style="width:54%"></div></div>
+            <span class="hp-text">54%</span>
+          </div>
+          <div class="soldier-row">
+            <span class="soldier-icon">♟</span>
+            <div class="soldier-bar-wrap"><div class="soldier-bar" style="width:45%"></div></div>
+            <span class="soldier-text">9/20</span>
+          </div>
+        </div>
+      </div>
+      <div class="skills-row">
+        <div class="skill-slot ready">🏹<div class="skill-cooldown ready">READY</div></div>
+        <div class="skill-slot">☁<div class="skill-cooldown">5s</div></div>
+        <div class="skill-slot ready">💚<div class="skill-cooldown ready">READY</div></div>
+        <div class="skill-slot">🌿<div class="skill-cooldown">20s</div></div>
+      </div>
+      <div class="buffs-row">
+        <span class="buff-icon" title="독성 지대">☠<span class="buff-timer">3s</span></span>
+      </div>
+      <div class="kill-badge">🗡 14</div>
+    </div>
+
+    <!-- ── General 4: Mage ── -->
+    <div class="general-panel">
+      <div class="panel-top">
+        <div class="portrait mage">🔮<span class="class-badge">법사</span></div>
+        <div class="panel-info">
+          <div class="general-name">제르시아</div>
+          <div class="hp-row">
+            <div class="hp-bar-wrap"><div class="hp-bar mage" style="width:36%"></div></div>
+            <span class="hp-text" style="color:#e74c3c">36%</span>
+          </div>
+          <div class="soldier-row">
+            <span class="soldier-icon">♟</span>
+            <div class="soldier-bar-wrap"><div class="soldier-bar" style="width:25%"></div></div>
+            <span class="soldier-text" style="color:#e74c3c">5/20</span>
+          </div>
+        </div>
+      </div>
+      <div class="skills-row">
+        <div class="skill-slot">❄<div class="skill-cooldown">1s</div></div>
+        <div class="skill-slot">☄<div class="skill-cooldown">18s</div></div>
+        <div class="skill-slot ready">☠<div class="skill-cooldown ready">READY</div></div>
+        <div class="skill-slot">🌀<div class="skill-cooldown">9s</div></div>
+      </div>
+      <div class="buffs-row">
+        <span class="buff-icon" title="빙결" style="color:#88ccff">❄<span class="buff-timer">1s</span></span>
+        <span class="buff-icon" title="마력 충전">⚡<span class="buff-timer">5s</span></span>
+      </div>
+      <div class="kill-badge">🗡 6</div>
+    </div>
+
+    <!-- ── General 5: Support (DEAD) ── -->
+    <div class="general-panel dead">
+      <div class="panel-top">
+        <div class="portrait support" style="border-color:#555;">✝<span class="class-badge">지원</span></div>
+        <div class="panel-info">
+          <div class="general-name" style="color:#777">루미나 <span style="font-size:10px;color:#e74c3c">사망</span></div>
+          <div class="hp-row">
+            <div class="hp-bar-wrap"><div class="hp-bar" style="width:0%;background:#555"></div></div>
+            <span class="hp-text" style="color:#666">0%</span>
+          </div>
+          <div class="soldier-row">
+            <span class="soldier-icon" style="color:#555">♟</span>
+            <div class="soldier-bar-wrap"><div class="soldier-bar" style="width:0%;background:#444"></div></div>
+            <span class="soldier-text" style="color:#555">0/20</span>
+          </div>
+        </div>
+      </div>
+      <div class="skills-row">
+        <div class="skill-slot" style="opacity:0.3">💛<div class="skill-cooldown">–</div></div>
+        <div class="skill-slot" style="opacity:0.3">🌟<div class="skill-cooldown">–</div></div>
+        <div class="skill-slot" style="opacity:0.3">🛐<div class="skill-cooldown">–</div></div>
+        <div class="skill-slot" style="opacity:0.3">✨<div class="skill-cooldown">–</div></div>
+      </div>
+      <div class="buffs-row"></div>
+      <div class="kill-badge" style="color:#777">🗡 0</div>
+    </div>
+
+  </div><!-- generals-row -->
+</div><!-- bottom-hud -->
+
+</body>
+</html>

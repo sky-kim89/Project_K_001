@@ -6,12 +6,11 @@ using BattleGame.Units;
 // ============================================================
 //  ActiveSummonSkeleton.cs — 스켈레톤 소환 (공통)
 //
-//  시전자 위치 근처에 스켈레톤 유닛을 소환한다.
-//  스켈레톤 수 = 1 (EffectValue 로 추가 소환 가능, 소수점 버림).
-//  스켈레톤 능력치 = 시전자 스텟 × StatRatio.
-//
-//  SkeletonPoolKey: PoolController 에 등록된 풀 키 (Inspector 설정).
-//  스켈레톤 프리팹에는 SoldierRuntimeBridge 가 붙어 있어야 한다.
+//  동작:
+//    1. 소속 장군의 DeadSoldierSpawnPointBuffer 에서 최근 사망 위치 읽기
+//    2. 사망 위치마다 BaseEffect + 스켈레톤 소환
+//    3. 버퍼 소비(Clear) → 다음 사용 전까지 재누적
+//    4. 버퍼가 비어 있으면 시전자 주변 원형 위치에 소환 (fallback)
 // ============================================================
 
 [CreateAssetMenu(fileName = "Active_SummonSkeleton", menuName = "BattleGame/Actives/SummonSkeleton")]
@@ -19,13 +18,13 @@ public class ActiveSummonSkeleton : ActiveSkillData
 {
     [Header("스켈레톤 소환 설정")]
     [Tooltip("PoolController 에 등록된 스켈레톤 풀 키")]
-    public string SkeletonPoolKey = "Skeleton";
+    public string SkeletonPoolKey = "Soldier";
 
     [Tooltip("스켈레톤 스텟 비율 (시전자 스텟 대비). 예: 0.5 → 50%")]
     [Range(0.1f, 1f)]
     public float StatRatio = 0.4f;
 
-    [Tooltip("소환 스폰 오프셋 반경")]
+    [Tooltip("fallback 소환 스폰 오프셋 반경 (사망 위치 없을 때)")]
     public float SpawnRadius = 1.5f;
 
     public override void Execute(ActiveSkillContext ctx)
@@ -36,28 +35,52 @@ public class ActiveSummonSkeleton : ActiveSkillData
         var em = ctx.EntityManager;
         em.CompleteAllTrackedJobs();
 
-        // 시전자 GO 위치
-        Vector3 casterPos = ctx.CasterTransform != null
-            ? ctx.CasterTransform.position
-            : Vector3.zero;
+        Vector3 casterPos = ctx.CasterTransform != null ? ctx.CasterTransform.position : Vector3.zero;
 
-        // 장군 RuntimeBridge 에서 UnitStat 획득
         if (!ctx.CasterObject.TryGetComponent<GeneralRuntimeBridge>(out var generalBridge)) return;
         UnitStat generalStat = generalBridge.GetRolledStat();
         if (generalStat == null) return;
 
-        // 장군 직업 확인
-        UnitJob generalJob = UnitJob.Warrior;
-        if (em.HasComponent<UnitJobComponent>(ctx.CasterEntity))
-            generalJob = em.GetComponentData<UnitJobComponent>(ctx.CasterEntity).Job;
+        if (!em.HasComponent<UnitJobComponent>(ctx.CasterEntity)) return;
+        UnitJob generalJob = em.GetComponentData<UnitJobComponent>(ctx.CasterEntity).Job;
 
         int count = Mathf.Max(1, Mathf.FloorToInt(EffectValue));
 
-        for (int i = 0; i < count; i++)
+        // ── 소환 위치 목록 결정 ──────────────────────────────
+        // 우선: 장군의 DeadSoldierSpawnPointBuffer (최근 사망 위치)
+        // fallback: 시전자 주변 원형
+        System.Collections.Generic.List<Vector3> spawnPositions = new(count);
+
+        if (em.HasBuffer<DeadSoldierSpawnPointBuffer>(ctx.CasterEntity))
         {
-            float angle      = (360f / count) * i * Mathf.Deg2Rad;
-            Vector3 offset   = new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f) * SpawnRadius;
-            Vector3 spawnPos = casterPos + offset;
+            var buf = em.GetBuffer<DeadSoldierSpawnPointBuffer>(ctx.CasterEntity);
+
+            // 최신 위치부터 역순으로 count 개 사용
+            for (int i = buf.Length - 1; i >= 0 && spawnPositions.Count < count; i--)
+            {
+                float3 p = buf[i].Position;
+                spawnPositions.Add(new Vector3(p.x, p.y, p.z));
+            }
+
+            buf.Clear();  // 소비
+        }
+
+        // fallback: 남은 슬롯을 원형 위치로 채움
+        int filled = spawnPositions.Count;
+        for (int i = filled; i < count; i++)
+        {
+            float   angle  = (360f / count) * i * Mathf.Deg2Rad;
+            Vector3 offset = new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f) * SpawnRadius;
+            spawnPositions.Add(casterPos + offset);
+        }
+
+        // ── 소환 실행 ────────────────────────────────────────
+        for (int i = 0; i < spawnPositions.Count; i++)
+        {
+            Vector3 spawnPos = spawnPositions[i];
+
+            // 사망 위치에 이펙트
+            SkillEffectHelper.SpawnBase(BaseEffectKey, spawnPos, EffectDespawnDelay);
 
             GameObject go = PoolController.Instance.Spawn(
                 PoolType.Unit, SkeletonPoolKey, spawnPos, Quaternion.identity);

@@ -288,8 +288,8 @@ namespace BattleGame.Projectiles
             // 타겟 생존 시 피격 이벤트 등록 (기존 HitSystem 이 처리)
             if (targetAlive)
             {
-                float3 hitDir = math.lengthsq(transform.Position - targetPos) > 0f
-                    ? math.normalize(transform.Position - targetPos)
+                float3 hitDir = math.lengthsq(targetPos - proj.StartPos) > 0f
+                    ? math.normalize(targetPos - proj.StartPos)
                     : float3.zero;
 
                 Ecb.AppendToBuffer(chunkIndex, proj.TargetEntity, new HitEventBufferElement

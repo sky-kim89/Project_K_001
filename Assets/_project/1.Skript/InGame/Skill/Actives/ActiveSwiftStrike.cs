@@ -20,6 +20,10 @@ public class ActiveSwiftStrike : ActiveSkillData
 
         float duration = EffectDuration > 0f ? EffectDuration : 6f;
 
+        // 사용자 이펙트 (속도 버프 연출)
+        if (ctx.CasterTransform != null)
+            SkillEffectHelper.SpawnCaster(CasterEffectKey, ctx.CasterTransform.position, EffectDespawnDelay);
+
         ApplyBuff(em, ctx.CasterEntity, duration);
 
         var query    = em.CreateEntityQuery(new EntityQueryDesc

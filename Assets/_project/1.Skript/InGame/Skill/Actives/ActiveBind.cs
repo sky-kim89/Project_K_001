@@ -23,6 +23,15 @@ public class ActiveBind : ActiveSkillData
 
         float duration = EffectDuration > 0f ? EffectDuration : 3f;
 
+        // 피격 대상 이펙트 (속박 연출)
+        if (em.HasComponent<Unity.Transforms.LocalTransform>(target))
+        {
+            var tf = em.GetComponentData<Unity.Transforms.LocalTransform>(target);
+            SkillEffectHelper.SpawnTarget(TargetEffectKey,
+                new UnityEngine.Vector3(tf.Position.x, tf.Position.y, tf.Position.z),
+                EffectDespawnDelay);
+        }
+
         // ── 스턴 적용 ─────────────────────────────────────────
         if (em.HasComponent<HitReactionComponent>(target))
         {

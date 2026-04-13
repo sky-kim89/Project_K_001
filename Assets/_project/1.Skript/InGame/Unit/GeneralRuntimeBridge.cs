@@ -99,20 +99,18 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
             ActiveSlotCount  = _activePassiveCount,
         });
 
-        // ── 액티브 스킬: 강타(HeavyStrike) ──────────────────
-        // ActiveSkillDatabase 에서 강타 데이터를 읽어 쿨다운 등을 초기화
-        var activeDb = ActiveSkillDatabase.Current;
-        var heavyStrikeData = activeDb?.Get(ActiveSkillId.HeavyStrike);
-        float heavyCooldown = heavyStrikeData?.Cooldown ?? 15f;
-        float heavyEffect   = heavyStrikeData?.EffectValue ?? 3f;
+        // ── 액티브 스킬: 이름+직업 기반 결정론적 선택 ──────────
+        var activeDb  = ActiveSkillDatabase.Current;
+        var rolledId  = ActiveSkillRoller.Roll(_unitName, _job, activeDb);
+        var skillData = activeDb?.Get(rolledId);
 
         em.AddComponentData(entity, new GeneralActiveSkillComponent
         {
-            SkillId           = (int)ActiveSkillId.HeavyStrike,
-            EffectValue       = heavyEffect,
-            EffectRadius      = heavyStrikeData?.EffectRadius ?? 0f,
-            EffectDuration    = heavyStrikeData?.EffectDuration ?? 0f,
-            Cooldown          = heavyCooldown,
+            SkillId           = (int)rolledId,
+            EffectValue       = skillData?.EffectValue    ?? 1f,
+            EffectRadius      = skillData?.EffectRadius   ?? 0f,
+            EffectDuration    = skillData?.EffectDuration ?? 0f,
+            Cooldown          = skillData?.Cooldown       ?? 15f,
             CooldownRemaining = 0f,  // 첫 발동은 즉시 가능
         });
 
@@ -244,11 +242,16 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
             }
         }
 
+        var logSkillId   = ActiveSkillRoller.Roll(_unitName, _job, ActiveSkillDatabase.Current);
+        var logSkillData = ActiveSkillDatabase.Current?.Get(logSkillId);
+        string skillName = logSkillData?.SkillName ?? logSkillId.ToString();
+
         Debug.Log($"[GeneralRuntimeBridge] '{_unitName}' 스폰 " +
                   $"| Lv:{_level}  등급:{_grade}  직업:{_job}  " +
                   $"HP:{_stat.Get(StatType.MaxHp):F0}  ATK:{_stat.Get(StatType.Attack):F0}  " +
                   $"병사:{soldierCount}명  스탯비율:{statScaleRatio:P0}  " +
-                  $"패시브:[{_passive0},{_passive1},{_passive2}] 활성:{_activePassiveCount}슬롯");
+                  $"패시브:[{_passive0},{_passive1},{_passive2}] 활성:{_activePassiveCount}슬롯  " +
+                  $"액티브스킬:{skillName}({logSkillId})");
     }
 
     // ── 내부 헬퍼 ─────────────────────────────────────────────

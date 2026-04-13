@@ -267,6 +267,12 @@ namespace BattleGame.Units
         public float  StunDuration;      // 경직 지속 시간 (초)
         public float  StunTimer;         // 경직 잔여 시간
         public bool   IsStunned;
+        /// <summary>
+        /// 데미지를 받은 프레임에 true 로 설정된다.
+        /// 스턴 여부와 무관하게 피격 플래시를 발동시키기 위해 사용.
+        /// UnitAnimationSync 가 읽은 뒤 false 로 리셋한다.
+        /// </summary>
+        public bool   NeedsFlash;
     }
 
     // ──────────────────────────────────────────

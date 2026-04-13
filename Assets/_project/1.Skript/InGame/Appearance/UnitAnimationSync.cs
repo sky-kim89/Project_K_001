@@ -142,16 +142,24 @@ public class UnitAnimationSync : MonoBehaviour
             _prevCooldown = cooldown;
         }
 
+        // ── NeedsFlash 확인: 스턴 없는 낮은 데미지(독,존 등)도 플래시 발동 ──
+        if (em.HasComponent<HitReactionComponent>(_link.Entity))
+        {
+            var reaction = em.GetComponentData<HitReactionComponent>(_link.Entity);
+            if (reaction.NeedsFlash)
+            {
+                TriggerHitFlash();
+                reaction.NeedsFlash = false;
+                em.SetComponentData(_link.Entity, reaction);
+            }
+        }
+
         // ── 상태 전환 처리 ───────────────────────────────────
         if (current != _prevState)
         {
-            // Hit 상태 진입 → 색 플래시
+            // Hit 상태 진입 → 색 플래시 (스턴 동반 강타 등)
             if (current == UnitState.Hit)
-            {
-                if (_hitCoroutine != null) StopCoroutine(_hitCoroutine);
-                if (_renderer != null)    _renderer.color = Color.white;
-                _hitCoroutine = StartCoroutine(HitFlashRoutine());
-            }
+                TriggerHitFlash();
 
             ApplyState(current);
             _prevState = current;
@@ -226,6 +234,20 @@ public class UnitAnimationSync : MonoBehaviour
                 SetBool("Die");
                 break;
         }
+    }
+
+    // ── 헬퍼 ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// 피격 플래시를 시작한다.
+    /// 스턴 여부와 무관하게 데미지를 받으면 호출된다.
+    /// 이미 플래시 중이라면 처음부터 다시 시작해 다중 틱 데미지도 정상 표시.
+    /// </summary>
+    void TriggerHitFlash()
+    {
+        if (_hitCoroutine != null) StopCoroutine(_hitCoroutine);
+        if (_renderer != null)    _renderer.color = Color.white;
+        _hitCoroutine = StartCoroutine(HitFlashRoutine());
     }
 
     // ── 코루틴 ───────────────────────────────────────────────

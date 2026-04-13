@@ -28,6 +28,11 @@ public class ActiveBattleCry : ActiveSkillData
         var casterTf       = em.GetComponentData<LocalTransform>(ctx.CasterEntity);
         float3 center      = new float3(casterTf.Position.x, casterTf.Position.y, 0f);
 
+        // 사용자 이펙트 (함성 연출)
+        SkillEffectHelper.SpawnCaster(CasterEffectKey,
+            new UnityEngine.Vector3(casterTf.Position.x, casterTf.Position.y, casterTf.Position.z),
+            EffectDespawnDelay);
+
         // 범위 내 아군 전체 강화
         var query = em.CreateEntityQuery(new EntityQueryDesc
         {

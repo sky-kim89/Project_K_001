@@ -49,6 +49,19 @@ public class ActiveSacrificeSoldier : ActiveSkillData
 
         if (sacrifice == Entity.Null || !em.Exists(sacrifice)) return;
 
+        // 희생 병사 위치에 이펙트
+        if (em.HasComponent<Unity.Transforms.LocalTransform>(sacrifice))
+        {
+            var tf = em.GetComponentData<Unity.Transforms.LocalTransform>(sacrifice);
+            SkillEffectHelper.SpawnTarget(TargetEffectKey,
+                new UnityEngine.Vector3(tf.Position.x, tf.Position.y, tf.Position.z),
+                EffectDespawnDelay);
+        }
+
+        // 시전자 흡수 이펙트
+        if (ctx.CasterTransform != null)
+            SkillEffectHelper.SpawnCaster(CasterEffectKey, ctx.CasterTransform.position, EffectDespawnDelay);
+
         // ── 병사 공격력 흡수 (시전자에게 버프) ─────────────────
         float soldierAtk = em.GetComponentData<StatComponent>(sacrifice).Final[StatType.Attack];
         float buffAmount = soldierAtk * EffectValue;

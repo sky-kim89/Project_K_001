@@ -87,7 +87,14 @@ public class ActiveSuicideSoldier : ActiveSkillData
             aoeRadius        : EffectRadius > 0f ? EffectRadius : 2.5f,
             flightDuration   : FlightDuration,
             arcHeight        : ArcHeight,
-            knockbackMult    : KnockbackMult
+            knockbackMult    : KnockbackMult,
+            fx               : new SkillEffectConfig
+            {
+                CasterEffectKey = CasterEffectKey,
+                TargetEffectKey = TargetEffectKey,
+                BaseEffectKey   = BaseEffectKey,
+                DespawnDelay    = EffectDespawnDelay,
+            }
         );
     }
 }

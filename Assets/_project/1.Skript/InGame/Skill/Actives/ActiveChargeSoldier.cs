@@ -89,7 +89,14 @@ public class ActiveChargeSoldier : ActiveSkillData
             casterTeam        : casterIdentity.Team,
             damageMultiplier  : EffectValue,
             chargeSpeed       : ChargeSpeed,
-            knockbackMult     : KnockbackMult
+            knockbackMult     : KnockbackMult,
+            fx                : new SkillEffectConfig
+            {
+                CasterEffectKey = CasterEffectKey,
+                TargetEffectKey = TargetEffectKey,
+                BaseEffectKey   = BaseEffectKey,
+                DespawnDelay    = EffectDespawnDelay,
+            }
         );
     }
 }

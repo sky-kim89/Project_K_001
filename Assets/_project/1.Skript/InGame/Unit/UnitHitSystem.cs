@@ -2,6 +2,7 @@ using Unity.Entities;
 using Unity.Transforms;
 using Unity.Mathematics;
 using Unity.Burst;
+using Unity.Collections;
 
 
 // ============================================================
@@ -85,6 +86,9 @@ namespace BattleGame.Units
 
             health.CurrentHp -= totalDamage;
             hitBuffer.Clear();
+
+            // ── 피격 플래시 요청 (스턴 여부와 무관하게 데미지가 발생하면 항상) ──
+            hitReaction.NeedsFlash = true;
 
             // ── 사망 판정 ──
             if (health.CurrentHp <= 0f)

@@ -18,7 +18,7 @@ public class ActiveSummonElite : ActiveSkillData
 {
     [Header("정예 소환 설정")]
     [Tooltip("PoolController 에 등록된 정예 병사 풀 키")]
-    public string ElitePoolKey = "EliteSoldier";
+    public string ElitePoolKey = "Soldier";
 
     [Tooltip("정예 병사 스텟 비율 (시전자 스텟 대비). 예: 0.7 → 70%")]
     [Range(0.1f, 1.5f)]
@@ -43,9 +43,8 @@ public class ActiveSummonElite : ActiveSkillData
         UnitStat generalStat = generalBridge.GetRolledStat();
         if (generalStat == null) return;
 
-        UnitJob generalJob = UnitJob.Warrior;
-        if (em.HasComponent<UnitJobComponent>(ctx.CasterEntity))
-            generalJob = em.GetComponentData<UnitJobComponent>(ctx.CasterEntity).Job;
+        if (!em.HasComponent<UnitJobComponent>(ctx.CasterEntity)) return;
+        UnitJob generalJob = em.GetComponentData<UnitJobComponent>(ctx.CasterEntity).Job;
 
         int count = Mathf.Max(1, Mathf.FloorToInt(EffectValue));
 
@@ -65,6 +64,9 @@ public class ActiveSummonElite : ActiveSkillData
             }
 
             BattleManager.Instance?.OnUnitSpawned(TeamType.Ally);
+
+            // 소환 위치 이펙트
+            SkillEffectHelper.SpawnBase(BaseEffectKey, spawnPos, EffectDespawnDelay);
 
             if (go.TryGetComponent<SoldierRuntimeBridge>(out var bridge))
                 bridge.Initialize(ElitePoolKey, generalStat, StatRatio, ctx.CasterEntity,

@@ -82,6 +82,7 @@ namespace BattleGame.Units
                     }
                 }
 
+                Debug.Log($"[ActiveSkill] {skillData.SkillName} ({skillData.SkillId}) 발동 | 시전자: {entity.Index} | 타겟: {(context.HasTarget ? context.TargetEntity.Index.ToString() : "없음")}");
                 skillData.Execute(context);
             }
         }

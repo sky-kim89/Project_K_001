@@ -19,6 +19,10 @@ public class ActiveBerserker : ActiveSkillData
 
         float duration = EffectDuration > 0f ? EffectDuration : 8f;
 
+        // 사용자 이펙트 (광전사 버프 연출)
+        if (ctx.CasterTransform != null)
+            SkillEffectHelper.SpawnCaster(CasterEffectKey, ctx.CasterTransform.position, EffectDespawnDelay);
+
         ApplyBuff(em, ctx.CasterEntity, duration);
 
         var query    = em.CreateEntityQuery(new EntityQueryDesc

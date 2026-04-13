@@ -9,8 +9,9 @@ using BattleGame.Units;
 // ============================================================
 //  MeteorRunner.cs — 메테오 착탄 처리기
 //
-//  delay 초 대기 후 impactPos 반경 내 적 전체에 피해 + 넉백을 가한다.
-//  OnDisable 에서 코루틴 정리 → 풀 재사용 시 안전.
+//  ■ 이펙트 타이밍
+//    - BaseEffect  : 즉시 착탄 예정 위치 (낙하 예고 마커)
+//    - TargetEffect: delay 후 착탄 시점 (폭발 이펙트)
 // ============================================================
 
 public class MeteorRunner : MonoBehaviour
@@ -19,44 +20,46 @@ public class MeteorRunner : MonoBehaviour
 
     void OnDisable() { _current = null; }
 
-    // ── 공개 API ─────────────────────────────────────────────
-
     public void Run(
-        Vector3       impactPos,
-        Entity        casterEntity,
-        StatComponent casterStat,
-        EntityManager em,
-        TeamType      casterTeam,
-        float         damageMultiplier,
-        float         aoeRadius,
-        float         delay,
-        float         knockbackMult)
+        Vector3         impactPos,
+        Entity          casterEntity,
+        StatComponent   casterStat,
+        EntityManager   em,
+        TeamType        casterTeam,
+        float           damageMultiplier,
+        float           aoeRadius,
+        float           delay,
+        float           knockbackMult,
+        SkillEffectConfig fx)
     {
         if (_current != null) StopCoroutine(_current);
         _current = StartCoroutine(Sequence(
             impactPos, casterEntity, casterStat, em,
-            casterTeam, damageMultiplier, aoeRadius, delay, knockbackMult));
+            casterTeam, damageMultiplier, aoeRadius, delay, knockbackMult, fx));
     }
 
-    // ── 내부 ─────────────────────────────────────────────────
-
     IEnumerator Sequence(
-        Vector3       impactPos,
-        Entity        casterEntity,
-        StatComponent casterStat,
-        EntityManager em,
-        TeamType      casterTeam,
-        float         damageMultiplier,
-        float         aoeRadius,
-        float         delay,
-        float         knockbackMult)
+        Vector3         impactPos,
+        Entity          casterEntity,
+        StatComponent   casterStat,
+        EntityManager   em,
+        TeamType        casterTeam,
+        float           damageMultiplier,
+        float           aoeRadius,
+        float           delay,
+        float           knockbackMult,
+        SkillEffectConfig fx)
     {
-        // ── ① 착탄 대기 ───────────────────────────────────────
+        // ── ① 낙하 예고 이펙트 (즉시) ────────────────────────
+        SkillEffectHelper.SpawnBase(fx.BaseEffectKey, impactPos, delay + fx.DespawnDelay);
+
+        // ── ② 착탄 대기 ───────────────────────────────────────
         yield return new WaitForSeconds(delay);
 
-        // ── ② AoE 피해 ────────────────────────────────────────
-        em.CompleteAllTrackedJobs();
+        // ── ③ 폭발 이펙트 + AoE 피해 ─────────────────────────
+        SkillEffectHelper.SpawnTarget(fx.TargetEffectKey, impactPos, fx.DespawnDelay);
 
+        em.CompleteAllTrackedJobs();
         float3 center = new float3(impactPos.x, impactPos.y, 0f);
 
         var query = em.CreateEntityQuery(new EntityQueryDesc

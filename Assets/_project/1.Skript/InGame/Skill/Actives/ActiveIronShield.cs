@@ -21,6 +21,10 @@ public class ActiveIronShield : ActiveSkillData
 
         float duration = EffectDuration > 0f ? EffectDuration : 8f;
 
+        // 사용자 이펙트 (방어막 연출)
+        if (ctx.CasterTransform != null)
+            SkillEffectHelper.SpawnCaster(CasterEffectKey, ctx.CasterTransform.position, EffectDespawnDelay);
+
         em.GetBuffer<StatusEffectBufferElement>(ctx.CasterEntity).Add(new StatusEffectBufferElement
         {
             Stat      = StatType.Defense,

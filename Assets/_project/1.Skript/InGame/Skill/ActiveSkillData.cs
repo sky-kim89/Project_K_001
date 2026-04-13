@@ -72,6 +72,25 @@ public class ActiveSkillData : ScriptableObject
     public UnitJob[] AllowedJobs = new UnitJob[0];
 
     // ─────────────────────────────────────────────────────────
+    // ■ 이펙트 풀 키 (PoolType.Effect)
+    // ─────────────────────────────────────────────────────────
+
+    [Header("이펙트 풀 키 (PoolType.Effect)")]
+    [Tooltip("사용자(시전자) 이펙트 풀 키. 비워두면 미사용.")]
+    public string CasterEffectKey = "";
+
+    [Tooltip("피격 대상 이펙트 풀 키. 비워두면 미사용.")]
+    public string TargetEffectKey = "";
+
+    [Tooltip("기본/범위 이펙트 풀 키 (존 중심, 낙하 예고 등). 비워두면 미사용.")]
+    public string BaseEffectKey = "";
+
+    [Min(0.1f)]
+    [Tooltip("이펙트 자동 반납 딜레이 (초). 파티클 재생 시간에 맞게 조절.")]
+    public float EffectDespawnDelay = 2f;
+
+
+    // ─────────────────────────────────────────────────────────
     // ■ 실행 진입점 — 서브클래스에서 오버라이드
     // ─────────────────────────────────────────────────────────
 

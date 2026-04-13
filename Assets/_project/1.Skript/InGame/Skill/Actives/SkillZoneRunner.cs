@@ -24,8 +24,39 @@ using BattleGame.Units;
 public class SkillZoneRunner : MonoBehaviour
 {
     Coroutine _current;
+    ZoneConfig _activeConfig;
+    bool       _isRunning;
 
-    void OnDisable() { _current = null; }
+    void OnDisable()
+    {
+        _current   = null;
+        _isRunning = false;
+    }
+
+#if UNITY_EDITOR
+    void OnDrawGizmos()
+    {
+        if (!_isRunning) return;
+
+        Vector3 center = new Vector3(_activeConfig.Center.x, _activeConfig.Center.y, 0f);
+
+        // 존 범위 (초록 원)
+        UnityEditor.Handles.color = new Color(0.1f, 1f, 0.1f, 0.25f);
+        UnityEditor.Handles.DrawSolidDisc(center, Vector3.forward, _activeConfig.Radius);
+        UnityEditor.Handles.color = new Color(0.1f, 1f, 0.1f, 0.9f);
+        UnityEditor.Handles.DrawWireDisc(center, Vector3.forward, _activeConfig.Radius);
+
+        // 존 중심점 (노란 점)
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawSphere(center, 0.12f);
+
+        // 라벨
+        UnityEditor.Handles.color = Color.white;
+        UnityEditor.Handles.Label(
+            center + new Vector3(0f, _activeConfig.Radius + 0.2f, 0f),
+            $"Zone r={_activeConfig.Radius:F1}  dmg={_activeConfig.DamagePerTick:F0}/tick");
+    }
+#endif
 
     // ── 구성 ─────────────────────────────────────────────────
 
@@ -50,6 +81,10 @@ public class SkillZoneRunner : MonoBehaviour
         public StatType   Debuff2Stat;
         public float      Debuff2Delta;
         public EffectMode Debuff2Mode;
+
+        // 이펙트 (선택) — BaseEffectKey 를 존 중심에 존 지속 시간만큼 유지
+        public string     BaseEffectKey;
+        public float      EffectDespawnDelay;
     }
 
     // ── 공개 API ─────────────────────────────────────────────
@@ -57,7 +92,9 @@ public class SkillZoneRunner : MonoBehaviour
     public void Setup(ZoneConfig config)
     {
         if (_current != null) StopCoroutine(_current);
-        _current = StartCoroutine(Run(config));
+        _activeConfig = config;
+        _isRunning    = true;
+        _current      = StartCoroutine(Run(config));
     }
 
     // ── 내부 ─────────────────────────────────────────────────
@@ -67,6 +104,13 @@ public class SkillZoneRunner : MonoBehaviour
         float elapsed      = 0f;
         float tickInterval = cfg.TickInterval > 0f ? cfg.TickInterval : 0.5f;
         float tickTimer    = 0f;
+
+        // ── 존 이펙트 시작 (존 지속 시간 + 여유 딜레이 후 반납) ──
+        Vector3 zoneCenter = new Vector3(cfg.Center.x, cfg.Center.y, cfg.Center.z);
+        GameObject zoneEffect = SkillEffectHelper.Spawn(
+            cfg.BaseEffectKey,
+            zoneCenter,
+            cfg.Duration + cfg.EffectDespawnDelay);
 
         while (elapsed < cfg.Duration)
         {
@@ -82,7 +126,16 @@ public class SkillZoneRunner : MonoBehaviour
             yield return null;
         }
 
-        _current = null;
+        // 존 종료 시 이펙트 방출 즉시 중단 — 기존 파티클만 자연 페이드아웃
+        // (데미지가 끝난 뒤에도 이펙트가 남으면 버그처럼 보이므로)
+        if (zoneEffect != null)
+        {
+            foreach (var ps in zoneEffect.GetComponentsInChildren<ParticleSystem>(true))
+                ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+        }
+
+        _current   = null;
+        _isRunning = false;
 
         // 완료 후 컴포넌트 자체 제거 — 동시에 여러 Zone 이 독립 실행 가능하도록
         Destroy(this);
@@ -106,6 +159,7 @@ public class SkillZoneRunner : MonoBehaviour
         NativeArray<LocalTransform> transforms = query.ToComponentDataArray<LocalTransform>(Allocator.Temp);
 
         float refreshTime = tickInterval * 2f;  // 다음 틱까지 여유 있게 유지
+        int   hitCount    = 0;
 
         for (int i = 0; i < entities.Length; i++)
         {
@@ -118,7 +172,8 @@ public class SkillZoneRunner : MonoBehaviour
             if (dist > cfg.Radius) continue;
 
             // 직접 피해
-            if (cfg.DamagePerTick > 0f && em.Value.HasBuffer<HitEventBufferElement>(entities[i]))
+            bool hasHitBuf = em.Value.HasBuffer<HitEventBufferElement>(entities[i]);
+            if (cfg.DamagePerTick > 0f && hasHitBuf)
             {
                 em.Value.GetBuffer<HitEventBufferElement>(entities[i]).Add(new HitEventBufferElement
                 {
@@ -126,7 +181,12 @@ public class SkillZoneRunner : MonoBehaviour
                     HitDirection   = float3.zero,
                     AttackerEntity = cfg.CasterEntity,
                 });
+                hitCount++;
             }
+#if UNITY_EDITOR
+            else if (cfg.DamagePerTick > 0f && !hasHitBuf)
+                Debug.LogWarning($"[SkillZone] Entity {entities[i].Index} 범위 내 있지만 HitEventBufferElement 없음");
+#endif
 
             // 디버프 적용 (버퍼에 이미 있으면 갱신, 없으면 추가)
             if (em.Value.HasBuffer<StatusEffectBufferElement>(entities[i]))
@@ -139,6 +199,10 @@ public class SkillZoneRunner : MonoBehaviour
                     RefreshOrAddDebuff(buff, cfg.Debuff2Stat, cfg.Debuff2Delta, cfg.Debuff2Mode, refreshTime);
             }
         }
+
+#if UNITY_EDITOR
+        Debug.Log($"[SkillZone] ApplyTick — 검색된 유닛: {entities.Length}  범위 내 피격: {hitCount}  center=({cfg.Center.x:F1},{cfg.Center.y:F1})  r={cfg.Radius:F1}  dmg={cfg.DamagePerTick:F0}");
+#endif
 
         entities.Dispose();
         transforms.Dispose();

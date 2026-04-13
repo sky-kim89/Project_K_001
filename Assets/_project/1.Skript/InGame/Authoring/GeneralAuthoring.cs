@@ -47,6 +47,9 @@ namespace BattleGame.Units
                 CommandRadius = authoring.CommandRadius,
             });
 
+            // 스켈레톤 소환용 병사 사망 위치 버퍼
+            AddBuffer<DeadSoldierSpawnPointBuffer>(entity);
+
             // 병사 스폰 요청 (SoldierSpawnSystem 이 처리)
             if (authoring.SoldierPrefab != null)
             {

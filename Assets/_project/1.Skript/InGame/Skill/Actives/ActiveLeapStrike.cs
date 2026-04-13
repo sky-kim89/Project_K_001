@@ -57,7 +57,14 @@ public class ActiveLeapStrike : ActiveSkillData
             aoeRadius        : EffectRadius > 0f ? EffectRadius : 2f,
             leapSpeed        : LeapSpeed,
             returnSpeed      : ReturnSpeed,
-            knockbackMult    : KnockbackMult
+            knockbackMult    : KnockbackMult,
+            fx               : new SkillEffectConfig
+            {
+                CasterEffectKey = CasterEffectKey,
+                TargetEffectKey = TargetEffectKey,
+                BaseEffectKey   = BaseEffectKey,
+                DespawnDelay    = EffectDespawnDelay,
+            }
         );
     }
 }

@@ -21,6 +21,10 @@ public class ActiveVolleyFire : ActiveSkillData
         var em = ctx.EntityManager;
         em.CompleteAllTrackedJobs();
 
+        // 사용자 이펙트 (일제 사격 연출)
+        if (ctx.CasterTransform != null)
+            SkillEffectHelper.SpawnCaster(CasterEffectKey, ctx.CasterTransform.position, EffectDespawnDelay);
+
         // 제너럴 공격
         ForceAttack(em, ctx.CasterEntity, EffectValue);
 

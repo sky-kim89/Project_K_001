@@ -48,7 +48,14 @@ public class ActiveMeteor : ActiveSkillData
             damageMultiplier : DamageMultiplier * EffectValue,
             aoeRadius        : EffectRadius > 0f ? EffectRadius : 3f,
             delay            : EffectDuration > 0f ? EffectDuration : 1.5f,
-            knockbackMult    : KnockbackMult
+            knockbackMult    : KnockbackMult,
+            fx               : new SkillEffectConfig
+            {
+                CasterEffectKey = CasterEffectKey,
+                TargetEffectKey = TargetEffectKey,
+                BaseEffectKey   = BaseEffectKey,
+                DespawnDelay    = EffectDespawnDelay,
+            }
         );
     }
 }

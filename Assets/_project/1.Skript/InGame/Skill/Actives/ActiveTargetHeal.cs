@@ -58,6 +58,15 @@ public class ActiveTargetHeal : ActiveSkillData
 
         health.CurrentHp = UnityEngine.Mathf.Min(health.CurrentHp + amount, maxHp);
         em.SetComponentData(lowestEntity, health);
+
+        // 피대상 이펙트 (치유 대상 위치)
+        if (em.HasComponent<Unity.Transforms.LocalTransform>(lowestEntity))
+        {
+            var tf = em.GetComponentData<Unity.Transforms.LocalTransform>(lowestEntity);
+            SkillEffectHelper.SpawnTarget(TargetEffectKey,
+                new UnityEngine.Vector3(tf.Position.x, tf.Position.y, tf.Position.z),
+                EffectDespawnDelay);
+        }
     }
 
     // ── 내부 ─────────────────────────────────────────────────

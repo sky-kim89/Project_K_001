@@ -1,4 +1,5 @@
 using Unity.Entities;
+using Unity.Mathematics;
 
 // ============================================================
 //  PassiveSkillComponents.cs
@@ -83,5 +84,19 @@ namespace BattleGame.Units
     public struct BloodPactState : IComponentData
     {
         public float LastBonusRatio;    // 마지막 적용된 HP 비율 (0~1)
+    }
+
+    // ── 스켈레톤 소환용 병사 사망 위치 버퍼 ─────────────────
+
+    /// <summary>
+    /// 사망한 소속 병사의 마지막 월드 위치 버퍼 — 제너럴 Entity 에 붙음.
+    /// DeadSoldierTrackingSystem 이 병사 사망 시 채우고,
+    /// ActiveSummonSkeleton.Execute() 가 소환 위치로 소비한다.
+    /// 최대 8개 유지 (오래된 항목부터 제거).
+    /// </summary>
+    [InternalBufferCapacity(8)]
+    public struct DeadSoldierSpawnPointBuffer : IBufferElementData
+    {
+        public float3 Position;
     }
 }

@@ -49,6 +49,11 @@ public class ActiveShockwave : ActiveSkillData
         float  halfConeRad = math.radians(ConeAngleDegrees * 0.5f);
         float  damage      = ctx.CasterStat.Final[StatType.Attack] * EffectValue;
 
+        // 사용자 이펙트 (충격파 발사 연출)
+        SkillEffectHelper.SpawnCaster(CasterEffectKey,
+            new UnityEngine.Vector3(casterPos.x, casterPos.y, casterPos.z),
+            EffectDespawnDelay);
+
         var query = em.CreateEntityQuery(new EntityQueryDesc
         {
             All  = new ComponentType[] { ComponentType.ReadOnly<UnitIdentityComponent>(),
