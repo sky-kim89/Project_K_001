@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#2a1004"/>
+      <stop offset="100%" stop-color="#0a0302"/>
+    </radialGradient>
+    <radialGradient id="explodeGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="30%" stop-color="#ffee44"/>
+      <stop offset="70%" stop-color="#ff6600"/>
+      <stop offset="100%" stop-color="#882200"/>
+    </radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="48" height="48" rx="8" fill="url(#bg)"/>
+  <rect width="48" height="48" rx="8" fill="none" stroke="#cc4400" stroke-width="1.2" opacity="0.9"/>
+  <!-- 폭발 글로우 -->
+  <circle cx="28" cy="26" r="16" fill="#ff6600" opacity="0.15" filter="url(#glow)"/>
+  <!-- 폭발 방사선 -->
+  <line x1="28" y1="8" x2="28" y2="14" stroke="#ffaa44" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+  <line x1="40" y1="14" x2="36" y2="18" stroke="#ffaa44" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+  <line x1="44" y1="26" x2="38" y2="26" stroke="#ffaa44" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+  <line x1="40" y1="38" x2="36" y2="34" stroke="#ffaa44" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+  <line x1="16" y1="12" x2="20" y2="18" stroke="#ffaa44" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+  <line x1="12" y1="26" x2="18" y2="26" stroke="#ffaa44" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+  <!-- 폭발 중심 -->
+  <circle cx="28" cy="26" r="10" fill="url(#explodeGrad)"/>
+  <circle cx="28" cy="26" r="6" fill="#ffffff" opacity="0.5"/>
+  <!-- 병사 실루엣 (달려가는) -->
+  <circle cx="14" cy="22" r="3.5" fill="#888" stroke="#666" stroke-width="0.7" opacity="0.7"/>
+  <line x1="14" y1="25.5" x2="14" y2="32" stroke="#888" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+  <line x1="14" y1="27" x2="10" y2="24" stroke="#888" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+  <line x1="14" y1="27" x2="18" y2="25" stroke="#888" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+  <line x1="14" y1="32" x2="11" y2="38" stroke="#888" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+  <line x1="14" y1="32" x2="17" y2="37" stroke="#888" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+  <!-- 병사→폭발 방향 화살표 -->
+  <line x1="18" y1="26" x2="22" y2="26" stroke="#ff8833" stroke-width="1.5" stroke-dasharray="2,2" opacity="0.7"/>
+</svg>

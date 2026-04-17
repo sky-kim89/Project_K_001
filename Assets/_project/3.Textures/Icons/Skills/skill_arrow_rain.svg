@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#0a1e0a"/>
+      <stop offset="100%" stop-color="#020602"/>
+    </radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="48" height="48" rx="8" fill="url(#bg)"/>
+  <rect width="48" height="48" rx="8" fill="none" stroke="#228833" stroke-width="1.2" opacity="0.9"/>
+  <!-- 구름 -->
+  <ellipse cx="12" cy="10" rx="7" ry="5" fill="#334433" stroke="#446644" stroke-width="0.8"/>
+  <ellipse cx="22" cy="8" rx="9" ry="6" fill="#334433" stroke="#446644" stroke-width="0.8"/>
+  <ellipse cx="34" cy="10" rx="8" ry="5" fill="#334433" stroke="#446644" stroke-width="0.8"/>
+  <ellipse cx="24" cy="12" rx="18" ry="6" fill="#2a3a2a" stroke="#3a5a3a" stroke-width="0.8"/>
+  <!-- 화살 비 — 다양한 위치에서 쏟아지는 -->
+  <!-- 화살 1 -->
+  <line x1="11" y1="18" x2="9" y2="36" stroke="#c8a840" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="9,36 6,29 12,29" fill="#d8d8d8" stroke="#aaa" stroke-width="0.3"/>
+  <polygon points="11,18 8,22 14,22" fill="#2ecc71" opacity="0.8"/>
+  <!-- 화살 2 -->
+  <line x1="18" y1="16" x2="16" y2="40" stroke="#c8a840" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="16,40 13,33 19,33" fill="#e0e0e0" stroke="#aaa" stroke-width="0.3"/>
+  <polygon points="18,16 15,20 21,20" fill="#27ae60" opacity="0.8"/>
+  <!-- 화살 3 -->
+  <line x1="25" y1="15" x2="25" y2="42" stroke="#c8a840" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="25,42 22,35 28,35" fill="#d8d8d8" stroke="#aaa" stroke-width="0.3"/>
+  <polygon points="25,15 22,19 28,19" fill="#2ecc71" opacity="0.8"/>
+  <!-- 화살 4 -->
+  <line x1="32" y1="16" x2="34" y2="40" stroke="#c8a840" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="34,40 31,33 37,33" fill="#e0e0e0" stroke="#aaa" stroke-width="0.3"/>
+  <polygon points="32,16 29,20 35,20" fill="#27ae60" opacity="0.8"/>
+  <!-- 화살 5 -->
+  <line x1="40" y1="18" x2="42" y2="36" stroke="#c8a840" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="42,36 39,29 45,29" fill="#d8d8d8" stroke="#aaa" stroke-width="0.3"/>
+  <polygon points="40,18 37,22 43,22" fill="#2ecc71" opacity="0.8"/>
+  <!-- 착지 충격 -->
+  <ellipse cx="24" cy="44" rx="16" ry="2.5" fill="#22aa33" opacity="0.3" filter="url(#glow)"/>
+</svg>

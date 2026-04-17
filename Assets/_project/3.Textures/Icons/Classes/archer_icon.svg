@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#1a4a1a"/>
+      <stop offset="100%" stop-color="#060e06"/>
+    </radialGradient>
+  </defs>
+  <rect width="64" height="64" rx="10" fill="url(#bg)"/>
+  <rect width="64" height="64" rx="10" fill="none" stroke="#448b44" stroke-width="1.5" opacity="0.9"/>
+
+  <!-- 활 몸체 — 시위를 당겨 앞으로 휘어진 상태 -->
+  <path d="M24,8 C10,18 10,46 24,56" fill="none" stroke="#7a4e18" stroke-width="6" stroke-linecap="round"/>
+  <!-- 활 하이라이트 -->
+  <path d="M24,8 C10,18 10,46 24,56" fill="none" stroke="#c8922a" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+  <!-- 활 끝 금속 팁 -->
+  <circle cx="24" cy="8" r="3" fill="#d4a840" stroke="#8b6820" stroke-width="0.7"/>
+  <circle cx="24" cy="56" r="3" fill="#d4a840" stroke="#8b6820" stroke-width="0.7"/>
+  <!-- 손잡이 그립 -->
+  <rect x="20" y="26" width="8" height="12" rx="3" fill="#5a3010" stroke="#3a1a05" stroke-width="0.8"/>
+  <line x1="20" y1="30" x2="28" y2="30" stroke="#3a1a05" stroke-width="0.8" opacity="0.7"/>
+  <line x1="20" y1="34" x2="28" y2="34" stroke="#3a1a05" stroke-width="0.8" opacity="0.7"/>
+
+  <!-- 시위 — V자 당겨진 형태 -->
+  <line x1="24" y1="9" x2="48" y2="32" stroke="#e8e8cc" stroke-width="1.8" opacity="0.9"/>
+  <line x1="24" y1="55" x2="48" y2="32" stroke="#e8e8cc" stroke-width="1.8" opacity="0.9"/>
+  <!-- 시위 당긴 지점 -->
+  <circle cx="48" cy="32" r="2.5" fill="#e8e8cc" opacity="0.8"/>
+
+  <!-- 화살 샤프트 -->
+  <line x1="10" y1="32" x2="48" y2="32" stroke="#c8a840" stroke-width="3" stroke-linecap="round"/>
+  <!-- 화살촉 (왼쪽을 향함 — 발사 방향) -->
+  <polygon points="10,32 20,27 20,37" fill="#d8d8d8" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="11" y1="32" x2="19" y2="29" stroke="white" stroke-width="0.8" opacity="0.6"/>
+  <!-- 깃털 (노크 근처) -->
+  <polygon points="46,32 38,27 40,32" fill="#2ecc71" opacity="0.95"/>
+  <polygon points="46,32 38,37 40,32" fill="#27ae60" opacity="0.95"/>
+</svg>

@@ -32,6 +32,9 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
     protected string   _unitName;
     protected UnitStat _stat;
 
+    /// <summary>Initialize() 에서 설정된 유닛 이름 (AllySpawner 에서 넘긴 unitName).</summary>
+    public string UnitName => _unitName;
+
     // ── 파생 클래스가 반드시 구현 ────────────────────────────
 
     protected abstract TeamType GetTeam();

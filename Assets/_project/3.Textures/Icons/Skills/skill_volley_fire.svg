@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#1a3a0a"/>
+      <stop offset="100%" stop-color="#060e02"/>
+    </radialGradient>
+  </defs>
+  <rect width="48" height="48" rx="8" fill="url(#bg)"/>
+  <rect width="48" height="48" rx="8" fill="none" stroke="#44aa22" stroke-width="1.2" opacity="0.9"/>
+  <!-- 화살 3개 병렬 발사 -->
+  <!-- 위 화살 -->
+  <line x1="8" y1="14" x2="38" y2="14" stroke="#c8a840" stroke-width="2.5" stroke-linecap="round"/>
+  <polygon points="38,14 30,10 30,18" fill="#d8d8d8" stroke="#aaa" stroke-width="0.5"/>
+  <polygon points="8,14 16,10 14,14" fill="#2ecc71" opacity="0.9"/>
+  <polygon points="8,14 16,18 14,14" fill="#27ae60" opacity="0.9"/>
+  <!-- 중간 화살 -->
+  <line x1="8" y1="24" x2="40" y2="24" stroke="#c8a840" stroke-width="2.5" stroke-linecap="round"/>
+  <polygon points="40,24 32,20 32,28" fill="#e8e8e8" stroke="#aaa" stroke-width="0.5"/>
+  <polygon points="8,24 16,20 14,24" fill="#2ecc71" opacity="0.9"/>
+  <polygon points="8,24 16,28 14,24" fill="#27ae60" opacity="0.9"/>
+  <!-- 아래 화살 -->
+  <line x1="8" y1="34" x2="38" y2="34" stroke="#c8a840" stroke-width="2.5" stroke-linecap="round"/>
+  <polygon points="38,34 30,30 30,38" fill="#d8d8d8" stroke="#aaa" stroke-width="0.5"/>
+  <polygon points="8,34 16,30 14,34" fill="#2ecc71" opacity="0.9"/>
+  <polygon points="8,34 16,38 14,34" fill="#27ae60" opacity="0.9"/>
+  <!-- 속도선 -->
+  <line x1="36" y1="10" x2="42" y2="10" stroke="#88ff44" stroke-width="1" opacity="0.5"/>
+  <line x1="38" y1="20" x2="44" y2="20" stroke="#88ff44" stroke-width="1" opacity="0.5"/>
+  <line x1="36" y1="38" x2="42" y2="38" stroke="#88ff44" stroke-width="1" opacity="0.5"/>
+</svg>

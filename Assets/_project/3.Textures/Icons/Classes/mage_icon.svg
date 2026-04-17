@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#251a6a"/>
+      <stop offset="100%" stop-color="#080520"/>
+    </radialGradient>
+    <radialGradient id="orbGrad" cx="35%" cy="30%" r="60%">
+      <stop offset="0%" stop-color="#aaccff"/>
+      <stop offset="50%" stop-color="#6644ff"/>
+      <stop offset="100%" stop-color="#2211aa"/>
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="64" height="64" rx="10" fill="url(#bg)"/>
+  <rect width="64" height="64" rx="10" fill="none" stroke="#6644cc" stroke-width="1.5" opacity="0.9"/>
+
+  <!-- 마법 구슬 글로우 -->
+  <circle cx="36" cy="18" r="13" fill="#6644ff" opacity="0.2" filter="url(#glow)"/>
+  <!-- 마법 구슬 -->
+  <circle cx="36" cy="18" r="10" fill="url(#orbGrad)" stroke="#8866ff" stroke-width="1.2"/>
+  <!-- 구슬 하이라이트 -->
+  <circle cx="33" cy="14" r="3.5" fill="white" opacity="0.35"/>
+  <circle cx="32" cy="13" r="1.5" fill="white" opacity="0.6"/>
+  <!-- 구슬 내부 마법 문양 -->
+  <circle cx="36" cy="18" r="5" fill="none" stroke="#ccaaff" stroke-width="0.8" opacity="0.6"/>
+  <line x1="36" y1="12" x2="36" y2="24" stroke="#ccaaff" stroke-width="0.8" opacity="0.5"/>
+  <line x1="30" y1="18" x2="42" y2="18" stroke="#ccaaff" stroke-width="0.8" opacity="0.5"/>
+
+  <!-- 지팡이 본체 -->
+  <line x1="36" y1="26" x2="26" y2="58" stroke="#8b6820" stroke-width="5" stroke-linecap="round"/>
+  <!-- 지팡이 하이라이트 -->
+  <line x1="35" y1="27" x2="25.5" y2="57" stroke="#c8a040" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+  <!-- 지팡이 끝 장식 -->
+  <circle cx="25" cy="59" r="3" fill="#c8a040" stroke="#8b6820" stroke-width="0.7"/>
+
+  <!-- 구슬 고정 장식 (지팡이 상단) -->
+  <path d="M30,26 Q33,22 36,26 Q39,22 42,26" fill="none" stroke="#c8a040" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- 마법 파티클 -->
+  <circle cx="20" cy="26" r="2" fill="#aa88ff" opacity="0.7"/>
+  <circle cx="50" cy="30" r="1.5" fill="#88aaff" opacity="0.6"/>
+  <circle cx="16" cy="38" r="1.2" fill="#cc88ff" opacity="0.5"/>
+  <circle cx="52" cy="14" r="1" fill="#ffaaff" opacity="0.6"/>
+  <!-- 별 파티클 (6각 별) -->
+  <polygon points="48,22 49.5,20 51,22 49.5,24" fill="#ffccff" opacity="0.7"/>
+  <polygon points="14,20 15.5,18 17,20 15.5,22" fill="#aaccff" opacity="0.6"/>
+</svg>

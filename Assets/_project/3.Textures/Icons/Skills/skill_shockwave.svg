@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#1a100a"/>
+      <stop offset="100%" stop-color="#060402"/>
+    </radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="48" height="48" rx="8" fill="url(#bg)"/>
+  <rect width="48" height="48" rx="8" fill="none" stroke="#cc6622" stroke-width="1.2" opacity="0.9"/>
+  <!-- 충격파 동심 호 (부채꼴 전방) -->
+  <path d="M8,32 Q16,8 40,24" fill="none" stroke="#ff8833" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+  <path d="M6,38 Q16,6 44,28" fill="none" stroke="#ffaa55" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+  <path d="M4,44 Q16,4 46,32" fill="none" stroke="#ffcc77" stroke-width="1.5" stroke-linecap="round" opacity="0.35"/>
+  <!-- 충격파 글로우 -->
+  <path d="M8,32 Q16,8 40,24" fill="none" stroke="#ff6600" stroke-width="8" stroke-linecap="round" opacity="0.08" filter="url(#glow)"/>
+  <!-- 발원 지점 -->
+  <circle cx="8" cy="36" r="7" fill="#ff6622" opacity="0.18" filter="url(#glow)"/>
+  <circle cx="8" cy="36" r="5.5" fill="#3a1400" stroke="#ff8833" stroke-width="1.5"/>
+  <!-- 주먹/충격 아이콘 -->
+  <rect x="5" y="33" width="7" height="5" rx="2" fill="#ddddcc" stroke="#aaa" stroke-width="0.5"/>
+  <rect x="4" y="37" width="9" height="3" rx="1.5" fill="#ccccbb" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="6" y1="33" x2="6" y2="37" stroke="#aaa" stroke-width="0.7" opacity="0.5"/>
+  <line x1="8.5" y1="33" x2="8.5" y2="37" stroke="#aaa" stroke-width="0.7" opacity="0.5"/>
+  <line x1="11" y1="33" x2="11" y2="37" stroke="#aaa" stroke-width="0.7" opacity="0.5"/>
+  <!-- 파편 -->
+  <circle cx="36" cy="12" r="2" fill="#ff8833" opacity="0.6"/>
+  <circle cx="42" cy="20" r="1.5" fill="#ffaa55" opacity="0.5"/>
+  <circle cx="38" cy="8" r="1.2" fill="#ffcc77" opacity="0.5"/>
+  <circle cx="44" cy="14" r="1" fill="#ff8833" opacity="0.4"/>
+</svg>

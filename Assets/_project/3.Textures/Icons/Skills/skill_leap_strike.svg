@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#3a1a04"/>
+      <stop offset="100%" stop-color="#0e0502"/>
+    </radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="48" height="48" rx="8" fill="url(#bg)"/>
+  <rect width="48" height="48" rx="8" fill="none" stroke="#cc7722" stroke-width="1.2" opacity="0.9"/>
+  <!-- 착지 충격 -->
+  <ellipse cx="24" cy="40" rx="16" ry="4" fill="#ff8833" opacity="0.15" filter="url(#glow)"/>
+  <line x1="8" y1="40" x2="14" y2="35" stroke="#ff8833" stroke-width="1.5" opacity="0.5"/>
+  <line x1="40" y1="40" x2="34" y2="35" stroke="#ff8833" stroke-width="1.5" opacity="0.5"/>
+  <!-- 도약 궤적 (포물선) -->
+  <path d="M8,36 Q16,8 32,14" fill="none" stroke="#ffaa44" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.6"/>
+  <!-- 인물 실루엣 — 점프 포즈 -->
+  <!-- 머리 -->
+  <circle cx="33" cy="12" r="4" fill="#ddd" stroke="#aaa" stroke-width="0.7"/>
+  <!-- 몸통 -->
+  <line x1="33" y1="16" x2="33" y2="25" stroke="#ddd" stroke-width="3" stroke-linecap="round"/>
+  <!-- 칼 올린 팔 -->
+  <line x1="33" y1="18" x2="40" y2="10" stroke="#ddd" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- 검 -->
+  <line x1="40" y1="10" x2="44" y2="6" stroke="#d0d0d0" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="44,6 41,9 43,11" fill="#e0e0e0"/>
+  <!-- 다리 — 차올린 포즈 -->
+  <line x1="33" y1="25" x2="28" y2="32" stroke="#ddd" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="33" y1="25" x2="38" y2="30" stroke="#ddd" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- 착지 지점 충격파 -->
+  <ellipse cx="24" cy="40" rx="10" ry="2.5" fill="none" stroke="#ff8833" stroke-width="1.5" opacity="0.6"/>
+</svg>

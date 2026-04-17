@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#3a0808"/>
+      <stop offset="100%" stop-color="#0c0202"/>
+    </radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="48" height="48" rx="8" fill="url(#bg)"/>
+  <rect width="48" height="48" rx="8" fill="none" stroke="#cc2222" stroke-width="1.2" opacity="0.9"/>
+  <!-- 화염 배경 -->
+  <ellipse cx="24" cy="32" rx="16" ry="10" fill="#ff4400" opacity="0.15" filter="url(#glow)"/>
+  <!-- 불꽃 (좌) -->
+  <path d="M12,44 Q8,36 12,30 Q10,34 14,32 Q10,28 14,22 Q12,26 17,26 Q14,20 18,16 Q17,22 20,22 Q19,16 22,14 Q22,20 24,20" fill="#ff6600" opacity="0.7"/>
+  <!-- 불꽃 (우) -->
+  <path d="M36,44 Q40,36 36,30 Q38,34 34,32 Q38,28 34,22 Q36,26 31,26 Q34,20 30,16 Q31,22 28,22 Q29,16 26,14 Q26,20 24,20" fill="#ff4400" opacity="0.7"/>
+  <!-- 교차 쌍검 -->
+  <!-- 검 1 (좌→우상) -->
+  <rect x="8" y="20" width="32" height="5" rx="2" fill="#d0d0d0" stroke="#999" stroke-width="0.7" transform="rotate(-35,24,22.5)"/>
+  <polygon points="8,22.5 14,18 14,27" fill="#e8e8e8" transform="rotate(-35,24,22.5)"/>
+  <!-- 검 2 (우→좌상) -->
+  <rect x="8" y="22" width="32" height="5" rx="2" fill="#d0d0d0" stroke="#999" stroke-width="0.7" transform="rotate(35,24,24.5)"/>
+  <polygon points="40,24.5 34,20 34,29" fill="#e8e8e8" transform="rotate(35,24,24.5)"/>
+  <!-- 교차점 분노 표시 -->
+  <circle cx="24" cy="24" r="4" fill="#ff2200" opacity="0.7" filter="url(#glow)"/>
+  <circle cx="24" cy="24" r="2.5" fill="#ffaa44"/>
+  <!-- 분노 아이콘 (눈) -->
+  <line x1="10" y1="10" x2="16" y2="14" stroke="#ff4444" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+  <line x1="38" y1="10" x2="32" y2="14" stroke="#ff4444" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+</svg>

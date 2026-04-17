@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#2a0e04"/>
+      <stop offset="100%" stop-color="#0a0302"/>
+    </radialGradient>
+    <radialGradient id="meteorGrad" cx="40%" cy="30%" r="60%">
+      <stop offset="0%" stop-color="#ffcc44"/>
+      <stop offset="50%" stop-color="#ff6600"/>
+      <stop offset="100%" stop-color="#882200"/>
+    </radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="48" height="48" rx="8" fill="url(#bg)"/>
+  <rect width="48" height="48" rx="8" fill="none" stroke="#cc4400" stroke-width="1.2" opacity="0.9"/>
+  <!-- 착지 폭발 -->
+  <circle cx="22" cy="38" r="8" fill="#ff6600" opacity="0.2" filter="url(#glow)"/>
+  <line x1="10" y1="44" x2="14" y2="36" stroke="#ff8800" stroke-width="1.5" opacity="0.6"/>
+  <line x1="22" y1="46" x2="22" y2="38" stroke="#ff8800" stroke-width="1.5" opacity="0.6"/>
+  <line x1="34" y1="44" x2="30" y2="36" stroke="#ff8800" stroke-width="1.5" opacity="0.6"/>
+  <line x1="8" y1="36" x2="14" y2="34" stroke="#ff8800" stroke-width="1.5" opacity="0.5"/>
+  <line x1="36" y1="36" x2="30" y2="34" stroke="#ff8800" stroke-width="1.5" opacity="0.5"/>
+  <!-- 화염 꼬리 -->
+  <path d="M38,6 Q30,14 22,34" fill="none" stroke="#ff6600" stroke-width="8" stroke-linecap="round" opacity="0.2"/>
+  <path d="M38,6 Q30,14 22,34" fill="none" stroke="#ffaa44" stroke-width="4" stroke-linecap="round" opacity="0.35"/>
+  <path d="M38,6 Q30,14 22,34" fill="none" stroke="#ffdd88" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+  <!-- 운석 본체 -->
+  <circle cx="22" cy="34" r="9" fill="url(#meteorGrad)" stroke="#cc4400" stroke-width="1"/>
+  <circle cx="22" cy="34" r="9" fill="#ffaa44" opacity="0.15" filter="url(#glow)"/>
+  <!-- 운석 표면 크레이터 -->
+  <circle cx="18" cy="31" r="2.5" fill="#882200" opacity="0.5"/>
+  <circle cx="25" cy="36" r="2" fill="#882200" opacity="0.4"/>
+  <circle cx="22" cy="30" r="1.5" fill="#882200" opacity="0.4"/>
+  <!-- 작은 파편 -->
+  <circle cx="38" cy="20" r="2" fill="#ff8800" opacity="0.7"/>
+  <circle cx="42" cy="28" r="1.5" fill="#ffaa44" opacity="0.6"/>
+  <circle cx="40" cy="14" r="1.2" fill="#ffcc44" opacity="0.5"/>
+</svg>

@@ -25,26 +25,62 @@ public class AllySpawner : MonoBehaviour
     // ── 공개 API ─────────────────────────────────────────────
 
     /// <summary>entries 목록을 순서대로 풀에서 꺼내 슬롯 위치에 배치한다.</summary>
-    public void Spawn(List<SpawnEntry> entries)
+    /// <param name="ignoreDelays">true 이면 DelayBefore / DelayBetween 을 무시하고 즉시 스폰.</param>
+    public void Spawn(List<SpawnEntry> entries, bool ignoreDelays = false)
     {
         if (IsSpawning)
         {
             Debug.LogWarning("[AllySpawner] 이미 스폰 중입니다.");
             return;
         }
-        StartCoroutine(SpawnRoutine(entries));
+        StartCoroutine(SpawnRoutine(entries, ignoreDelays));
+    }
+
+    /// <summary>
+    /// 동기(synchronous) 즉시 스폰 — 코루틴 없이 같은 프레임 안에 완료.
+    /// 게임 시작 시 장군 패널을 첫 yield 이전에 확실히 표시하기 위해 사용.
+    /// </summary>
+    public void SpawnImmediate(List<SpawnEntry> entries)
+    {
+        int slotIndex = 0;
+        foreach (SpawnEntry entry in entries)
+        {
+            for (int i = 0; i < entry.Count; i++)
+            {
+                if (slotIndex >= SpawnPoints.Count)
+                {
+                    Debug.LogWarning("[AllySpawner] SpawnPoints 슬롯이 부족합니다.");
+                    break;
+                }
+
+                Transform  slot = SpawnPoints[slotIndex];
+                GameObject unit = PoolController.Instance.Spawn(
+                    PoolType.Unit, entry.PoolKey, slot.position, slot.rotation);
+
+                if (unit == null)
+                    Debug.LogWarning($"[AllySpawner] 풀 스폰 실패: '{entry.PoolKey}'");
+                else
+                {
+                    string unitName = string.IsNullOrEmpty(entry.Name) ? entry.PoolKey : entry.Name;
+                    if (unit.TryGetComponent<GeneralRuntimeBridge>(out var bridge))
+                        bridge.Initialize(unitName, entry.Level);
+                }
+
+                slotIndex++;
+            }
+        }
     }
 
     // ── 내부 ─────────────────────────────────────────────────
 
-    IEnumerator SpawnRoutine(List<SpawnEntry> entries)
+    IEnumerator SpawnRoutine(List<SpawnEntry> entries, bool ignoreDelays)
     {
         IsSpawning = true;
         int slotIndex = 0;
 
         foreach (SpawnEntry entry in entries)
         {
-            if (entry.DelayBefore > 0f)
+            if (!ignoreDelays && entry.DelayBefore > 0f)
                 yield return new WaitForSeconds(entry.DelayBefore);
 
             for (int i = 0; i < entry.Count; i++)
@@ -74,7 +110,7 @@ public class AllySpawner : MonoBehaviour
 
                 slotIndex++;
 
-                if (i < entry.Count - 1 && entry.DelayBetween > 0f)
+                if (!ignoreDelays && i < entry.Count - 1 && entry.DelayBetween > 0f)
                     yield return new WaitForSeconds(entry.DelayBetween);
             }
         }

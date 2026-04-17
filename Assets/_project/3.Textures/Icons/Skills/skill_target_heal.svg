@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#0e2a0e"/>
+      <stop offset="100%" stop-color="#030803"/>
+    </radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="48" height="48" rx="8" fill="url(#bg)"/>
+  <rect width="48" height="48" rx="8" fill="none" stroke="#33bb44" stroke-width="1.2" opacity="0.9"/>
+  <!-- 타겟 조준선 -->
+  <circle cx="24" cy="22" r="14" fill="none" stroke="#33bb44" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+  <line x1="24" y1="8" x2="24" y2="14" stroke="#33bb44" stroke-width="1.2" opacity="0.6"/>
+  <line x1="24" y1="30" x2="24" y2="36" stroke="#33bb44" stroke-width="1.2" opacity="0.6"/>
+  <line x1="10" y1="22" x2="16" y2="22" stroke="#33bb44" stroke-width="1.2" opacity="0.6"/>
+  <line x1="32" y1="22" x2="38" y2="22" stroke="#33bb44" stroke-width="1.2" opacity="0.6"/>
+  <!-- 하트 -->
+  <path d="M24,30 C24,30 11,22 11,15 C11,11 14,9 17.5,9 C20,9 22.5,10.5 24,13 C25.5,10.5 28,9 30.5,9 C34,9 37,11 37,15 C37,22 24,30 24,30 Z"
+        fill="#e74c3c" stroke="#c0392b" stroke-width="0.5"/>
+  <path d="M24,28 C24,28 13,21.5 13,15.5 C13,12.5 15.5,11 18,11 C20,11 22,12 24,14.5"
+        fill="white" opacity="0.25"/>
+  <!-- 하트 글로우 -->
+  <path d="M24,30 C24,30 11,22 11,15 C11,11 14,9 17.5,9 C20,9 22.5,10.5 24,13 C25.5,10.5 28,9 30.5,9 C34,9 37,11 37,15 C37,22 24,30 24,30 Z"
+        fill="#ff4444" opacity="0.2" filter="url(#glow)"/>
+  <!-- 십자 심볼 (작게) -->
+  <rect x="22" y="16" width="4" height="12" rx="1.5" fill="white" opacity="0.7"/>
+  <rect x="18" y="20" width="12" height="4" rx="1.5" fill="white" opacity="0.7"/>
+  <!-- 힐 상승 표시 -->
+  <line x1="10" y1="42" x2="10" y2="34" stroke="#44ff88" stroke-width="2" stroke-linecap="round" marker-end="url(#arr)"/>
+  <polygon points="10,34 7,40 13,40" fill="#44ff88"/>
+  <line x1="38" y1="42" x2="38" y2="34" stroke="#44ff88" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="38,34 35,40 41,40" fill="#44ff88"/>
+</svg>

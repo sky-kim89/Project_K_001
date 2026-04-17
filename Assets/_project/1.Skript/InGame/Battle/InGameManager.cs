@@ -5,16 +5,20 @@ using UnityEngine;
 //  인게임 씬의 진입점 — 씬 로드 시 자동으로 배틀을 시작한다.
 //
 //  실행 순서:
-//    Awake: PoolController, BattleManager 준비 확인
-//    Start: BattleModeBase 생성 → BattleManager.StartBattle() 호출
+//    Awake : PoolController, BattleManager 준비 확인
+//    Start : 로딩 팝업 오픈 → BattleManager 이벤트 구독 → StartBattle()
+//
+//  팝업 흐름:
+//    1. 로딩 팝업    : Start() 에서 오픈, OnAlliesReady 이벤트에서 클로즈
+//    2. 결과 팝업    : OnVictory / OnDefeat 이벤트에서 오픈
+//    3. 일시 정지 팝업: TopBarUI 의 일시 정지 버튼에서 오픈 (PausePopup 참조 전달)
 //
 //  Inspector 설정:
-//    - WaveSetup: WaveSetupData SO 할당
-//    - BattleMode: 어떤 모드로 시작할지 (기본 Normal)
-//
-//  배틀 종료 콜백:
-//    BattleManager 가 OnBattleEnd 이벤트를 발생시키면
-//    InGameManager 가 결과 화면 전환 등을 처리한다.
+//    - WaveSetup              : WaveSetupData SO 할당
+//    - BattleMode             : 어떤 모드로 시작할지 (기본 Normal)
+//    - LoadingPopupPrefab     : LoadingPopup 프리팹 할당
+//    - BattleResultPopupPrefab: BattleResultPopup 프리팹 할당
+//    - PausePopupPrefab       : PausePopup 프리팹 할당 (TopBarUI 가 공유 참조)
 // ============================================================
 
 public class InGameManager : MonoBehaviour
@@ -41,6 +45,7 @@ public class InGameManager : MonoBehaviour
     [Tooltip("인게임 밸런스 수치 중앙 저장소 (GameplayConfig SO 할당)")]
     [SerializeField] GameplayConfig _gameplayConfig;
 
+
     // ── Unity 생명주기 ────────────────────────────────────────
 
     void Awake()
@@ -55,41 +60,95 @@ public class InGameManager : MonoBehaviour
 
     void Start()
     {
+        // 로딩 팝업 오픈 (장군 스폰 전 화면 가리기)
+        if (PopupManager.Instance != null)
+            PopupManager.Instance.Open(PopupType.Loading);
+
+        // 배틀 이벤트 구독
+        BattleManager.OnAlliesReady += HandleAlliesReady;
+        BattleManager.OnVictory     += HandleVictory;
+        BattleManager.OnDefeat      += HandleDefeat;
+
         if (AutoStartDelay > 0f)
             Invoke(nameof(StartBattle), AutoStartDelay);
         else
             StartBattle();
     }
 
+    void OnDestroy()
+    {
+        BattleManager.OnAlliesReady -= HandleAlliesReady;
+        BattleManager.OnVictory     -= HandleVictory;
+        BattleManager.OnDefeat      -= HandleDefeat;
+    }
+
+    // ── 이벤트 핸들러 ─────────────────────────────────────────
+
+    /// <summary>장군 스폰 완료 → 로딩 팝업 닫기.</summary>
+    void HandleAlliesReady()
+    {
+        if (PopupManager.Instance != null)
+            PopupManager.Instance.Close(PopupType.Loading);
+    }
+
+    /// <summary>전투 승리 → 결과 팝업 오픈.</summary>
+    void HandleVictory()
+    {
+        if (PopupManager.Instance == null) return;
+        var popup = PopupManager.Instance.Open<BattleResultPopup>(PopupType.BattleResult);
+        popup?.Setup(true,
+            BattleManager.Instance?.Context,
+            BattleManager.Instance?.EnemyKillCount ?? 0);
+    }
+
+    /// <summary>전투 패배 → 결과 팝업 오픈.</summary>
+    void HandleDefeat()
+    {
+        if (PopupManager.Instance == null) return;
+        var popup = PopupManager.Instance.Open<BattleResultPopup>(PopupType.BattleResult);
+        popup?.Setup(false,
+            BattleManager.Instance?.Context,
+            BattleManager.Instance?.EnemyKillCount ?? 0);
+    }
+
     // ── 배틀 시작 ────────────────────────────────────────────
 
     void StartBattle()
     {
-        if (WaveSetup == null || WaveSetup.Waves.Count == 0)
+        BattleModeBase mode;
+
+        // 로비에서 스테이지를 선택해서 넘어온 경우
+        if (GameSession.Instance.HasStage)
         {
-            Debug.LogError("[InGameManager] WaveSetup 이 비어있습니다. Inspector 에서 WaveSetupData 를 할당하세요.");
-            return;
+            var stage = GameSession.Instance.CurrentStage;
+            mode = CreateModeFromWaves(stage.Mode, stage.Waves);
+            Debug.Log($"[InGameManager] 배틀 시작 — {stage.DisplayName}, 웨이브 {stage.Waves.Count}개");
+        }
+        // 에디터에서 직접 WaveSetup 을 할당해 테스트하는 경우
+        else
+        {
+            if (WaveSetup == null || WaveSetup.Waves.Count == 0)
+            {
+                Debug.LogError("[InGameManager] WaveSetup 이 비어있습니다.");
+                return;
+            }
+            mode = CreateModeFromWaves(StartMode, WaveSetup.Waves);
+            Debug.Log($"[InGameManager] 배틀 시작 (직접) — 모드: {StartMode}, 웨이브: {WaveSetup.Waves.Count}개");
         }
 
-        BattleModeBase mode = CreateMode(StartMode);
         if (mode == null) return;
-
         BattleManager.Instance.StartBattle(mode);
-        Debug.Log($"[InGameManager] 배틀 시작 — 모드: {StartMode}, 총 웨이브: {WaveSetup.Waves.Count}");
     }
 
     // ── 모드 생성 ─────────────────────────────────────────────
 
-    BattleModeBase CreateMode(BattleMode mode)
+    BattleModeBase CreateModeFromWaves(BattleMode mode, System.Collections.Generic.List<WaveData> waves)
     {
         switch (mode)
         {
             case BattleMode.Normal:
-                return new NormalMode(WaveSetup.Waves);
-
-            // 추후 골드 던전, 특수 던전 추가 시 여기에 case 추가
-            // case BattleMode.GoldDungeon:
-            //     return new GoldDungeonMode(WaveSetup.Waves);
+            case BattleMode.Elite:          // 엘리트도 NormalMode 사용 (파라미터로 난이도 차별화)
+                return new NormalMode(waves);
 
             default:
                 Debug.LogError($"[InGameManager] 구현되지 않은 배틀 모드: {mode}");

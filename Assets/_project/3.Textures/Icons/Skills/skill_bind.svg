@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#1e100a"/>
+      <stop offset="100%" stop-color="#060402"/>
+    </radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="48" height="48" rx="8" fill="url(#bg)"/>
+  <rect width="48" height="48" rx="8" fill="none" stroke="#886633" stroke-width="1.2" opacity="0.9"/>
+  <!-- 쇠사슬 링크들 -->
+  <!-- 체인 1 (상단) -->
+  <ellipse cx="14" cy="12" rx="5" ry="3.5" fill="none" stroke="#aaaaaa" stroke-width="2.5" transform="rotate(-30,14,12)"/>
+  <ellipse cx="22" cy="9" rx="5" ry="3.5" fill="none" stroke="#bbbbbb" stroke-width="2.5" transform="rotate(30,22,9)"/>
+  <ellipse cx="30" cy="12" rx="5" ry="3.5" fill="none" stroke="#aaaaaa" stroke-width="2.5" transform="rotate(-30,30,12)"/>
+  <!-- 체인 2 (좌) -->
+  <ellipse cx="10" cy="24" rx="3.5" ry="5" fill="none" stroke="#aaaaaa" stroke-width="2.5" transform="rotate(60,10,24)"/>
+  <!-- 체인 2 (우) -->
+  <ellipse cx="38" cy="24" rx="3.5" ry="5" fill="none" stroke="#aaaaaa" stroke-width="2.5" transform="rotate(-60,38,24)"/>
+  <!-- 중앙 속박 대상 실루엣 -->
+  <circle cx="24" cy="24" r="6" fill="#331a0a" stroke="#666" stroke-width="0.8"/>
+  <line x1="21" y1="20" x2="27" y2="20" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="20" y1="24" x2="28" y2="24" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="21" y1="28" x2="27" y2="28" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- 체인 고정 자물쇠 (하단) -->
+  <rect x="20" y="34" width="8" height="7" rx="2" fill="#8b7040" stroke="#6b5020" stroke-width="0.8"/>
+  <path d="M21,34 Q21,30 24,30 Q27,30 27,34" fill="none" stroke="#8b7040" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="24" cy="37.5" r="1.5" fill="#5a3a10" stroke="#8b7040" stroke-width="0.5"/>
+  <!-- 마법 봉인 글로우 -->
+  <circle cx="24" cy="24" r="12" fill="none" stroke="#cc8833" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.5"/>
+  <circle cx="24" cy="24" r="14" fill="#cc8833" opacity="0.06" filter="url(#glow)"/>
+</svg>

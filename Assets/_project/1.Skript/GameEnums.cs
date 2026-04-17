@@ -34,12 +34,13 @@ public enum GameState
 // ── 팝업 타입 ─────────────────────────────────────────────────
 public enum PopupType
 {
-    None     = 0,
-    Alert    = 1,   // 확인만 있는 알림
-    Confirm  = 2,   // 확인/취소
-    Settings = 3,
-    Victory  = 4,
-    Defeat   = 5
+    None         = 0,
+    Alert        = 1,   // 확인만 있는 알림
+    Confirm      = 2,   // 확인/취소
+    Settings     = 3,
+    BattleResult = 4,   // 전투 결과 (승리/패배)
+    Pause        = 5,   // 일시 정지
+    Loading      = 6,   // 로딩
 }
 
 // ── 로그인 상태 ───────────────────────────────────────────────

@@ -17,6 +17,12 @@ using BattleGame.Units;
 
 public class GeneralRuntimeBridge : UnitRuntimeBridge
 {
+    // ── UI 이벤트 ─────────────────────────────────────────────
+    /// <summary>
+    /// Initialize() 완료 후 발생. InGameHUD 가 구독해 GeneralPanelUI 를 생성한다.
+    /// </summary>
+    public static event System.Action<GeneralRuntimeBridge> OnSpawned;
+
     [Header("병사 설정")]
     [Tooltip("PoolController 에 등록된 병사 풀 키")]
     [SerializeField] string _soldierPoolKey = "Soldier";
@@ -69,6 +75,8 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
 
         SpawnEntity();
         SpawnSoldiers();
+
+        OnSpawned?.Invoke(this);
     }
 
     /// <summary>외부에서 롤된 스탯을 읽을 때 사용.</summary>

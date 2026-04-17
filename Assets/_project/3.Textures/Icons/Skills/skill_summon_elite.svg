@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#1e140a"/>
+      <stop offset="100%" stop-color="#060402"/>
+    </radialGradient>
+    <radialGradient id="starGrad" cx="50%" cy="30%" r="60%">
+      <stop offset="0%" stop-color="#ffee88"/>
+      <stop offset="100%" stop-color="#cc8800"/>
+    </radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="48" height="48" rx="8" fill="url(#bg)"/>
+  <rect width="48" height="48" rx="8" fill="none" stroke="#ccaa22" stroke-width="1.2" opacity="0.9"/>
+  <!-- 소환 마법진 -->
+  <circle cx="24" cy="36" r="12" fill="none" stroke="#cc9922" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.5"/>
+  <circle cx="24" cy="36" r="8" fill="#cc9922" opacity="0.08" filter="url(#glow)"/>
+  <!-- 왕관 (정예 심볼) -->
+  <!-- 왕관 베이스 -->
+  <path d="M10,22 L10,32 L38,32 L38,22" fill="#c8922a" stroke="#8b6010" stroke-width="1"/>
+  <!-- 왕관 포인트 -->
+  <polygon points="10,22 14,10 18,22" fill="#d4a030" stroke="#8b6010" stroke-width="0.8"/>
+  <polygon points="20,22 24,8 28,22" fill="#d4a030" stroke="#8b6010" stroke-width="0.8"/>
+  <polygon points="30,22 34,10 38,22" fill="#d4a030" stroke="#8b6010" stroke-width="0.8"/>
+  <!-- 왕관 하이라이트 -->
+  <rect x="10" y="22" width="28" height="4" rx="0" fill="white" opacity="0.12"/>
+  <!-- 왕관 보석 -->
+  <circle cx="14" cy="10" r="2.5" fill="#e74c3c" stroke="#aa2211" stroke-width="0.5"/>
+  <circle cx="24" cy="8" r="3" fill="#4488ff" stroke="#1144aa" stroke-width="0.5"/>
+  <circle cx="34" cy="10" r="2.5" fill="#e74c3c" stroke="#aa2211" stroke-width="0.5"/>
+  <!-- 왕관 측면 보석 -->
+  <circle cx="10" cy="27" r="2" fill="#22ccaa" stroke="#116655" stroke-width="0.5"/>
+  <circle cx="38" cy="27" r="2" fill="#22ccaa" stroke="#116655" stroke-width="0.5"/>
+  <!-- 중앙 대형 보석 -->
+  <circle cx="24" cy="27" r="3.5" fill="#4488ff" stroke="#1144aa" stroke-width="0.8"/>
+  <circle cx="22.5" cy="25.5" r="1.5" fill="white" opacity="0.55"/>
+  <!-- 소환 이펙트 파티클 -->
+  <circle cx="12" cy="40" r="2" fill="#ffcc44" opacity="0.6" filter="url(#glow)"/>
+  <circle cx="36" cy="42" r="1.5" fill="#ffcc44" opacity="0.5" filter="url(#glow)"/>
+  <circle cx="20" cy="44" r="1.5" fill="#ffaa22" opacity="0.5" filter="url(#glow)"/>
+  <circle cx="30" cy="44" r="1.2" fill="#ffaa22" opacity="0.4" filter="url(#glow)"/>
+</svg>
