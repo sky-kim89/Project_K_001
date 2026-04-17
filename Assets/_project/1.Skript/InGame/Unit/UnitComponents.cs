@@ -93,7 +93,9 @@ namespace BattleGame.Units
     /// <summary>엘리트 유닛 마커. 독립 전투 유닛으로 장군-병사 계층 없음.</summary>
     public struct EliteComponent : IComponentData
     {
-        public bool HasSkill; // GeneralActiveSkillComponent 공유 여부
+        public bool  HasSkill;           // GeneralActiveSkillComponent 공유 여부
+        /// <summary>넉백 내성. 0 = 없음, 1 = 완전 면역. 넉백 벡터를 (1-값)배로 감소.</summary>
+        public float KnockbackResistance;
     }
 
     // ──────────────────────────────────────────

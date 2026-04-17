@@ -41,8 +41,9 @@ public abstract class Singleton<T> : MonoBehaviour where T : MonoBehaviour
             return;
         }
         _instance = this as T;
-        // DontDestroyOnLoad 는 루트 오브젝트만 지원한다.
-        // 씬 셋업 툴에서 계층 아래에 배치된 경우에도 올바르게 동작하도록 먼저 분리.
+        // 상위 오브젝트에 DontDestroyOnLoad 컴포넌트가 있으면 그쪽에서 처리하므로 스킵.
+        if (GetComponentInParent<DontDestroyOnLoad>() != null) return;
+        // 루트 오브젝트만 DontDestroyOnLoad 지원 — 부모가 있으면 분리 후 적용.
         transform.SetParent(null);
         DontDestroyOnLoad(gameObject);
     }

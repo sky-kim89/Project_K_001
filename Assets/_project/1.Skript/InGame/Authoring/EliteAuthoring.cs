@@ -26,7 +26,7 @@ namespace BattleGame.Units
             bool hasSkill = authoring.ActiveSkill != null &&
                             authoring.ActiveSkill.Category == SkillCategory.Active;
 
-            AddComponent(entity, new EliteComponent { HasSkill = hasSkill });
+            AddComponent(entity, new EliteComponent { HasSkill = hasSkill, KnockbackResistance = 0.5f });
 
             if (hasSkill)
             {

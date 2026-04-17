@@ -27,7 +27,8 @@ public class BattleResultPopup : PopupBase
 
     protected override void OnBeforeOpen()
     {
-        _confirmButton?.onClick.AddListener(() => Close());
+        _confirmButton?.onClick.AddListener(() =>
+            Close(() => { if (LobbyManager.Instance != null) LobbyManager.Instance.ReturnToLobby(); }));
     }
 
     // ── 공개 API ─────────────────────────────────────────────

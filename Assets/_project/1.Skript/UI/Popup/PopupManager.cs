@@ -108,17 +108,28 @@ public class PopupManager : Singleton<PopupManager>
         // 같은 타입이 이미 열려 있으면 기존 것 먼저 닫기
         if (_openByType.TryGetValue(type, out var existing))
         {
-            Debug.LogWarning($"[PopupManager] {type} 이미 열려 있음 → 기존 팝업 닫기.");
-            existing.Close();
+            if (existing != null)
+            {
+                Debug.LogWarning($"[PopupManager] {type} 이미 열려 있음 → 기존 팝업 닫기.");
+                existing.Close();
+            }
+            else
+            {
+                // 씬 언로드 등으로 오브젝트가 파괴된 경우 — 스택/맵에서 제거만
+                _openByType.Remove(type);
+                _stack.RemoveAll(p => p == null || p.PopupType == type);
+            }
         }
 
         // 풀에서 꺼내거나 새로 생성
-        if (_pool.TryGetValue(type, out var popup))
+        _pool.TryGetValue(type, out var popup);
+        if (popup != null)
         {
             _pool.Remove(type);
         }
         else
         {
+            _pool.Remove(type); // 파괴된 항목이 있으면 제거
             var go = Instantiate(prefab.gameObject, _popupRoot);
             popup = go.GetComponent<PopupBase>();
             if (popup == null)

@@ -1,3 +1,4 @@
+using Unity.Entities;
 using BattleGame.Units;
 
 // ============================================================
@@ -44,4 +45,34 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
         SpawnUnitType.Boss  => UnitType.Boss,
         _                   => UnitType.Enemy,
     };
+
+    // ── 타입 전용 컴포넌트 추가 ──────────────────────────────
+    // BossComponent / EliteComponent 은 Authoring 없이 런타임 스폰되므로
+    // 여기서 직접 추가해야 저항 등 타입별 로직이 동작한다.
+
+    protected override void AddComponents(EntityManager em, Entity entity)
+    {
+        switch (_unitType)
+        {
+            case SpawnUnitType.Boss:
+                em.AddComponentData(entity, new BossComponent
+                {
+                    PhaseCount          = 1,
+                    CurrentPhase        = 1,
+                    Phase2HpRatio       = 0.5f,
+                    Phase3HpRatio       = 0.25f,
+                    CCResistance        = 1f,
+                    KnockbackResistance = 1f,
+                });
+                break;
+
+            case SpawnUnitType.Elite:
+                em.AddComponentData(entity, new EliteComponent
+                {
+                    HasSkill            = false,
+                    KnockbackResistance = 0.5f,
+                });
+                break;
+        }
+    }
 }

@@ -20,23 +20,26 @@ namespace BattleGame.Units
     [UpdateAfter(typeof(UnitAttackSystem))]
     public partial struct UnitHitSystem : ISystem
     {
-        ComponentLookup<BossComponent> _bossLookup;
+        ComponentLookup<BossComponent>  _bossLookup;
+        ComponentLookup<EliteComponent> _eliteLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _bossLookup = state.GetComponentLookup<BossComponent>(isReadOnly: true);
+            _bossLookup  = state.GetComponentLookup<BossComponent>(isReadOnly: true);
+            _eliteLookup = state.GetComponentLookup<EliteComponent>(isReadOnly: true);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _bossLookup.Update(ref state);
+            _eliteLookup.Update(ref state);
 
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb          = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
-            new ProcessHitEventsJob { Ecb = ecb, BossLookup = _bossLookup }.ScheduleParallel();
+            new ProcessHitEventsJob { Ecb = ecb, BossLookup = _bossLookup, EliteLookup = _eliteLookup }.ScheduleParallel();
         }
     }
 
@@ -49,7 +52,8 @@ namespace BattleGame.Units
     public partial struct ProcessHitEventsJob : IJobEntity
     {
         public EntityCommandBuffer.ParallelWriter Ecb;
-        [ReadOnly] public ComponentLookup<BossComponent> BossLookup;
+        [ReadOnly] public ComponentLookup<BossComponent>  BossLookup;
+        [ReadOnly] public ComponentLookup<EliteComponent> EliteLookup;
 
         public void Execute(
             [ChunkIndexInQuery] int                  chunkIndex,
@@ -99,12 +103,16 @@ namespace BattleGame.Units
                 return;
             }
 
-            // ── 보스 내성 적용 ──
+            // ── 내성 적용 ──
             if (BossLookup.HasComponent(entity))
             {
                 var boss = BossLookup[entity];
                 totalKnockback *= (1f - boss.KnockbackResistance);
                 maxStun        *= (1f - boss.CCResistance);
+            }
+            else if (EliteLookup.HasComponent(entity))
+            {
+                totalKnockback *= (1f - EliteLookup[entity].KnockbackResistance);
             }
 
             // ── 넉백 / 경직 적용 ──

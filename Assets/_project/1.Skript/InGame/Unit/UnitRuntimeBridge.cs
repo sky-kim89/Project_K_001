@@ -40,6 +40,14 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
     protected abstract TeamType GetTeam();
     protected abstract UnitType GetUnitType();
 
+    static float GetSeparationMass(UnitType type) => type switch
+    {
+        UnitType.Boss    => 20f,  // 병사 20배 — 군중에 밀리지 않음
+        UnitType.Elite   => 3f,   // 병사 3배
+        UnitType.General => 5f,
+        _                => 1f,
+    };
+
     /// <summary>기본 컴포넌트 추가 후 호출 — 타입 전용 컴포넌트를 여기서 추가.</summary>
     protected virtual void AddComponents(EntityManager em, Entity entity) { }
 
@@ -148,7 +156,7 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
         // 유닛 크기 갱신 (풀 재사용 시 스케일이 달라질 수 있음)
         Vector3 scale  = transform.localScale;
         float   radius = Mathf.Max(scale.x, scale.y) * 0.5f;
-        float   mass   = GetUnitType() == UnitType.General ? 5f : 1f;
+        float   mass   = GetSeparationMass(GetUnitType());
         em.SetComponentData(entity, new UnitSizeComponent { Radius = radius, Mass = mass });
 
         // 화면 진입 상태 초기화 (재스폰 시 다시 진입 판정)
@@ -256,7 +264,7 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
         // ── 유닛 크기 (분리 반경 + 질량) ──────────────────────────────
         Vector3 scale  = transform.localScale;
         float   radius = Mathf.Max(scale.x, scale.y) * 0.5f;
-        float   mass   = GetUnitType() == UnitType.General ? 5f : 1f;
+        float   mass   = GetSeparationMass(GetUnitType());
         em.AddComponentData(entity, new UnitSizeComponent { Radius = radius, Mass = mass });
 
         // ── 화면 경계 ─────────────────────────────────────────
