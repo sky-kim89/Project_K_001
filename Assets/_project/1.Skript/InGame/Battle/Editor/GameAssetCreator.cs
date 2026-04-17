@@ -20,6 +20,54 @@ public static class GameAssetCreator
     const string DataRoot    = "Assets/_project/Data";
     const string PassiveDir  = "Assets/_project/Data/Passives";
     const string DBPath      = "Assets/_project/PassiveSkillDatabase.asset";
+    const string StageCfgPath = "Assets/_project/StageConfig.asset";
+
+    // ── StageConfig 생성 ──────────────────────────────────────
+
+    [MenuItem("BattleGame/데이터 생성/StageConfig 생성")]
+    static void CreateStageConfig()
+    {
+        // 이미 존재하면 선택만 하고 종료
+        var existing = AssetDatabase.LoadAssetAtPath<StageConfig>(StageCfgPath);
+        if (existing != null)
+        {
+            Debug.Log($"[GameAssetCreator] StageConfig 이미 존재합니다: {StageCfgPath}");
+            EditorGUIUtility.PingObject(existing);
+            Selection.activeObject = existing;
+            return;
+        }
+
+        // 생성 (필드 기본값은 클래스 초기값 그대로 사용)
+        var cfg = ScriptableObject.CreateInstance<StageConfig>();
+        AssetDatabase.CreateAsset(cfg, StageCfgPath);
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+
+        // 씬의 LobbyManager 에 자동 할당 (씬이 열려 있을 경우)
+        var lobbyMgr = Object.FindAnyObjectByType<LobbyManager>();
+        if (lobbyMgr != null)
+        {
+            var so   = new SerializedObject(lobbyMgr);
+            var prop = so.FindProperty("_stageConfig");
+            if (prop != null)
+            {
+                prop.objectReferenceValue = cfg;
+                so.ApplyModifiedProperties();
+                EditorUtility.SetDirty(lobbyMgr);
+                Debug.Log("[GameAssetCreator] LobbyManager._stageConfig 자동 할당 완료");
+            }
+        }
+        else
+        {
+            Debug.Log("[GameAssetCreator] 씬에 LobbyManager 없음 — Inspector 에서 직접 할당하세요.");
+        }
+
+        EditorGUIUtility.PingObject(cfg);
+        Selection.activeObject = cfg;
+        Debug.Log($"[GameAssetCreator] StageConfig 생성 완료: {StageCfgPath}");
+    }
+
+    // ── 패시브 스킬 생성 ─────────────────────────────────────
 
     [MenuItem("BattleGame/데이터 생성/패시브 스킬 전체 생성")]
     public static void CreateAllPassiveSkills()

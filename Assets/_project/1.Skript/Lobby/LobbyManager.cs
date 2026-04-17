@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -113,11 +114,61 @@ public class LobbyManager : Singleton<LobbyManager>
         GameSession.Instance.CurrentStage = stage;
         Debug.Log($"[LobbyManager] 전투 시작 → {stage.DisplayName} (웨이브 {stage.Waves.Count}개)");
 
-        // 스플래시에서 사전 로딩된 씬이 있으면 즉시 전환, 없으면 일반 로드
         if (ScenePreloader.IsInGameReady)
-            ScenePreloader.ActivateInGame();
+        {
+            // Splash 에서 사전 로딩된 InGame 씬을 활성화한다.
+            // LobbyManager 는 DontDestroyOnLoad 에 있으므로 씬 전환 중에도 코루틴이 안전하게 실행된다.
+            StartCoroutine(TransitionToInGame());
+        }
         else
+        {
+            // 폴백: 일반 Single 로드 — Lobby 포함 현재 씬을 모두 교체
             SceneManager.LoadScene(_inGameSceneName);
+        }
+    }
+
+    // ── InGame 씬 전환 코루틴 ─────────────────────────────────
+    // 흐름:
+    //   1. 전환 전 현재 로드된 씬 목록 수집
+    //   2. InGame 활성화 (allowSceneActivation = true)
+    //   3. InGame 이 완전히 로드될 때까지 대기
+    //   4. InGame 을 활성 씬으로 설정
+    //   5. 이전 씬(Lobby 등) 언로드
+    // ※ LobbyManager 는 DontDestroyOnLoad 에 있으므로 씬 언로드와 무관하게 동작한다.
+
+    IEnumerator TransitionToInGame()
+    {
+        // ① 현재 로드된 씬 수집 — InGame 활성화 전에 캡처
+        var toUnload = new List<Scene>();
+        for (int i = 0; i < SceneManager.sceneCount; i++)
+        {
+            Scene s = SceneManager.GetSceneAt(i);
+            if (s.IsValid() && s.isLoaded)
+                toUnload.Add(s);
+        }
+
+        // ② InGame 씬 활성화
+        ScenePreloader.ActivateInGame();
+
+        // ③ InGame 씬이 완전히 로드될 때까지 대기
+        while (true)
+        {
+            Scene inGame = SceneManager.GetSceneByName(_inGameSceneName);
+            if (inGame.IsValid() && inGame.isLoaded)
+            {
+                // ④ InGame 을 활성 씬으로 설정
+                SceneManager.SetActiveScene(inGame);
+                break;
+            }
+            yield return null;
+        }
+
+        // ⑤ 이전 씬 언로드 (LobbyCanvas 등 Lobby 씬 오브젝트 정리)
+        foreach (Scene s in toUnload)
+        {
+            if (s.IsValid())
+                SceneManager.UnloadSceneAsync(s);
+        }
     }
 
     // ── 내부 ─────────────────────────────────────────────────

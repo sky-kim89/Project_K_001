@@ -94,7 +94,7 @@ public class SplashBootstrap : MonoBehaviour
             IEnumerator e = step.Execute();
             while (e.MoveNext())
             {
-                float innerT        = Mathf.Clamp01(step.Progress);
+                float innerT          = Mathf.Clamp01(step.Progress);
                 float overallProgress = (_completedWeight + step.Weight * innerT) / _totalWeight;
                 UpdateProgress(overallProgress);
                 yield return e.Current;
@@ -109,11 +109,20 @@ public class SplashBootstrap : MonoBehaviour
         if (elapsed < _minDisplaySeconds)
             yield return new WaitForSecondsRealtime(_minDisplaySeconds - elapsed);
 
-        // 페이드아웃 후 씬 전환
+        if (!ScenePreloader.IsInGameReady)
+            Debug.LogWarning(
+                $"[SplashBootstrap] InGame 씬이 준비되지 않았습니다 ('{_inGameSceneName}').\n" +
+                "LobbyManager.StartBattle 호출 시 일반 로딩으로 폴백합니다.");
+
+        // ── 페이드아웃 → Lobby 씬 로드 ────────────────────────
         yield return StartCoroutine(FadeOut());
 
-        SceneManager.SetActiveScene(SceneManager.GetSceneByName(_lobbySceneName));
-        SceneManager.UnloadSceneAsync(gameObject.scene);
+        // Single 모드로 Lobby 를 로드한다.
+        // Single 모드는 현재 로드된 모든 씬(Splash)을 즉시 교체하므로
+        // "Splash (is unloading)" 상태 없이 Splash 가 완전히 제거된다.
+        // InGame 의 AsyncOperation 은 static ScenePreloader 에 보관되므로
+        // 씬 전환 이후에도 유효하게 유지된다.
+        SceneManager.LoadScene(_lobbySceneName, LoadSceneMode.Single);
     }
 
     // ── 스텝 등록 (확장 포인트) ───────────────────────────────
@@ -133,7 +142,7 @@ public class SplashBootstrap : MonoBehaviour
     {
         AddStep(new AppWarmupStep());
         AddStep(new ManagerInitStep());
-        AddStep(new ScenePreloadStep(_lobbySceneName, _inGameSceneName));
+        AddStep(new ScenePreloadStep(_inGameSceneName));
     }
 
     protected void AddStep(ISplashStep step) => _steps.Add(step);
@@ -271,25 +280,28 @@ public class SplashBootstrap : MonoBehaviour
 
     // ============================================================
     //  내장 스텝 3 — ScenePreloadStep
-    //  Lobby + InGame 씬을 동시에 비동기 로딩한다.
+    //  InGame 씬만 Additive + allowSceneActivation=false 로 미리 로딩한다.
     //
-    //  - Lobby  : 로딩 완료 후 활성화 (메인 씬)
-    //  - InGame : allowSceneActivation = false 로 대기 상태 유지
-    //             → ScenePreloader.ActivateInGame() 으로 전환
+    //  Lobby 씬은 여기서 로드하지 않는다.
+    //  SplashBootstrap.Start() 의 마지막 단계에서
+    //  SceneManager.LoadScene(lobby, Single) 으로 Splash 전체를 교체하며
+    //  Lobby 를 로드한다 → "Splash (is unloading)" 상태 없이 완전 제거.
+    //
+    //  InGame AsyncOperation 은 static ScenePreloader 에 보관되므로
+    //  씬 전환 후에도 유효하게 유지되며,
+    //  LobbyManager.StartBattle() 에서 ActivateInGame() 으로 즉시 전환된다.
     // ============================================================
 
     sealed class ScenePreloadStep : ISplashStep
     {
-        public string Label    => "씬 로딩 중...";
+        public string Label    => "인게임 씬 로딩 중...";
         public float  Weight   => 0.80f;
         public float  Progress { get; private set; }
 
-        readonly string _lobbyName;
         readonly string _inGameName;
 
-        public ScenePreloadStep(string lobbyName, string inGameName)
+        public ScenePreloadStep(string inGameName)
         {
-            _lobbyName  = lobbyName;
             _inGameName = inGameName;
         }
 
@@ -297,34 +309,32 @@ public class SplashBootstrap : MonoBehaviour
         {
             Progress = 0f;
 
-            // 두 씬 동시 비동기 로딩 시작
-            var lobbyOp  = SceneManager.LoadSceneAsync(_lobbyName,  LoadSceneMode.Additive);
+            // InGame 씬 비동기 로딩 시작 (Additive)
+            // Build Settings 에 씬이 없으면 null 반환
             var inGameOp = SceneManager.LoadSceneAsync(_inGameName, LoadSceneMode.Additive);
+            if (inGameOp == null)
+            {
+                Debug.LogError(
+                    $"[ScenePreloadStep] InGame 씬을 로드할 수 없습니다: '{_inGameName}'\n" +
+                    "File > Build Settings 에 씬이 추가되어 있는지 확인하세요.\n" +
+                    "LobbyManager.StartBattle 호출 시 일반 로딩으로 폴백됩니다.");
+                Progress = 1f;
+                yield break;
+            }
 
-            // allowSceneActivation = false → progress 가 0.9 에서 대기하며 씬을 실제로 활성화하지 않음
-            lobbyOp.allowSceneActivation  = false;
+            // allowSceneActivation = false
+            //   → progress 가 0.9 에서 정지하며 Awake/Start 및 ECS Baker 가 실행되지 않는다.
             inGameOp.allowSceneActivation = false;
 
-            // 두 씬 모두 로딩 완료(0.9)까지 진행률 갱신
-            while (lobbyOp.progress < 0.9f || inGameOp.progress < 0.9f)
+            // 0.9(준비 완료) 에 도달할 때까지 진행률 갱신
+            while (inGameOp.progress < 0.9f)
             {
-                // 0~0.9 범위를 0~1 로 정규화해 Progress 에 반영
-                Progress = (lobbyOp.progress + inGameOp.progress) / (2f * 0.9f);
+                Progress = inGameOp.progress / 0.9f;
                 yield return null;
             }
 
-            Progress = 0.95f;
-
-            // InGame 씬 AsyncOperation 을 ScenePreloader 에 보관 (LobbyManager 가 활용)
+            // ScenePreloader 에 보관 — LobbyManager.StartBattle() 이 여기서 꺼내 사용
             ScenePreloader.SetInGameOp(inGameOp);
-
-            // Lobby 씬 활성화
-            lobbyOp.allowSceneActivation = true;
-
-            // Lobby 씬이 완전히 로드될 때까지 대기
-            while (!SceneManager.GetSceneByName(_lobbyName).isLoaded)
-                yield return null;
-
             Progress = 1f;
         }
     }

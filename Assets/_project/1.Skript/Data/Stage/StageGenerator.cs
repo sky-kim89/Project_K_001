@@ -32,7 +32,7 @@ public static class StageGenerator
     {
         int   total      = mode == BattleMode.Normal ? config.NormalStageCount : config.EliteStageCount;
         float progress   = Mathf.Clamp01((float)stageNumber / total);
-        int   waveCount  = Mathf.Max(1, Mathf.RoundToInt(config.WaveCountCurve.Evaluate(progress)));
+        int   waveCount  = Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(config.WaveCountMin, config.WaveCountMax, progress)));
         int   energyCost = mode == BattleMode.Normal ? config.EnergyCostNormal : config.EnergyCostElite;
 
         var rng   = new System.Random(HashSeed(mode, stageNumber));
@@ -61,9 +61,11 @@ public static class StageGenerator
         float stageProgress, float waveProgress,
         System.Random rng)
     {
-        int       enemyCount = Mathf.Max(1, Mathf.RoundToInt(config.EnemyCountCurve.Evaluate(stageProgress)));
-        int       enemyLevel = Mathf.Max(1, Mathf.RoundToInt(config.EnemyLevelCurve.Evaluate(stageNumber)));
-        int       goldReward = Mathf.Max(10, Mathf.RoundToInt(config.GoldRewardCurve.Evaluate(stageProgress)));
+        int       total      = mode == BattleMode.Normal ? config.NormalStageCount : config.EliteStageCount;
+        float     levelT     = total > 1 ? Mathf.Clamp01((float)(stageNumber - 1) / (total - 1)) : 1f;
+        int       enemyCount = Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(config.EnemyCountMin, config.EnemyCountMax, stageProgress)));
+        int       enemyLevel = Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(config.EnemyLevelMin, config.EnemyLevelMax, levelT)));
+        int       goldReward = Mathf.Max(10, Mathf.RoundToInt(Mathf.Lerp(config.GoldRewardMin, config.GoldRewardMax, stageProgress)));
         EnemyRace race       = AllRaces[rng.Next(AllRaces.Length)];
 
         bool isLastWave = wave == totalWaves;
