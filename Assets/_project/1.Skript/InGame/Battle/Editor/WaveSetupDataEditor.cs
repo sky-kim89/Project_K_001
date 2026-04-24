@@ -93,7 +93,6 @@ public class WaveSetupDataEditor : Editor
         // 웨이브 헤더 (접기/펼치기)
         string header = $"Wave {waveIndex + 1}  " +
                         $"(적군 {TotalCount(wave.EnemyEntries)}  " +
-                        $"골드 {wave.GoldReward}  " +
                         $"종족 {wave.DefaultRace})";
 
         _waveFoldouts[waveIndex] = EditorGUILayout.BeginFoldoutHeaderGroup(
@@ -103,9 +102,7 @@ public class WaveSetupDataEditor : Editor
         {
             EditorGUI.indentLevel++;
 
-            // 골드 보상 / 기본 종족
             Undo.RecordObject(data, "Edit Wave");
-            wave.GoldReward  = EditorGUILayout.IntField("골드 보상", wave.GoldReward);
             wave.DefaultRace = (EnemyRace)EditorGUILayout.EnumPopup("기본 종족", wave.DefaultRace);
 
             // 기본 종족을 모든 적군 항목에 일괄 적용

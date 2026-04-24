@@ -91,9 +91,21 @@ public class InGameManager : MonoBehaviour
             PopupManager.Instance.Close(PopupType.Loading);
     }
 
-    /// <summary>전투 승리 → 결과 팝업 오픈.</summary>
+    /// <summary>전투 승리 → 스테이지 클리어 기록 후 결과 팝업 오픈.</summary>
     void HandleVictory()
     {
+        // 로비에서 선택한 스테이지인 경우에만 진행 기록
+        if (GameSession.Instance.HasStage)
+        {
+            var stage    = GameSession.Instance.CurrentStage;
+            var progress = UserDataManager.Instance?.Get<StageProgressData>();
+            if (progress != null)
+            {
+                progress.RecordClear(stage.Mode, stage.StageNumber);
+                UserDataManager.Instance.RequestSave();
+            }
+        }
+
         if (PopupManager.Instance == null) return;
         var popup = PopupManager.Instance.Open<BattleResultPopup>(PopupType.BattleResult);
         popup?.Setup(true,
@@ -121,7 +133,7 @@ public class InGameManager : MonoBehaviour
         if (GameSession.Instance.HasStage)
         {
             var stage = GameSession.Instance.CurrentStage;
-            mode = CreateModeFromWaves(stage.Mode, stage.Waves);
+            mode = CreateMode(stage);
             Debug.Log($"[InGameManager] 배틀 시작 — {stage.DisplayName}, 웨이브 {stage.Waves.Count}개");
         }
         // 에디터에서 직접 WaveSetup 을 할당해 테스트하는 경우
@@ -132,8 +144,16 @@ public class InGameManager : MonoBehaviour
                 Debug.LogError("[InGameManager] WaveSetup 이 비어있습니다.");
                 return;
             }
-            mode = CreateModeFromWaves(StartMode, WaveSetup.Waves);
-            Debug.Log($"[InGameManager] 배틀 시작 (직접) — 모드: {StartMode}, 웨이브: {WaveSetup.Waves.Count}개");
+            var editorStage = new StageData
+            {
+                Mode        = StartMode,
+                StageNumber = 1,
+                Waves       = WaveSetup.Waves,
+                GoldReward  = 500,
+                StoneReward = 2,
+            };
+            mode = CreateMode(editorStage);
+            Debug.Log($"[InGameManager] 배틀 시작 (에디터 직접) — 모드: {StartMode}, 웨이브: {WaveSetup.Waves.Count}개");
         }
 
         if (mode == null) return;
@@ -142,16 +162,16 @@ public class InGameManager : MonoBehaviour
 
     // ── 모드 생성 ─────────────────────────────────────────────
 
-    BattleModeBase CreateModeFromWaves(BattleMode mode, System.Collections.Generic.List<WaveData> waves)
+    BattleModeBase CreateMode(StageData stage)
     {
-        switch (mode)
+        switch (stage.Mode)
         {
             case BattleMode.Normal:
-            case BattleMode.Elite:          // 엘리트도 NormalMode 사용 (파라미터로 난이도 차별화)
-                return new NormalMode(waves);
+            case BattleMode.Elite:
+                return new NormalMode(stage);
 
             default:
-                Debug.LogError($"[InGameManager] 구현되지 않은 배틀 모드: {mode}");
+                Debug.LogError($"[InGameManager] 구현되지 않은 배틀 모드: {stage.Mode}");
                 return null;
         }
     }

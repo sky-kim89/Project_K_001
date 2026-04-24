@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Entities;
 using UnityEngine;
 
 // ============================================================
@@ -69,6 +70,10 @@ public class BattleManager : Singleton<BattleManager>
     /// <summary>배틀을 시작한다.</summary>
     public void StartBattle(BattleModeBase mode)
     {
+        // 이전 배틀 잔여 유닛이 있을 경우 정리
+        if (_context != null)
+            DespawnAllUnits();
+
         _context             = new BattleContext { Mode = mode.Mode };
         _mode                = mode;
         _wave1AlliesSpawned  = false;
@@ -162,6 +167,7 @@ public class BattleManager : Singleton<BattleManager>
             if (_context.IsLastWave)
             {
                 _mode.ApplyStageClearReward();
+                CommitPendingRewards();
                 _context.State = BattleState.BattleVictory;
                 _mode.OnBattleVictory();
                 OnVictory?.Invoke();
@@ -226,6 +232,59 @@ public class BattleManager : Singleton<BattleManager>
         {
             _context.State = BattleState.WaveClear;
         }
+    }
+
+    // ── 유닛 전체 정리 ────────────────────────────────────────
+
+    /// <summary>
+    /// 진행 중인 배틀을 즉시 종료하고 모든 유닛을 풀로 반납한 뒤 ECS 엔티티를 파괴한다.
+    /// 로비 복귀 시 LobbyManager.ReturnToLobby() 에서 호출.
+    /// </summary>
+    public void DespawnAllUnits()
+    {
+        StopAllCoroutines();
+        _context = null;
+        _mode    = null;
+
+        // ① ECS UnitPoolLinkComponent 를 통해 활성 유닛 GO 풀 반납
+        var world = World.DefaultGameObjectInjectionWorld;
+        if (world != null && world.IsCreated)
+        {
+            var em    = world.EntityManager;
+            var query = em.CreateEntityQuery(
+                new ComponentType[] { ComponentType.ReadOnly<BattleGame.Units.UnitPoolLinkComponent>() });
+
+            using var entities = query.ToEntityArray(Unity.Collections.Allocator.Temp);
+            foreach (var entity in entities)
+            {
+                var link = em.GetComponentObject<BattleGame.Units.UnitPoolLinkComponent>(entity);
+                if (link?.LinkedObject != null)
+                    PoolController.Instance?.Despawn(link.LinkedObject);
+            }
+            query.Dispose();
+
+            // ② 모든 유닛 ECS 엔티티 파괴 (UnitIdentityComponent 기준)
+            var unitQuery = em.CreateEntityQuery(
+                new ComponentType[] { ComponentType.ReadOnly<BattleGame.Units.UnitIdentityComponent>() });
+            em.DestroyEntity(unitQuery);
+            unitQuery.Dispose();
+        }
+
+        // ③ 풀에서 놓친 유닛 브릿지 — 안전망으로 활성 브릿지 전부 회수
+        foreach (var bridge in Object.FindObjectsByType<UnitRuntimeBridge>(
+                     FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+        {
+            PoolController.Instance?.Despawn(bridge.gameObject);
+        }
+    }
+
+    void CommitPendingRewards()
+    {
+        if (_context.PendingRewards.Count == 0) return;
+        var items = UserDataManager.Instance?.Get<ItemData>();
+        if (items == null) return;
+        items.AddBatch(_context.PendingRewards);
+        UserDataManager.Instance.RequestSave();
     }
 
     /// <summary>SpawnEntry 목록의 총 유닛 수를 계산한다.</summary>

@@ -12,6 +12,8 @@ public class StageData
     public BattleMode     Mode;
     public int            StageNumber;
     public int            EnergyCost;
+    public int            GoldReward;
+    public int            StoneReward;
     public int            DailyClearLimit;   // 0 = 무제한
     public Sprite         PreviewSprite;
     public List<WaveData> Waves = new();

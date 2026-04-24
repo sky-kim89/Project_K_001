@@ -55,6 +55,18 @@ public class BattleResultPopup : PopupBase
                 : "아군이 전멸했습니다...";
 
         if (_statsText != null && context != null)
-            _statsText.text = $"처치  {killCount}\n웨이브  {context.CurrentWave} / {context.TotalWaves}";
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append($"처치  {killCount}\n웨이브  {context.CurrentWave} / {context.TotalWaves}");
+
+            if (isVictory && context.PendingRewards.Count > 0)
+            {
+                sb.AppendLine("\n── 보상 ──");
+                foreach (ItemAmount r in context.PendingRewards)
+                    sb.AppendLine($"{r.Item.DisplayName()}  +{r.Amount}");
+            }
+
+            _statsText.text = sb.ToString().TrimEnd();
+        }
     }
 }

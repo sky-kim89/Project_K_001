@@ -174,11 +174,20 @@ public static class LobbySetupTool
         // ── TopBar ────────────────────────────────────────────
         BuildTopBar(go);
 
-        // ── StageSelectPanel ──────────────────────────────────
-        stageUI = BuildStageSelectPanel(go);
+        // ── 컨텐츠 패널 5개 (NavBar 탭 순서와 일치) ──────────
+        var homePanel    = BuildEmptyPanel(go, "HomePanel");
+        var heroPanel    = BuildEmptyPanel(go, "HeroPanel");
+        stageUI          = BuildBattlePanel(go);
+        var battlePanel  = stageUI.gameObject;
+        var shopPanel    = BuildEmptyPanel(go, "ShopPanel");
+        var profilePanel = BuildEmptyPanel(go, "ProfilePanel");
 
-        // ── NavBar ────────────────────────────────────────────
-        BuildNavBar(go);
+        var allPanels = new[] { homePanel, heroPanel, battlePanel, shopPanel, profilePanel };
+
+        // ── NavBar + LobbyNavUI ────────────────────────────────
+        Button[] navButtons = BuildNavBar(go);
+        var navBarGo = go.transform.Find("NavBar").gameObject;
+        WireLobbyNavUI(navBarGo, navButtons, allPanels);
 
         // ── PopupRoot (PopupManager._popupRoot 연결용) ────────
         var pr = CreateEmpty(go, "PopupRoot");
@@ -203,10 +212,10 @@ public static class LobbySetupTool
         var lvText = CreateTMP(bar, "LevelText", "Lv.1", 18, FontStyles.Bold);
         SetRect(lvText.rectTransform, new Vector2(-460, -52), new Vector2(88, 28));
 
-        // 통화 그룹 (오른쪽 세 묶음)
-        CreateCurrencyGroup(bar, "GoldGroup",   GoldColor,   "0",       new Vector2(130, 0));
-        CreateCurrencyGroup(bar, "GemGroup",    GemColor,    "0",       new Vector2(300, 0));
-        CreateCurrencyGroup(bar, "EnergyGroup", EnergyColor, "30 / 30", new Vector2(460, 0));
+        // 통화 그룹 (오른쪽 세 묶음) — CurrencyWidget 자동 부착
+        CreateCurrencyGroup(bar, "GoldGroup",   GoldColor,   eItem.Gold,   new Vector2(130, 0));
+        CreateCurrencyGroup(bar, "GemGroup",    GemColor,    eItem.Gem,    new Vector2(300, 0));
+        CreateCurrencyGroup(bar, "EnergyGroup", EnergyColor, eItem.Energy, new Vector2(460, 0));
 
         // 설정 버튼 (우상단 모서리)
         var settingsBtn = CreateButton(bar, "SettingsBtn", "⚙", SettingsBtnColor, 28);
@@ -221,7 +230,7 @@ public static class LobbySetupTool
     }
 
     static void CreateCurrencyGroup(GameObject parent, string name, Color iconColor,
-                                    string defaultVal, Vector2 pos)
+                                    eItem item, Vector2 pos)
     {
         var group = CreateEmpty(parent, name);
         SetRect(group.GetComponent<RectTransform>(), pos, new Vector2(140, 52));
@@ -229,18 +238,26 @@ public static class LobbySetupTool
         var icon = CreateImage(group, "Icon", iconColor);
         SetRect(icon.GetComponent<RectTransform>(), new Vector2(-42, 0), new Vector2(36, 36));
 
-        var txt = CreateTMP(group, "Value", defaultVal, 22, FontStyles.Bold);
+        var txt = CreateTMP(group, "Value", "0", 22, FontStyles.Bold);
         SetRect(txt.rectTransform, new Vector2(28, 0), new Vector2(90, 40));
         txt.alignment = TextAlignmentOptions.Left;
+
+        // CurrencyWidget 부착 및 필드 연결
+        var widget = group.AddComponent<CurrencyWidget>();
+        var wSo    = new SerializedObject(widget);
+        wSo.FindProperty("_item").enumValueIndex = (int)item;
+        SetObj(wSo, "_amountText", txt);
+        SetObj(wSo, "_icon",       icon);
+        wSo.ApplyModifiedProperties();
     }
 
     // ============================================================
     //  StageSelectPanel  (TopBar ~ NavBar 사이 전체)
     // ============================================================
 
-    static StageSelectUI BuildStageSelectPanel(GameObject canvas)
+    static StageSelectUI BuildBattlePanel(GameObject canvas)
     {
-        var panel = CreateEmpty(canvas, "StageSelectPanel");
+        var panel = CreateEmpty(canvas, "BattlePanel");
         {
             // TopBar(130) 아래 ~ NavBar(110) 위
             var rt = panel.GetComponent<RectTransform>();
@@ -353,25 +370,63 @@ public static class LobbySetupTool
     //  NavBar  (하단 110px 고정)
     // ============================================================
 
-    static void BuildNavBar(GameObject canvas)
+    static Button[] BuildNavBar(GameObject canvas)
     {
         var bar = CreatePanel(canvas, "NavBar", BarColor);
         AnchorBottom(bar, 110);
 
-        string[] labels = { "홈", "영웅", "전투", "상점", "프로필" };
-        float startX    = -400f;
-        float step      = 200f;
+        string[] labels  = { "홈", "영웅", "전투", "상점", "프로필" };
+        var      buttons = new Button[labels.Length];
 
         for (int i = 0; i < labels.Length; i++)
         {
             var btn = CreateButton(bar, $"NavBtn_{labels[i]}", labels[i], PanelColor, 20);
             SetRect(btn.GetComponent<RectTransform>(),
-                new Vector2(startX + step * i, 0), new Vector2(170, 84));
-
-            // 전투 탭 활성 색상
-            if (i == 2)
-                btn.GetComponent<Image>().color = TabActiveColor;
+                new Vector2(-400f + 200f * i, 0), new Vector2(170, 84));
+            buttons[i] = btn.GetComponent<Button>();
         }
+        return buttons;
+    }
+
+    // ============================================================
+    //  빈 컨텐츠 패널 생성
+    //  TopBar(130px) 아래 ~ NavBar(110px) 위 공간을 채운다.
+    //  LobbyNavUI 가 탭 전환 시 SetActive 로 제어한다.
+    // ============================================================
+
+    static GameObject BuildEmptyPanel(GameObject canvas, string name)
+    {
+        var panel = CreateEmpty(canvas, name);
+        var rt    = panel.GetComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = new Vector2(0,  110);
+        rt.offsetMax = new Vector2(0, -130);
+        panel.SetActive(false);   // 기본 비활성; LobbyNavUI.Start() 가 활성화
+        return panel;
+    }
+
+    // ============================================================
+    //  LobbyNavUI 컴포넌트 생성 및 필드 연결
+    // ============================================================
+
+    static void WireLobbyNavUI(GameObject navBarGo, Button[] navButtons, GameObject[] panels)
+    {
+        var navUI = navBarGo.AddComponent<LobbyNavUI>();
+        var so    = new SerializedObject(navUI);
+
+        var btnsProp   = so.FindProperty("_navButtons");
+        var panelsProp = so.FindProperty("_panels");
+
+        btnsProp.arraySize   = navButtons.Length;
+        panelsProp.arraySize = panels.Length;
+
+        for (int i = 0; i < navButtons.Length; i++)
+            btnsProp.GetArrayElementAtIndex(i).objectReferenceValue = navButtons[i];
+        for (int i = 0; i < panels.Length; i++)
+            panelsProp.GetArrayElementAtIndex(i).objectReferenceValue = panels[i];
+
+        so.ApplyModifiedProperties();
     }
 
     // ============================================================

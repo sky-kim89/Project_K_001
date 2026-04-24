@@ -18,8 +18,8 @@ public class BattleContext
     public int AliveEnemyCount { get; set; }
     public int AliveAllyCount  { get; set; }
 
-    // ── 누적 보상 (웨이브 클리어마다 누적) ────────────────────
-    public int PendingGold { get; set; }
+    // ── 누적 보상 (스테이지 클리어 시 ApplyStageClearReward 가 채움) ──
+    public System.Collections.Generic.List<ItemAmount> PendingRewards { get; } = new();
 
     // ── 편의 프로퍼티 ─────────────────────────────────────────
     public bool IsLastWave      => CurrentWave >= TotalWaves;

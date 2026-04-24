@@ -71,6 +71,11 @@ public class LobbyManager : Singleton<LobbyManager>
 
     void Start()
     {
+        // 마지막 클리어 스테이지로 초기 인덱스 설정
+        var progress = UserDataManager.Instance?.Get<StageProgressData>();
+        if (progress != null)
+            _currentIndex = Mathf.Clamp(progress.ClearedNormalStages, 0, _normalStages.Count - 1);
+
         OnStageChanged?.Invoke(CurrentStage);
     }
 
@@ -79,6 +84,11 @@ public class LobbyManager : Singleton<LobbyManager>
     public void SetTab(BattleMode mode)
     {
         if (_currentTab == mode) return;
+        if (mode == BattleMode.Elite && !IsEliteUnlocked())
+        {
+            Debug.Log("[LobbyManager] 엘리트 탭 잠금 — 일반 스테이지 5 클리어 필요");
+            return;
+        }
         _currentTab   = mode;
         _currentIndex = 0;
         OnStageChanged?.Invoke(CurrentStage);
@@ -99,9 +109,10 @@ public class LobbyManager : Singleton<LobbyManager>
     public bool CanNavigate(int delta)
     {
         var list = GetList(_currentTab);
-        if (list == null) return false;
+        if (list == null || list.Count == 0) return false;
         int next = _currentIndex + delta;
-        return next >= 0 && next < list.Count;
+        if (next < 0 || next >= list.Count) return false;
+        return IsStageUnlocked(_currentTab, next + 1);  // stageNumber = index+1
     }
 
     public void StartBattle()
@@ -115,9 +126,21 @@ public class LobbyManager : Singleton<LobbyManager>
             return;
         }
 
+        // 에너지 체크
+        var items = UserDataManager.Instance?.Get<ItemData>();
+        if (items == null || !items.CanSpend(eItem.Energy, stage.EnergyCost))
+        {
+            int have = items?.Get(eItem.Energy) ?? 0;
+            Debug.LogWarning($"[LobbyManager] 에너지 부족 — 필요: {stage.EnergyCost}, 보유: {have}");
+            // TODO: 에너지 부족 팝업 표시
+            return;
+        }
+        items.Spend(eItem.Energy, stage.EnergyCost);
+        UserDataManager.Instance.RequestSave();
+
         _isBattleStarting = true;
         GameSession.Instance.CurrentStage = stage;
-        Debug.Log($"[LobbyManager] 전투 시작 → {stage.DisplayName} (웨이브 {stage.Waves.Count}개)");
+        Debug.Log($"[LobbyManager] 전투 시작 → {stage.DisplayName} (에너지 -{stage.EnergyCost}, 웨이브 {stage.Waves.Count}개)");
 
         if (ScenePreloader.IsInGameReady)
             StartCoroutine(TransitionToInGame());
@@ -132,6 +155,7 @@ public class LobbyManager : Singleton<LobbyManager>
     public void ReturnToLobby()
     {
         _isBattleStarting = false;
+        BattleManager.Instance?.DespawnAllUnits();
         SceneManager.LoadScene(_lobbySceneName);
     }
 
@@ -208,6 +232,18 @@ public class LobbyManager : Singleton<LobbyManager>
     }
 
     // ── 내부 ─────────────────────────────────────────────────
+
+    bool IsStageUnlocked(BattleMode mode, int stageNumber)
+    {
+        var p = UserDataManager.Instance?.Get<StageProgressData>();
+        return p?.IsUnlocked(mode, stageNumber) ?? stageNumber == 1;
+    }
+
+    bool IsEliteUnlocked()
+    {
+        var p = UserDataManager.Instance?.Get<StageProgressData>();
+        return p?.IsEliteUnlocked ?? false;
+    }
 
     List<StageData> GetList(BattleMode mode)
         => mode == BattleMode.Normal ? _normalStages : _eliteStages;

@@ -12,20 +12,18 @@ using UnityEngine;
 
 public class NormalMode : BattleModeBase
 {
-    // ── 웨이브 데이터 (추후 SO 테이블로 교체 예정) ───────────
+    readonly StageData _stage;
 
-    readonly List<WaveData> _waves;
-
-    public NormalMode(List<WaveData> waves)
+    public NormalMode(StageData stage)
     {
-        _waves = waves;
+        _stage = stage;
     }
 
     // ── BattleModeBase 구현 ───────────────────────────────────
 
     public override BattleMode Mode => BattleMode.Normal;
 
-    protected override int GetTotalWaves() => _waves.Count;
+    protected override int GetTotalWaves() => _stage.Waves.Count;
 
     public override List<SpawnEntry> GetAllySpawnEntries(int wave)
     {
@@ -40,7 +38,7 @@ public class NormalMode : BattleModeBase
         {
             entries.Add(new SpawnEntry
             {
-                Name         = unit.UnitName,   // 직업·스텟 시드
+                Name         = unit.UnitName,
                 Level        = unit.Level,
                 UnitType     = SpawnUnitType.General,
                 Count        = 1,
@@ -51,23 +49,14 @@ public class NormalMode : BattleModeBase
         return entries;
     }
 
-    public override List<SpawnEntry> GetEnemySpawnEntries(int wave)
-    {
-        WaveData data = GetWaveData(wave);
-        return data?.EnemyEntries;
-    }
+    public override List<SpawnEntry> GetEnemySpawnEntries(int wave) => GetWaveData(wave)?.EnemyEntries;
 
     public override void ApplyStageClearReward()
     {
-        int total = 0;
-        for (int w = 1; w <= _waves.Count; w++)
-        {
-            WaveData data = GetWaveData(w);
-            if (data != null) total += data.GoldReward;
-        }
+        if (_stage.GoldReward  > 0) Context.PendingRewards.Add(new ItemAmount { Item = eItem.Gold,        Amount = _stage.GoldReward  });
+        if (_stage.StoneReward > 0) Context.PendingRewards.Add(new ItemAmount { Item = eItem.BattleStone, Amount = _stage.StoneReward });
 
-        Context.PendingGold += total;
-        Debug.Log($"[NormalMode] 스테이지 클리어 보상: 골드 +{total}");
+        Debug.Log($"[NormalMode] 클리어 보상: 골드 +{_stage.GoldReward}, 전투석 +{_stage.StoneReward}");
     }
 
     // ── 훅 오버라이드 ─────────────────────────────────────────
@@ -96,13 +85,13 @@ public class NormalMode : BattleModeBase
 
     WaveData GetWaveData(int wave)
     {
-        int index = wave - 1; // wave 는 1부터 시작
-        if (index < 0 || index >= _waves.Count)
+        int index = wave - 1;
+        if (index < 0 || index >= _stage.Waves.Count)
         {
             Debug.LogWarning($"[NormalMode] 웨이브 데이터 없음: {wave}");
             return null;
         }
-        return _waves[index];
+        return _stage.Waves[index];
     }
 }
 
@@ -122,7 +111,4 @@ public class WaveData
 
     [Tooltip("이 웨이브에서 스폰할 적군 목록")]
     public List<SpawnEntry> EnemyEntries = new();
-
-    [Tooltip("이 웨이브 클리어 시 지급할 골드")]
-    public int GoldReward = 100;
 }

@@ -34,7 +34,11 @@ public class StageConfig : ScriptableObject
     public int EnemyLevelMin = 1;
     public int EnemyLevelMax = 30;
 
-    [Header("웨이브당 골드 보상 (스테이지 진행도 0→1 에 따라 Min→Max 선형 보간)")]
-    public int GoldRewardMin = 50;
-    public int GoldRewardMax = 600;
+    [Header("스테이지 클리어 골드 보상 (진행도 0→1 에 따라 Min→Max 선형 보간)")]
+    public int GoldRewardMin = 200;
+    public int GoldRewardMax = 3000;
+
+    [Header("스테이지 클리어 전투석 보상 (진행도 0→1 에 따라 Min→Max 선형 보간)")]
+    public int StoneRewardMin = 1;
+    public int StoneRewardMax = 10;
 }

@@ -44,11 +44,16 @@ public static class StageGenerator
             waves.Add(GenerateWave(config, mode, stageNumber, w, waveCount, progress, waveT, rng));
         }
 
+        int goldReward  = Mathf.Max(10,  Mathf.RoundToInt(Mathf.Lerp(config.GoldRewardMin,  config.GoldRewardMax,  progress)));
+        int stoneReward = Mathf.Max(1,   Mathf.RoundToInt(Mathf.Lerp(config.StoneRewardMin, config.StoneRewardMax, progress)));
+
         return new StageData
         {
             Mode        = mode,
             StageNumber = stageNumber,
             EnergyCost  = energyCost,
+            GoldReward  = goldReward,
+            StoneReward = stoneReward,
             Waves       = waves,
         };
     }
@@ -65,7 +70,6 @@ public static class StageGenerator
         float     levelT     = total > 1 ? Mathf.Clamp01((float)(stageNumber - 1) / (total - 1)) : 1f;
         int       enemyCount = Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(config.EnemyCountMin, config.EnemyCountMax, stageProgress)));
         int       enemyLevel = Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(config.EnemyLevelMin, config.EnemyLevelMax, levelT)));
-        int       goldReward = Mathf.Max(10, Mathf.RoundToInt(Mathf.Lerp(config.GoldRewardMin, config.GoldRewardMax, stageProgress)));
         EnemyRace race       = AllRaces[rng.Next(AllRaces.Length)];
 
         bool isLastWave = wave == totalWaves;
@@ -121,7 +125,6 @@ public static class StageGenerator
         {
             DefaultRace  = race,
             EnemyEntries = entries,
-            GoldReward   = goldReward,
         };
     }
 

@@ -61,7 +61,12 @@ public class StageSelectUI : MonoBehaviour
         SetTabColor(_normalTabBtn, tab == BattleMode.Normal);
         SetTabColor(_eliteTabBtn,  tab == BattleMode.Elite);
 
-        // 내비 버튼 활성화
+        // 엘리트 탭 잠금 — 일반 스테이지 5 클리어 전에는 비활성
+        var progress       = UserDataManager.Instance?.Get<StageProgressData>();
+        bool eliteUnlocked = progress?.IsEliteUnlocked ?? false;
+        if (_eliteTabBtn != null) _eliteTabBtn.interactable = eliteUnlocked;
+
+        // 내비 버튼 활성화 (잠금 스테이지 이동 불가)
         if (_prevBtn != null) _prevBtn.interactable = LobbyManager.Instance.CanNavigate(-1);
         if (_nextBtn != null) _nextBtn.interactable = LobbyManager.Instance.CanNavigate(1);
 
