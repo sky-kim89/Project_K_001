@@ -45,8 +45,11 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
 
     // ── 공개 API ─────────────────────────────────────────────
 
-    /// <summary>AllySpawner 가 스폰 직후 호출. 등급은 가중치 랜덤으로 자동 결정.</summary>
-    public void Initialize(string unitName, int level = 1)
+    /// <summary>
+    /// AllySpawner 가 스폰 직후 호출. 등급은 가중치 랜덤으로 자동 결정.
+    /// unitEntry 를 전달하면 런 장비 스탯이 SpawnEntity() 전에 반영된다.
+    /// </summary>
+    public void Initialize(string unitName, int level = 1, UnitEntry unitEntry = null)
     {
         _unitName = unitName;
         _level    = level;
@@ -69,6 +72,11 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
             if (!Mathf.Approximately(scaleMult, 1f))
                 transform.localScale *= scaleMult;
         }
+
+        // ── 장비 스탯 적용 (패시브 이후, SpawnEntity 직전) ────
+        var equipDb = EquipmentDatabase.Current;
+        if (equipDb != null && unitEntry != null)
+            EquipmentApplier.ApplyAll(_stat, unitEntry, equipDb);
 
         // 외형 적용 (ECS Entity 생성과 독립적으로 실행)
         GetComponent<UnitAppearanceBridge>()?.ApplyAlly(unitName, _job, _grade);

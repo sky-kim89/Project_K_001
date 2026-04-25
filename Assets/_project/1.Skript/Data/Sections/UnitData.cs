@@ -58,6 +58,38 @@ public class UnitData : ISaveSection
         if (entry != null) entry.Exp += amount;
     }
 
+    // ── 런 장비 슬롯 관리 (회귀 시 ClearAllEquipments 호출) ──
+
+    public void SetEquipment(string unitId, int slot, string equipId, int enhanceLevel)
+    {
+        if (slot < 0 || slot >= 2) return;
+        var entry = GetUnit(unitId);
+        if (entry == null) return;
+        entry.EnsureEquipArrays();
+        entry.RunEquipSlots[slot]   = equipId ?? "";
+        entry.RunEquipEnhance[slot] = enhanceLevel;
+    }
+
+    public void RemoveEquipment(string unitId, int slot)
+    {
+        if (slot < 0 || slot >= 2) return;
+        var entry = GetUnit(unitId);
+        if (entry == null) return;
+        entry.EnsureEquipArrays();
+        entry.RunEquipSlots[slot]   = "";
+        entry.RunEquipEnhance[slot] = 0;
+    }
+
+    /// <summary>회귀(런 종료) 시 모든 장군의 런 장비를 초기화.</summary>
+    public void ClearAllEquipments()
+    {
+        foreach (var entry in _raw.Units)
+        {
+            entry.RunEquipSlots   = new string[2];
+            entry.RunEquipEnhance = new int[2];
+        }
+    }
+
     // ── ISaveSection ─────────────────────────────────────────
 
     public string Serialize()              => JsonUtility.ToJson(_raw);
@@ -93,4 +125,18 @@ public class UnitEntry
     public int       SkillId = -1;     // -1 = 장착 없음
     public UnitGrade Grade   = UnitGrade.Normal;
     // 직업(UnitJob)은 UnitName 시드로 결정적 배정 — UnitJobRoller.GetJob(UnitName) 으로 조회
+
+    // ── 런 장비 슬롯 (회귀 시 초기화) ─────────────────────────
+    /// <summary>슬롯 0~1 장착 중인 장비 ID. 비어있으면 "".</summary>
+    public string[] RunEquipSlots   = new string[2];
+    /// <summary>슬롯별 강화 레벨 (0 = 미강화).</summary>
+    public int[]    RunEquipEnhance = new int[2];
+
+    internal void EnsureEquipArrays()
+    {
+        if (RunEquipSlots == null || RunEquipSlots.Length < 2)
+            RunEquipSlots = new string[2];
+        if (RunEquipEnhance == null || RunEquipEnhance.Length < 2)
+            RunEquipEnhance = new int[2];
+    }
 }

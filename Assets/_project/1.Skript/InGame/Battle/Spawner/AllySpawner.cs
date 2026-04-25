@@ -61,9 +61,12 @@ public class AllySpawner : MonoBehaviour
                     Debug.LogWarning($"[AllySpawner] 풀 스폰 실패: '{entry.PoolKey}'");
                 else
                 {
-                    string unitName = string.IsNullOrEmpty(entry.Name) ? entry.PoolKey : entry.Name;
+                    string unitName  = string.IsNullOrEmpty(entry.Name) ? entry.PoolKey : entry.Name;
                     if (unit.TryGetComponent<GeneralRuntimeBridge>(out var bridge))
-                        bridge.Initialize(unitName, entry.Level);
+                    {
+                        var unitEntry = UserDataManager.Instance?.Get<UnitData>()?.GetUnit(unitName);
+                        bridge.Initialize(unitName, entry.Level, unitEntry);
+                    }
                 }
 
                 slotIndex++;
@@ -103,9 +106,12 @@ public class AllySpawner : MonoBehaviour
                 }
                 else
                 {
-                    string unitName = string.IsNullOrEmpty(entry.Name) ? entry.PoolKey : entry.Name;
+                    string unitName  = string.IsNullOrEmpty(entry.Name) ? entry.PoolKey : entry.Name;
                     if (unit.TryGetComponent<GeneralRuntimeBridge>(out var bridge))
-                        bridge.Initialize(unitName, entry.Level);
+                    {
+                        var unitEntry = UserDataManager.Instance?.Get<UnitData>()?.GetUnit(unitName);
+                        bridge.Initialize(unitName, entry.Level, unitEntry);
+                    }
                 }
 
                 slotIndex++;
