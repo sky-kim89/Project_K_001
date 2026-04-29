@@ -46,7 +46,8 @@ namespace Assets.PixelFantasy.Common.Scripts.CharacterScripts
             Eyes = "Human";
             Body = "Human";
 
-            Rebuild();
+            if (SpriteCollection != null)
+                Rebuild();
         }
 
         public void RandomizeEquipment(bool helmet = true, bool armor = true, bool weapon = true, bool shield = true)

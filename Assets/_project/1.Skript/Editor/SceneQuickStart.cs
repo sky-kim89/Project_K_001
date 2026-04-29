@@ -7,15 +7,15 @@ using UnityEngine.UIElements;
 
 // ============================================================
 //  SceneQuickStart.cs
-//  에디터 씬 빠른 실행 도구.
+//  에디터 씬 빠른 이동 도구.
 //
-//  기능 1 — 단축키
-//    Ctrl+Shift+Alt+1 : Splash 씬 재생
-//    Ctrl+Shift+Alt+2 : Lobby 씬 재생
-//    Ctrl+Shift+Alt+3 : InGame 씬 재생
+//  기능 1 — 단축키 (모두 씬 로드, 재생 없음)
+//    Ctrl+Shift+Alt+1 : Splash 씬 로드
+//    Ctrl+Shift+Alt+2 : Lobby 씬 로드
+//    Ctrl+Shift+Alt+3 : InGame 씬 로드
 //
 //  기능 2 — 상단 툴바 버튼
-//    재생 버튼 왼쪽에 "▶ S" 버튼 추가 → Splash 씬 재생
+//    재생 버튼 왼쪽 "▶ S" 버튼 → Splash 씬 재생 (Play 진입)
 //
 //  씬 검색 순서: Build Settings → 프로젝트 전체 (폴백)
 // ============================================================
@@ -28,22 +28,43 @@ public static class SceneQuickStart
     const string Lobby  = "Lobby";
     const string InGame = "InGame";
 
-    [MenuItem("Tools/Project K/▶ Splash 재생  %#&1", priority = 0)]
-    public static void PlaySplash() => Play(Splash);
+    [MenuItem("Tools/Project K/Splash 로드    %#&1", priority = 0)]
+    public static void LoadSplash() => Load(Splash);
 
-    [MenuItem("Tools/Project K/▶ Lobby 재생   %#&2", priority = 1)]
-    public static void PlayLobby() => Play(Lobby);
+    [MenuItem("Tools/Project K/Lobby 로드     %#&2", priority = 1)]
+    public static void LoadLobby() => Load(Lobby);
 
-    [MenuItem("Tools/Project K/▶ InGame 재생  %#&3", priority = 2)]
-    public static void PlayInGame() => Play(InGame);
+    [MenuItem("Tools/Project K/InGame 로드    %#&3", priority = 2)]
+    public static void LoadInGame() => Load(InGame);
 
     // ── 내부 ──────────────────────────────────────────────────
 
+    // 씬 로드만 (재생 없음) — 단축키 및 메뉴에서 사용
+    internal static void Load(string sceneName)
+    {
+        if (EditorApplication.isPlaying)
+        {
+            Debug.LogWarning("[SceneQuickStart] 재생 중에는 씬 로드를 사용할 수 없습니다.");
+            return;
+        }
+
+        string path = FindScenePath(sceneName);
+        if (path == null)
+        {
+            Debug.LogError($"[SceneQuickStart] '{sceneName}' 씬을 찾을 수 없습니다.\n" +
+                           "Build Settings 에 씬이 추가되어 있는지 확인하세요.");
+            return;
+        }
+
+        if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            EditorSceneManager.OpenScene(path);
+    }
+
+    // 씬 로드 후 Play 진입 — 툴바 버튼에서만 사용
     internal static void Play(string sceneName)
     {
         if (EditorApplication.isPlaying)
         {
-            // 재생 중이면 중지
             EditorApplication.isPlaying = false;
             return;
         }
@@ -137,7 +158,7 @@ static class SceneQuickStartToolbar
         {
             name    = BtnName,
             text    = "▶ S",
-            tooltip = "Splash 씬 재생 (Ctrl+Shift+Alt+1)",
+            tooltip = "Splash 씬 재생",
         };
         btn.style.marginLeft   = 4;
         btn.style.marginRight  = 4;

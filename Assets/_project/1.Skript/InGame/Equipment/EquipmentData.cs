@@ -26,6 +26,7 @@ public class EquipmentData : ScriptableObject
     public string    EquipmentName;
     [TextArea(2, 4)]
     public string    Description;
+    public UnityEngine.Sprite Icon;
 
     // ── 등급 (UnitGrade 공통) ─────────────────────────────────
     public UnitGrade Grade = UnitGrade.Normal;
@@ -34,14 +35,21 @@ public class EquipmentData : ScriptableObject
     public List<EquipStatEntry> StatEntries = new();
 
     // ── 조건부 효과 (Unique 이상 등급용) ─────────────────────
-    public EquipmentTrigger TriggerType     = EquipmentTrigger.None;
-    public StatType         TriggerStat     = StatType.Attack;
-    /// <summary>트리거 발동 시 StatusEffectBuffer 에 추가할 절대값 Delta</summary>
-    public float            TriggerValue    = 0f;
+    public EquipmentTrigger     TriggerType        = EquipmentTrigger.None;
+    public StatType             TriggerStat        = StatType.Attack;
+    /// <summary>
+    /// 트리거 발동 시 적용할 수치.
+    ///   TriggerIsPercent = false : 절대값 Delta (예: +120 체력)
+    ///   TriggerIsPercent = true  : TriggerPercentBase 기준 비율 (예: 0.10 = 10%)
+    /// </summary>
+    public float                TriggerValue       = 0f;
+    public bool                 TriggerIsPercent   = false;
+    /// <summary>IsPercent = true 일 때 비율 계산 기준.</summary>
+    public EquipTriggerPercentBase TriggerPercentBase = EquipTriggerPercentBase.Absolute;
     [Range(0f, 1f)]
-    public float            TriggerChance   = 0.3f;
+    public float                TriggerChance      = 0.3f;
     /// <summary>버프 지속 시간 (초). 0 = 즉시 적용형.</summary>
-    public float            TriggerDuration = 0f;
+    public float                TriggerDuration    = 0f;
 
     // ── 아이템 레벨 ───────────────────────────────────────────
     [Min(1)]
@@ -68,6 +76,20 @@ public enum EquipmentTrigger
     None     = 0,
     OnAttack = 1,
     OnHit    = 2,
+}
+
+// ── 퍼센트 기준 ──────────────────────────────────────────────
+/// <summary>
+/// TriggerIsPercent = true 일 때 비율 계산의 기준이 되는 값.
+///   Absolute   — 퍼센트 미사용 (절대값)
+///   OfDamage   — 이번 공격으로 준 피해량 기준   (OnAttack 전용)
+///   OfMaxHp    — 장군 최대 체력(MaxHp) 기준      (OnHit 전용)
+/// </summary>
+public enum EquipTriggerPercentBase
+{
+    Absolute = 0,
+    OfDamage = 1,
+    OfMaxHp  = 2,
 }
 
 // ── 스탯 항목 ─────────────────────────────────────────────────
