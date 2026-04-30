@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hero UI - Preset B: 좌측 패널 탭 분리</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#111;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;
+  font-family:'Segoe UI',sans-serif;
+  user-select:none;
+}
+.label {
+  position:fixed;
+  top:12px;
+  left:50%;
+  transform:translateX(-50%);
+  background:#333;
+  color:#aaa;
+  font-size:12px;
+  padding:4px 14px;
+  border-radius:20px;
+  white-space:nowrap;
+}
+.phone {
+  width:390px;
+  height:780px;
+  background:#1a1a2e;
+  border-radius:28px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  border:2px solid #333;
+  color:#eee;
+}
+
+/* TOP BAR */
+.top-bar {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:#12122a;
+  border-bottom:1px solid #2a2a4a;
+  padding:8px 12px;
+  height:44px;
+  flex-shrink:0;
+}
+.top-left { display:flex; align-items:center; gap:6px; }
+.top-avatar {
+  width:28px; height:28px;
+  background:#3a3a6a;
+  border:1px solid #5a5a9a;
+  border-radius:4px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px;
+}
+.top-lv { font-size:10px; color:#aaa; }
+.currencies { display:flex; gap:10px; align-items:center; }
+.currency { display:flex; align-items:center; gap:3px; font-size:12px; font-weight:700; }
+.cur-icon { width:12px; height:12px; border-radius:50%; }
+.cur-gold { background:#f0a500; }
+.cur-gem1 { background:#c060ff; }
+.cur-gem2 { background:#30ccff; }
+
+.main { display:flex; flex:1; overflow:hidden; }
+
+/* LEFT PANEL */
+.left {
+  width:158px;
+  flex-shrink:0;
+  background:#16162e;
+  border-right:1px solid #2a2a4a;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.hero-portrait {
+  width:100%;
+  height:88px;
+  background:linear-gradient(135deg,#2a2a5a,#1a3a6a);
+  display:flex; align-items:center; justify-content:center;
+  font-size:44px;
+  flex-shrink:0;
+  border-bottom:1px solid #2a2a4a;
+}
+.hero-identity {
+  padding:7px 10px 5px;
+  border-bottom:1px solid #2a2a4a;
+  flex-shrink:0;
+}
+.hero-name { font-size:12px; font-weight:700; }
+.hero-meta { font-size:10px; color:#7a9abb; margin-top:1px; }
+
+/* TAB BAR */
+.tab-bar {
+  display:flex;
+  border-bottom:2px solid #2a2a4a;
+  flex-shrink:0;
+}
+.tab {
+  flex:1;
+  padding:7px 0;
+  text-align:center;
+  font-size:11px;
+  color:#666;
+  cursor:pointer;
+  transition:all 0.2s;
+  border-bottom:2px solid transparent;
+  margin-bottom:-2px;
+}
+.tab.active {
+  color:#5aa0ff;
+  border-bottom-color:#5aa0ff;
+  background:rgba(90,160,255,0.05);
+}
+
+/* TAB CONTENTS */
+.tab-content { display:none; flex:1; overflow-y:auto; flex-direction:column; }
+.tab-content.active { display:flex; }
+
+/* 스탯 탭 */
+.stat-list { padding:6px 0; flex:1; }
+.stat-item {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:9px 12px;
+  border-bottom:1px solid #1e1e38;
+}
+.stat-item:last-child { border-bottom:none; }
+.s-label { font-size:12px; color:#99aacc; }
+.s-value { font-size:16px; font-weight:700; color:#fff; }
+.s-value.hp { color:#80ff99; }
+.s-value.atk { color:#ff8870; }
+.s-value.def { color:#70ccff; }
+
+/* 장비 탭 */
+.equip-content { padding:10px; display:flex; flex-direction:column; gap:8px; }
+.equip-slot-big {
+  background:#202040;
+  border:1px dashed #444;
+  border-radius:8px;
+  padding:14px 10px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.slot-icon {
+  width:40px; height:40px;
+  background:#2a2a50;
+  border:1px solid #444;
+  border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px;
+}
+.slot-info { flex:1; }
+.slot-name { font-size:12px; color:#666; }
+.slot-stat { font-size:10px; color:#444; margin-top:2px; }
+
+/* 스킬 탭 */
+.skill-content { padding:8px; display:flex; flex-direction:column; gap:6px; }
+.skill-card {
+  background:#202040;
+  border:1px solid #2a2a5a;
+  border-radius:8px;
+  padding:10px;
+}
+.skill-type { font-size:9px; color:#5aa0ff; font-weight:700; letter-spacing:1px; margin-bottom:3px; }
+.skill-name { font-size:13px; font-weight:700; }
+.skill-desc { font-size:10px; color:#999; margin-top:4px; line-height:1.4; }
+
+/* RIGHT */
+.right {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.list-header {
+  padding:8px 10px 6px;
+  font-size:13px;
+  font-weight:700;
+  color:#aaa;
+  border-bottom:1px solid #2a2a4a;
+  flex-shrink:0;
+}
+.hero-grid {
+  flex:1;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+  padding:8px;
+  overflow-y:auto;
+}
+.hero-card {
+  background:#4a1a1a;
+  border-radius:8px;
+  padding:8px;
+  cursor:pointer;
+  border:2px solid transparent;
+  transition:all 0.15s;
+}
+.hero-card.selected { background:#1a3a5a; border-color:#4a9eff; }
+.card-portrait {
+  width:100%; height:50px;
+  background:rgba(0,0,0,0.3);
+  border-radius:4px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:26px;
+  margin-bottom:4px;
+}
+.card-name { font-size:11px; font-weight:700; }
+.card-meta { display:flex; justify-content:space-between; font-size:9px; color:#aaa; margin-top:2px; }
+
+/* BOTTOM NAV */
+.bottom-nav {
+  display:flex;
+  background:#12122a;
+  border-top:1px solid #2a2a4a;
+  height:50px;
+  flex-shrink:0;
+}
+.nav-item {
+  flex:1;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  font-size:10px; color:#666;
+  cursor:pointer; gap:2px;
+}
+.nav-item.active { color:#5aa0ff; }
+.nav-icon { font-size:18px; }
+</style>
+</head>
+<body>
+<div class="label">Preset B — 좌측 패널 탭 분리 (스탯 / 장비 / 스킬)</div>
+
+<div class="phone">
+  <div class="top-bar">
+    <div class="top-left">
+      <div class="top-avatar">🧑</div>
+      <span class="top-lv">Lv.1</span>
+    </div>
+    <div class="currencies">
+      <div class="currency"><div class="cur-icon cur-gold"></div>0</div>
+      <div class="currency"><div class="cur-icon cur-gem1"></div>2,900</div>
+      <div class="currency"><div class="cur-icon cur-gem2"></div>30</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="left">
+      <div class="hero-portrait">🧙</div>
+      <div class="hero-identity">
+        <div class="hero-name">General2123</div>
+        <div class="hero-meta">Lv.100 · 아병사</div>
+      </div>
+
+      <!-- 탭 바 -->
+      <div class="tab-bar">
+        <div class="tab active" onclick="switchTab('stat',this)">스탯</div>
+        <div class="tab" onclick="switchTab('equip',this)">장비</div>
+        <div class="tab" onclick="switchTab('skill',this)">스킬</div>
+      </div>
+
+      <!-- 스탯 탭 -->
+      <div class="tab-content active" id="tab-stat">
+        <div class="stat-list">
+          <div class="stat-item">
+            <span class="s-label">체력</span>
+            <span class="s-value hp">750</span>
+          </div>
+          <div class="stat-item">
+            <span class="s-label">공격</span>
+            <span class="s-value atk">507</span>
+          </div>
+          <div class="stat-item">
+            <span class="s-label">방어율</span>
+            <span class="s-value def">14.0%</span>
+          </div>
+          <div class="stat-item">
+            <span class="s-label">이속</span>
+            <span class="s-value">1.8</span>
+          </div>
+          <div class="stat-item">
+            <span class="s-label">공속</span>
+            <span class="s-value">0.66/초</span>
+          </div>
+          <div class="stat-item">
+            <span class="s-label">사거리</span>
+            <span class="s-value">6.6</span>
+          </div>
+          <div class="stat-item">
+            <span class="s-label">총병수</span>
+            <span class="s-value">18명</span>
+          </div>
+          <div class="stat-item">
+            <span class="s-label">지휘력</span>
+            <span class="s-value">10</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 장비 탭 -->
+      <div class="tab-content" id="tab-equip">
+        <div class="equip-content">
+          <div class="equip-slot-big">
+            <div class="slot-icon">🗡️</div>
+            <div class="slot-info">
+              <div class="slot-name">무기 슬롯</div>
+              <div class="slot-stat">비어있음</div>
+            </div>
+          </div>
+          <div class="equip-slot-big">
+            <div class="slot-icon">🛡️</div>
+            <div class="slot-info">
+              <div class="slot-name">방어구 슬롯</div>
+              <div class="slot-stat">비어있음</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 스킬 탭 -->
+      <div class="tab-content" id="tab-skill">
+        <div class="skill-content">
+          <div class="skill-card">
+            <div class="skill-type">ACTIVE</div>
+            <div class="skill-name">장중 치유</div>
+            <div class="skill-desc">소속 유닛 중 체력 비율이 가장 낮은 유닛님의 최대 HP에 40% 장중 치유.</div>
+          </div>
+          <div class="skill-card">
+            <div class="skill-type" style="color:#cc88ff;">PASSIVE</div>
+            <div class="skill-name">결속의 힘</div>
+            <div class="skill-desc">인접한 아군의 공격력을 8% 증가시킵니다.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: 영웅 목록 -->
+    <div class="right">
+      <div class="list-header">영웅 목록</div>
+      <div class="hero-grid">
+        <div class="hero-card" onclick="selectCard(this)">
+          <div class="card-portrait">🗡️</div>
+          <div class="card-name">General</div>
+          <div class="card-meta"><span>Lv.100</span><span>일반</span></div>
+        </div>
+        <div class="hero-card" onclick="selectCard(this)">
+          <div class="card-portrait">🏹</div>
+          <div class="card-name">General1123</div>
+          <div class="card-meta"><span>Lv.100</span><span>일반</span></div>
+        </div>
+        <div class="hero-card selected" onclick="selectCard(this)">
+          <div class="card-portrait">🧙</div>
+          <div class="card-name">General2123</div>
+          <div class="card-meta"><span>Lv.100</span><span>일반</span></div>
+        </div>
+        <div class="hero-card" onclick="selectCard(this)">
+          <div class="card-portrait">🛡️</div>
+          <div class="card-name">General3123</div>
+          <div class="card-meta"><span>Lv.100</span><span>일반</span></div>
+        </div>
+        <div class="hero-card" onclick="selectCard(this)">
+          <div class="card-portrait">⚔️</div>
+          <div class="card-name">General4123</div>
+          <div class="card-meta"><span>Lv.100</span><span>일반</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item"><span class="nav-icon">🏠</span>홈</div>
+    <div class="nav-item active"><span class="nav-icon">⚔️</span>영웅</div>
+    <div class="nav-item"><span class="nav-icon">🗺️</span>전투</div>
+    <div class="nav-item"><span class="nav-icon">🛒</span>상점</div>
+    <div class="nav-item"><span class="nav-icon">👤</span>프로필</div>
+  </div>
+</div>
+
+<script>
+function switchTab(id, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+}
+function selectCard(el) {
+  document.querySelectorAll('.hero-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+</script>
+</body>
+</html>

@@ -16,8 +16,9 @@ public enum SaveKey
 {
     UserData = 0,
     UnitData = 1,
-    ItemData      = 2,
-    StageProgress = 3,
+    ItemData        = 2,
+    StageProgress   = 3,
+    EquipInventory  = 4,
 }
 
 public interface ISaveSection

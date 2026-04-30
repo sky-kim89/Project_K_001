@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hero UI - Preset C: 전체화면 상세 뷰</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#111;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;
+  font-family:'Segoe UI',sans-serif;
+  user-select:none;
+}
+.label {
+  position:fixed;
+  top:12px;
+  left:50%;
+  transform:translateX(-50%);
+  background:#333;
+  color:#aaa;
+  font-size:12px;
+  padding:4px 14px;
+  border-radius:20px;
+  white-space:nowrap;
+  z-index:999;
+}
+.phone {
+  width:390px;
+  height:780px;
+  background:#1a1a2e;
+  border-radius:28px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  border:2px solid #333;
+  color:#eee;
+  position:relative;
+}
+
+/* TOP BAR */
+.top-bar {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:#12122a;
+  border-bottom:1px solid #2a2a4a;
+  padding:8px 12px;
+  height:44px;
+  flex-shrink:0;
+  z-index:10;
+}
+.top-left { display:flex; align-items:center; gap:6px; }
+.top-avatar {
+  width:28px; height:28px;
+  background:#3a3a6a;
+  border:1px solid #5a5a9a;
+  border-radius:4px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px;
+}
+.top-lv { font-size:10px; color:#aaa; }
+.currencies { display:flex; gap:10px; }
+.currency { display:flex; align-items:center; gap:3px; font-size:12px; font-weight:700; }
+.cur-icon { width:12px; height:12px; border-radius:50%; }
+.cur-gold { background:#f0a500; }
+.cur-gem1 { background:#c060ff; }
+.cur-gem2 { background:#30ccff; }
+
+/* ── LIST VIEW ── */
+.list-view {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.list-title {
+  padding:10px 14px 8px;
+  font-size:14px;
+  font-weight:700;
+  color:#aaa;
+  border-bottom:1px solid #2a2a4a;
+  flex-shrink:0;
+}
+.hero-grid {
+  flex:1;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  padding:10px;
+  overflow-y:auto;
+}
+.hero-card {
+  background:#3a1515;
+  border-radius:10px;
+  cursor:pointer;
+  border:2px solid transparent;
+  transition:all 0.18s;
+  overflow:hidden;
+}
+.hero-card:hover { border-color:#7a4a4a; transform:scale(1.03); }
+.card-portrait {
+  width:100%;
+  height:70px;
+  background:rgba(0,0,0,0.25);
+  display:flex; align-items:center; justify-content:center;
+  font-size:34px;
+}
+.card-info { padding:6px 8px 8px; }
+.card-name { font-size:11px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.card-sub { display:flex; justify-content:space-between; font-size:9px; color:#999; margin-top:2px; }
+.card-grade {
+  display:inline-block;
+  font-size:8px;
+  padding:1px 5px;
+  border-radius:3px;
+  background:#2a1a1a;
+  color:#cc8844;
+  margin-top:3px;
+}
+
+/* ── DETAIL OVERLAY ── */
+.detail-overlay {
+  position:absolute;
+  inset:0;
+  background:#1a1a2e;
+  z-index:50;
+  display:flex;
+  flex-direction:column;
+  transform:translateY(100%);
+  transition:transform 0.35s cubic-bezier(0.32,0.72,0,1);
+}
+.detail-overlay.open { transform:translateY(0); }
+
+/* 상단 히어로 헤더 */
+.detail-header {
+  background:linear-gradient(180deg,#1a2a5a 0%,#1a1a3a 100%);
+  border-bottom:1px solid #2a2a5a;
+  padding:10px 14px 0;
+  flex-shrink:0;
+}
+.dh-top {
+  display:flex;
+  align-items:flex-start;
+  gap:14px;
+  margin-bottom:12px;
+}
+.dh-portrait {
+  width:90px; height:90px;
+  background:linear-gradient(135deg,#2a3a7a,#1a4a8a);
+  border-radius:10px;
+  border:2px solid #4a6ab0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:52px;
+  flex-shrink:0;
+}
+.dh-info { flex:1; padding-top:4px; }
+.dh-name { font-size:20px; font-weight:700; margin-bottom:3px; }
+.dh-lv { font-size:12px; color:#7a9abb; margin-bottom:6px; }
+.dh-grade {
+  display:inline-block;
+  padding:2px 10px;
+  background:#2a1a4a;
+  border:1px solid #8a44cc;
+  border-radius:12px;
+  font-size:11px;
+  color:#cc88ff;
+  font-weight:700;
+}
+.dh-close {
+  position:absolute;
+  top:10px; right:12px;
+  width:30px; height:30px;
+  background:#2a2a4a;
+  border:1px solid #4a4a7a;
+  border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+  font-size:14px;
+  color:#aaa;
+}
+.dh-close:hover { background:#3a3a5a; }
+
+/* 탭 바 (상세) */
+.detail-tabs {
+  display:flex;
+  margin-top:0;
+}
+.dtab {
+  flex:1;
+  padding:10px 0;
+  text-align:center;
+  font-size:13px;
+  font-weight:600;
+  color:#666;
+  cursor:pointer;
+  border-bottom:3px solid transparent;
+  transition:all 0.2s;
+}
+.dtab.active {
+  color:#5aa0ff;
+  border-bottom-color:#5aa0ff;
+}
+
+/* 상세 탭 내용 */
+.detail-body { flex:1; overflow:hidden; display:flex; flex-direction:column; }
+.detail-tab-content { display:none; flex:1; overflow-y:auto; flex-direction:column; }
+.detail-tab-content.active { display:flex; }
+
+/* 스탯 탭 — 2열 그리드 */
+.stat-grid-2col {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  padding:14px;
+}
+.stat-box {
+  background:#1e1e3a;
+  border:1px solid #2a2a4a;
+  border-radius:10px;
+  padding:12px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.sb-label { font-size:11px; color:#7a9abb; }
+.sb-value { font-size:24px; font-weight:700; color:#fff; line-height:1; }
+.sb-value.hp { color:#80ff99; }
+.sb-value.atk { color:#ff8870; }
+.sb-value.def { color:#70ccff; }
+.sb-value.spd { color:#ffcc44; }
+
+/* 장비 탭 */
+.equip-list { padding:14px; display:flex; flex-direction:column; gap:10px; }
+.equip-row {
+  background:#1e1e3a;
+  border:1px solid #2a2a4a;
+  border-radius:10px;
+  padding:14px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+.eq-icon {
+  width:52px; height:52px;
+  background:#252545;
+  border:1px dashed #445;
+  border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:28px;
+  flex-shrink:0;
+}
+.eq-info { flex:1; }
+.eq-slot { font-size:11px; color:#777; margin-bottom:3px; }
+.eq-name { font-size:15px; font-weight:700; color:#555; }
+.eq-stat { font-size:11px; color:#444; margin-top:3px; }
+.eq-btn {
+  padding:7px 12px;
+  background:#1a2a4a;
+  border:1px solid #4a6fa5;
+  border-radius:8px;
+  color:#7ec8e3;
+  font-size:11px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+
+/* 스킬 탭 */
+.skill-list { padding:14px; display:flex; flex-direction:column; gap:10px; }
+.skill-card {
+  background:#1e1e3a;
+  border:1px solid #2a2a4a;
+  border-radius:10px;
+  padding:14px;
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+}
+.skill-icon {
+  width:48px; height:48px;
+  background:#252545;
+  border:1px solid #445;
+  border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:24px;
+  flex-shrink:0;
+}
+.skill-info { flex:1; }
+.skill-badge {
+  display:inline-block;
+  font-size:9px; font-weight:700;
+  padding:2px 7px;
+  border-radius:10px;
+  margin-bottom:5px;
+}
+.badge-active { background:#1a2a4a; color:#5aa0ff; }
+.badge-passive { background:#2a1a4a; color:#cc88ff; }
+.skill-name { font-size:15px; font-weight:700; margin-bottom:5px; }
+.skill-desc { font-size:12px; color:#999; line-height:1.5; }
+
+/* BOTTOM NAV */
+.bottom-nav {
+  display:flex;
+  background:#12122a;
+  border-top:1px solid #2a2a4a;
+  height:50px;
+  flex-shrink:0;
+}
+.nav-item {
+  flex:1;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  font-size:10px; color:#666;
+  cursor:pointer; gap:2px;
+}
+.nav-item.active { color:#5aa0ff; }
+.nav-icon { font-size:18px; }
+</style>
+</head>
+<body>
+<div class="label">Preset C — 카드 탭 → 전체화면 상세 뷰</div>
+
+<div class="phone">
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="top-left">
+      <div class="top-avatar">🧑</div>
+      <span class="top-lv">Lv.1</span>
+    </div>
+    <div class="currencies">
+      <div class="currency"><div class="cur-icon cur-gold"></div>0</div>
+      <div class="currency"><div class="cur-icon cur-gem1"></div>2,900</div>
+      <div class="currency"><div class="cur-icon cur-gem2"></div>30</div>
+    </div>
+  </div>
+
+  <!-- LIST VIEW -->
+  <div class="list-view">
+    <div class="list-title">영웅 목록</div>
+    <div class="hero-grid">
+      <div class="hero-card" onclick="openDetail('General','🗡️','Knight','일반')">
+        <div class="card-portrait">🗡️</div>
+        <div class="card-info">
+          <div class="card-name">General</div>
+          <div class="card-sub"><span>Lv.100</span></div>
+          <div class="card-grade">일반</div>
+        </div>
+      </div>
+      <div class="hero-card" onclick="openDetail('General1123','🏹','Archer','일반')">
+        <div class="card-portrait">🏹</div>
+        <div class="card-info">
+          <div class="card-name">General1123</div>
+          <div class="card-sub"><span>Lv.100</span></div>
+          <div class="card-grade">일반</div>
+        </div>
+      </div>
+      <div class="hero-card" onclick="openDetail('General2123','🧙','Mage','일반')" style="border-color:#4a9eff;background:#1a2a3a;">
+        <div class="card-portrait">🧙</div>
+        <div class="card-info">
+          <div class="card-name">General2123</div>
+          <div class="card-sub"><span>Lv.100</span></div>
+          <div class="card-grade" style="color:#5aa0ff;border:1px solid #2a4a7a;">출전중</div>
+        </div>
+      </div>
+      <div class="hero-card" onclick="openDetail('General3123','🛡️','Shield','일반')">
+        <div class="card-portrait">🛡️</div>
+        <div class="card-info">
+          <div class="card-name">General3123</div>
+          <div class="card-sub"><span>Lv.100</span></div>
+          <div class="card-grade">일반</div>
+        </div>
+      </div>
+      <div class="hero-card" onclick="openDetail('General4123','⚔️','Warrior','일반')">
+        <div class="card-portrait">⚔️</div>
+        <div class="card-info">
+          <div class="card-name">General4123</div>
+          <div class="card-sub"><span>Lv.100</span></div>
+          <div class="card-grade">일반</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <div class="nav-item"><span class="nav-icon">🏠</span>홈</div>
+    <div class="nav-item active"><span class="nav-icon">⚔️</span>영웅</div>
+    <div class="nav-item"><span class="nav-icon">🗺️</span>전투</div>
+    <div class="nav-item"><span class="nav-icon">🛒</span>상점</div>
+    <div class="nav-item"><span class="nav-icon">👤</span>프로필</div>
+  </div>
+
+  <!-- DETAIL OVERLAY -->
+  <div class="detail-overlay" id="detailOverlay">
+    <div class="detail-header" style="position:relative;">
+      <div class="dh-close" onclick="closeDetail()">✕</div>
+      <div class="dh-top">
+        <div class="dh-portrait" id="dPortrait">🧙</div>
+        <div class="dh-info">
+          <div class="dh-name" id="dName">General2123</div>
+          <div class="dh-lv">Lv.100 · 아병사</div>
+          <div class="dh-grade" id="dGrade">일반</div>
+        </div>
+      </div>
+      <div class="detail-tabs">
+        <div class="dtab active" onclick="switchDTab('dstat',this)">스탯</div>
+        <div class="dtab" onclick="switchDTab('dequip',this)">장비</div>
+        <div class="dtab" onclick="switchDTab('dskill',this)">스킬</div>
+      </div>
+    </div>
+
+    <div class="detail-body">
+      <!-- 스탯 -->
+      <div class="detail-tab-content active" id="dstat">
+        <div class="stat-grid-2col">
+          <div class="stat-box">
+            <div class="sb-label">체력</div>
+            <div class="sb-value hp">750</div>
+          </div>
+          <div class="stat-box">
+            <div class="sb-label">공격</div>
+            <div class="sb-value atk">507</div>
+          </div>
+          <div class="stat-box">
+            <div class="sb-label">방어율</div>
+            <div class="sb-value def">14.0%</div>
+          </div>
+          <div class="stat-box">
+            <div class="sb-label">이속</div>
+            <div class="sb-value spd">1.8</div>
+          </div>
+          <div class="stat-box">
+            <div class="sb-label">공속</div>
+            <div class="sb-value">0.66<span style="font-size:14px;color:#aaa">/초</span></div>
+          </div>
+          <div class="stat-box">
+            <div class="sb-label">사거리</div>
+            <div class="sb-value">6.6</div>
+          </div>
+          <div class="stat-box">
+            <div class="sb-label">총병수</div>
+            <div class="sb-value">18<span style="font-size:14px;color:#aaa">명</span></div>
+          </div>
+          <div class="stat-box">
+            <div class="sb-label">지휘력</div>
+            <div class="sb-value">10</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 장비 -->
+      <div class="detail-tab-content" id="dequip">
+        <div class="equip-list">
+          <div class="equip-row">
+            <div class="eq-icon">🗡️</div>
+            <div class="eq-info">
+              <div class="eq-slot">무기</div>
+              <div class="eq-name">없음</div>
+              <div class="eq-stat">—</div>
+            </div>
+            <div class="eq-btn">장착</div>
+          </div>
+          <div class="equip-row">
+            <div class="eq-icon">🛡️</div>
+            <div class="eq-info">
+              <div class="eq-slot">방어구</div>
+              <div class="eq-name">없음</div>
+              <div class="eq-stat">—</div>
+            </div>
+            <div class="eq-btn">장착</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 스킬 -->
+      <div class="detail-tab-content" id="dskill">
+        <div class="skill-list">
+          <div class="skill-card">
+            <div class="skill-icon">✨</div>
+            <div class="skill-info">
+              <div class="skill-badge badge-active">ACTIVE</div>
+              <div class="skill-name">장중 치유</div>
+              <div class="skill-desc">소속 유닛 중 체력 비율이 가장 낮은 유닛의 최대 HP에 40% 장중 치유.</div>
+            </div>
+          </div>
+          <div class="skill-card">
+            <div class="skill-icon">💫</div>
+            <div class="skill-info">
+              <div class="skill-badge badge-passive">PASSIVE</div>
+              <div class="skill-name">결속의 힘</div>
+              <div class="skill-desc">인접한 아군의 공격력을 8% 증가시킵니다. 범위 내 대상에게 지속 적용.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openDetail(name, emoji, job, grade) {
+  document.getElementById('dName').textContent = name;
+  document.getElementById('dPortrait').textContent = emoji;
+  document.getElementById('dGrade').textContent = grade;
+  document.getElementById('detailOverlay').classList.add('open');
+  // 스탯 탭으로 초기화
+  switchDTab('dstat', document.querySelector('.dtab'));
+}
+function closeDetail() {
+  document.getElementById('detailOverlay').classList.remove('open');
+}
+function switchDTab(id, el) {
+  document.querySelectorAll('.dtab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.detail-tab-content').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(id).classList.add('active');
+}
+</script>
+</body>
+</html>

@@ -22,6 +22,11 @@ public class HeroCardUI : MonoBehaviour
     [SerializeField] TextMeshProUGUI      _nameText;
     [SerializeField] TextMeshProUGUI      _levelText;
     [SerializeField] TextMeshProUGUI      _gradeText;
+    [SerializeField] TextMeshProUGUI      _jobText;
+    [SerializeField] TextMeshProUGUI      _hpText;
+    [SerializeField] TextMeshProUGUI      _atkText;
+    [SerializeField] TextMeshProUGUI      _defText;
+    [SerializeField] TextMeshProUGUI      _soldierText;
     [SerializeField] Button               _button;
 
     // HeroPanelUI 와 동일한 직업 배경색
@@ -52,6 +57,14 @@ public class HeroCardUI : MonoBehaviour
         Color gc = GradeStyle.GetColor(entry.Grade);
         if (_gradeBorder != null) _gradeBorder.color = gc;
         if (_gradeText   != null) _gradeText.color   = gc;
+
+        UnitJob  job  = UnitJobRoller.GetJob(entry.UnitName);
+        UnitStat stat = GeneralStatRoller.Roll(entry.UnitName, entry.Level, entry.Grade);
+        if (_jobText     != null) _jobText.text     = JobStyle.GetLabel(job);
+        if (_hpText      != null) _hpText.text      = $"{stat.Get(StatType.MaxHp):N0}";
+        if (_atkText     != null) _atkText.text      = $"{stat.Get(StatType.Attack):N0}";
+        if (_defText     != null) _defText.text      = $"{stat.Get(StatType.Defense) * 100f:F1}%";
+        if (_soldierText != null) _soldierText.text  = $"{Mathf.RoundToInt(stat.Get(StatType.SoldierCount))}명";
 
         if (_button != null)
         {

@@ -51,11 +51,7 @@ public static class LobbySetupTool
     static readonly Color BattleBtnColor   = new Color(0.11f,  0.72f,  0.58f,  1f);
     static readonly Color ArrowBtnColor    = new Color(0.25f,  0.25f,  0.35f,  0.70f);
     static readonly Color PreviewBgColor   = new Color(0.04f,  0.04f,  0.09f,  1f);
-    static readonly Color IconBgColor      = new Color(0.22f,  0.22f,  0.32f,  1f);
-    static readonly Color GoldColor        = new Color(1.00f,  0.80f,  0.20f,  1f);
-    static readonly Color GemColor         = new Color(0.60f,  0.40f,  1.00f,  1f);
-    static readonly Color EnergyColor      = new Color(0.30f,  0.90f,  1.00f,  1f);
-    static readonly Color SettingsBtnColor = new Color(0.18f,  0.18f,  0.26f,  1f);
+    static readonly Color EnergyColor      = new Color(0.30f,  0.90f,  1.00f,  1f);  // EnergyCostText 에서 사용
 
     // ── 진입점 ────────────────────────────────────────────────
 
@@ -172,7 +168,7 @@ public static class LobbySetupTool
         Stretch(bg);
 
         // ── TopBar ────────────────────────────────────────────
-        BuildTopBar(go);
+        TopBarCreator.Build(go);
 
         // ── 컨텐츠 패널 5개 (NavBar 탭 순서와 일치) ──────────
         var homePanel    = BuildEmptyPanel(go, "HomePanel");
@@ -193,62 +189,6 @@ public static class LobbySetupTool
         var pr = CreateEmpty(go, "PopupRoot");
         Stretch(pr);
         popupRoot = pr.transform;
-    }
-
-    // ============================================================
-    //  TopBar  (상단 130px 고정)
-    // ============================================================
-
-    static void BuildTopBar(GameObject canvas)
-    {
-        var bar = CreatePanel(canvas, "TopBar", BarColor);
-        AnchorTop(bar, 130);
-
-        // 플레이어 아이콘 (왼쪽)
-        var icon = CreateImage(bar, "PlayerIcon", IconBgColor);
-        SetRect(icon.GetComponent<RectTransform>(), new Vector2(-460, 0), new Vector2(88, 88));
-
-        // 레벨 배지 (아이콘 위에 겹쳐서 표시)
-        var lvText = CreateTMP(bar, "LevelText", "Lv.1", 18, FontStyles.Bold);
-        SetRect(lvText.rectTransform, new Vector2(-460, -52), new Vector2(88, 28));
-
-        // 통화 그룹 (오른쪽 세 묶음) — CurrencyWidget 자동 부착
-        CreateCurrencyGroup(bar, "GoldGroup",   GoldColor,   eItem.Gold,   new Vector2(130, 0));
-        CreateCurrencyGroup(bar, "GemGroup",    GemColor,    eItem.Gem,    new Vector2(300, 0));
-        CreateCurrencyGroup(bar, "EnergyGroup", EnergyColor, eItem.Energy, new Vector2(460, 0));
-
-        // 설정 버튼 (우상단 모서리)
-        var settingsBtn = CreateButton(bar, "SettingsBtn", "⚙", SettingsBtnColor, 28);
-        {
-            var rt = settingsBtn.GetComponent<RectTransform>();
-            rt.anchorMin        = new Vector2(1f, 1f);
-            rt.anchorMax        = new Vector2(1f, 1f);
-            rt.pivot            = new Vector2(1f, 1f);
-            rt.anchoredPosition = new Vector2(-12, -12);
-            rt.sizeDelta        = new Vector2(68, 68);
-        }
-    }
-
-    static void CreateCurrencyGroup(GameObject parent, string name, Color iconColor,
-                                    eItem item, Vector2 pos)
-    {
-        var group = CreateEmpty(parent, name);
-        SetRect(group.GetComponent<RectTransform>(), pos, new Vector2(140, 52));
-
-        var icon = CreateImage(group, "Icon", iconColor);
-        SetRect(icon.GetComponent<RectTransform>(), new Vector2(-42, 0), new Vector2(36, 36));
-
-        var txt = CreateTMP(group, "Value", "0", 22, FontStyles.Bold);
-        SetRect(txt.rectTransform, new Vector2(28, 0), new Vector2(90, 40));
-        txt.alignment = TextAlignmentOptions.Left;
-
-        // CurrencyWidget 부착 및 필드 연결
-        var widget = group.AddComponent<CurrencyWidget>();
-        var wSo    = new SerializedObject(widget);
-        wSo.FindProperty("_item").enumValueIndex = (int)item;
-        SetObj(wSo, "_amountText", txt);
-        SetObj(wSo, "_icon",       icon);
-        wSo.ApplyModifiedProperties();
     }
 
     // ============================================================

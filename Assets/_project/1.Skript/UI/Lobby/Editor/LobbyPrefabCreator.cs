@@ -46,7 +46,7 @@ public static class LobbyPrefabCreator
         Stretch(bg, 0, 0, 0, 0);
 
         // TopBar (130px, 상단 고정)
-        var topBar = CreateTopBar(root);
+        var topBar = TopBarCreator.Build(root);
 
         // NavBar (110px, 하단 고정)
         var navBar = CreateNavBar(root);
@@ -61,40 +61,6 @@ public static class LobbyPrefabCreator
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         Debug.Log("[LobbyPrefabCreator] LobbyCanvas.prefab 생성 완료");
-    }
-
-    // ── TopBar ────────────────────────────────────────────────
-
-    static GameObject CreateTopBar(GameObject parent)
-    {
-        var bar = CreatePanel(parent, "TopBar", BarColor);
-        AnchorTop(bar, 130);
-
-        // 플레이어 아이콘 자리 (왼쪽)
-        var icon = CreateImage(bar, "PlayerIcon", new Color(0.3f, 0.3f, 0.4f));
-        SetRect(icon.GetComponent<RectTransform>(),
-            new Vector2(-460, 0), new Vector2(90, 90));
-
-        // 통화 표시 (오른쪽) — 세 묶음
-        CreateCurrencyGroup(bar, "Gold",   new Color(1.0f, 0.8f, 0.2f), "0",       new Vector2(120, 0));
-        CreateCurrencyGroup(bar, "Gem",    new Color(0.6f, 0.4f, 1.0f), "0",       new Vector2(280, 0));
-        CreateCurrencyGroup(bar, "Energy", new Color(0.3f, 0.9f, 1.0f), "30 / 30", new Vector2(450, 0));
-
-        return bar;
-    }
-
-    static void CreateCurrencyGroup(GameObject parent, string name, Color iconColor, string defaultVal, Vector2 pos)
-    {
-        var group = new GameObject(name, typeof(RectTransform));
-        group.transform.SetParent(parent.transform, false);
-        SetRect(group.GetComponent<RectTransform>(), pos, new Vector2(130, 50));
-
-        var icon = CreateImage(group, "Icon", iconColor);
-        SetRect(icon.GetComponent<RectTransform>(), new Vector2(-40, 0), new Vector2(34, 34));
-
-        var text = CreateTMP(group, "Value", defaultVal, 22, FontStyles.Bold);
-        SetRect(text.GetComponent<RectTransform>(), new Vector2(25, 0), new Vector2(80, 40));
-        text.alignment = TextAlignmentOptions.Left;
     }
 
     // ── NavBar ────────────────────────────────────────────────
