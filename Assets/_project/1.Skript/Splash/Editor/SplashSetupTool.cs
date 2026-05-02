@@ -39,7 +39,7 @@ public static class SplashSetupTool
 
     // ── 진입점 ────────────────────────────────────────────────
 
-    [MenuItem("Tools/Project K/Setup Splash Scene")]
+    [MenuItem("Tools/Project K/씬 셋업/Setup Splash Scene")]
     static void Setup()
     {
         // 중복 생성 방지

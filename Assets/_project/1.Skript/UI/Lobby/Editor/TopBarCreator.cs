@@ -6,10 +6,8 @@ using UnityEngine.UI;
 
 // ============================================================
 //  TopBarCreator.cs
-//  Tools > Project K > Create TopBar Prefab
-//
-//  TopBar.prefab 단독 생성 + LobbySetupTool / LobbyPrefabCreator 공유.
-//  Build(parent) 를 호출하면 TopBar GO 를 생성 후 반환한다.
+//  Tools > Project K > 로비 UI > Create TopBar Prefab
+//  크기·폰트는 UIScale 상수를 참조한다.
 //
 //  CurrencyWidget 연결 시 intValue 사용 (enumValueIndex 는 None=-1 로 인해
 //  인덱스가 1씩 밀리므로 사용 금지).
@@ -18,6 +16,7 @@ using UnityEngine.UI;
 public static class TopBarCreator
 {
     const string PrefabPath = "Assets/_project/2.Prefabs/UI/TopBar.prefab";
+    const float  BarH       = 180f;   // LobbyPrefabCreator.TopBarH 와 동일하게 유지
 
     static readonly Color BarColor         = new Color(0.07f, 0.07f, 0.13f, 1f);
     static readonly Color IconBgColor      = new Color(0.22f, 0.22f, 0.32f, 1f);
@@ -28,7 +27,7 @@ public static class TopBarCreator
 
     // ── 진입점 ────────────────────────────────────────────────
 
-    [MenuItem("Tools/Project K/Create TopBar Prefab")]
+    [MenuItem("Tools/Project K/로비 UI/Create TopBar Prefab")]
     public static void Create()
     {
         var go = Build(null);
@@ -38,37 +37,39 @@ public static class TopBarCreator
         Debug.Log("[TopBarCreator] TopBar.prefab 생성 완료");
     }
 
-    // ── 공개 빌더 (LobbySetupTool / LobbyPrefabCreator 에서 호출) ──
+    // ── 공개 빌더 (LobbyPrefabCreator 에서 호출) ─────────────
 
-    /// <summary>TopBar GO 를 생성해 parent 아래에 추가하고 반환한다.
-    /// parent 가 null 이면 루트 GO 로 생성 (프리팹 저장용).</summary>
     public static GameObject Build(GameObject parent)
     {
         var bar = CreatePanel(parent, "TopBar", BarColor);
-        AnchorTop(bar, 130);
+        AnchorTop(bar, BarH);
+
+        float iconSize = UIScale.IconMd;
 
         // 플레이어 아이콘 (왼쪽)
         var iconImg = CreateImage(bar, "PlayerIcon", IconBgColor);
-        SetRect(iconImg.GetComponent<RectTransform>(), new Vector2(-460, 0), new Vector2(88, 88));
+        SetRect(iconImg.GetComponent<RectTransform>(), new Vector2(-460, 0), new Vector2(iconSize, iconSize));
 
         // 레벨 배지
-        var lvText = CreateTMP(bar, "LevelText", "Lv.1", 18, FontStyles.Bold);
-        SetRect(lvText.rectTransform, new Vector2(-460, -52), new Vector2(88, 28));
+        var lvText = CreateTMP(bar, "LevelText", "Lv.1", UIScale.FontSm, FontStyles.Bold);
+        SetRect(lvText.rectTransform, new Vector2(-460, -(iconSize / 2f + 22f)), new Vector2(iconSize + 20f, 36f));
 
-        // 통화 위젯 (골드 / 잼 / 에너지)
-        BuildCurrencyWidget(bar, "GoldGroup",   GoldColor,   eItem.Gold,   new Vector2(130, 0));
-        BuildCurrencyWidget(bar, "GemGroup",    GemColor,    eItem.Gem,    new Vector2(300, 0));
-        BuildCurrencyWidget(bar, "EnergyGroup", EnergyColor, eItem.Energy, new Vector2(460, 0));
+        // 통화 위젯 — 간격은 위젯 너비(180) 기준으로 균등 배치
+        float widgetW = 180f;
+        float widgetH = UIScale.IconSm + 10f;
+        BuildCurrencyWidget(bar, "GoldGroup",   GoldColor,   eItem.Gold,   new Vector2( 80, 0), widgetW, widgetH);
+        BuildCurrencyWidget(bar, "GemGroup",    GemColor,    eItem.Gem,    new Vector2(280, 0), widgetW, widgetH);
+        BuildCurrencyWidget(bar, "EnergyGroup", EnergyColor, eItem.Energy, new Vector2(460, 0), widgetW, widgetH);
 
         // 설정 버튼 (우상단)
-        var settingsBtn = CreateButton(bar, "SettingsBtn", "⚙", SettingsBtnColor, 28);
+        var settingsBtn = CreateButton(bar, "SettingsBtn", "⚙", SettingsBtnColor, UIScale.FontMd);
         {
             var rt = settingsBtn.GetComponent<RectTransform>();
             rt.anchorMin        = new Vector2(1f, 1f);
             rt.anchorMax        = new Vector2(1f, 1f);
             rt.pivot            = new Vector2(1f, 1f);
-            rt.anchoredPosition = new Vector2(-12, -12);
-            rt.sizeDelta        = new Vector2(68, 68);
+            rt.anchoredPosition = new Vector2(-16, -16);
+            rt.sizeDelta        = new Vector2(80, 80);
         }
 
         return bar;
@@ -77,22 +78,23 @@ public static class TopBarCreator
     // ── CurrencyWidget 빌드 ───────────────────────────────────
 
     static void BuildCurrencyWidget(GameObject parent, string name,
-                                    Color iconColor, eItem item, Vector2 pos)
+                                    Color iconColor, eItem item,
+                                    Vector2 pos, float w, float h)
     {
         var group = new GameObject(name, typeof(RectTransform));
         group.transform.SetParent(parent.transform, false);
-        SetRect(group.GetComponent<RectTransform>(), pos, new Vector2(140, 52));
+        SetRect(group.GetComponent<RectTransform>(), pos, new Vector2(w, h));
 
+        float iconSz = UIScale.IconSm;
         var icon = CreateImage(group, "Icon", iconColor);
-        SetRect(icon.GetComponent<RectTransform>(), new Vector2(-42, 0), new Vector2(36, 36));
+        SetRect(icon.GetComponent<RectTransform>(), new Vector2(-w / 2f + iconSz / 2f + 4f, 0), new Vector2(iconSz, iconSz));
 
-        var valueText = CreateTMP(group, "Value", "0", 22, FontStyles.Bold);
-        SetRect(valueText.rectTransform, new Vector2(28, 0), new Vector2(90, 40));
+        var valueText = CreateTMP(group, "Value", "0", UIScale.FontMd, FontStyles.Bold);
+        SetRect(valueText.rectTransform, new Vector2(iconSz / 2f + 8f, 0), new Vector2(w - iconSz - 16f, h));
         valueText.alignment = TextAlignmentOptions.Left;
 
         var widget = group.AddComponent<CurrencyWidget>();
         var wSo    = new SerializedObject(widget);
-        // intValue 로 직접 설정 — enumValueIndex 는 None=-1 로 인해 index 가 1씩 밀림
         wSo.FindProperty("_item").intValue                   = (int)item;
         wSo.FindProperty("_amountText").objectReferenceValue = valueText;
         wSo.FindProperty("_icon").objectReferenceValue       = icon;
@@ -144,14 +146,12 @@ public static class TopBarCreator
         var lRt = labelGo.GetComponent<RectTransform>();
         lRt.anchorMin = Vector2.zero;
         lRt.anchorMax = Vector2.one;
-        lRt.offsetMin = Vector2.zero;
-        lRt.offsetMax = Vector2.zero;
+        lRt.offsetMin = lRt.offsetMax = Vector2.zero;
         var tmp = labelGo.GetComponent<TextMeshProUGUI>();
         tmp.text      = label;
         tmp.fontSize  = fontSize;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color     = Color.white;
-
         return go;
     }
 

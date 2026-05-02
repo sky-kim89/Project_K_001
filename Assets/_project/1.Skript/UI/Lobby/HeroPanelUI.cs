@@ -135,6 +135,8 @@ public class HeroPanelUI : MonoBehaviour
 
     void Awake()
     {
+        AutoWireEquipSelect();
+
         _equip0Btn?.onClick.AddListener(() => OnEquipSlotClick(0));
         _equip1Btn?.onClick.AddListener(() => OnEquipSlotClick(1));
         _equipSelectCloseBtn?.onClick.AddListener(CloseEquipSelect);
@@ -401,6 +403,12 @@ public class HeroPanelUI : MonoBehaviour
 
     void OpenEquipSelect(int slot)
     {
+        if (_equipSelectPanel == null)
+        {
+            Debug.LogWarning("[HeroPanelUI] _equipSelectPanel 미연결 — HeroPanel 프리팹 재생성 필요");
+            return;
+        }
+
         _currentEquipSlot = slot;
 
         if (_equipSelectTitle != null)
@@ -496,6 +504,64 @@ public class HeroPanelUI : MonoBehaviour
     }
 
     static int GetLevelUpCost(int currentLevel) => currentLevel * 100;
+
+    // Inspector 연결이 누락됐을 때 자식 이름으로 자동 탐색
+    void AutoWireEquipSelect()
+    {
+        if (_equipSelectPanel != null) return;  // 이미 연결됨
+
+        // EquipPanel > EquipSelectPanel 탐색
+        var equipPanel = transform.GetComponentsInChildren<Transform>(true);
+        foreach (var t in equipPanel)
+        {
+            if (t.name != "EquipSelectPanel") continue;
+
+            _equipSelectPanel = t.gameObject;
+
+            var titleT = t.Find("SelectHeader/SelectTitle");
+            if (titleT != null && _equipSelectTitle == null)
+                _equipSelectTitle = titleT.GetComponent<TMPro.TextMeshProUGUI>();
+
+            var closeT = t.Find("SelectHeader/CloseBtn");
+            if (closeT != null && _equipSelectCloseBtn == null)
+                _equipSelectCloseBtn = closeT.GetComponent<Button>();
+
+            var warnT = t.Find("SelectWarning");
+            if (warnT != null && _equipSelectWarning == null)
+                _equipSelectWarning = warnT.GetComponent<TMPro.TextMeshProUGUI>();
+
+            var contentT = t.Find("SelectScrollView/Viewport/SelectContent");
+            if (contentT != null && _equipSelectContent == null)
+                _equipSelectContent = contentT;
+
+            break;
+        }
+
+        // 슬롯 락 배지 탐색
+        if (_equip0LockBadge == null)
+        {
+            var s = transform.Find("EquipSlot0/LockBadge") ??
+                    FindChildRecursive(transform, "EquipSlot0")?.Find("LockBadge");
+            if (s != null) _equip0LockBadge = s.gameObject;
+        }
+        if (_equip1LockBadge == null)
+        {
+            var s = transform.Find("EquipSlot1/LockBadge") ??
+                    FindChildRecursive(transform, "EquipSlot1")?.Find("LockBadge");
+            if (s != null) _equip1LockBadge = s.gameObject;
+        }
+    }
+
+    static Transform FindChildRecursive(Transform parent, string name)
+    {
+        foreach (Transform child in parent)
+        {
+            if (child.name == name) return child;
+            var found = FindChildRecursive(child, name);
+            if (found != null) return found;
+        }
+        return null;
+    }
 
     void RefreshHireCostDisplay()
     {

@@ -28,43 +28,18 @@ using UnityEngine.SceneManagement;
 
 public static class UISetupTool
 {
-    const string ICON_SKILL_ROOT         = "Assets/_project/3.Textures/Icons/Skills";
     const string PANEL_PREFAB            = "Assets/_project/2.Prefabs/UI/GeneralPanel.prefab";
     const string LOADING_POPUP_PREFAB    = "Assets/_project/2.Prefabs/UI/LoadingPopup.prefab";
     const string RESULT_POPUP_PREFAB     = "Assets/_project/2.Prefabs/UI/BattleResultPopup.prefab";
     const string PAUSE_POPUP_PREFAB      = "Assets/_project/2.Prefabs/UI/PausePopup.prefab";
+    const string REWARD_CARD_PREFAB      = "Assets/_project/2.Prefabs/UI/RewardCard.prefab";
 
-    // ActiveSkillId(1~20) 순서에 맞춘 파일명 배열 (인덱스 0 = None/빈칸용)
-    static readonly string[] s_SkillFileNames =
-    {
-        null,                       // 0 — None
-        "skill_heavy_strike",       // 1
-        "skill_volley_fire",        // 2
-        "skill_leap_strike",        // 3
-        "skill_heal_aura",          // 4
-        "skill_target_heal",        // 5
-        "skill_charge_soldier",     // 6
-        "skill_summon_skeleton",    // 7
-        "skill_poison_zone",        // 8
-        "skill_meteor",             // 9
-        "skill_blizzard",           // 10
-        "skill_sacrifice_soldier",  // 11
-        "skill_bind",               // 12
-        "skill_suicide_soldier",    // 13
-        "skill_berserker",          // 14
-        "skill_iron_shield",        // 15
-        "skill_arrow_rain",         // 16
-        "skill_battle_cry",         // 17
-        "skill_shockwave",          // 18
-        "skill_swift_strike",       // 19
-        "skill_summon_elite",       // 20
-    };
 
     // ══════════════════════════════════════════════════════════
     //  진입점
     // ══════════════════════════════════════════════════════════
 
-    [MenuItem("Tools/Project K/Setup InGame UI")]
+    [MenuItem("Tools/Project K/씬 셋업/Setup InGame UI")]
     public static void SetupInGameUI()
     {
         // 1. GeneralPanel 프리팹 생성
@@ -75,9 +50,10 @@ public static class UISetupTool
             return;
         }
 
-        // 2. 팝업 프리팹 3종 생성
+        // 2. 팝업 프리팹 3종 + RewardCard 프리팹 생성
         var loadingPrefab = CreateLoadingPopupPrefab();
-        var resultPrefab  = CreateBattleResultPopupPrefab();
+        var cardPrefab    = CreateRewardCardPrefab();
+        var resultPrefab  = CreateBattleResultPopupPrefab(cardPrefab);
         var pausePrefab   = CreatePausePopupPrefab();
 
         // 3. Canvas + InGameHUD 계층 생성
@@ -100,17 +76,24 @@ public static class UISetupTool
 
     static GameObject CreateGeneralPanelPrefab()
     {
-        // ┌──────────────────────────────────────────────────────┐
-        // │ 레이아웃 (절대 좌표, 좌상단 원점, y ↓)               │
-        // │  Portrait : x=4   y=4   w=120 h=120  (전신 초상화)  │
-        // │  Name     : x=128 y=4   w=88  h=18                  │
-        // │  Grade    : x=128 y=24  w=88  h=14                  │
-        // │  HpBg     : x=128 y=42  w=88  h=16  (Fill 내부)     │
-        // │  SolBg    : x=128 y=62  w=88  h=16  (Fill 내부)     │
-        // │  SkillSlot: x=4   y=128 w=52  h=38                  │
-        // │  BuffSlot : x=60+ y=132 w=24  h=24  (가로 4개)      │
-        // └──────────────────────────────────────────────────────┘
-        const float PW = 220f, PH = 170f;
+        // ┌─────────────────────────────────────────────────────────┐
+        // │ 레이아웃 (좌상단 원점, y ↓)                             │
+        // │  Portrait : x=4  y=4  w=80  h=80                       │
+        // │  NameText : x=88 y=4  w=228 h=36   font=UIScale.FontSm │
+        // │  GradeText: x=88 y=44 w=228 h=28   font=22             │
+        // │  HpBarBg  : x=88 y=76 w=228 h=26                       │
+        // │  SolBarBg : x=88 y=106 w=228 h=26                      │
+        // │  SkillSlot: x=4  y=136 w=80  h=62                      │
+        // │  BuffSlot : x=88+(i*32) y=140 w=28 h=28  (4개)         │
+        // └─────────────────────────────────────────────────────────┘
+        const float PW      = 320f;
+        const float PH      = 210f;
+        const float PortW   = 80f;
+        const float PortH   = 80f;
+        const float TextX   = 88f;    // PortW(80) + margin(4) + left-pad(4) = 88
+        const float TextW   = 228f;   // PW(320) - TextX(88) - rightPad(4) = 228
+        const float BarH    = 26f;
+        const int   BarFont = 18;
 
         var root = new GameObject("GeneralPanel");
         root.AddComponent<RectTransform>().sizeDelta = new Vector2(PW, PH);
@@ -125,9 +108,9 @@ public static class UISetupTool
 
         var panelUI = root.AddComponent<GeneralPanelUI>();
 
-        // ── Portrait (120×120) ───────────────────────────────
+        // ── Portrait (80×80) ─────────────────────────────────
         var portraitBg = MakeImg(root, "Portrait", new Color(0.8f, 0.22f, 0.22f));
-        SetTL(portraitBg.gameObject, 4, 4, 120, 120);
+        SetTL(portraitBg.gameObject, 4, 4, PortW, PortH);
 
         var portraitIconGo = MakeRect(portraitBg.gameObject, "PortraitIcon");
         Stretch(portraitIconGo);
@@ -136,34 +119,43 @@ public static class UISetupTool
         portraitIcon.preserveAspect = false;
 
         // ── Name / Grade ──────────────────────────────────────
-        var nameText = MakeTMP(root, "NameText", "장군 이름", 11, FontStyle.Bold);
-        SetTL(nameText.gameObject, 128, 4, 88, 18);
+        float nameH  = Mathf.Round(UIScale.FontSm) + 6f;   // 36
+        float gradeH = 28f;
 
-        var gradeText = MakeTMP(root, "GradeText", "", 9, FontStyle.Normal);
+        var nameText = MakeTMP(root, "NameText", "장군 이름", (int)UIScale.FontSm, FontStyle.Bold);
+        SetTL(nameText.gameObject, TextX, 4, TextW, nameH);
+
+        var gradeText = MakeTMP(root, "GradeText", "", 22, FontStyle.Normal);
         gradeText.color = new Color(1f, 0.85f, 0.3f);
-        SetTL(gradeText.gameObject, 128, 24, 88, 14);
+        SetTL(gradeText.gameObject, TextX, 4 + nameH + 4, TextW, gradeH);
 
         // ── HP Bar ────────────────────────────────────────────
+        float barY1 = 4 + nameH + 4 + gradeH + 4;   // 76
+
         var hpBg = MakeImg(root, "HpBarBg", new Color(0.12f, 0.04f, 0.04f));
-        SetTL(hpBg.gameObject, 128, 42, 88, 16);
+        SetTL(hpBg.gameObject, TextX, barY1, TextW, BarH);
 
         var hpFill = MakeFilledH(hpBg.gameObject, "HpFill", new Color(0.85f, 0.15f, 0.15f));
 
-        var hpText = MakeTMP(hpBg.gameObject, "HpText", "100/100", 8, FontStyle.Normal);
+        var hpText = MakeTMP(hpBg.gameObject, "HpText", "100/100", BarFont, FontStyle.Normal);
         Stretch(hpText.gameObject);
 
         // ── Soldier Bar ───────────────────────────────────────
+        float barY2 = barY1 + BarH + 4;   // 106
+
         var solBg = MakeImg(root, "SoldierBarBg", new Color(0.04f, 0.08f, 0.16f));
-        SetTL(solBg.gameObject, 128, 62, 88, 16);
+        SetTL(solBg.gameObject, TextX, barY2, TextW, BarH);
 
         var soldierFill = MakeFilledH(solBg.gameObject, "SoldierFill", new Color(0.2f, 0.5f, 0.9f));
 
-        var soldierText = MakeTMP(solBg.gameObject, "SoldierText", "5/5", 8, FontStyle.Normal);
+        var soldierText = MakeTMP(solBg.gameObject, "SoldierText", "5/5", BarFont, FontStyle.Normal);
         Stretch(soldierText.gameObject);
 
-        // ── SkillSlot (52×38) ─────────────────────────────────
+        // ── SkillSlot (80×62) ────────────────────────────────
+        float skillY = barY2 + BarH + 4;   // 136
+
         var skillSlotGo = MakeRect(root, "SkillSlot");
-        SetTL(skillSlotGo, 4, 128, 52, 38);
+        SetTL(skillSlotGo, 4, skillY, PortW, 62);
         var skillSlot = skillSlotGo.AddComponent<SkillSlotUI>();
 
         var skillBg = MakeImg(skillSlotGo, "SkillBg", new Color(0.12f, 0.12f, 0.12f));
@@ -184,7 +176,7 @@ public static class UISetupTool
             imgSO.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        var cdText = MakeTMP(skillSlotGo, "CooldownText", "", 16, FontStyle.Bold);
+        var cdText = MakeTMP(skillSlotGo, "CooldownText", "", 24, FontStyle.Bold);
         Stretch(cdText.gameObject);
         cdText.outlineWidth = 0.25f;
         cdText.outlineColor = Color.black;
@@ -195,12 +187,12 @@ public static class UISetupTool
         Stretch(readyGlow);
         readyGlow.SetActive(false);
 
-        // ── Buff Slots ────────────────────────────────────────
+        // ── Buff Slots (4개, 28×28) ───────────────────────────
         var buffSlots = new Image[4];
         for (int i = 0; i < 4; i++)
         {
             buffSlots[i] = MakeImg(root, $"BuffSlot{i}", new Color(0.5f, 0.5f, 0.8f, 0.8f));
-            SetTL(buffSlots[i].gameObject, 60 + i * 26, 132, 24, 24);
+            SetTL(buffSlots[i].gameObject, TextX + i * 32, skillY + 4, 28, 28);
             buffSlots[i].gameObject.SetActive(false);
         }
 
@@ -261,6 +253,7 @@ public static class UISetupTool
 
         // 필드 연결
         var so = new SerializedObject(popup);
+        so.FindProperty("_popupType").intValue              = (int)PopupType.Loading;
         so.FindProperty("_titleText").objectReferenceValue  = title;
         so.FindProperty("_statusText").objectReferenceValue = status;
         so.ApplyModifiedPropertiesWithoutUndo();
@@ -272,13 +265,102 @@ public static class UISetupTool
     }
 
     // ══════════════════════════════════════════════════════════
+    //  단독 재생성 — BattleResultPopup + RewardCard
+    // ══════════════════════════════════════════════════════════
+
+    [MenuItem("Tools/Project K/Popup/Rebuild BattleResult Popup")]
+    public static void RebuildBattleResultPopup()
+    {
+        var cardPrefab = CreateRewardCardPrefab();
+        CreateBattleResultPopupPrefab(cardPrefab);
+        AssetDatabase.SaveAssets();
+        Debug.Log("[UISetupTool] BattleResultPopup + RewardCard 재생성 완료");
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  RewardCard 프리팹
+    // ══════════════════════════════════════════════════════════
+
+    static GameObject CreateRewardCardPrefab()
+    {
+        const float CW = 110f, CH = 130f;
+
+        var root = new GameObject("RewardCard");
+        var rt   = root.AddComponent<RectTransform>();
+        rt.sizeDelta = new Vector2(CW, CH);
+        root.AddComponent<RewardCardUI>();
+
+        var le = root.AddComponent<LayoutElement>();
+        le.preferredWidth  = CW;
+        le.preferredHeight = CH;
+
+        // 배경 (등급 색으로 런타임에 교체됨)
+        var bg = root.AddComponent<Image>();
+        bg.color = new Color(0.18f, 0.18f, 0.22f, 1f);
+
+        // 아이콘 (중앙 상단 64×64)
+        var iconGo  = MakeRect(root, "IconImage");
+        SetRT(iconGo, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+              new Vector2(0f, -8f), new Vector2(64f, 64f));
+        var iconImg = iconGo.AddComponent<Image>();
+        iconImg.preserveAspect = true;
+        iconImg.color          = Color.white;
+
+        // 이름 텍스트 (하단)
+        var nameTmp = MakeTMP(root, "NameText", "아이템", 11, FontStyle.Normal);
+        SetRT(nameTmp.gameObject, new Vector2(0f, 0f), new Vector2(1f, 0f),
+              new Vector2(0f, 34f), new Vector2(0f, 24f));
+
+        // 수량 텍스트
+        var amountTmp = MakeTMP(root, "AmountText", "+0", 14, FontStyle.Bold);
+        amountTmp.color = new Color(1f, 0.9f, 0.3f);
+        SetRT(amountTmp.gameObject, new Vector2(0f, 0f), new Vector2(1f, 0f),
+              new Vector2(0f, 10f), new Vector2(0f, 22f));
+
+        // 미개봉 오버레이 ("?" 상태)
+        var overlay = MakeRect(root, "RevealOverlay");
+        Stretch(overlay);
+        var overlayImg = overlay.AddComponent<Image>();
+        overlayImg.color = new Color(0.08f, 0.08f, 0.14f, 0.92f);
+
+        var qMark = MakeTMP(overlay, "QuestionMark", "?", 52, FontStyle.Bold);
+        qMark.color = new Color(0.9f, 0.85f, 0.5f);
+        Stretch(qMark.gameObject);
+
+        // 탭 버튼 (전체 크기 투명 — 박스 개봉용)
+        var btnGo = MakeRect(root, "CardButton");
+        Stretch(btnGo);
+        var btnImg = btnGo.AddComponent<Image>();
+        btnImg.color = new Color(0f, 0f, 0f, 0f);
+        var btn = btnGo.AddComponent<Button>();
+        var nav = btn.navigation;
+        nav.mode   = Navigation.Mode.None;
+        btn.navigation = nav;
+
+        // 필드 연결
+        var so = new SerializedObject(root.GetComponent<RewardCardUI>());
+        so.FindProperty("_bgImage").objectReferenceValue       = bg;
+        so.FindProperty("_icon").objectReferenceValue          = iconImg;
+        so.FindProperty("_nameText").objectReferenceValue      = nameTmp;
+        so.FindProperty("_amountText").objectReferenceValue    = amountTmp;
+        so.FindProperty("_revealOverlay").objectReferenceValue = overlay;
+        so.FindProperty("_cardButton").objectReferenceValue    = btn;
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        var prefab = PrefabUtility.SaveAsPrefabAsset(root, REWARD_CARD_PREFAB);
+        Object.DestroyImmediate(root);
+        Debug.Log($"[UISetupTool] RewardCard 프리팹 저장 → {REWARD_CARD_PREFAB}");
+        return prefab;
+    }
+
+    // ══════════════════════════════════════════════════════════
     //  팝업 프리팹 — BattleResultPopup
     // ══════════════════════════════════════════════════════════
 
-    static GameObject CreateBattleResultPopupPrefab()
+    static GameObject CreateBattleResultPopupPrefab(GameObject rewardCardPrefab = null)
     {
         var root = new GameObject("BattleResultPopup");
-        SetupPopupRoot(root, 500f, 380f);
+        SetupPopupRoot(root, 520f, 600f);
         var popup = root.AddComponent<BattleResultPopup>();
 
         // 패널 배경
@@ -300,23 +382,43 @@ public static class UISetupTool
             new Vector2(0f, -138f), new Vector2(0f, 30f));
 
         // 통계 텍스트
-        var statsText = MakeTMP(root, "StatsText", "처치  0\n웨이브  1 / 5", 15, FontStyle.Normal);
-        statsText.lineSpacing = 8f;
+        var statsText = MakeTMP(root, "StatsText", "처치  0   |   웨이브  1 / 5", 14, FontStyle.Normal);
+        statsText.color = new Color(0.75f, 0.75f, 0.75f);
         SetRT(statsText.gameObject,
             new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(0f, -180f), new Vector2(0f, 60f));
+            new Vector2(0f, -178f), new Vector2(0f, 26f));
 
         // 구분선
-        var divider = MakeImg(root, "Divider", new Color(0.3f, 0.3f, 0.3f, 0.6f));
+        var divider = MakeImg(root, "Divider", new Color(0.3f, 0.3f, 0.3f, 0.5f));
         SetRT(divider.gameObject,
             new Vector2(0.1f, 1f), new Vector2(0.9f, 1f),
-            new Vector2(0f, -252f), new Vector2(0f, 2f));
+            new Vector2(0f, -214f), new Vector2(0f, 2f));
+
+        // 보상 카드 영역 (HLG)
+        var rewardArea = MakeRect(root, "RewardArea");
+        SetRT(rewardArea,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(0f, -240f), new Vector2(480f, 140f));
+        var hlg = rewardArea.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing              = 8f;
+        hlg.childAlignment       = TextAnchor.MiddleCenter;
+        hlg.childForceExpandWidth  = false;
+        hlg.childForceExpandHeight = false;
+        hlg.padding = new RectOffset(4, 4, 0, 0);
+
+        // 힌트 텍스트
+        var hintText = MakeTMP(root, "HintText", "장비 박스를 열어주세요", 13, FontStyle.Normal);
+        hintText.color = new Color(1f, 0.65f, 0.1f);
+        SetRT(hintText.gameObject,
+            new Vector2(0f, 1f), new Vector2(1f, 1f),
+            new Vector2(0f, -392f), new Vector2(0f, 24f));
+        hintText.gameObject.SetActive(false);
 
         // 확인 버튼
         var confirmBtn = MakeRect(root, "ConfirmButton");
         SetRT(confirmBtn,
             new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
-            new Vector2(0f, 40f), new Vector2(200f, 52f));
+            new Vector2(0f, 44f), new Vector2(200f, 52f));
         var confirmBtnImg = confirmBtn.AddComponent<Image>();
         confirmBtnImg.color = new Color(0.18f, 0.42f, 0.72f);
         var confirmButton = confirmBtn.AddComponent<Button>();
@@ -330,11 +432,19 @@ public static class UISetupTool
         confirmTmp.color     = Color.white;
 
         // 필드 연결
+        var rewardCardComp = rewardCardPrefab != null
+            ? rewardCardPrefab.GetComponent<RewardCardUI>()
+            : null;
+
         var so = new SerializedObject(popup);
-        so.FindProperty("_resultText").objectReferenceValue    = resultText;
-        so.FindProperty("_subText").objectReferenceValue       = subText;
-        so.FindProperty("_statsText").objectReferenceValue     = statsText;
-        so.FindProperty("_confirmButton").objectReferenceValue = confirmButton;
+        so.FindProperty("_popupType").intValue                  = (int)PopupType.BattleResult;
+        so.FindProperty("_resultText").objectReferenceValue     = resultText;
+        so.FindProperty("_subText").objectReferenceValue        = subText;
+        so.FindProperty("_statsText").objectReferenceValue      = statsText;
+        so.FindProperty("_rewardArea").objectReferenceValue     = rewardArea.GetComponent<Transform>();
+        so.FindProperty("_rewardCardPrefab").objectReferenceValue = rewardCardComp;
+        so.FindProperty("_hintText").objectReferenceValue       = hintText;
+        so.FindProperty("_confirmButton").objectReferenceValue  = confirmButton;
         so.ApplyModifiedPropertiesWithoutUndo();
 
         var prefab = PrefabUtility.SaveAsPrefabAsset(root, RESULT_POPUP_PREFAB);
@@ -383,6 +493,7 @@ public static class UISetupTool
 
         // 필드 연결
         var so = new SerializedObject(popup);
+        so.FindProperty("_popupType").intValue                 = (int)PopupType.Pause;
         so.FindProperty("_resumeButton").objectReferenceValue  = resumeBtn;
         so.FindProperty("_restartButton").objectReferenceValue = restartBtn;
         so.FindProperty("_quitButton").objectReferenceValue    = quitBtn;
@@ -516,13 +627,6 @@ public static class UISetupTool
         tso.FindProperty("_speed3xButton").objectReferenceValue    = btn3;
         tso.FindProperty("_pauseButton").objectReferenceValue      = pauseBtn;
 
-        // PausePopup 프리팹을 TopBarUI 에도 연결
-        if (pausePrefab != null)
-        {
-            var pausePopupAsset = AssetDatabase.LoadAssetAtPath<PausePopup>(PAUSE_POPUP_PREFAB);
-            if (pausePopupAsset != null)
-                tso.FindProperty("_pausePopupPrefab").objectReferenceValue = pausePopupAsset;
-        }
         tso.ApplyModifiedPropertiesWithoutUndo();
 
         // ── GeneralPanelContainer ──────────────────────────────
@@ -532,7 +636,7 @@ public static class UISetupTool
         contRT.anchorMax        = new Vector2(1f, 0f);
         contRT.pivot            = new Vector2(0.5f, 0f);
         contRT.anchoredPosition = new Vector2(0f, 10f);
-        contRT.sizeDelta        = new Vector2(0f, 180f);
+        contRT.sizeDelta        = new Vector2(0f, 226f);  // PH(210) + padding top(8) + bottom(8)
 
         var hlg = container.AddComponent<HorizontalLayoutGroup>();
         hlg.spacing              = 8;
@@ -548,16 +652,6 @@ public static class UISetupTool
         hso.FindProperty("_generalPanelContainer").objectReferenceValue = container.transform;
         hso.FindProperty("_maxGeneralPanels").intValue                  = 5;
 
-        var skillIconsProp = hso.FindProperty("_skillIcons");
-        skillIconsProp.arraySize = s_SkillFileNames.Length;
-        for (int i = 0; i < s_SkillFileNames.Length; i++)
-        {
-            Sprite sp = null;
-            if (s_SkillFileNames[i] != null)
-                sp = AssetDatabase.LoadAssetAtPath<Sprite>(
-                    $"{ICON_SKILL_ROOT}/{s_SkillFileNames[i]}.png");
-            skillIconsProp.GetArrayElementAtIndex(i).objectReferenceValue = sp;
-        }
         hso.ApplyModifiedPropertiesWithoutUndo();
 
         Debug.Log("[UISetupTool] Canvas > InGameHUD 계층 생성 완료");

@@ -101,7 +101,7 @@ public class PopupManager : Singleton<PopupManager>
 
         if (!_prefabMap.TryGetValue(type, out var prefab))
         {
-            Debug.LogWarning($"[PopupManager] PopupType.{type} 에 등록된 프리팹이 없습니다.");
+            Debug.LogError($"[PopupManager] PopupType.{type} 에 등록된 프리팹이 없습니다. PopupManager Inspector 의 Prefabs 배열을 확인하세요.");
             return null;
         }
 
@@ -134,7 +134,7 @@ public class PopupManager : Singleton<PopupManager>
             popup = go.GetComponent<PopupBase>();
             if (popup == null)
             {
-                Debug.LogWarning($"[PopupManager] {prefab.name} 에 PopupBase 컴포넌트가 없습니다.");
+                Debug.LogError($"[PopupManager] {prefab.name} 에 PopupBase 컴포넌트가 없습니다.");
                 Destroy(go);
                 return null;
             }

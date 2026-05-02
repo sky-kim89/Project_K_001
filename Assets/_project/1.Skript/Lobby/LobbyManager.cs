@@ -71,13 +71,28 @@ public class LobbyManager : Singleton<LobbyManager>
 
     void Start()
     {
-        // 마지막 클리어 스테이지로 초기 인덱스 설정
-        var progress = UserDataManager.Instance?.Get<StageProgressData>();
-        if (progress != null)
-            _currentIndex = Mathf.Clamp(progress.ClearedNormalStages, 0, _normalStages.Count - 1);
-
+        _currentIndex = GetLatestAvailableIndex(BattleMode.Normal);
         OnStageChanged?.Invoke(CurrentStage);
     }
+
+#if UNITY_EDITOR
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Comma))  NavigateEditor(-1);
+        if (Input.GetKeyDown(KeyCode.Period)) NavigateEditor(1);
+    }
+
+    void NavigateEditor(int delta)
+    {
+        var list = GetList(_currentTab);
+        if (list == null || list.Count == 0) return;
+        int next = _currentIndex + delta;
+        if (next < 0 || next >= list.Count) return;
+        _currentIndex = next;
+        OnStageChanged?.Invoke(CurrentStage);
+        Debug.Log($"[Editor] 스테이지 이동 → {CurrentStage?.DisplayName}");
+    }
+#endif
 
     // ── 공개 API ─────────────────────────────────────────────
 
@@ -90,29 +105,8 @@ public class LobbyManager : Singleton<LobbyManager>
             return;
         }
         _currentTab   = mode;
-        _currentIndex = 0;
+        _currentIndex = GetLatestAvailableIndex(mode);
         OnStageChanged?.Invoke(CurrentStage);
-    }
-
-    public void Navigate(int delta)
-    {
-        var list = GetList(_currentTab);
-        if (list == null || list.Count == 0) return;
-
-        int next = _currentIndex + delta;
-        if (next < 0 || next >= list.Count) return;
-
-        _currentIndex = next;
-        OnStageChanged?.Invoke(CurrentStage);
-    }
-
-    public bool CanNavigate(int delta)
-    {
-        var list = GetList(_currentTab);
-        if (list == null || list.Count == 0) return false;
-        int next = _currentIndex + delta;
-        if (next < 0 || next >= list.Count) return false;
-        return IsStageUnlocked(_currentTab, next + 1);  // stageNumber = index+1
     }
 
     public void StartBattle()
@@ -232,6 +226,18 @@ public class LobbyManager : Singleton<LobbyManager>
     }
 
     // ── 내부 ─────────────────────────────────────────────────
+
+    /// <summary>해당 모드에서 진입 가능한 최신 스테이지의 인덱스를 반환한다.
+    /// 클리어 수 = 다음 스테이지 인덱스 (예: 8클리어 → index 8 = 9스테이지).</summary>
+    int GetLatestAvailableIndex(BattleMode mode)
+    {
+        var progress = UserDataManager.Instance?.Get<StageProgressData>();
+        int cleared  = mode == BattleMode.Normal
+            ? (progress?.ClearedNormalStages ?? 0)
+            : (progress?.ClearedEliteStages  ?? 0);
+        var list = GetList(mode);
+        return Mathf.Clamp(cleared, 0, list != null ? list.Count - 1 : 0);
+    }
 
     bool IsStageUnlocked(BattleMode mode, int stageNumber)
     {

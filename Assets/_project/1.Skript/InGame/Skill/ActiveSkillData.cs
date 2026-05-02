@@ -158,3 +158,31 @@ public enum ActiveSkillId : int
     SwiftStrike      = 19,  // 신속 연격      — 자신·병사 공격속도 대폭 증가   (궁수)
     SummonElite      = 20,  // 정예 소환      — 강화된 병사 분대 소환          (법사)
 }
+
+public static class ActiveSkillIdExtensions
+{
+    public static string IconKey(this ActiveSkillId id) => id switch
+    {
+        ActiveSkillId.HeavyStrike      => "skill_heavy_strike",
+        ActiveSkillId.VolleyFire       => "skill_volley_fire",
+        ActiveSkillId.LeapStrike       => "skill_leap_strike",
+        ActiveSkillId.HealAura         => "skill_heal_aura",
+        ActiveSkillId.TargetHeal       => "skill_target_heal",
+        ActiveSkillId.ChargeSoldier    => "skill_charge_soldier",
+        ActiveSkillId.SummonSkeleton   => "skill_summon_skeleton",
+        ActiveSkillId.PoisonZone       => "skill_poison_zone",
+        ActiveSkillId.Meteor           => "skill_meteor",
+        ActiveSkillId.Blizzard         => "skill_blizzard",
+        ActiveSkillId.SacrificeSoldier => "skill_sacrifice_soldier",
+        ActiveSkillId.Bind             => "skill_bind",
+        ActiveSkillId.SuicideSoldier   => "skill_suicide_soldier",
+        ActiveSkillId.Berserker        => "skill_berserker",
+        ActiveSkillId.IronShield       => "skill_iron_shield",
+        ActiveSkillId.ArrowRain        => "skill_arrow_rain",
+        ActiveSkillId.BattleCry        => "skill_battle_cry",
+        ActiveSkillId.Shockwave        => "skill_shockwave",
+        ActiveSkillId.SwiftStrike      => "skill_swift_strike",
+        ActiveSkillId.SummonElite      => "skill_summon_elite",
+        _                              => null,
+    };
+}

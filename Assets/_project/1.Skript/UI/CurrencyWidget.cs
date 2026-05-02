@@ -25,6 +25,11 @@ public class CurrencyWidget : MonoBehaviour
 
     // ── 생명주기 ──────────────────────────────────────────────
 
+    void Start()
+    {
+        ApplyIcon();
+    }
+
     void OnEnable()
     {
         ItemData.OnItemChanged += HandleItemChanged;
@@ -45,6 +50,16 @@ public class CurrencyWidget : MonoBehaviour
     }
 
     // ── 내부 ──────────────────────────────────────────────────
+
+    void ApplyIcon()
+    {
+        if (_icon == null) return;
+        var sprite = SpriteManager.Instance?.GetItem(_item.IconKey());
+        if (sprite == null) return;
+
+        _icon.sprite = sprite;
+        _icon.color  = Color.white;
+    }
 
     void Refresh()
     {

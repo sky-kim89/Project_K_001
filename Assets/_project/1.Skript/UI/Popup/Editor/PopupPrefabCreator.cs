@@ -5,16 +5,16 @@ using TMPro;
 
 // ============================================================
 //  PopupPrefabCreator.cs
-//  Tools > Project K > Create Popup Prefabs
-//  BattleResultPopup / PausePopup / LoadingPopup 프리팹을
-//  Assets/_project/2.Prefabs/UI/ 에 자동 생성한다.
+//  Tools > Project K > Popup > Create Popup Prefabs
+//  BattleResultPopup / PausePopup / LoadingPopup 프리팹 자동 생성.
+//  크기·폰트는 UIScale 상수를 참조한다.
 // ============================================================
 
 public static class PopupPrefabCreator
 {
     const string SavePath = "Assets/_project/2.Prefabs/UI";
 
-    [MenuItem("Tools/Project K/Create Popup Prefabs")]
+    [MenuItem("Tools/Project K/Popup/Create Popup Prefabs")]
     static void CreateAll()
     {
         CreateBattleResultPopup();
@@ -29,19 +29,21 @@ public static class PopupPrefabCreator
 
     static void CreateBattleResultPopup()
     {
-        var root  = CreateRoot<BattleResultPopup>("BattleResultPopup", 620, 460);
+        var root  = CreateRoot<BattleResultPopup>("BattleResultPopup", 860, 760);
         var popup = root.GetComponent<BattleResultPopup>();
 
         AddBgPanel(root, new Color(0.08f, 0.10f, 0.16f, 0.96f));
-        var resultText  = AddTMP(root, "ResultText", "승리!", 52, FontStyles.Bold);
-        var subText     = AddTMP(root, "SubText", "모든 적을 물리쳤습니다!", 22, FontStyles.Normal);
-        var statsText   = AddTMP(root, "StatsText", "처치  0\n웨이브  0 / 0", 18, FontStyles.Normal);
-        var confirmBtn  = AddButton(root, "ConfirmButton", "확인", new Color(0.20f, 0.55f, 0.20f));
 
-        SetRect(resultText.rectTransform, new Vector2(0,  130), new Vector2(560,  70));
-        SetRect(subText.rectTransform,    new Vector2(0,   50), new Vector2(560,  40));
-        SetRect(statsText.rectTransform,  new Vector2(0,  -30), new Vector2(400,  70));
-        SetRect(confirmBtn.GetComponent<RectTransform>(), new Vector2(0, -165), new Vector2(200, 50));
+        var resultText = AddTMP(root, "ResultText", "승리!", UIScale.FontXl, FontStyles.Bold);
+        var subText    = AddTMP(root, "SubText", "모든 적을 물리쳤습니다!", UIScale.FontSm, FontStyles.Normal);
+        var statsText  = AddTMP(root, "StatsText", "처치  0   |   웨이브  0 / 0", UIScale.FontSm, FontStyles.Normal);
+        var confirmBtn = AddButton(root, "ConfirmButton", "확인", new Color(0.20f, 0.55f, 0.20f), UIScale.FontMd);
+
+        SetRect(resultText.rectTransform,                      new Vector2(0,  270), new Vector2(760, 100));
+        SetRect(subText.rectTransform,                         new Vector2(0,  165), new Vector2(760,  50));
+        SetRect(statsText.rectTransform,                       new Vector2(0,   90), new Vector2(700,  50));
+        // 보상 카드 영역은 Inspector에서 _rewardArea 연결 (y: -80 ~ -280 사용)
+        SetRect(confirmBtn.GetComponent<RectTransform>(),      new Vector2(0, -310), new Vector2(400, UIScale.BtnMd));
 
         var so = new SerializedObject(popup);
         SetEnum(so, "_popupType",     (int)PopupType.BattleResult);
@@ -58,25 +60,39 @@ public static class PopupPrefabCreator
 
     static void CreatePausePopup()
     {
-        var root  = CreateRoot<PausePopup>("PausePopup", 460, 400);
+        // 버튼 3개 + 여백 기준으로 높이 산출
+        float btnH   = UIScale.BtnSm;
+        float gap    = 24f;
+        float totalH = btnH * 3 + gap * 2;           // 3버튼 높이
+        float popupH = totalH + UIScale.FontLg + 120; // 제목 + 상하 여백
+
+        var root  = CreateRoot<PausePopup>("PausePopup", 720, popupH);
         var popup = root.GetComponent<PausePopup>();
 
         AddBgPanel(root, new Color(0.08f, 0.10f, 0.16f, 0.96f));
-        var title      = AddTMP(root, "TitleText", "일시 정지", 32, FontStyles.Bold);
-        var resumeBtn  = AddButton(root, "ResumeButton",  "계속하기",  new Color(0.20f, 0.55f, 0.20f));
-        var restartBtn = AddButton(root, "RestartButton", "다시 시작", new Color(0.55f, 0.45f, 0.10f));
-        var quitBtn    = AddButton(root, "QuitButton",    "종료",      new Color(0.55f, 0.15f, 0.15f));
 
-        SetRect(title.rectTransform,                      new Vector2(0,  130), new Vector2(400, 50));
-        SetRect(resumeBtn.GetComponent<RectTransform>(),  new Vector2(0,   45), new Vector2(320, 50));
-        SetRect(restartBtn.GetComponent<RectTransform>(), new Vector2(0,  -20), new Vector2(320, 50));
-        SetRect(quitBtn.GetComponent<RectTransform>(),    new Vector2(0,  -85), new Vector2(320, 50));
+        var title = AddTMP(root, "TitleText", "일시 정지", UIScale.FontLg, FontStyles.Bold);
+        SetRect(title.rectTransform, new Vector2(0, popupH / 2 - 80), new Vector2(640, 70));
+
+        // 버튼 3개: 중앙 기준 위→아래
+        float btnStep = btnH + gap;
+        float btn1Y   =  btnStep;
+        float btn2Y   =  0;
+        float btn3Y   = -btnStep;
+
+        var resumeBtn  = AddButton(root, "ResumeButton",  "계속하기",  new Color(0.20f, 0.55f, 0.20f), UIScale.FontMd);
+        var restartBtn = AddButton(root, "RestartButton", "다시 시작", new Color(0.55f, 0.45f, 0.10f), UIScale.FontMd);
+        var quitBtn    = AddButton(root, "QuitButton",    "종료",      new Color(0.55f, 0.15f, 0.15f), UIScale.FontMd);
+
+        SetRect(resumeBtn .GetComponent<RectTransform>(), new Vector2(0, btn1Y), new Vector2(560, btnH));
+        SetRect(restartBtn.GetComponent<RectTransform>(), new Vector2(0, btn2Y), new Vector2(560, btnH));
+        SetRect(quitBtn   .GetComponent<RectTransform>(), new Vector2(0, btn3Y), new Vector2(560, btnH));
 
         var so = new SerializedObject(popup);
         SetEnum(so, "_popupType",     (int)PopupType.Pause);
-        SetObj (so, "_resumeButton",  resumeBtn.GetComponent<Button>());
+        SetObj (so, "_resumeButton",  resumeBtn .GetComponent<Button>());
         SetObj (so, "_restartButton", restartBtn.GetComponent<Button>());
-        SetObj (so, "_quitButton",    quitBtn.GetComponent<Button>());
+        SetObj (so, "_quitButton",    quitBtn   .GetComponent<Button>());
         so.ApplyModifiedProperties();
 
         Save(root, "PausePopup");
@@ -86,7 +102,7 @@ public static class PopupPrefabCreator
 
     static void CreateLoadingPopup()
     {
-        var root  = new GameObject("LoadingPopup", typeof(RectTransform));
+        var root = new GameObject("LoadingPopup", typeof(RectTransform));
         root.AddComponent<CanvasGroup>();
         var popup = root.AddComponent<LoadingPopup>();
 
@@ -98,11 +114,13 @@ public static class PopupPrefabCreator
         rt.offsetMax = Vector2.zero;
 
         AddBgPanel(root, new Color(0.05f, 0.05f, 0.08f, 1f));
-        var titleText  = AddTMP(root, "TitleText",  "배틀 준비 중",    36, FontStyles.Bold);
-        var statusText = AddTMP(root, "StatusText", "장군 소환 중...", 22, FontStyles.Normal);
 
-        SetRect(titleText.rectTransform,  new Vector2(0,  30), new Vector2(600, 60));
-        SetRect(statusText.rectTransform, new Vector2(0, -30), new Vector2(500, 40));
+        var titleText  = AddTMP(root, "TitleText",  "배틀 준비 중",    UIScale.FontLg, FontStyles.Bold);
+        var statusText = AddTMP(root, "StatusText", "장군 소환 중...", UIScale.FontMd, FontStyles.Normal);
+        statusText.color = new Color(0.75f, 0.75f, 0.75f);
+
+        SetRect(titleText .rectTransform, new Vector2(0,  50), new Vector2(800, 80));
+        SetRect(statusText.rectTransform, new Vector2(0, -50), new Vector2(700, 60));
 
         var so = new SerializedObject(popup);
         SetEnum(so, "_popupType",   (int)PopupType.Loading);
@@ -127,7 +145,6 @@ public static class PopupPrefabCreator
         rt.pivot            = new Vector2(0.5f, 0.5f);
         rt.anchoredPosition = Vector2.zero;
         rt.sizeDelta        = new Vector2(w, h);
-
         return go;
     }
 
@@ -136,13 +153,11 @@ public static class PopupPrefabCreator
         var go = new GameObject("BgPanel", typeof(RectTransform), typeof(Image));
         go.transform.SetParent(parent.transform, false);
         go.transform.SetAsFirstSibling();
-
         var rt = go.GetComponent<RectTransform>();
         rt.anchorMin = Vector2.zero;
         rt.anchorMax = Vector2.one;
         rt.offsetMin = Vector2.zero;
         rt.offsetMax = Vector2.zero;
-
         go.GetComponent<Image>().color = color;
     }
 
@@ -150,7 +165,6 @@ public static class PopupPrefabCreator
     {
         var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
         go.transform.SetParent(parent.transform, false);
-
         var tmp = go.GetComponent<TextMeshProUGUI>();
         tmp.text      = text;
         tmp.fontSize  = size;
@@ -160,7 +174,7 @@ public static class PopupPrefabCreator
         return tmp;
     }
 
-    static GameObject AddButton(GameObject parent, string objName, string label, Color bgColor)
+    static GameObject AddButton(GameObject parent, string objName, string label, Color bgColor, float fontSize)
     {
         var go = new GameObject(objName, typeof(RectTransform), typeof(Image), typeof(Button));
         go.transform.SetParent(parent.transform, false);
@@ -168,19 +182,17 @@ public static class PopupPrefabCreator
 
         var labelGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
         labelGo.transform.SetParent(go.transform, false);
-
         var labelRt = labelGo.GetComponent<RectTransform>();
         labelRt.anchorMin = Vector2.zero;
         labelRt.anchorMax = Vector2.one;
         labelRt.offsetMin = Vector2.zero;
         labelRt.offsetMax = Vector2.zero;
-
         var tmp = labelGo.GetComponent<TextMeshProUGUI>();
         tmp.text      = label;
-        tmp.fontSize  = 20;
+        tmp.fontSize  = fontSize;
+        tmp.fontStyle = FontStyles.Bold;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color     = Color.white;
-
         return go;
     }
 

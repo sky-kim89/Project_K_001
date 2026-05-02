@@ -5,56 +5,50 @@ using TMPro;
 
 // ============================================================
 //  LobbyPrefabCreator.cs
-//  Tools > Project K > Create Lobby Prefab
+//  Tools > Project K > 로비 UI > Create Lobby Prefab
 //  로비 Canvas 프리팹을 Assets/_project/2.Prefabs/UI/ 에 생성한다.
+//  크기·폰트는 UIScale 상수를 참조한다.
 //
 //  생성 구조:
-//    LobbyCanvas (Canvas, CanvasScaler 1080×1920)
+//    LobbyCanvas (Canvas, CanvasScaler UIScale.RefW×RefH)
 //    ├── Background
-//    ├── TopBar          (placeholder — 추후 구현)
-//    ├── StageSelectPanel (StageSelectUI 컴포넌트 + 모든 필드 자동 연결)
-//    │   ├── TabRow       NormalTab / EliteTab
-//    │   ├── StageInfo    StageNameText / BestRecordText
-//    │   ├── PreviewArea  PrevBtn / PreviewImage / NextBtn
-//    │   └── BattleArea   ProgressText / BattleStartBtn / EnergyCostText
-//    └── NavBar          (placeholder — 추후 구현)
+//    ├── TopBar          (TopBarCreator.Build 호출)
+//    ├── NavBar
+//    └── StageSelectPanel
 // ============================================================
 
 public static class LobbyPrefabCreator
 {
     const string SavePath = "Assets/_project/2.Prefabs/UI";
 
+    // ── 레이아웃 상수 (UIScale 외 로비 전용) ─────────────────
+    const float TopBarH = 180f;
+    const float NavBarH = 160f;
+    const float TabH    = UIScale.BtnSm;
+
     // ── 색상 팔레트 ───────────────────────────────────────────
-    static readonly Color BgColor         = new Color(0.05f, 0.05f, 0.10f, 1f);
-    static readonly Color BarColor        = new Color(0.07f, 0.07f, 0.13f, 1f);
-    static readonly Color PanelColor      = new Color(0.09f, 0.09f, 0.16f, 1f);
-    static readonly Color TabActiveColor  = new Color(0.20f, 0.70f, 0.90f, 1f);
-    static readonly Color TabInactiveColor= new Color(0.22f, 0.22f, 0.28f, 1f);
-    static readonly Color BattleBtnColor  = new Color(0.11f, 0.72f, 0.58f, 1f);
-    static readonly Color ArrowBtnColor   = new Color(0.25f, 0.25f, 0.35f, 0.70f);
-    static readonly Color PreviewBgColor  = new Color(0.04f, 0.04f, 0.09f, 1f);
+    static readonly Color BgColor          = new Color(0.05f, 0.05f, 0.10f, 1f);
+    static readonly Color BarColor         = new Color(0.07f, 0.07f, 0.13f, 1f);
+    static readonly Color PanelColor       = new Color(0.09f, 0.09f, 0.16f, 1f);
+    static readonly Color TabActiveColor   = new Color(0.20f, 0.70f, 0.90f, 1f);
+    static readonly Color TabInactiveColor = new Color(0.22f, 0.22f, 0.28f, 1f);
+    static readonly Color BattleBtnColor   = new Color(0.11f, 0.72f, 0.58f, 1f);
+    static readonly Color ArrowBtnColor    = new Color(0.25f, 0.25f, 0.35f, 0.70f);
+    static readonly Color PreviewBgColor   = new Color(0.04f, 0.04f, 0.09f, 1f);
 
     // ── 진입점 ────────────────────────────────────────────────
 
-    [MenuItem("Tools/Project K/Create Lobby Prefab")]
+    [MenuItem("Tools/Project K/로비 UI/Create Lobby Prefab")]
     static void CreateLobby()
     {
         var root = CreateCanvas("LobbyCanvas");
 
-        // Background
-        var bg = CreatePanel(root, "Background", BgColor);
-        Stretch(bg, 0, 0, 0, 0);
+        CreatePanel(root, "Background", BgColor);
+        Stretch(root.transform.Find("Background").gameObject, 0, 0, 0, 0);
 
-        // TopBar (130px, 상단 고정)
-        var topBar = TopBarCreator.Build(root);
-
-        // NavBar (110px, 하단 고정)
-        var navBar = CreateNavBar(root);
-
-        // StageSelectPanel (TopBar~NavBar 사이 영역)
-        var stagePanel = CreateStagePanel(root);
-
-        // LobbyManager 는 씬에 별도 배치 (프리팹에서 제외)
+        TopBarCreator.Build(root);
+        CreateNavBar(root);
+        CreateStagePanel(root);
 
         PrefabUtility.SaveAsPrefabAsset(root, $"{SavePath}/LobbyCanvas.prefab");
         Object.DestroyImmediate(root);
@@ -68,23 +62,20 @@ public static class LobbyPrefabCreator
     static GameObject CreateNavBar(GameObject parent)
     {
         var bar = CreatePanel(parent, "NavBar", BarColor);
-        AnchorBottom(bar, 110);
+        AnchorBottom(bar, NavBarH);
 
         string[] icons = { "홈", "영웅", "전투", "상점", "프로필" };
-        float startX = -400f;
-        float step   = 200f;
+        float step   = UIScale.RefWidth / icons.Length;
+        float startX = -UIScale.RefWidth / 2f + step / 2f;
 
         for (int i = 0; i < icons.Length; i++)
         {
-            var btn = CreateButton(bar, $"NavBtn_{icons[i]}", icons[i], PanelColor, 18);
+            var btn = CreateButton(bar, $"NavBtn_{icons[i]}", icons[i], PanelColor, UIScale.FontSm);
             SetRect(btn.GetComponent<RectTransform>(),
-                new Vector2(startX + step * i, 0), new Vector2(160, 80));
+                new Vector2(startX + step * i, 0), new Vector2(step - 16f, NavBarH - 20f));
 
-            // 전투 탭 강조
-            if (i == 2)
-                btn.GetComponent<Image>().color = TabActiveColor;
+            if (i == 2) btn.GetComponent<Image>().color = TabActiveColor;
         }
-
         return bar;
     }
 
@@ -95,105 +86,100 @@ public static class LobbyPrefabCreator
         var panel = new GameObject("StageSelectPanel", typeof(RectTransform));
         panel.transform.SetParent(parent.transform, false);
 
-        // TopBar(130) ~ NavBar(110) 사이
         var rt = panel.GetComponent<RectTransform>();
         rt.anchorMin = Vector2.zero;
         rt.anchorMax = Vector2.one;
-        rt.offsetMin = new Vector2(0, 110);
-        rt.offsetMax = new Vector2(0, -130);
+        rt.offsetMin = new Vector2(0, NavBarH);
+        rt.offsetMax = new Vector2(0, -TopBarH);
 
         var ui = panel.AddComponent<StageSelectUI>();
 
-        // TabRow (상단 80px)
+        // ── TabRow ────────────────────────────────────────────
         var tabRow = new GameObject("TabRow", typeof(RectTransform));
         tabRow.transform.SetParent(panel.transform, false);
-        AnchorTopInside(tabRow, 80, 0);
+        AnchorTopInside(tabRow, TabH + 16f, 0);
 
-        var normalTab = CreateButton(tabRow, "NormalTab", "일반", TabActiveColor, 24);
-        SetRect(normalTab.GetComponent<RectTransform>(), new Vector2(-200, 0), new Vector2(240, 60));
+        var normalTab = CreateButton(tabRow, "NormalTab", "일반",   TabActiveColor,   UIScale.FontMd);
+        var eliteTab  = CreateButton(tabRow, "EliteTab",  "엘리트", TabInactiveColor, UIScale.FontMd);
+        SetRect(normalTab.GetComponent<RectTransform>(), new Vector2(-220, 0), new Vector2(360, TabH));
+        SetRect(eliteTab .GetComponent<RectTransform>(), new Vector2( 220, 0), new Vector2(360, TabH));
 
-        var eliteTab = CreateButton(tabRow, "EliteTab", "엘리트", TabInactiveColor, 24);
-        SetRect(eliteTab.GetComponent<RectTransform>(), new Vector2(200, 0), new Vector2(240, 60));
-
-        // StageInfo (탭 아래 130px)
+        // ── StageInfo ─────────────────────────────────────────
+        float infoH = 160f;
         var infoArea = new GameObject("StageInfo", typeof(RectTransform));
         infoArea.transform.SetParent(panel.transform, false);
-        AnchorTopInside(infoArea, 130, 80);
+        AnchorTopInside(infoArea, infoH, TabH + 16f);
 
-        var stageName = CreateTMP(infoArea, "StageNameText", "일반 스테이지 1", 36, FontStyles.Bold);
-        SetRect(stageName.GetComponent<RectTransform>(), new Vector2(0, 25), new Vector2(900, 50));
-
-        var bestRecord = CreateTMP(infoArea, "BestRecordText", "최고 기록  --:--", 22, FontStyles.Normal);
-        SetRect(bestRecord.GetComponent<RectTransform>(), new Vector2(0, -28), new Vector2(900, 36));
+        var stageName   = CreateTMP(infoArea, "StageNameText",  "일반 스테이지 1", UIScale.FontLg, FontStyles.Bold);
+        var bestRecord  = CreateTMP(infoArea, "BestRecordText", "최고 기록  --:--", UIScale.FontSm, FontStyles.Normal);
+        SetRect(stageName.GetComponent<RectTransform>(),  new Vector2(0,  40), new Vector2(900, 70));
+        SetRect(bestRecord.GetComponent<RectTransform>(), new Vector2(0, -40), new Vector2(900, 48));
         bestRecord.color = new Color(0.7f, 0.7f, 0.7f);
 
-        // PreviewArea (중앙 나머지 영역, BattleArea 220px 위)
+        // ── PreviewArea ───────────────────────────────────────
+        float battleAreaH = 280f;
         var previewArea = new GameObject("PreviewArea", typeof(RectTransform));
         previewArea.transform.SetParent(panel.transform, false);
         var previewRt = previewArea.GetComponent<RectTransform>();
         previewRt.anchorMin = Vector2.zero;
         previewRt.anchorMax = Vector2.one;
-        previewRt.offsetMin = new Vector2(0, 220);
-        previewRt.offsetMax = new Vector2(0, -210);
+        previewRt.offsetMin = new Vector2(0, battleAreaH);
+        previewRt.offsetMax = new Vector2(0, -(TabH + 16f + infoH));
 
-        // 프리뷰 배경 (어두운 원형 느낌)
-        var previewBg = CreateImage(previewArea, "PreviewBg", PreviewBgColor);
+        var previewBg  = CreateImage(previewArea, "PreviewBg",    PreviewBgColor);
+        var previewImg = CreateImage(previewArea, "PreviewImage", new Color(1, 1, 1, 0));
+        previewImg.preserveAspect = true;
+
         var previewBgRt = previewBg.GetComponent<RectTransform>();
-        previewBgRt.anchorMin = new Vector2(0.1f, 0.05f);
-        previewBgRt.anchorMax = new Vector2(0.9f, 0.95f);
-        previewBgRt.offsetMin = Vector2.zero;
-        previewBgRt.offsetMax = Vector2.zero;
+        previewBgRt.anchorMin = new Vector2(0.05f, 0.05f);
+        previewBgRt.anchorMax = new Vector2(0.95f, 0.95f);
+        previewBgRt.offsetMin = previewBgRt.offsetMax = Vector2.zero;
 
-        // 스테이지 프리뷰 이미지
-        var preview = CreateImage(previewArea, "PreviewImage", new Color(1, 1, 1, 0));
-        var previewRt2 = preview.GetComponent<RectTransform>();
-        previewRt2.anchorMin = new Vector2(0.15f, 0.1f);
-        previewRt2.anchorMax = new Vector2(0.85f, 0.9f);
-        previewRt2.offsetMin = Vector2.zero;
-        previewRt2.offsetMax = Vector2.zero;
-        preview.preserveAspect = true;
+        var previewImgRt = previewImg.GetComponent<RectTransform>();
+        previewImgRt.anchorMin = new Vector2(0.1f, 0.1f);
+        previewImgRt.anchorMax = new Vector2(0.9f, 0.9f);
+        previewImgRt.offsetMin = previewImgRt.offsetMax = Vector2.zero;
 
-        // Prev / Next 버튼
-        var prevBtn = CreateButton(previewArea, "PrevBtn", "<", ArrowBtnColor, 36);
-        SetRect(prevBtn.GetComponent<RectTransform>(), new Vector2(-460, 0), new Vector2(90, 90));
+        float arrowSize = 110f;
+        var prevBtn = CreateButton(previewArea, "PrevBtn", "<", ArrowBtnColor, UIScale.FontLg);
+        var nextBtn = CreateButton(previewArea, "NextBtn", ">", ArrowBtnColor, UIScale.FontLg);
+        SetRect(prevBtn.GetComponent<RectTransform>(), new Vector2(-460, 0), new Vector2(arrowSize, arrowSize));
+        SetRect(nextBtn.GetComponent<RectTransform>(), new Vector2( 460, 0), new Vector2(arrowSize, arrowSize));
         prevBtn.GetComponentInChildren<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
-
-        var nextBtn = CreateButton(previewArea, "NextBtn", ">", ArrowBtnColor, 36);
-        SetRect(nextBtn.GetComponent<RectTransform>(), new Vector2(460, 0), new Vector2(90, 90));
         nextBtn.GetComponentInChildren<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
 
-        // BattleArea (하단 220px)
+        // ── BattleArea ────────────────────────────────────────
         var battleArea = new GameObject("BattleArea", typeof(RectTransform));
         battleArea.transform.SetParent(panel.transform, false);
-        AnchorBottomInside(battleArea, 220, 0);
+        AnchorBottomInside(battleArea, battleAreaH, 0);
 
-        var progressText = CreateTMP(battleArea, "ProgressText", "스테이지 1 클리어  0 / 1", 20, FontStyles.Normal);
-        SetRect(progressText.GetComponent<RectTransform>(), new Vector2(0, 70), new Vector2(800, 36));
+        var progressText = CreateTMP(battleArea, "ProgressText", "스테이지 1 클리어  0 / 1", UIScale.FontSm, FontStyles.Normal);
+        SetRect(progressText.GetComponent<RectTransform>(), new Vector2(0, 110), new Vector2(800, 48));
         progressText.color = new Color(0.65f, 0.65f, 0.65f);
 
-        var battleBtn = CreateButton(battleArea, "BattleStartBtn", "전투 시작", BattleBtnColor, 32);
+        var battleBtn   = CreateButton(battleArea, "BattleStartBtn", "전투 시작", BattleBtnColor, UIScale.FontLg);
         var battleBtnRt = battleBtn.GetComponent<RectTransform>();
-        battleBtnRt.anchorMin = new Vector2(0.1f, 0f);
-        battleBtnRt.anchorMax = new Vector2(0.9f, 0f);
-        battleBtnRt.anchoredPosition = new Vector2(0, 30);
-        battleBtnRt.sizeDelta        = new Vector2(0, 90);
+        battleBtnRt.anchorMin        = new Vector2(0.08f, 0f);
+        battleBtnRt.anchorMax        = new Vector2(0.92f, 0f);
+        battleBtnRt.anchoredPosition = new Vector2(0, UIScale.BtnLg / 2f + 10f);
+        battleBtnRt.sizeDelta        = new Vector2(0, UIScale.BtnLg);
         battleBtn.GetComponentInChildren<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
 
-        var energyCostText = CreateTMP(battleArea, "EnergyCostText", "⚡  5", 22, FontStyles.Normal);
-        SetRect(energyCostText.GetComponent<RectTransform>(), new Vector2(0, -55), new Vector2(300, 36));
-        energyCostText.color = new Color(0.4f, 0.9f, 1.0f);
+        var energyText = CreateTMP(battleArea, "EnergyCostText", "⚡  5", UIScale.FontSm, FontStyles.Normal);
+        SetRect(energyText.GetComponent<RectTransform>(), new Vector2(0, -60), new Vector2(400, 48));
+        energyText.color = new Color(0.4f, 0.9f, 1.0f);
 
         // ── StageSelectUI 필드 연결 ───────────────────────────
         var so = new SerializedObject(ui);
         SetObj(so, "_normalTabBtn",   normalTab.GetComponent<Button>());
-        SetObj(so, "_eliteTabBtn",    eliteTab.GetComponent<Button>());
+        SetObj(so, "_eliteTabBtn",    eliteTab .GetComponent<Button>());
         SetObj(so, "_stageNameText",  stageName);
         SetObj(so, "_bestRecordText", bestRecord);
-        SetObj(so, "_previewImage",   preview);
+        SetObj(so, "_previewImage",   previewImg);
         SetObj(so, "_prevBtn",        prevBtn.GetComponent<Button>());
         SetObj(so, "_nextBtn",        nextBtn.GetComponent<Button>());
         SetObj(so, "_battleStartBtn", battleBtn.GetComponent<Button>());
-        SetObj(so, "_energyCostText", energyCostText);
+        SetObj(so, "_energyCostText", energyText);
         SetObj(so, "_progressText",   progressText);
         so.ApplyModifiedProperties();
 
@@ -211,9 +197,9 @@ public static class LobbyPrefabCreator
 
         var scaler = go.AddComponent<CanvasScaler>();
         scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1080, 1920);
+        scaler.referenceResolution = new Vector2(UIScale.RefWidth, UIScale.RefHeight);
         scaler.screenMatchMode     = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-        scaler.matchWidthOrHeight  = 0.5f;
+        scaler.matchWidthOrHeight  = UIScale.Match;
 
         go.AddComponent<GraphicRaycaster>();
         return go;
@@ -260,20 +246,17 @@ public static class LobbyPrefabCreator
         var lRt = labelGo.GetComponent<RectTransform>();
         lRt.anchorMin = Vector2.zero;
         lRt.anchorMax = Vector2.one;
-        lRt.offsetMin = Vector2.zero;
-        lRt.offsetMax = Vector2.zero;
+        lRt.offsetMin = lRt.offsetMax = Vector2.zero;
         var tmp = labelGo.GetComponent<TextMeshProUGUI>();
         tmp.text      = label;
         tmp.fontSize  = fontSize;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color     = Color.white;
-
         return go;
     }
 
     // ── RectTransform 헬퍼 ───────────────────────────────────
 
-    /// <summary>전체 스트레치 (오프셋 지정)</summary>
     static void Stretch(GameObject go, float left, float bottom, float right, float top)
     {
         var rt = go.GetComponent<RectTransform>();
@@ -283,17 +266,6 @@ public static class LobbyPrefabCreator
         rt.offsetMax = new Vector2(-right, -top);
     }
 
-    /// <summary>부모 상단에 고정, 전체 너비</summary>
-    static void AnchorTop(GameObject go, float height)
-    {
-        var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = new Vector2(0, 1);
-        rt.anchorMax = new Vector2(1, 1);
-        rt.offsetMin = new Vector2(0, -height);
-        rt.offsetMax = new Vector2(0, 0);
-    }
-
-    /// <summary>부모 하단에 고정, 전체 너비</summary>
     static void AnchorBottom(GameObject go, float height)
     {
         var rt = go.GetComponent<RectTransform>();
@@ -303,7 +275,6 @@ public static class LobbyPrefabCreator
         rt.offsetMax = new Vector2(0, height);
     }
 
-    /// <summary>부모 내부 상단에서 offsetFromTop 아래에 height 만큼</summary>
     static void AnchorTopInside(GameObject go, float height, float offsetFromTop)
     {
         var rt = go.GetComponent<RectTransform>();
@@ -313,7 +284,6 @@ public static class LobbyPrefabCreator
         rt.offsetMax = new Vector2(0, -offsetFromTop);
     }
 
-    /// <summary>부모 내부 하단에서 offsetFromBottom 위에 height 만큼</summary>
     static void AnchorBottomInside(GameObject go, float height, float offsetFromBottom)
     {
         var rt = go.GetComponent<RectTransform>();
@@ -323,7 +293,6 @@ public static class LobbyPrefabCreator
         rt.offsetMax = new Vector2(0, offsetFromBottom + height);
     }
 
-    /// <summary>중앙 앵커, 고정 크기</summary>
     static void SetRect(RectTransform rt, Vector2 pos, Vector2 size)
     {
         rt.anchorMin        = new Vector2(0.5f, 0.5f);

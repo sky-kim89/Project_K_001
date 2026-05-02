@@ -41,9 +41,11 @@ public class StageSelectUI : MonoBehaviour
     {
         _normalTabBtn?  .onClick.AddListener(() => LobbyManager.Instance.SetTab(BattleMode.Normal));
         _eliteTabBtn?   .onClick.AddListener(() => LobbyManager.Instance.SetTab(BattleMode.Elite));
-        _prevBtn?       .onClick.AddListener(() => LobbyManager.Instance.Navigate(-1));
-        _nextBtn?       .onClick.AddListener(() => LobbyManager.Instance.Navigate(1));
         _battleStartBtn?.onClick.AddListener(() => LobbyManager.Instance.StartBattle());
+
+        // 스테이지 직접 내비게이션 비활성 — 이전/다음 버튼 숨김
+        _prevBtn?.gameObject.SetActive(false);
+        _nextBtn?.gameObject.SetActive(false);
 
         if (LobbyManager.Instance != null)
             Refresh(LobbyManager.Instance.CurrentStage);
@@ -65,10 +67,6 @@ public class StageSelectUI : MonoBehaviour
         var progress       = UserDataManager.Instance?.Get<StageProgressData>();
         bool eliteUnlocked = progress?.IsEliteUnlocked ?? false;
         if (_eliteTabBtn != null) _eliteTabBtn.interactable = eliteUnlocked;
-
-        // 내비 버튼 활성화 (잠금 스테이지 이동 불가)
-        if (_prevBtn != null) _prevBtn.interactable = LobbyManager.Instance.CanNavigate(-1);
-        if (_nextBtn != null) _nextBtn.interactable = LobbyManager.Instance.CanNavigate(1);
 
         if (stage == null) return;
 

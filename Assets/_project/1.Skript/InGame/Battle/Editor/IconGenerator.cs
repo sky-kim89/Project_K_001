@@ -39,7 +39,7 @@ public static class IconGenerator
     // ═══════════════════════════════════════════════════════
     //  메뉴 진입점
     // ═══════════════════════════════════════════════════════
-    [MenuItem("Tools/Project K/Generate Icons")]
+    [MenuItem("Tools/Project K/에셋/Generate Icons")]
     public static void GenerateAllIcons()
     {
         EnsureDir(CLASS_PATH);

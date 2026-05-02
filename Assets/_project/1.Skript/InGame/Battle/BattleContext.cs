@@ -17,6 +17,9 @@ public class BattleContext
     public int AliveEnemyCount { get; set; }
     public int AliveAllyCount  { get; set; }
 
+    // ── 스테이지 레벨 (장비 박스 개봉 시 EquipmentDatabase.PickRandom 에 전달) ──
+    public int StageLevel { get; set; }
+
     // ── 누적 보상 (스테이지 클리어 시 ApplyStageClearReward 가 채움) ──
     public System.Collections.Generic.List<ItemAmount> PendingRewards { get; } = new();
 

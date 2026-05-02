@@ -53,10 +53,22 @@ public class NormalMode : BattleModeBase
 
     public override void ApplyStageClearReward()
     {
+        Context.StageLevel = _stage.StageNumber;
+
         if (_stage.GoldReward  > 0) Context.PendingRewards.Add(new ItemAmount { Item = eItem.Gold,        Amount = _stage.GoldReward  });
         if (_stage.StoneReward > 0) Context.PendingRewards.Add(new ItemAmount { Item = eItem.BattleStone, Amount = _stage.StoneReward });
 
-        Debug.Log($"[NormalMode] 클리어 보상: 골드 +{_stage.GoldReward}, 전투석 +{_stage.StoneReward}");
+        Context.PendingRewards.Add(new ItemAmount { Item = eItem.EquipBox, Amount = 1 });
+
+        // 클리어 기록 저장 — 다음 스테이지 잠금 해제
+        var progress = UserDataManager.Instance?.Get<StageProgressData>();
+        if (progress != null)
+        {
+            progress.RecordClear(BattleMode.Normal, _stage.StageNumber);
+            UserDataManager.Instance.RequestSave();
+        }
+
+        Debug.Log($"[NormalMode] 클리어 보상: 골드 +{_stage.GoldReward}, 전투석 +{_stage.StoneReward}, 장비 박스 ×1");
     }
 
     // ── 훅 오버라이드 ─────────────────────────────────────────

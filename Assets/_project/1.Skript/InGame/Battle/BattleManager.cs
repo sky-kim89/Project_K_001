@@ -163,11 +163,11 @@ public class BattleManager : Singleton<BattleManager>
             _context.State = BattleState.WaveClear;
             _mode.OnWaveClear(_context.CurrentWave);
 
-            // 마지막 웨이브면 승리 + 스테이지 클리어 보상 지급
+            // 마지막 웨이브면 승리 + 스테이지 클리어 보상 산정
+            // 실제 지급은 BattleResultPopup 에서 RewardOpener 를 통해 처리
             if (_context.IsLastWave)
             {
                 _mode.ApplyStageClearReward();
-                CommitPendingRewards();
                 _context.State = BattleState.BattleVictory;
                 _mode.OnBattleVictory();
                 OnVictory?.Invoke();

@@ -31,8 +31,6 @@ public class InGameHUD : MonoBehaviour
     [SerializeField] Transform  _generalPanelContainer;
     [SerializeField] int        _maxGeneralPanels = 5;
 
-    [Header("아이콘 (ActiveSkillId 순서 — 0번은 None / 빈 칸)")]
-    [SerializeField] Sprite[] _skillIcons;
 
     // ── 런타임 ─────────────────────────────────────────────────
     readonly List<GeneralPanelUI> _panels = new();
@@ -142,10 +140,8 @@ public class InGameHUD : MonoBehaviour
 
     // ── 스킬 아이콘 결정 ─────────────────────────────────────
 
-    Sprite ResolveSkillIcon(GeneralRuntimeBridge bridge)
+    static Sprite ResolveSkillIcon(GeneralRuntimeBridge bridge)
     {
-        if (_skillIcons == null || _skillIcons.Length == 0) return null;
-
         var link = bridge.GetComponent<EntityLink>();
         if (link == null || link.Entity == Entity.Null) return null;
 
@@ -156,6 +152,8 @@ public class InGameHUD : MonoBehaviour
         if (!em.HasComponent<GeneralActiveSkillComponent>(link.Entity)) return null;
 
         int skillId = em.GetComponentData<GeneralActiveSkillComponent>(link.Entity).SkillId;
-        return skillId >= 0 && skillId < _skillIcons.Length ? _skillIcons[skillId] : null;
+        var id      = (ActiveSkillId)skillId;
+        var key     = id.IconKey();
+        return key != null ? SpriteManager.Instance?.GetGeneral(key) : null;
     }
 }

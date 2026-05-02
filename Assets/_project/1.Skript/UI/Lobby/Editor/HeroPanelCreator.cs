@@ -48,7 +48,7 @@ public static class HeroPanelCreator
 
     // ── 진입점 ────────────────────────────────────────────────
 
-    [MenuItem("Tools/Project K/Create HeroPanel Prefab")]
+    [MenuItem("Tools/Project K/로비 UI/Create HeroPanel Prefab")]
     public static void Create()
     {
         Directory.CreateDirectory("Assets/_project/2.Prefabs/UI/Lobby");
