@@ -23,6 +23,8 @@ public class RewardCardUI : MonoBehaviour
 
     public bool IsOpened { get; private set; }
 
+    Action _pendingOpen;
+
     // ── 직접 아이템 (즉시 확정) ──────────────────────────────
 
     public void SetupFixed(Sprite icon, Color bgColor, string name, string amountLabel)
@@ -40,7 +42,7 @@ public class RewardCardUI : MonoBehaviour
         if (_nameText != null)   _nameText.text   = name;
         if (_amountText != null) _amountText.text = amountLabel;
 
-        _cardButton?.gameObject.SetActive(false);
+        _cardButton.gameObject.SetActive(false);
     }
 
     // ── 박스 아이템 (탭 개봉) ────────────────────────────────
@@ -57,10 +59,17 @@ public class RewardCardUI : MonoBehaviour
         if (_nameText != null)      _nameText.text  = source.Item.DisplayName();
         if (_amountText != null)    _amountText.text = "";
 
-        _cardButton?.gameObject.SetActive(true);
-        _cardButton?.onClick.RemoveAllListeners();
-        _cardButton?.onClick.AddListener(() =>
-            OpenBox(source, stageLevel, onResult, onOpened));
+        _pendingOpen = () => OpenBox(source, stageLevel, onResult, onOpened);
+
+        _cardButton.gameObject.SetActive(true);
+        _cardButton.onClick.RemoveAllListeners();
+        _cardButton.onClick.AddListener(() => _pendingOpen());
+    }
+
+    public void TryOpen()
+    {
+        if (!IsOpened)
+            _pendingOpen();
     }
 
     // ── 내부 ─────────────────────────────────────────────────
@@ -92,7 +101,7 @@ public class RewardCardUI : MonoBehaviour
             if (_amountText != null) _amountText.text = GradeStyle.GetLabel(equip.Grade);
         }
 
-        _cardButton?.gameObject.SetActive(false);
+        _cardButton.gameObject.SetActive(false);
 
         onResult?.Invoke(result);
         onOpened?.Invoke();

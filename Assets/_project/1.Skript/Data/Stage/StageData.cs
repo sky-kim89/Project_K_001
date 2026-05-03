@@ -14,6 +14,7 @@ public class StageData
     public int            EnergyCost;
     public int            GoldReward;
     public int            StoneReward;
+    public int            ExpReward;
     public int            DailyClearLimit;   // 0 = 무제한
     public Sprite         PreviewSprite;
     public List<WaveData> Waves = new();

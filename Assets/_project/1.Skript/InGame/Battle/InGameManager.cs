@@ -98,12 +98,17 @@ public class InGameManager : MonoBehaviour
         if (GameSession.Instance.HasStage)
         {
             var stage    = GameSession.Instance.CurrentStage;
-            var progress = UserDataManager.Instance?.Get<StageProgressData>();
-            if (progress != null)
+            var unitData = UserDataManager.Instance.Get<UnitData>();
+            foreach (var unit in unitData.Units)
             {
-                progress.RecordClear(stage.Mode, stage.StageNumber);
-                UserDataManager.Instance.RequestSave();
+                int gained = unitData.AddUnitExp(unit.UnitName, stage.ExpReward);
+                if (gained > 0)
+                    Debug.Log($"[InGameManager] {unit.UnitName} 레벨 업! → Lv.{unit.Level} (+{gained})");
             }
+
+            var progress = UserDataManager.Instance.Get<StageProgressData>();
+            progress.RecordClear(stage.Mode, stage.StageNumber);
+            UserDataManager.Instance.RequestSave();
         }
 
         if (PopupManager.Instance == null) return;

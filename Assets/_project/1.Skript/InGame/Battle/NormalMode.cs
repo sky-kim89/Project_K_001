@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 // ============================================================
@@ -30,12 +31,29 @@ public class NormalMode : BattleModeBase
         // 아군은 1웨이브에만 스폰 (이후 웨이브에선 유지)
         if (wave != 1) return null;
 
-        UnitData unitData = UserDataManager.Instance.Get<UnitData>();
+        UnitData       unitData   = UserDataManager.Instance.Get<UnitData>();
+        DeploymentData deployData = UserDataManager.Instance.Get<DeploymentData>();
         if (unitData == null || unitData.Units.Count == 0) return null;
 
-        var entries = new List<SpawnEntry>(unitData.Units.Count);
-        foreach (UnitEntry unit in unitData.Units)
+        // 배치 설정이 있으면 배치된 유닛만, 없으면 전체 유닛 스폰
+        List<string> names;
+        if (deployData != null && deployData.HasAnyDeployed())
         {
+            names = deployData.GetDeployedUnits()
+                .Where(n => unitData.GetUnit(n) != null)
+                .ToList();
+        }
+        else
+        {
+            names = unitData.Units.Select(u => u.UnitName).ToList();
+        }
+
+        if (names.Count == 0) return null;
+
+        var entries = new List<SpawnEntry>(names.Count);
+        foreach (string name in names)
+        {
+            UnitEntry unit = unitData.GetUnit(name);
             entries.Add(new SpawnEntry
             {
                 Name         = unit.UnitName,

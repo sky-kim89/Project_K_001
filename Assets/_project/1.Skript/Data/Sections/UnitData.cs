@@ -52,10 +52,22 @@ public class UnitData : ISaveSection
         if (entry != null) entry.Level = level;
     }
 
-    public void AddUnitExp(string unitId, int amount)
+    public int AddUnitExp(string unitId, int amount)
     {
         UnitEntry entry = GetUnit(unitId);
-        if (entry != null) entry.Exp += amount;
+        if (entry == null) return 0;
+
+        entry.Exp += amount;
+
+        int levelsGained = 0;
+        int expPerLevel  = GameplayConfig.Current.ExpPerLevel;
+        while (entry.Exp >= entry.Level * expPerLevel)
+        {
+            entry.Exp -= entry.Level * expPerLevel;
+            entry.Level++;
+            levelsGained++;
+        }
+        return levelsGained;
     }
 
     // ── 런 장비 슬롯 관리 (회귀 시 ClearAllEquipments 호출) ──
@@ -98,12 +110,23 @@ public class UnitData : ISaveSection
     public void SetDefaults()
     {
         _raw = new UnitRawData();
-        _raw.Units.Add(new UnitEntry { UnitName = "General", Level = 100, Exp = 0, SkillId = -1 });
-        _raw.Units.Add(new UnitEntry { UnitName = "General1123", Level = 100, Exp = 0, SkillId = -1 });
-        _raw.Units.Add(new UnitEntry { UnitName = "General2123", Level = 100, Exp = 0, SkillId = -1 });
-        _raw.Units.Add(new UnitEntry { UnitName = "General3123", Level = 100, Exp = 0, SkillId = -1 });
-        _raw.Units.Add(new UnitEntry { UnitName = "General4123", Level = 100, Exp = 0, SkillId = -1 });
+        var name = s_namePool[UnityEngine.Random.Range(0, s_namePool.Length)];
+        _raw.Units.Add(new UnitEntry { UnitName = name, Level = 1, Exp = 0, SkillId = -1 });
     }
+
+    static readonly string[] s_namePool =
+    {
+        "아서",   "드레이크", "마커스",  "알드릭",  "레온",    "가레스",  "트리스탄", "이반",   "로한",   "케인",
+        "오웬",   "덱스터",  "그레이엄", "페닉스",  "레이번",  "시리우스", "막시무스", "아론",   "브렌던", "도미닉",
+        "에릭",   "펠릭스",  "가브리엘", "헥터",   "재스퍼",  "카일",   "말콤",   "나단",   "오스카",  "패트릭",
+        "로드릭",  "솔로몬",  "티모시",  "빅터",   "월터",   "요나스",  "아킬레스", "발리안",  "다미안",  "에드워드",
+        "프레드릭", "길버트",  "해롤드",  "야코브",  "킬리안",  "로렌즈",  "마그누스", "니콜라스", "피어스",  "레이먼드",
+        "시그프리드","발데마르", "크레이그", "라이덴",  "에반",   "코너",   "알렉산더", "버나드",  "다리우스", "에이든",
+        "핀리",   "그리핀",  "헌터",   "아이작",  "자렛",   "라이언",  "모건",   "오리온",  "퀸시",   "리드",
+        "샘슨",   "타이터스", "빈센트",  "윌리엄",  "자비에르", "아드리안", "블레이즈", "세드릭",  "더글라스", "엘리엇",
+        "플린",   "가빈",   "허큘리스", "이고르",  "줄리안",  "케리건",  "레오",   "매슈",   "올리버",  "필립",
+        "랄프",   "스탠리",  "토마스",  "울리히",  "발렌틴",  "웨슬리",  "젤드리스", "알폰스",  "베르트랑", "시그마",
+    };
 
     // ── 직렬화 전용 내부 클래스 ──────────────────────────────
 

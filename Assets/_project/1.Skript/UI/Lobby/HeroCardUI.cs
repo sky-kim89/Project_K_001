@@ -28,6 +28,7 @@ public class HeroCardUI : MonoBehaviour
     [SerializeField] TextMeshProUGUI      _defText;
     [SerializeField] TextMeshProUGUI      _soldierText;
     [SerializeField] Button               _button;
+    [SerializeField] TextMeshProUGUI      _deployText;   // "출전 1" 등, 배치 슬롯 표시
 
     // HeroPanelUI 와 동일한 직업 배경색
     static readonly Color[] JobBgColors =
@@ -72,7 +73,18 @@ public class HeroCardUI : MonoBehaviour
             _button.onClick.AddListener(() => _onSelect?.Invoke(Entry));
         }
 
+        var deployData = UserDataManager.Instance.Get<DeploymentData>();
+        RefreshDeploy(deployData);
+
         UpdatePortrait(entry);
+    }
+
+    public void RefreshDeploy(DeploymentData data)
+    {
+        if (_deployText == null) return;
+        int slot = data.GetSlotOf(Entry.UnitName);
+        _deployText.gameObject.SetActive(slot >= 0);
+        if (slot >= 0) _deployText.text = $"출전 {slot + 1}번";
     }
 
     public void SetSelected(bool selected)

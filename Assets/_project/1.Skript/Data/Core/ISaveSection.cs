@@ -19,6 +19,7 @@ public enum SaveKey
     ItemData        = 2,
     StageProgress   = 3,
     EquipInventory  = 4,
+    DeploymentData  = 5,
 }
 
 public interface ISaveSection

@@ -98,6 +98,10 @@ public class HeroPanelUI : MonoBehaviour
     [SerializeField] ActiveSkillDatabase  _activeSkillDatabase;
     [SerializeField] PassiveSkillDatabase _passiveSkillDatabase;
 
+    // ── 배치 슬롯 ────────────────────────────────────────────
+    [Header("배치 슬롯")]
+    [SerializeField] DeploySlotRowUI _deploySlotRow;
+
     // ── 레벨업 ────────────────────────────────────────────────
     [Header("레벨업")]
     [SerializeField] Button          _levelUpBtn;
@@ -151,6 +155,7 @@ public class HeroPanelUI : MonoBehaviour
             }
         _levelUpBtn?.onClick.AddListener(OnLevelUpClick);
         _hireBtn?.onClick.AddListener(OnHireClick);
+        _deploySlotRow.OnDeployChanged += RefreshCardDeployBadges;
         SwitchTab(0);
     }
 
@@ -211,6 +216,7 @@ public class HeroPanelUI : MonoBehaviour
         foreach (var c in _cards)
             c.SetSelected(c.Entry == entry);
         UpdateDetail(entry);
+        _deploySlotRow.Setup(_selected, UserDataManager.Instance.Get<DeploymentData>());
     }
 
     void UpdateDetail(UnitEntry entry)
@@ -504,6 +510,13 @@ public class HeroPanelUI : MonoBehaviour
     }
 
     static int GetLevelUpCost(int currentLevel) => currentLevel * 100;
+
+    void RefreshCardDeployBadges()
+    {
+        var data = UserDataManager.Instance.Get<DeploymentData>();
+        foreach (var c in _cards)
+            c.RefreshDeploy(data);
+    }
 
     // Inspector 연결이 누락됐을 때 자식 이름으로 자동 탐색
     void AutoWireEquipSelect()

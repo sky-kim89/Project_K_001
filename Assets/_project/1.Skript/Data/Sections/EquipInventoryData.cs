@@ -24,7 +24,7 @@ public class EquipInventoryData : ISaveSection
 
     public void Add(string id)
     {
-        if (!string.IsNullOrEmpty(id) && !_raw.Ids.Contains(id))
+        if (!string.IsNullOrEmpty(id))
             _raw.Ids.Add(id);
     }
 

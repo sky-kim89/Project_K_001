@@ -69,6 +69,10 @@ public class GameplayConfig : ScriptableObject
     // ■ 스텟 성장 배율
     // ──────────────────────────────────────────────────────────
 
+    [Header("레벨업 경험치")]
+    [Tooltip("Lv N → N+1 에 필요한 EXP = N × ExpPerLevel")]
+    public int ExpPerLevel = 100;
+
     [Header("스텟 성장 배율")]
     [Tooltip("레벨 1포인트당 스텟 배율 증가량.\n기본 0.01 → Lv1=×1.0, Lv100=×1.99")]
     public float LevelMultPerLevel = 0.01f;

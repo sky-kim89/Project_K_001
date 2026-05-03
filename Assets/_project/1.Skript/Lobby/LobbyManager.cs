@@ -150,6 +150,11 @@ public class LobbyManager : Singleton<LobbyManager>
     {
         _isBattleStarting = false;
         BattleManager.Instance?.DespawnAllUnits();
+        _currentIndex = GetLatestAvailableIndex(_currentTab);
+
+        var ids = UserDataManager.Instance.Get<EquipInventoryData>().OwnedIds;
+        Debug.Log($"[LobbyManager] 장비 인벤토리 ({ids.Count}개): {string.Join(", ", ids)}");
+
         SceneManager.LoadScene(_lobbySceneName);
     }
 

@@ -30,21 +30,31 @@ public static class HeroPanelCreator
     const string CardPrefabPath      = "Assets/_project/2.Prefabs/UI/Lobby/HeroCard.prefab";
     const string EquipCardPrefabPath = "Assets/_project/2.Prefabs/UI/Lobby/EquipCard.prefab";
 
-    const float LeftWidth = 430f;
-    const float PortraitH = 240f;
-    const float TabBarH   = 44f;
+    const float LeftWidth   = 430f;
+    const float PortraitH   = 240f;
+    const float DeployRowH  = 52f;   // 배치 슬롯 행 높이
+    const float TabBarH     = 44f;
 
-    static readonly Color BgColor         = new Color(0.05f, 0.05f, 0.10f, 1f);
+    static readonly Color BgColor          = new Color(0.05f, 0.05f, 0.10f, 1f);
     static readonly Color SectionColor    = new Color(0.09f, 0.09f, 0.16f, 1f);
-    static readonly Color TabBarColor     = new Color(0.10f, 0.12f, 0.22f, 1f);  // 탭 바 (충분히 밝게)
+    static readonly Color TabBarColor     = new Color(0.10f, 0.12f, 0.22f, 1f);
     static readonly Color CardColor       = new Color(0.14f, 0.14f, 0.24f, 1f);
     static readonly Color CardBorderColor = new Color(0.28f, 0.28f, 0.42f, 1f);
     static readonly Color DividerColor    = new Color(0.18f, 0.18f, 0.26f, 1f);
     static readonly Color SlotColor       = new Color(0.14f, 0.14f, 0.22f, 1f);
     static readonly Color LabelColor      = new Color(0.60f, 0.60f, 0.70f, 1f);
-    static readonly Color TabActiveColor  = new Color(0.40f, 0.72f, 1.00f, 1f);  // 활성 탭 텍스트 (밝은 파랑)
-    static readonly Color TabInactiveColor= new Color(0.72f, 0.72f, 0.78f, 1f);  // 비활성 탭 텍스트 (밝은 회백)
+    static readonly Color TabActiveColor  = new Color(0.40f, 0.72f, 1.00f, 1f);
+    static readonly Color TabInactiveColor= new Color(0.72f, 0.72f, 0.78f, 1f);
     static readonly Color LevelUpBtnColor = new Color(0.16f, 0.32f, 0.58f, 1f);
+    static readonly Color DeploySlotEmpty = new Color(0.20f, 0.20f, 0.23f, 1f);
+    static readonly Color DeploySlotMine  = new Color(0.22f, 0.54f, 0.92f, 1f);
+    static readonly Color DeployBadgeColor= new Color(0.22f, 0.54f, 0.92f, 0.90f);
+
+    // 폰트 크기 — UIScale 기준 (모바일 1080×1920)
+    static readonly int FntHero = (int)UIScale.FontLg;   // 54 — 영웅 이름 헤더
+    static readonly int FntMain = (int)UIScale.FontMd;   // 40 — 탭·버튼·스탯값·제목
+    static readonly int FntSub  = (int)UIScale.FontSm;   // 30 — 레이블·보조텍스트
+    static readonly int FntMini = 24;                    // 24 — 배지 등 극소 텍스트
 
     // ── 진입점 ────────────────────────────────────────────────
 
@@ -98,6 +108,7 @@ public static class HeroPanelCreator
         }
 
         BuildPortraitSection(leftPanel, so);
+        BuildDeploySlotRow(leftPanel, so);
         BuildTabSection(leftPanel, so);
         BuildPortraitPreview(leftPanel, so);
 
@@ -176,7 +187,7 @@ public static class HeroPanelCreator
         SetObj(so, "_portraitImage", portraitImg);
 
         // 이름
-        var nameText = CreateTMP(section, "NameText", "영웅 이름", 28, FontStyles.Bold);
+        var nameText = CreateTMP(section, "NameText", "영웅 이름", FntHero, FontStyles.Bold);
         {
             var rt = nameText.rectTransform;
             rt.anchorMin = new Vector2(0, 0);
@@ -188,7 +199,7 @@ public static class HeroPanelCreator
         SetObj(so, "_nameText", nameText);
 
         // 레벨 (하단 왼쪽)
-        var levelText = CreateTMP(section, "LevelText", "Lv.1", 20, FontStyles.Normal);
+        var levelText = CreateTMP(section, "LevelText", "Lv.1", FntSub, FontStyles.Normal);
         {
             var rt = levelText.rectTransform;
             rt.anchorMin = new Vector2(0, 0);
@@ -201,7 +212,7 @@ public static class HeroPanelCreator
         SetObj(so, "_levelText", levelText);
 
         // 직업 (하단 오른쪽)
-        var jobText = CreateTMP(section, "JobText", "기사", 20, FontStyles.Normal);
+        var jobText = CreateTMP(section, "JobText", "기사", FntSub, FontStyles.Normal);
         {
             var rt = jobText.rectTransform;
             rt.anchorMin = new Vector2(0.5f, 0);
@@ -226,7 +237,7 @@ public static class HeroPanelCreator
         SetObj(so, "_gradeBadge", gradeBadge);
 
         // 등급 텍스트
-        var gradeText = CreateTMP(section, "GradeText", "일반", 18, FontStyles.Bold);
+        var gradeText = CreateTMP(section, "GradeText", "일반", FntSub, FontStyles.Bold);
         {
             var rt = gradeText.rectTransform;
             rt.anchorMin = new Vector2(1, 1);
@@ -257,21 +268,107 @@ public static class HeroPanelCreator
         SetObj(so, "_portraitBridge", bridge);
     }
 
+    // ── 배치 슬롯 행 (PortraitSection 바로 아래) ──────────────
+
+    static void BuildDeploySlotRow(GameObject left, SerializedObject so)
+    {
+        // 행 배경
+        var row = CreatePanel(left, "DeploySlotRow", new Color(0.07f, 0.08f, 0.14f));
+        {
+            var rt = row.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0, 1);
+            rt.anchorMax = new Vector2(1, 1);
+            rt.offsetMin = new Vector2(0, -(PortraitH + DeployRowH));
+            rt.offsetMax = new Vector2(0, -PortraitH);
+        }
+
+        // 레이블 "출전 위치"
+        var label = CreateTMP(row, "DeployLabel", "출전 위치", FntSub, FontStyles.Normal);
+        {
+            var rt = label.rectTransform;
+            rt.anchorMin = new Vector2(0, 1);
+            rt.anchorMax = new Vector2(0, 1);
+            rt.pivot     = new Vector2(0, 1);
+            rt.offsetMin = new Vector2(10, -DeployRowH);
+            rt.offsetMax = new Vector2(130, 0);
+        }
+        label.alignment = TextAlignmentOptions.Left;
+        label.color     = LabelColor;
+
+        // 슬롯 5개: 균등 배치 (레이블 130px 제외, 우측 패딩 8px)
+        const float slotPad = 6f;
+        float slotsX   = 134f;
+        float slotsW   = LeftWidth - slotsX - 8f;
+        float slotW    = (slotsW - slotPad * 4f) / 5f;
+        float slotH    = DeployRowH - 10f;
+
+        var slotBtns   = new Button[5];
+        var slotBgs    = new Image[5];
+        var slotNums   = new TextMeshProUGUI[5];
+
+        for (int i = 0; i < 5; i++)
+        {
+            float sx = slotsX + i * (slotW + slotPad);
+
+            var slotGo = new GameObject($"DeploySlot{i}", typeof(RectTransform), typeof(Image));
+            slotGo.transform.SetParent(row.transform, false);
+            var slotImg = slotGo.GetComponent<Image>();
+            slotImg.color = DeploySlotEmpty;
+            {
+                var rt = slotGo.GetComponent<RectTransform>();
+                rt.anchorMin = new Vector2(0, 0.5f);
+                rt.anchorMax = new Vector2(0, 0.5f);
+                rt.pivot     = new Vector2(0, 0.5f);
+                rt.offsetMin = new Vector2(sx, -slotH * 0.5f);
+                rt.offsetMax = new Vector2(sx + slotW, slotH * 0.5f);
+            }
+
+            // 슬롯 번호 텍스트
+            var numTmp = CreateTMP(slotGo, "Num", (i + 1).ToString(), FntSub, FontStyles.Bold);
+            {
+                var rt = numTmp.rectTransform;
+                rt.anchorMin = Vector2.zero;
+                rt.anchorMax = Vector2.one;
+                rt.offsetMin = Vector2.zero;
+                rt.offsetMax = Vector2.zero;
+            }
+            numTmp.alignment = TextAlignmentOptions.Center;
+
+            var btn = slotGo.AddComponent<Button>();
+            btn.targetGraphic = slotImg;
+
+            slotBtns[i] = btn;
+            slotBgs[i]  = slotImg;
+            slotNums[i] = numTmp;
+        }
+
+        // DeploySlotRowUI 컴포넌트 + 필드 연결
+        var rowUI = row.AddComponent<DeploySlotRowUI>();
+        var rso   = new SerializedObject(rowUI);
+        SetObjArray(rso, "_slotButtons",  System.Array.ConvertAll(slotBtns, b => (Object)b));
+        SetObjArray(rso, "_slotBgs",      System.Array.ConvertAll(slotBgs,  b => (Object)b));
+        SetObjArray(rso, "_slotNumTexts", System.Array.ConvertAll(slotNums, t => (Object)t));
+        rso.ApplyModifiedProperties();
+
+        // HeroPanelUI._deploySlotRow 연결
+        SetObj(so, "_deploySlotRow", rowUI);
+    }
+
     // ── 탭 섹션 (초상화 아래 전체) ────────────────────────────
 
     static void BuildTabSection(GameObject left, SerializedObject so)
     {
-        // 탭 바
+        // 탭 바 — PortraitSection + DeploySlotRow 아래에 위치
         var tabBar = CreatePanel(left, "TabBar", TabBarColor);
         {
             var rt = tabBar.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0, 1);
             rt.anchorMax = new Vector2(1, 1);
-            rt.offsetMin = new Vector2(0, -(PortraitH + TabBarH));
-            rt.offsetMax = new Vector2(0, -PortraitH);
+            rt.offsetMin = new Vector2(0, -(PortraitH + DeployRowH + TabBarH));
+            rt.offsetMax = new Vector2(0, -(PortraitH + DeployRowH));
         }
 
-        // 탭 버튼 3개 — 앵커로 1/3씩 균등 분할 (HLG는 에디터 스크립트에서 레이아웃 패스 미실행)
+        // 탭 버튼 3개
         string[] tabLabels = { "스탯", "장비", "스킬" };
         var tabButtons = new Button[3];
         for (int i = 0; i < 3; i++)
@@ -284,7 +381,7 @@ public static class HeroPanelCreator
             rt.anchorMin = new Vector2(0, 0);
             rt.anchorMax = new Vector2(1, 1);
             rt.offsetMin = new Vector2(0, 0);
-            rt.offsetMax = new Vector2(0, -(PortraitH + TabBarH));
+            rt.offsetMax = new Vector2(0, -(PortraitH + DeployRowH + TabBarH));
         }
 
         // 3개 패널 (동일 영역, SetActive 로 전환)
@@ -314,7 +411,7 @@ public static class HeroPanelCreator
         rt.offsetMin = Vector2.zero;
         rt.offsetMax = Vector2.zero;
 
-        var tmp = CreateTMP(go, "Label", label, 21,
+        var tmp = CreateTMP(go, "Label", label, FntMain,
             isActive ? FontStyles.Bold : FontStyles.Normal);
         {
             var trt = tmp.rectTransform;
@@ -394,7 +491,7 @@ public static class HeroPanelCreator
         SetObj(so, "_levelUpBtn", levelUpBtn);
 
         // "레벨업" 텍스트 (상단 55%)
-        var btnLabel = CreateTMP(btnGo, "Label", "레벨업", 22, FontStyles.Bold);
+        var btnLabel = CreateTMP(btnGo, "Label", "레벨업", FntMain, FontStyles.Bold);
         {
             var rt = btnLabel.rectTransform;
             rt.anchorMin = Vector2.zero;
@@ -405,7 +502,7 @@ public static class HeroPanelCreator
         btnLabel.alignment = TextAlignmentOptions.Center;
 
         // 골드 비용 텍스트 (하단 45%)
-        var costText = CreateTMP(btnGo, "CostText", "0 G", 18, FontStyles.Normal);
+        var costText = CreateTMP(btnGo, "CostText", "0 G", FntSub, FontStyles.Normal);
         {
             var rt = costText.rectTransform;
             rt.anchorMin = Vector2.zero;
@@ -442,7 +539,7 @@ public static class HeroPanelCreator
         hlg.padding                = new RectOffset(16, 16, 0, 0);
 
         // 레이블 (고정 너비 110px)
-        var lbl = CreateTMP(row, "Label", label, 22, FontStyles.Normal);
+        var lbl = CreateTMP(row, "Label", label, FntSub, FontStyles.Normal);
         lbl.alignment        = TextAlignmentOptions.Left;
         lbl.color            = LabelColor;
         lbl.textWrappingMode = TextWrappingModes.NoWrap;
@@ -452,7 +549,7 @@ public static class HeroPanelCreator
         lblLE.flexibleWidth  = 0f;
 
         // 값 (나머지 너비 전부)
-        var val = CreateTMP(row, "Value", "—", 26, FontStyles.Bold);
+        var val = CreateTMP(row, "Value", "—", FntMain, FontStyles.Bold);
         val.alignment          = TextAlignmentOptions.Right;
         val.textWrappingMode = TextWrappingModes.NoWrap;
         val.overflowMode       = TextOverflowModes.Ellipsis;
@@ -551,7 +648,7 @@ public static class HeroPanelCreator
         float textLeft = 10f + iconSize + 12f;
 
         // 장비 이름 (상단 40%)
-        var nameText = CreateTMP(slotBg, "EquipNameText", "없음", 20, FontStyles.Bold);
+        var nameText = CreateTMP(slotBg, "EquipNameText", "없음", FntMain, FontStyles.Bold);
         {
             var rt = nameText.rectTransform;
             rt.anchorMin = new Vector2(0, 0.5f);
@@ -562,7 +659,7 @@ public static class HeroPanelCreator
         nameText.alignment = TextAlignmentOptions.Left;
 
         // 옵션 텍스트 (하단 60%)
-        var statText = CreateTMP(slotBg, "StatText", "", 16, FontStyles.Normal);
+        var statText = CreateTMP(slotBg, "StatText", "", FntSub, FontStyles.Normal);
         {
             var rt = statText.rectTransform;
             rt.anchorMin = new Vector2(0, 0);
@@ -585,7 +682,7 @@ public static class HeroPanelCreator
             rt.offsetMin = new Vector2(-86, 3);
             rt.offsetMax = new Vector2(-4,  19);
         }
-        var lockTmp = CreateTMP(lockBadge, "Label", "교체시 소멸", 11, FontStyles.Bold);
+        var lockTmp = CreateTMP(lockBadge, "Label", "교체시 소멸", FntMini, FontStyles.Bold);
         {
             var rt = lockTmp.rectTransform;
             rt.anchorMin = Vector2.zero;
@@ -617,7 +714,7 @@ public static class HeroPanelCreator
             rt.offsetMax = Vector2.zero;
         }
 
-        var title = CreateTMP(header, "SelectTitle", "슬롯 1 장비 선택", 20, FontStyles.Bold);
+        var title = CreateTMP(header, "SelectTitle", "슬롯 1 장비 선택", FntMain, FontStyles.Bold);
         {
             var rt = title.rectTransform;
             rt.anchorMin = new Vector2(0, 0);
@@ -640,7 +737,7 @@ public static class HeroPanelCreator
         }
         var closeBtn = closeBtnGo.AddComponent<Button>();
         closeBtn.targetGraphic = closeBtnGo.GetComponent<Image>();
-        var closeTmp = CreateTMP(closeBtnGo, "Label", "✕", 20, FontStyles.Bold);
+        var closeTmp = CreateTMP(closeBtnGo, "Label", "✕", FntMain, FontStyles.Bold);
         closeTmp.rectTransform.anchorMin = Vector2.zero;
         closeTmp.rectTransform.anchorMax = Vector2.one;
         closeTmp.rectTransform.offsetMin = Vector2.zero;
@@ -649,7 +746,7 @@ public static class HeroPanelCreator
         SetObj(so, "_equipSelectCloseBtn", closeBtn);
 
         // 경고 텍스트 (헤더 바로 아래 28px, 기본 비활성)
-        var warning = CreateTMP(overlay, "SelectWarning", "⚠ 교체 시 기존 장비가 소멸됩니다", 16, FontStyles.Bold);
+        var warning = CreateTMP(overlay, "SelectWarning", "⚠ 교체 시 기존 장비가 소멸됩니다", FntSub, FontStyles.Bold);
         {
             var rt = warning.rectTransform;
             rt.anchorMin = new Vector2(0, 1);
@@ -756,7 +853,7 @@ public static class HeroPanelCreator
         float tx = 9f + iconSize + 10f;
 
         // 장비 이름 (상단)
-        var nameText = CreateTMP(card, "EquipName", "장비 이름", 19, FontStyles.Bold);
+        var nameText = CreateTMP(card, "EquipName", "장비 이름", FntSub, FontStyles.Bold);
         {
             var rt = nameText.rectTransform;
             rt.anchorMin = new Vector2(0, 0.48f);
@@ -767,7 +864,7 @@ public static class HeroPanelCreator
         nameText.alignment = TextAlignmentOptions.BottomLeft;
 
         // 등급 텍스트 (상단 우측)
-        var gradeText = CreateTMP(card, "GradeText", "일반", 17, FontStyles.Bold);
+        var gradeText = CreateTMP(card, "GradeText", "일반", FntSub, FontStyles.Bold);
         {
             var rt = gradeText.rectTransform;
             rt.anchorMin = new Vector2(0.70f, 0.48f);
@@ -778,7 +875,7 @@ public static class HeroPanelCreator
         gradeText.alignment = TextAlignmentOptions.BottomRight;
 
         // 스탯 텍스트 (하단)
-        var statText = CreateTMP(card, "StatText", "", 14, FontStyles.Normal);
+        var statText = CreateTMP(card, "StatText", "", FntSub, FontStyles.Normal);
         {
             var rt = statText.rectTransform;
             rt.anchorMin = new Vector2(0, 0);
@@ -823,7 +920,7 @@ public static class HeroPanelCreator
         Stretch(panel);
 
         // 액티브 레이블
-        var activeLabel = CreateTMP(panel, "ActiveLabel", "액티브", 17, FontStyles.Normal);
+        var activeLabel = CreateTMP(panel, "ActiveLabel", "액티브", FntSub, FontStyles.Normal);
         {
             var rt = activeLabel.rectTransform;
             rt.anchorMin = new Vector2(0, 1);
@@ -835,7 +932,7 @@ public static class HeroPanelCreator
         activeLabel.color     = LabelColor;
 
         // 스킬 이름
-        var skillText = CreateTMP(panel, "ActiveSkillText", "—", 24, FontStyles.Bold);
+        var skillText = CreateTMP(panel, "ActiveSkillText", "—", FntMain, FontStyles.Bold);
         {
             var rt = skillText.rectTransform;
             rt.anchorMin = new Vector2(0, 1);
@@ -847,7 +944,7 @@ public static class HeroPanelCreator
         SetObj(so, "_activeSkillText", skillText);
 
         // 스킬 설명
-        var descText = CreateTMP(panel, "ActiveSkillDescText", "", 17, FontStyles.Normal);
+        var descText = CreateTMP(panel, "ActiveSkillDescText", "", FntSub, FontStyles.Normal);
         {
             var rt = descText.rectTransform;
             rt.anchorMin = new Vector2(0, 1);
@@ -870,7 +967,7 @@ public static class HeroPanelCreator
         }
 
         // 패시브 레이블
-        var passiveLabel = CreateTMP(panel, "PassiveLabel", "패시브", 17, FontStyles.Normal);
+        var passiveLabel = CreateTMP(panel, "PassiveLabel", "패시브", FntSub, FontStyles.Normal);
         {
             var rt = passiveLabel.rectTransform;
             rt.anchorMin = new Vector2(0, 1);
@@ -891,7 +988,7 @@ public static class HeroPanelCreator
     static TextMeshProUGUI BuildPassiveRow(GameObject parent, string name,
                                            float topOffset, bool active)
     {
-        var tmp = CreateTMP(parent, name, "—", 20, FontStyles.Bold);
+        var tmp = CreateTMP(parent, name, "—", FntMain, FontStyles.Bold);
         {
             var rt = tmp.rectTransform;
             rt.anchorMin = new Vector2(0, 1);
@@ -918,7 +1015,7 @@ public static class HeroPanelCreator
             rt.offsetMax = new Vector2(0, 0);
         }
 
-        var headerText = CreateTMP(header, "Title", "영웅 목록", 24, FontStyles.Bold);
+        var headerText = CreateTMP(header, "Title", "영웅 목록", FntMain, FontStyles.Bold);
         {
             var rt = headerText.rectTransform;
             rt.anchorMin = new Vector2(0, 0);
@@ -942,7 +1039,7 @@ public static class HeroPanelCreator
         hireBtn.targetGraphic = hireBtnGo.GetComponent<Image>();
         SetObj(so, "_hireBtn", hireBtn);
 
-        var hireLbl = CreateTMP(hireBtnGo, "Label", "용병 고용", 20, FontStyles.Bold);
+        var hireLbl = CreateTMP(hireBtnGo, "Label", "용병 고용", FntMain, FontStyles.Bold);
         {
             var rt = hireLbl.rectTransform;
             rt.anchorMin = new Vector2(0, 0.48f);
@@ -952,7 +1049,7 @@ public static class HeroPanelCreator
         }
         hireLbl.alignment = TextAlignmentOptions.Bottom;
 
-        var hireCostText = CreateTMP(hireBtnGo, "CostText", "500 G", 17, FontStyles.Normal);
+        var hireCostText = CreateTMP(hireBtnGo, "CostText", "500 G", FntSub, FontStyles.Normal);
         {
             var rt = hireCostText.rectTransform;
             rt.anchorMin = new Vector2(0, 0);
@@ -1071,7 +1168,7 @@ public static class HeroPanelCreator
         const float ix = 112f / 360f;  // ≈ 0.311
 
         // ── 이름 (상단 좌측) ──────────────────────────────────
-        var nameText = CreateTMP(card, "NameText", "이름", 21, FontStyles.Bold);
+        var nameText = CreateTMP(card, "NameText", "이름", FntSub, FontStyles.Bold);
         {
             var rt = nameText.rectTransform;
             rt.anchorMin = new Vector2(ix,    0.52f);
@@ -1082,7 +1179,7 @@ public static class HeroPanelCreator
         nameText.alignment = TextAlignmentOptions.BottomLeft;
 
         // ── 등급 (상단 우측) ──────────────────────────────────
-        var gradeText = CreateTMP(card, "GradeText", "일반", 17, FontStyles.Bold);
+        var gradeText = CreateTMP(card, "GradeText", "일반", FntSub, FontStyles.Bold);
         {
             var rt = gradeText.rectTransform;
             rt.anchorMin = new Vector2(0.72f, 0.52f);
@@ -1094,7 +1191,7 @@ public static class HeroPanelCreator
         gradeText.color     = new Color(0.55f, 0.55f, 0.55f);
 
         // ── 레벨 (중간 좌측) ──────────────────────────────────
-        var levelText = CreateTMP(card, "LevelText", "Lv.1", 17, FontStyles.Normal);
+        var levelText = CreateTMP(card, "LevelText", "Lv.1", FntSub, FontStyles.Normal);
         {
             var rt = levelText.rectTransform;
             rt.anchorMin = new Vector2(ix,    0.40f);
@@ -1106,7 +1203,7 @@ public static class HeroPanelCreator
         levelText.color     = LabelColor;
 
         // ── 직업 (중간 우측) ──────────────────────────────────
-        var jobText = CreateTMP(card, "JobText", "기사", 17, FontStyles.Normal);
+        var jobText = CreateTMP(card, "JobText", "기사", FntSub, FontStyles.Normal);
         {
             var rt = jobText.rectTransform;
             rt.anchorMin = new Vector2(0.52f, 0.40f);
@@ -1128,7 +1225,7 @@ public static class HeroPanelCreator
         }
 
         // ── 스탯 행 1: HP / 공격 ─────────────────────────────
-        var hpLbl = CreateTMP(card, "HpLabel", "HP", 15, FontStyles.Normal);
+        var hpLbl = CreateTMP(card, "HpLabel", "HP", FntSub, FontStyles.Normal);
         {
             var rt = hpLbl.rectTransform;
             rt.anchorMin = new Vector2(ix,    0.23f);
@@ -1138,7 +1235,7 @@ public static class HeroPanelCreator
         hpLbl.alignment = TextAlignmentOptions.Left;
         hpLbl.color     = LabelColor;
 
-        var hpText = CreateTMP(card, "HpText", "—", 15, FontStyles.Bold);
+        var hpText = CreateTMP(card, "HpText", "—", FntSub, FontStyles.Bold);
         {
             var rt = hpText.rectTransform;
             rt.anchorMin = new Vector2(0.43f, 0.23f);
@@ -1148,7 +1245,7 @@ public static class HeroPanelCreator
         }
         hpText.alignment = TextAlignmentOptions.Right;
 
-        var atkLbl = CreateTMP(card, "AtkLabel", "공격", 15, FontStyles.Normal);
+        var atkLbl = CreateTMP(card, "AtkLabel", "공격", FntSub, FontStyles.Normal);
         {
             var rt = atkLbl.rectTransform;
             rt.anchorMin = new Vector2(0.65f, 0.23f);
@@ -1158,7 +1255,7 @@ public static class HeroPanelCreator
         atkLbl.alignment = TextAlignmentOptions.Left;
         atkLbl.color     = LabelColor;
 
-        var atkText = CreateTMP(card, "AtkText", "—", 15, FontStyles.Bold);
+        var atkText = CreateTMP(card, "AtkText", "—", FntSub, FontStyles.Bold);
         {
             var rt = atkText.rectTransform;
             rt.anchorMin = new Vector2(0.80f, 0.23f);
@@ -1169,7 +1266,7 @@ public static class HeroPanelCreator
         atkText.alignment = TextAlignmentOptions.Right;
 
         // ── 스탯 행 2: 방어율 / 용병수 ───────────────────────
-        var defLbl = CreateTMP(card, "DefLabel", "방어", 15, FontStyles.Normal);
+        var defLbl = CreateTMP(card, "DefLabel", "방어", FntSub, FontStyles.Normal);
         {
             var rt = defLbl.rectTransform;
             rt.anchorMin = new Vector2(ix,    0.05f);
@@ -1179,7 +1276,7 @@ public static class HeroPanelCreator
         defLbl.alignment = TextAlignmentOptions.Left;
         defLbl.color     = LabelColor;
 
-        var defText = CreateTMP(card, "DefText", "—", 15, FontStyles.Bold);
+        var defText = CreateTMP(card, "DefText", "—", FntSub, FontStyles.Bold);
         {
             var rt = defText.rectTransform;
             rt.anchorMin = new Vector2(0.43f, 0.05f);
@@ -1189,7 +1286,7 @@ public static class HeroPanelCreator
         }
         defText.alignment = TextAlignmentOptions.Right;
 
-        var soldLbl = CreateTMP(card, "SoldierLabel", "용병", 15, FontStyles.Normal);
+        var soldLbl = CreateTMP(card, "SoldierLabel", "용병", FntSub, FontStyles.Normal);
         {
             var rt = soldLbl.rectTransform;
             rt.anchorMin = new Vector2(0.65f, 0.05f);
@@ -1199,7 +1296,7 @@ public static class HeroPanelCreator
         soldLbl.alignment = TextAlignmentOptions.Left;
         soldLbl.color     = LabelColor;
 
-        var soldText = CreateTMP(card, "SoldierText", "—", 15, FontStyles.Bold);
+        var soldText = CreateTMP(card, "SoldierText", "—", FntSub, FontStyles.Bold);
         {
             var rt = soldText.rectTransform;
             rt.anchorMin = new Vector2(0.80f, 0.05f);
@@ -1208,6 +1305,19 @@ public static class HeroPanelCreator
             rt.offsetMax = new Vector2(-6, 0);
         }
         soldText.alignment = TextAlignmentOptions.Right;
+
+        // ── 배치 배지 (카드 하단 오버레이) ───────────────────────
+        var deployText = CreateTMP(card, "DeployText", "출전 1번", FntMini, FontStyles.Bold);
+        {
+            var rt = deployText.rectTransform;
+            rt.anchorMin = new Vector2(0, 0);
+            rt.anchorMax = new Vector2(1, 0);
+            rt.offsetMin = new Vector2(4,  0);
+            rt.offsetMax = new Vector2(-4, 20);
+        }
+        deployText.alignment        = TextAlignmentOptions.Center;
+        deployText.color            = DeployBadgeColor;
+        deployText.gameObject.SetActive(false);
 
         var btn = card.AddComponent<Button>();
         btn.targetGraphic = card.GetComponent<Image>();
@@ -1240,6 +1350,7 @@ public static class HeroPanelCreator
         SetObj(cSo, "_defText",        defText);
         SetObj(cSo, "_soldierText",    soldText);
         SetObj(cSo, "_button",         btn);
+        SetObj(cSo, "_deployText",     deployText);
         cSo.ApplyModifiedProperties();
 
         return card;

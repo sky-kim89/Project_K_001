@@ -50,7 +50,6 @@ public class BattleResultPopup : PopupBase
         SetHeader(isVictory);
         SetStats(isVictory, context, killCount);
         BuildRewardCards(isVictory, context);
-        RefreshConfirmButton();
     }
 
     // ── 내부 ─────────────────────────────────────────────────
@@ -115,20 +114,19 @@ public class BattleResultPopup : PopupBase
     void OnBoxOpened()
     {
         _unopenedBoxes = Mathf.Max(0, _unopenedBoxes - 1);
-        RefreshConfirmButton();
         if (_hintText != null && _unopenedBoxes <= 0)
             _hintText.gameObject.SetActive(false);
     }
 
-    void RefreshConfirmButton()
-    {
-        if (_confirmButton != null)
-            _confirmButton.interactable = _unopenedBoxes <= 0;
-    }
-
     void OnConfirm()
     {
-        Close(() => LobbyManager.Instance?.ReturnToLobby());
+        if (_unopenedBoxes > 0)
+        {
+            foreach (var card in _cards)
+                card.TryOpen();
+            return;
+        }
+        Close(() => LobbyManager.Instance.ReturnToLobby());
     }
 
     static Color GetItemColor(eItem item) => item switch

@@ -46,6 +46,7 @@ public static class StageGenerator
 
         int goldReward  = Mathf.Max(10,  Mathf.RoundToInt(Mathf.Lerp(config.GoldRewardMin,  config.GoldRewardMax,  progress)));
         int stoneReward = Mathf.Max(1,   Mathf.RoundToInt(Mathf.Lerp(config.StoneRewardMin, config.StoneRewardMax, progress)));
+        int expReward   = Mathf.Max(1,   Mathf.RoundToInt(Mathf.Lerp(config.ExpRewardMin,   config.ExpRewardMax,   progress)));
 
         return new StageData
         {
@@ -54,6 +55,7 @@ public static class StageGenerator
             EnergyCost  = energyCost,
             GoldReward  = goldReward,
             StoneReward = stoneReward,
+            ExpReward   = expReward,
             Waves       = waves,
         };
     }
