@@ -168,6 +168,74 @@ UI=0, Unit=1, Effect=2, Projectile=3
 
 ---
 
+## 작업 유형별 관련 파일
+
+> 세션 시작 시 아래 목록만 읽으면 탐색 없이 바로 작업 가능.
+
+### 액티브 스킬 추가
+1. `GameEnums.cs` — `ActiveSkillId` enum 값 추가
+2. `InGame/Skill/Actives/Active{이름}.cs` — 신규 생성 (기존 파일 참고)
+3. `InGame/Battle/Editor/ActiveSkillCreator.cs` — SO 자동 생성 에디터 툴
+4. `Assets/Resources/ActiveSkillDatabase.asset` — SO 등록 (에디터)
+5. `LocalizationManager.cs` — 한국어 이름 추가
+6. (이펙트 필요 시) `InGame/Battle/Editor/GameAssetCreator.cs`
+
+### 패시브 스킬 추가
+1. `InGame/Skill/PassiveSkillType.cs` — enum 추가
+2. `InGame/Skill/PassiveSkillRuntimeSystem.cs` — 효과 로직 추가
+3. `Assets/Resources/PassiveSkillDatabase.asset` — 등록 (에디터)
+
+### 로비 UI — 영웅 패널 수정
+- **로직**: `UI/Lobby/HeroPanelUI.cs`
+- **프리팹 재생성**: `UI/Lobby/Editor/HeroPanelCreator.cs` → `Tools > Project K > 로비 UI > Create HeroPanel Prefab`
+- **카드 UI**: `UI/Lobby/HeroCardUI.cs`
+- **장비 카드**: `UI/Lobby/EquipCardUI.cs`
+- **텍스트 상수**: `UIConstants.cs`, `LocalizationManager.cs`
+
+### 팝업 추가/수정
+- **베이스**: `UI/Popup/PopupBase.cs` — 상속 필수, `protected override void Awake()` + `base.Awake()` 호출
+- **관리자**: `UI/Popup/PopupManager.cs` — `_prefabs` 배열에 신규 프리팹 등록 필요
+- **열기**: `PopupManager.Instance.Open<T>(PopupType.X).Setup(...)`
+- **enum**: `GameEnums.cs` — `PopupType` 에 값 추가
+- **장비 비교 팝업**: `UI/Lobby/EquipComparePopup.cs`
+
+### 장비 시스템
+- **데이터**: `InGame/Equipment/EquipmentData.cs`, `InGame/Equipment/EquipmentDatabase.cs`
+- **UI**: `UI/Lobby/EquipComparePopup.cs`, `UI/Lobby/EquipCardUI.cs`
+- **영웅 슬롯 표시**: `UI/Lobby/HeroPanelUI.cs` (`RefreshEquipSlot`)
+- **세이브**: `Data/Sections/UnitData.cs` (`RunEquipSlots`, `RunEquipEnhance`)
+
+### 세이브 데이터 수정
+- **매니저**: `Data/Core/UserDataManager.cs`
+- **섹션 추가**: `Data/Core/ISaveSection.cs` 구현 → `UserDataManager` 등록
+- **기존 섹션**: `Data/Sections/` 하위 파일들
+- **저장 트리거**: `UserDataManager.Instance.RequestSave()`
+
+### 전투 밸런스 / 스탯
+- **기본 스탯**: `InGame/GameplayConfig.cs` (SO) — `Assets/Resources/GameplayConfig.asset`
+- **스탯 타입**: `InGame/Stat/StatType.cs`
+- **유닛 스탯 계산**: `InGame/Stat/UnitStat.cs`
+- **직업·등급 배율**: `InGame/Unit/UnitJob.cs`
+
+### 인게임 UI 수정
+- **HUD 매니저**: `UI/InGame/InGameUIManager.cs` (또는 `InGameManager.cs`)
+- **전투 흐름**: `InGame/Battle/BattleManager.cs`
+- **상태 관리**: `InGame/Battle/InGameManager.cs`
+
+### 이펙트 추가
+1. `BattleGame > Generate Effect Textures` — 텍스처·머티리얼 생성
+2. `BattleGame > Generate Effect Prefabs` — 프리팹 생성
+3. `BattleGame > Link Effect Keys to Skills` — SO에 키 연결
+- 키 형식: `"FX_스킬이름"` (예: `FX_Meteor_Explosion`)
+- 프리팹 위치: `Assets/_project/2.Prefabs/Effect/`
+
+### 싱글톤 생성
+- **MonoBehaviour 싱글톤** (씬에 배치 필요): `Singleton<T>` 상속
+- **순수 C# 싱글톤** (씬 독립, 자동 생성): `SingletonPure<T>` 상속
+- 위치: `Assets/_project/1.Skript/Singleton.cs`
+
+---
+
 ## 코딩 규칙
 
 - **ECS Component 구조체**: `I ComponentData` 또는 `IBufferElementData`
