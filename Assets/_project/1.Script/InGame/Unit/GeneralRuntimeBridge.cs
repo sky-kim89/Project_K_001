@@ -78,6 +78,12 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         if (equipDb != null && unitEntry != null)
             EquipmentApplier.ApplyAll(_stat, unitEntry, equipDb);
 
+        // ── 어빌리티 스탯 적용 (장군 대상 All/Job/Range/Unit_General) ──
+        var abilityDb    = AbilityDatabase.Current;
+        var heldAbilities = UserDataManager.Instance?.Get<RunAbilityData>()?.HeldAbilities;
+        if (abilityDb != null && heldAbilities != null)
+            AbilityApplier.ApplyToGeneralStat(_stat, _job, heldAbilities, abilityDb);
+
         // 외형 적용 (ECS Entity 생성과 독립적으로 실행)
         GetComponent<UnitAppearanceBridge>()?.ApplyAlly(unitName, _job, _grade);
 
@@ -251,9 +257,18 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
                 {
                     var world = Unity.Entities.World.DefaultGameObjectInjectionWorld;
                     if (world != null)
+                    {
                         PassiveSkillApplier.ApplyToSoldierEntity(
                             soldierLink.Entity, world.EntityManager,
                             GetActivePassives(), db);
+
+                        // 어빌리티 병사 스텟 적용 (Unit_Soldier 대상)
+                        var aDb  = AbilityDatabase.Current;
+                        var abls = UserDataManager.Instance?.Get<RunAbilityData>()?.HeldAbilities;
+                        if (aDb != null && abls != null)
+                            AbilityApplier.ApplyToSoldierEntity(
+                                soldierLink.Entity, world.EntityManager, abls, aDb);
+                    }
                 }
             }
         }

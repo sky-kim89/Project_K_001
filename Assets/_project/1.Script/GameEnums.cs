@@ -41,7 +41,8 @@ public enum PopupType
     BattleResult = 4,   // 전투 결과 (승리/패배)
     Pause        = 5,   // 일시 정지
     Loading      = 6,   // 로딩
-    EquipCompare = 7,   // 장비 비교/교체
+    EquipCompare  = 7,   // 장비 비교/교체
+    Disassemble   = 8,   // 장수·장비 분해
 }
 
 // ── 로그인 상태 ───────────────────────────────────────────────

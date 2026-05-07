@@ -129,31 +129,31 @@ public static class EquipmentCreator
         Make(db, "equip_cmd_normal",
             "낡은 지휘봉", UnitGrade.Normal, itemLv: 1, stone: 1, gold: 100,
             "오래된 나무 지휘봉. 병사들이 마지못해 따른다.",
-            S(StatType.SoldierCount,  2f),
+            S(StatType.SoldierCount,  1f),
             S(StatType.CommandPower,  5f));
 
         Make(db, "equip_cmd_uncommon",
             "청동 지휘봉", UnitGrade.Uncommon, itemLv: 2, stone: 2, gold: 200,
             "청동으로 만든 지휘봉. 병사들의 사기를 높인다.",
-            S(StatType.SoldierCount,  3f),
+            S(StatType.SoldierCount,  2f),
             S(StatType.CommandPower, 10f));
 
         Make(db, "equip_cmd_rare",
             "황금 지휘봉", UnitGrade.Rare, itemLv: 3, stone: 3, gold: 400,
             "황금빛 지휘봉. 소지자의 카리스마를 크게 높여준다.",
-            S(StatType.SoldierCount,  5f),
+            S(StatType.SoldierCount,  3f),
             S(StatType.CommandPower, 18f));
 
         Make(db, "equip_cmd_unique",
             "영주의 깃발", UnitGrade.Unique, itemLv: 4, stone: 5, gold: 800,
             "영주의 문장이 새겨진 깃발. 병사들이 충성을 다해 따른다.",
-            S(StatType.SoldierCount,  8f),
+            S(StatType.SoldierCount,  4f),
             S(StatType.CommandPower, 28f));
 
         Make(db, "equip_cmd_epic",
             "왕의 깃발", UnitGrade.Epic, itemLv: 5, stone: 8, gold: 1500,
             "왕실의 깃발. 이 깃발 아래 모인 병사는 두려움을 잊는다.",
-            S(StatType.SoldierCount, 12f),
+            S(StatType.SoldierCount,  6f),
             S(StatType.CommandPower, 42f));
 
         // ══════════════════════════════════════════════════════

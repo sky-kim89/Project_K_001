@@ -11,8 +11,9 @@ using UnityEngine;
 
 public static class IconGenerator
 {
-    const string CLASS_PATH = "Assets/_project/3.Textures/Icons/Classes";
-    const string SKILL_PATH = "Assets/_project/3.Textures/Icons/Skills";
+    const string CLASS_PATH   = "Assets/_project/3.Textures/Icons/Classes";
+    const string SKILL_PATH   = "Assets/_project/3.Textures/Icons/Skills";
+    const string ABILITY_PATH = "Assets/_project/3.Textures/Icons/Abilities";
 
     // ── 컬러 팔레트 ───────────────────────────────────────────
     static readonly Color32 Knight_BgDark  = Hex("1A0606"); static readonly Color32 Knight_BgMid   = Hex("4A1010");
@@ -39,6 +40,275 @@ public static class IconGenerator
     // ═══════════════════════════════════════════════════════
     //  메뉴 진입점
     // ═══════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════
+    //  어빌리티 아이콘 메뉴
+    // ═══════════════════════════════════════════════════════
+
+    [MenuItem("Tools/Project K/에셋/Generate Ability Icons")]
+    public static void GenerateAbilityIcons()
+    {
+        EnsureDir(ABILITY_PATH);
+
+        // Normal (A01~A15) — dark-blue bg, grade dot absent
+        Save(48, 48, ABILITY_PATH + "/ability_a01.png", p => DrawAbilIcon(p, DrawSymHp,     TargetCol(0), false));
+        Save(48, 48, ABILITY_PATH + "/ability_a02.png", p => DrawAbilIcon(p, DrawSymAtk,    TargetCol(0), false));
+        Save(48, 48, ABILITY_PATH + "/ability_a03.png", p => DrawAbilIcon(p, DrawSymASpd,   TargetCol(0), false));
+        Save(48, 48, ABILITY_PATH + "/ability_a04.png", p => DrawAbilIcon(p, DrawSymMSpd,   TargetCol(0), false));
+        Save(48, 48, ABILITY_PATH + "/ability_a05.png", p => DrawAbilIcon(p, DrawSymDef,    TargetCol(0), false));
+        Save(48, 48, ABILITY_PATH + "/ability_a06.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymHpSm, TargetCol(1), false));
+        Save(48, 48, ABILITY_PATH + "/ability_a07.png", p => DrawAbilIconDual(p, DrawSymRange, DrawSymASpdSm, TargetCol(2), false));
+        Save(48, 48, ABILITY_PATH + "/ability_a08.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymCdr,  TargetCol(3), false));
+        Save(48, 48, ABILITY_PATH + "/ability_a09.png", p => DrawAbilIconDual(p, DrawSymDef,  DrawSymHpSm, TargetCol(4), false));
+        Save(48, 48, ABILITY_PATH + "/ability_a10.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymMSpdSm, TargetCol(5), false));
+        Save(48, 48, ABILITY_PATH + "/ability_a11.png", p => DrawAbilIconDual(p, DrawSymRange, DrawSymAtkSm, TargetCol(6), false));
+        Save(48, 48, ABILITY_PATH + "/ability_a12.png", p => DrawAbilIconDual(p, DrawSymCrown, DrawSymDefSm, TargetCol(7), false));
+        Save(48, 48, ABILITY_PATH + "/ability_a13.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymMSpdSm, TargetCol(8), false));
+        Save(48, 48, ABILITY_PATH + "/ability_a14.png", p => DrawAbilIcon(p, DrawSymCrit,   TargetCol(0), false));
+        Save(48, 48, ABILITY_PATH + "/ability_a15.png", p => DrawAbilIcon(p, DrawSymRange,  TargetCol(0), false));
+
+        // Advanced (B01~B12) — amber bg, gold star present
+        Save(48, 48, ABILITY_PATH + "/ability_b01.png", p => DrawAbilIcon(p, DrawSymHp,     TargetCol(0), true));
+        Save(48, 48, ABILITY_PATH + "/ability_b02.png", p => DrawAbilIcon(p, DrawSymAtk,    TargetCol(0), true));
+        Save(48, 48, ABILITY_PATH + "/ability_b03.png", p => DrawAbilIcon(p, DrawSymASpd,   TargetCol(0), true));
+        Save(48, 48, ABILITY_PATH + "/ability_b04.png", p => DrawAbilIcon(p, DrawSymMSpd,   TargetCol(0), true));
+        Save(48, 48, ABILITY_PATH + "/ability_b05.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymHpSm, TargetCol(1), true));
+        Save(48, 48, ABILITY_PATH + "/ability_b06.png", p => DrawAbilIconDual(p, DrawSymRange, DrawSymASpdSm, TargetCol(2), true));
+        Save(48, 48, ABILITY_PATH + "/ability_b07.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymCdr,  TargetCol(3), true));
+        Save(48, 48, ABILITY_PATH + "/ability_b08.png", p => DrawAbilIconDual(p, DrawSymDef,  DrawSymHpSm, TargetCol(4), true));
+        Save(48, 48, ABILITY_PATH + "/ability_b09.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymMSpdSm, TargetCol(5), true));
+        Save(48, 48, ABILITY_PATH + "/ability_b10.png", p => DrawAbilIconDual(p, DrawSymRange, DrawSymAtkSm, TargetCol(6), true));
+        Save(48, 48, ABILITY_PATH + "/ability_b11.png", p => DrawAbilIconDual(p, DrawSymCrown, DrawSymDefSm, TargetCol(7), true));
+        Save(48, 48, ABILITY_PATH + "/ability_b12.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymMSpdSm, TargetCol(8), true));
+
+        AssetDatabase.Refresh();
+        ApplySpriteImportSettings(ABILITY_PATH, 48);
+        AssetDatabase.SaveAssets();
+        Debug.Log("[IconGenerator] 어빌리티 아이콘 27장 생성 완료.");
+    }
+
+    // ─────────────────────────────────────────────────────
+    //  어빌리티 아이콘 공용 프레임
+    // ─────────────────────────────────────────────────────
+
+    // target index → border color: 0=All(white) 1=Knight(red) 2=Archer(green) 3=Mage(purple)
+    //   4=Shield(teal) 5=Melee(orange) 6=Ranged(cyan) 7=General(gold) 8=Soldier(steel)
+    static Color32 TargetCol(int idx)
+    {
+        switch (idx)
+        {
+            case 1: return Hex("CC3333");
+            case 2: return Hex("33BB44");
+            case 3: return Hex("9933FF");
+            case 4: return Hex("22BBCC");
+            case 5: return Hex("FF8833");
+            case 6: return Hex("33CCFF");
+            case 7: return Hex("D4A840");
+            case 8: return Hex("7799BB");
+            default: return Hex("CCCCDD");
+        }
+    }
+
+    static void DrawAbilIcon(P p, Action<P, Color32, bool> symDraw, Color32 borderCol, bool advanced)
+    {
+        AbilBg(p, advanced);
+        p.RoundedBorder(8, 2, borderCol);
+        symDraw(p, borderCol, advanced);
+        if (advanced) DrawAdvancedStar(p);
+    }
+
+    static void DrawAbilIconDual(P p, Action<P, Color32, bool> symMain, Action<P> symSub,
+                                   Color32 borderCol, bool advanced)
+    {
+        AbilBg(p, advanced);
+        p.RoundedBorder(8, 2, borderCol);
+        symMain(p, borderCol, advanced);
+        symSub(p);
+        if (advanced) DrawAdvancedStar(p);
+    }
+
+    static void AbilBg(P p, bool advanced)
+    {
+        if (advanced) p.BgGradient(Hex("0E0902"), Hex("2A1E06"));
+        else          p.BgGradient(Hex("060810"), Hex("0E1830"));
+    }
+
+    // 고급 등급 표시 — 우상단 금별
+    static void DrawAdvancedStar(P p)
+    {
+        int x = 40, y = 8;
+        p.FillCircle(x, y, 5, Hex("2A1E06"));
+        // 별 5각
+        for (int i = 0; i < 5; i++)
+        {
+            float a1 = (i * 72 - 90) * Mathf.Deg2Rad;
+            float a2 = (i * 72 - 90 + 36) * Mathf.Deg2Rad;
+            int ox = x + Mathf.RoundToInt(Mathf.Cos(a1) * 4);
+            int oy = y + Mathf.RoundToInt(Mathf.Sin(a1) * 4);
+            int ix = x + Mathf.RoundToInt(Mathf.Cos(a2) * 2);
+            int iy = y + Mathf.RoundToInt(Mathf.Sin(a2) * 2);
+            p.DrawLine(ox, oy, ix, iy, Gold, 1);
+        }
+        p.FillCircle(x, y, 2, Gold);
+    }
+
+    // ─────────────────────────────────────────────────────
+    //  스텟 심볼 그리기
+    // ─────────────────────────────────────────────────────
+
+    // 체력 — 하트
+    static void DrawSymHp(P p, Color32 accent, bool adv)
+    {
+        var c = adv ? Hex("FF5577") : Hex("DD3355");
+        FillHeart(p, 24, 23, 13, c);
+        p.FillCircleAlpha(19, 17, 4, new Color32(255, 255, 255, 60));
+    }
+    static void DrawSymHpSm(P p) => FillHeart(p, 38, 36, 6, Hex("DD3355"));
+
+    // 공격 — 검
+    static void DrawSymAtk(P p, Color32 accent, bool adv)
+    {
+        var blade = adv ? Silver : Hex("AAAAAA");
+        p.FillTri(24, 6, 20, 10, 28, 10, blade);
+        p.FillRect(22, 10, 5, 22, blade);
+        p.FillRect(21, 11, 3, 20, Tint(blade, White, 0.4f));
+        p.FillRRect(16, 32, 16, 5, 2, Gold);
+        p.FillRRect(22, 37, 5, 7, 2, Wood);
+        p.FillCircle(24, 46, 4, DkGold);
+    }
+    static void DrawSymAtkSm(P p)
+    {
+        p.DrawLine(34, 30, 44, 20, Hex("AAAAAA"), 3);
+        p.FillTri(34, 30, 30, 34, 37, 37, Hex("AAAAAA"));
+    }
+
+    // 공격속도 — 검 + 속도선
+    static void DrawSymASpd(P p, Color32 accent, bool adv)
+    {
+        var lc = new Color32(accent.r, accent.g, accent.b, 120);
+        p.DrawLine(6, 18, 22, 18, lc, 3);
+        p.DrawLine(6, 24, 20, 24, lc, 2);
+        p.DrawLine(6, 30, 22, 30, lc, 3);
+        var blade = adv ? Silver : Hex("AAAAAA");
+        p.DrawLine(24, 8, 42, 40, blade, 5);
+        p.DrawLine(23, 8, 41, 40, Tint(blade, White, 0.5f), 2);
+        p.FillTri(42, 40, 36, 38, 40, 34, blade);
+        p.FillRRect(22, 6, 5, 3, 1, Gold);
+    }
+    static void DrawSymASpdSm(P p)
+    {
+        p.DrawLine(32, 34, 44, 28, Hex("CCCCCC"), 2);
+        p.DrawLine(32, 40, 44, 34, new Color32(204, 204, 204, 120), 1);
+    }
+
+    // 이동속도 — 발자국 + 화살표
+    static void DrawSymMSpd(P p, Color32 accent, bool adv)
+    {
+        var c = adv ? Hex("88EEFF") : Hex("44AADD");
+        p.DrawLine(10, 40, 38, 12, c, 3);
+        p.FillTri(38, 12, 30, 12, 38, 20, c);
+        p.DrawLine(4,  38, 14, 38, new Color32(c.r, c.g, c.b, 120), 2);
+        p.DrawLine(8,  44, 18, 44, new Color32(c.r, c.g, c.b, 80),  2);
+        p.DrawLine(6,  32, 16, 32, new Color32(c.r, c.g, c.b, 100), 1);
+        // 발자국
+        p.FillEllipse(18, 36, 4, 3, Tint(c, Hex("000000"), 0.4f));
+        p.FillEllipse(28, 26, 4, 3, Tint(c, Hex("000000"), 0.4f));
+    }
+    static void DrawSymMSpdSm(P p)
+    {
+        p.DrawLine(34, 40, 44, 30, Hex("44AADD"), 2);
+        p.FillTri(44, 30, 38, 30, 44, 36, Hex("44AADD"));
+    }
+
+    // 방어 — 방패
+    static void DrawSymDef(P p, Color32 accent, bool adv)
+    {
+        var dark = adv ? Hex("1A2A1A") : Hex("1A2030");
+        var mid  = adv ? Hex("2A4A2A") : Hex("1A4050");
+        FillShieldShape(p, 24, 6, 46, 10, dark, mid);
+        DrawShieldOutline(p, 24, 6, 46, 10, accent, 2);
+        p.FillCircle(24, 28, 7, dark);
+        p.DrawCircle(24, 28, 7, 1, accent);
+        p.FillRRect(23, 22, 3, 12, 1, accent);
+        p.FillRRect(18, 27, 12, 3, 1, accent);
+    }
+    static void DrawSymDefSm(P p)
+    {
+        FillShieldShape(p, 38, 30, 44, 28, Hex("1A2030"), Hex("1A4050"));
+        DrawShieldOutline(p, 38, 30, 44, 28, Hex("22BBCC"), 1);
+    }
+
+    // 사거리 — 조준선
+    static void DrawSymRange(P p, Color32 accent, bool adv)
+    {
+        var c = adv ? Hex("FFEE88") : Hex("DDCC44");
+        p.DrawCircle(24, 24, 14, 2, c);
+        p.DrawCircle(24, 24, 8,  1, new Color32(c.r, c.g, c.b, 130));
+        p.DrawLine(24, 6,  24, 14, c, 2);
+        p.DrawLine(24, 34, 24, 42, c, 2);
+        p.DrawLine(6,  24, 14, 24, c, 2);
+        p.DrawLine(34, 24, 42, 24, c, 2);
+        p.FillCircle(24, 24, 3, c);
+        // 화살
+        p.DrawLine(32, 32, 44, 44, Hex("C8A840"), 3);
+        p.FillTri(44, 44, 38, 44, 44, 38, Hex("C8A840"));
+    }
+
+    // 치명 — 별+조준
+    static void DrawSymCrit(P p, Color32 accent, bool adv)
+    {
+        var c = adv ? Hex("FFDD33") : Hex("FFBB22");
+        p.DrawCircle(24, 24, 16, 1, new Color32(c.r, c.g, c.b, 80));
+        p.DrawLine(24, 8,  24, 40, c, 1);
+        p.DrawLine(8,  24, 40, 24, c, 1);
+        p.DrawLine(11, 11, 37, 37, c, 1);
+        p.DrawLine(37, 11, 11, 37, c, 1);
+        p.FillCircle(24, 24, 5, Hex("332200"));
+        p.DrawCircle(24, 24, 5, 1, c);
+        p.FillCircle(24, 24, 2, c);
+        // 번쩍임
+        p.FillTri(24, 5, 22, 10, 26, 10, c);
+        p.FillTri(24, 43, 22, 38, 26, 38, c);
+    }
+
+    // 스킬 쿨다운 감소 — 시계 화살표
+    static void DrawSymCdr(P p, Color32 accent, bool adv)
+    {
+        var c = adv ? Hex("BB88FF") : Hex("9966DD");
+        p.DrawCircle(24, 24, 14, 2, c);
+        p.DrawLine(24, 24, 24, 12, c, 2);
+        p.DrawLine(24, 24, 32, 28, c, 2);
+        // 반시계 화살표
+        for (int a = 90; a <= 250; a += 5)
+        {
+            float r1 = a * Mathf.Deg2Rad;
+            float r2 = (a + 5) * Mathf.Deg2Rad;
+            int x1 = 24 + Mathf.RoundToInt(Mathf.Cos(r1) * 18);
+            int y1 = 24 - Mathf.RoundToInt(Mathf.Sin(r1) * 18);
+            int x2 = 24 + Mathf.RoundToInt(Mathf.Cos(r2) * 18);
+            int y2 = 24 - Mathf.RoundToInt(Mathf.Sin(r2) * 18);
+            p.DrawLine(x1, y1, x2, y2, new Color32(c.r, c.g, c.b, 160), 2);
+        }
+        p.FillTri(8, 24, 12, 18, 14, 26, c); // 화살촉
+    }
+
+    // 왕관 — 장군 대상
+    static void DrawSymCrown(P p, Color32 accent, bool adv)
+    {
+        var base1 = adv ? Hex("C89030") : Hex("A06820");
+        var gemC  = adv ? Hex("88CCFF") : Red;
+        p.FillRRect(10, 28, 28, 9, 1, base1);
+        p.FillTri(10, 28, 13, 14, 17, 28, Gold);
+        p.FillTri(21, 28, 24, 10, 27, 28, Gold);
+        p.FillTri(31, 28, 35, 14, 38, 28, Gold);
+        p.FillRect(10, 28, 28, 3, new Color32(255, 255, 255, 30));
+        p.FillCircle(13, 14, 3, gemC);
+        p.FillCircle(24, 10, 4, gemC);
+        p.FillCircle(35, 14, 3, gemC);
+        p.FillCircleAlpha(23, 9, 2, new Color32(255, 255, 255, 150));
+        // 광택
+        p.FillCircleAlpha(13, 13, 1, new Color32(255, 255, 255, 130));
+    }
+
     [MenuItem("Tools/Project K/에셋/Generate Icons")]
     public static void GenerateAllIcons()
     {

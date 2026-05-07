@@ -49,11 +49,12 @@ public static class ItemIconGenerator
         Save("item_general_upgrade_stone.png",DrawGeneralUpgradeStone);
         Save("item_equip_upgrade_stone.png",  DrawEquipUpgradeStone);
         Save("item_equipbox.png",             DrawEquipBox);
+        Save("item_soldier_shard.png",        DrawSoldierShard);
 
         AssetDatabase.Refresh();
         ApplySpriteImport(ITEM_PATH, 48);
         AssetDatabase.SaveAssets();
-        Debug.Log("[ItemIconGenerator] 아이템 아이콘 11종 생성 완료.");
+        Debug.Log("[ItemIconGenerator] 아이템 아이콘 12종 생성 완료.");
     }
 
     // ═══════════════════════════════════════════════════════
@@ -280,6 +281,37 @@ public static class ItemIconGenerator
         p.FillCircleAlpha(22, 26, 5, HA("AADDFF", 80));
         p.FillCircle(16, 30, 2, HA("88BBFF", 150));
         p.FillCircle(30, 26, 2, HA("88BBFF", 130));
+    }
+
+    // ── SoldierShard (용병조각) ───────────────────────────
+    static void DrawSoldierShard(P p)
+    {
+        p.BgGrad(H("050C18"), H("0A1E38"));
+        p.RoundedBorder(10, 2, H("1A5A88"));
+        // 글로우 배경
+        p.FillCircleAlpha(24, 24, 20, HA("1177AA", 55));
+        p.FillCircleAlpha(24, 24, 13, HA("22AACC", 45));
+        // 마름모 조각 몸체
+        FillDiamond(p, 24, 26, 14, 17, H("0D3A5A"));
+        FillDiamond(p, 24, 26, 12, 15, H("1A5888"));
+        // 마름모 테두리 (빛나는 엣지)
+        p.DrawLine(24,  9, 10, 26, H("33BBDD"), 1);
+        p.DrawLine(10, 26, 24, 43, H("33BBDD"), 1);
+        p.DrawLine(24,  9, 38, 26, H("22AACC"), 1);
+        p.DrawLine(38, 26, 24, 43, H("22AACC"), 1);
+        // 병사 실루엣 (머리 + 몸통)
+        p.FillCircle(24, 17, 5, H("88DDFF")); // 머리
+        p.FillTri(17, 35, 31, 35, 24, 22, H("66BBDD")); // 몸 삼각형
+        // 균열 라인 (조각 느낌)
+        p.DrawLine(22, 10, 20, 22, HA("AAEEFF", 130), 1);
+        p.DrawLine(26, 11, 28, 22, HA("AAEEFF", 100), 1);
+        // 파티클
+        p.FillCircle(13, 13, 2, HA("44DDFF", 200));
+        p.FillCircle(35, 13, 2, HA("44DDFF", 160));
+        p.FillCircle(13, 38, 2, HA("44DDFF", 120));
+        // 광택 하이라이트
+        p.FillCircleAlpha(16, 14, 4, HA("BBEEFF", 110));
+        p.FillCircle(16, 14, 2, HA("FFFFFF", 180));
     }
 
     // ── EquipBox (장비 박스) ──────────────────────────────

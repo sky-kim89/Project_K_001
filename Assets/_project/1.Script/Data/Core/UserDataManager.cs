@@ -113,6 +113,7 @@ public class UserDataManager : PureSingleton<UserDataManager>
         RegisterSection(new StageProgressData());
         RegisterSection(new EquipInventoryData());
         RegisterSection(new DeploymentData());
+        RegisterSection(new RunAbilityData());
 
         LoadAll();
     }

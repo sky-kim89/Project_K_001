@@ -51,12 +51,18 @@ public class HeroPanelUI : MonoBehaviour
     [SerializeField] TextMeshProUGUI _equip0StatText;
     [SerializeField] Image           _equip0GradeBar;
     [SerializeField] GameObject      _equip0LockBadge;
+    [SerializeField] Button          _equip0EnhanceBtn;
+    [SerializeField] TextMeshProUGUI _equip0EnhanceCostText;
+    [SerializeField] Image           _equip0EnhanceCostIcon;
     [SerializeField] Button          _equip1Btn;
     [SerializeField] Image           _equip1Icon;
     [SerializeField] TextMeshProUGUI _equip1NameText;
     [SerializeField] TextMeshProUGUI _equip1StatText;
     [SerializeField] Image           _equip1GradeBar;
     [SerializeField] GameObject      _equip1LockBadge;
+    [SerializeField] Button          _equip1EnhanceBtn;
+    [SerializeField] TextMeshProUGUI _equip1EnhanceCostText;
+    [SerializeField] Image           _equip1EnhanceCostIcon;
 
     // ── 스킬 ──────────────────────────────────────────────────
     [Header("스킬")]
@@ -82,18 +88,27 @@ public class HeroPanelUI : MonoBehaviour
     [Header("레벨업")]
     [SerializeField] Button          _levelUpBtn;
     [SerializeField] TextMeshProUGUI _levelUpCostText;
+    [SerializeField] Image           _levelUpCostIcon;
     [SerializeField] TextMeshProUGUI _expText;
     [SerializeField] Image           _expBarFill;
+    [SerializeField] Button          _soldierUpBtn;
+    [SerializeField] TextMeshProUGUI _soldierUpCostText;
+    [SerializeField] Image           _soldierUpCostIcon;
 
     // ── 영웅 목록 ─────────────────────────────────────────────
     [Header("영웅 목록")]
     [SerializeField] Transform  _listContent;
     [SerializeField] HeroCardUI _cardPrefab;
 
+    // ── 분해 ──────────────────────────────────────────────────
+    [Header("분해")]
+    [SerializeField] Button _disassembleBtn;
+
     // ── 용병 고용 ─────────────────────────────────────────────
     [Header("용병 고용")]
     [SerializeField] Button          _hireBtn;
     [SerializeField] TextMeshProUGUI _hireCostText;
+    [SerializeField] Image           _hireCostIcon;
 
     const int HireCost = 500;
 
@@ -120,12 +135,30 @@ public class HeroPanelUI : MonoBehaviour
 
     // ── 라이프사이클 ──────────────────────────────────────────
 
+    void Start()
+    {
+        ApplyCostIcon(_levelUpCostIcon,      eItem.Gold);
+        ApplyCostIcon(_soldierUpCostIcon,    eItem.SoldierShard);
+        ApplyCostIcon(_hireCostIcon,         eItem.Gold);
+        ApplyCostIcon(_equip0EnhanceCostIcon, eItem.EquipUpgradeStone);
+        ApplyCostIcon(_equip1EnhanceCostIcon, eItem.EquipUpgradeStone);
+    }
+
+    static void ApplyCostIcon(Image img, eItem item)
+    {
+        if (img == null) return;
+        var sprite = SpriteManager.Instance?.GetItem(item.IconKey());
+        if (sprite != null) { img.sprite = sprite; img.color = Color.white; }
+    }
+
     void Awake()
     {
         AutoWireFallback();
 
         _equip0Btn?.onClick.AddListener(() => OnEquipSlotClick(0));
         _equip1Btn?.onClick.AddListener(() => OnEquipSlotClick(1));
+        _equip0EnhanceBtn?.onClick.AddListener(() => OnEnhanceClick(0));
+        _equip1EnhanceBtn?.onClick.AddListener(() => OnEnhanceClick(1));
 
         FixStatLabelAlignment();
 
@@ -136,7 +169,9 @@ public class HeroPanelUI : MonoBehaviour
                 _tabButtons[i]?.onClick.AddListener(() => SwitchTab(idx));
             }
         _levelUpBtn?.onClick.AddListener(OnLevelUpClick);
+        _soldierUpBtn?.onClick.AddListener(OnSoldierUpClick);
         _hireBtn?.onClick.AddListener(OnHireClick);
+        _disassembleBtn?.onClick.AddListener(OnDisassembleClick);
         _deploySlotRow.OnDeployChanged += RefreshCardDeployBadges;
         SetupStatClickHandlers();
         SwitchTab(0);
@@ -202,6 +237,8 @@ public class HeroPanelUI : MonoBehaviour
     {
         UnitJob  job  = UnitJobRoller.GetJob(entry.UnitName);
         UnitStat stat = GeneralStatRoller.Roll(entry.UnitName, entry.Level, entry.Grade);
+        if (entry.SoldierBonus > 0)
+            stat.Add(StatType.SoldierCount, entry.SoldierBonus, "bonus");
 
         UpdatePortrait(entry, job);
 
@@ -248,7 +285,7 @@ public class HeroPanelUI : MonoBehaviour
         {
             int cost = GetLevelUpCost(entry.Level);
             int gold = UserDataManager.Instance?.Get<ItemData>()?.Get(eItem.Gold) ?? 0;
-            _levelUpCostText.text  = $"{cost:N0} G";
+            _levelUpCostText.text  = $"{cost:N0}";
             _levelUpCostText.color = gold >= cost
                 ? new Color(1.0f, 0.85f, 0.20f)
                 : new Color(0.9f, 0.35f, 0.35f);
@@ -264,6 +301,9 @@ public class HeroPanelUI : MonoBehaviour
                 _expBarFill.rectTransform.anchorMax = new Vector2(
                     expNeeded > 0 ? Mathf.Clamp01((float)entry.Exp / expNeeded) : 0f, 1f);
         }
+
+        RefreshSoldierUpDisplay(entry);
+        RefreshEnhanceBtns(entry);
     }
 
     void UpdatePortrait(UnitEntry entry, UnitJob job)
@@ -344,6 +384,64 @@ public class HeroPanelUI : MonoBehaviour
         });
     }
 
+    // ── 장비 강화 ─────────────────────────────────────────────
+
+    static int GetEnhanceCost(int currentEnhance) => (currentEnhance + 1) * 2;
+
+    void RefreshEnhanceBtns(UnitEntry entry)
+    {
+        RefreshEnhanceBtn(0, entry, _equip0EnhanceBtn, _equip0EnhanceCostText);
+        RefreshEnhanceBtn(1, entry, _equip1EnhanceBtn, _equip1EnhanceCostText);
+    }
+
+    void RefreshEnhanceBtn(int slot, UnitEntry entry, Button btn, TextMeshProUGUI costText)
+    {
+        if (btn == null) return;
+        string id = (entry?.RunEquipSlots != null && slot < entry.RunEquipSlots.Length)
+                    ? entry.RunEquipSlots[slot] : "";
+        bool hasEquip = !string.IsNullOrEmpty(id);
+        btn.gameObject.SetActive(hasEquip);
+        if (!hasEquip || costText == null) return;
+
+        int enhance = (entry.RunEquipEnhance != null && slot < entry.RunEquipEnhance.Length)
+                      ? entry.RunEquipEnhance[slot] : 0;
+        int cost    = GetEnhanceCost(enhance);
+        int stones  = UserDataManager.Instance?.Get<ItemData>()?.Get(eItem.EquipUpgradeStone) ?? 0;
+        costText.text  = $"{cost}";
+        costText.color = stones >= cost
+            ? new Color(0.80f, 0.90f, 1.0f)
+            : new Color(0.9f, 0.35f, 0.35f);
+    }
+
+    void OnEnhanceClick(int slot)
+    {
+        if (_selected == null) return;
+        var itemData = UserDataManager.Instance?.Get<ItemData>();
+        var unitData = UserDataManager.Instance?.Get<UnitData>();
+        if (itemData == null || unitData == null) return;
+
+        string id = (_selected.RunEquipSlots != null && slot < _selected.RunEquipSlots.Length)
+                    ? _selected.RunEquipSlots[slot] : "";
+        if (string.IsNullOrEmpty(id)) return;
+
+        int enhance = (_selected.RunEquipEnhance != null && slot < _selected.RunEquipEnhance.Length)
+                      ? _selected.RunEquipEnhance[slot] : 0;
+        int cost = GetEnhanceCost(enhance);
+
+        if (!itemData.CanSpend(eItem.EquipUpgradeStone, cost))
+        {
+            Debug.Log($"[HeroPanelUI] 장비 강화석 부족 — 필요: {cost}, 보유: {itemData.Get(eItem.EquipUpgradeStone)}");
+            return;
+        }
+
+        itemData.Spend(eItem.EquipUpgradeStone, cost);
+        unitData.SetEquipment(_selected.UnitName, slot, id, enhance + 1);
+        UserDataManager.Instance.RequestSave();
+
+        _selected = unitData.GetUnit(_selected.UnitName);
+        if (_selected != null) UpdateDetail(_selected);
+    }
+
     // ── 레벨업 ────────────────────────────────────────────────
 
     void OnLevelUpClick()
@@ -374,6 +472,50 @@ public class HeroPanelUI : MonoBehaviour
 
     static int GetLevelUpCost(int currentLevel) => currentLevel * 100;
 
+    // ── 용병 수 증가 ──────────────────────────────────────────
+
+    static int GetSoldierUpCost(int currentBonus) => (currentBonus + 1) * 10;
+
+    void RefreshSoldierUpDisplay(UnitEntry entry)
+    {
+        if (_soldierUpCostText == null) return;
+        int shards = UserDataManager.Instance?.Get<ItemData>()?.Get(eItem.SoldierShard) ?? 0;
+        int cost   = GetSoldierUpCost(entry?.SoldierBonus ?? 0);
+        _soldierUpCostText.text  = $"{cost}";
+        _soldierUpCostText.color = shards >= cost
+            ? new Color(0.85f, 0.90f, 1.0f)
+            : new Color(0.9f, 0.35f, 0.35f);
+    }
+
+    void OnSoldierUpClick()
+    {
+        if (_selected == null) return;
+        var itemData = UserDataManager.Instance?.Get<ItemData>();
+        var unitData = UserDataManager.Instance?.Get<UnitData>();
+        if (itemData == null || unitData == null) return;
+
+        int cost = GetSoldierUpCost(_selected.SoldierBonus);
+        if (!itemData.CanSpend(eItem.SoldierShard, cost))
+        {
+            Debug.Log($"[HeroPanelUI] 용병조각 부족 — 필요: {cost}, 보유: {itemData.Get(eItem.SoldierShard)}");
+            return;
+        }
+
+        itemData.Spend(eItem.SoldierShard, cost);
+        unitData.AddSoldierBonus(_selected.UnitName, 1);
+        UserDataManager.Instance.RequestSave();
+
+        _selected = unitData.GetUnit(_selected.UnitName);
+        if (_selected != null) UpdateDetail(_selected);
+    }
+
+    // ── 분해 ─────────────────────────────────────────────────
+
+    void OnDisassembleClick()
+    {
+        PopupManager.Instance?.Open<DisassemblePopup>(PopupType.Disassemble);
+    }
+
     // ── 배치 ─────────────────────────────────────────────────
 
     void RefreshCardDeployBadges()
@@ -389,7 +531,7 @@ public class HeroPanelUI : MonoBehaviour
     {
         if (_hireCostText == null) return;
         int gold = UserDataManager.Instance?.Get<ItemData>()?.Get(eItem.Gold) ?? 0;
-        _hireCostText.text  = $"{HireCost:N0} G";
+        _hireCostText.text  = $"{HireCost:N0}";
         _hireCostText.color = gold >= HireCost
             ? new Color(1.0f, 0.85f, 0.20f)
             : new Color(0.9f, 0.35f, 0.35f);
@@ -408,8 +550,8 @@ public class HeroPanelUI : MonoBehaviour
         }
 
         itemData.Spend(eItem.Gold, HireCost);
-        var name = GenerateMercName(unitData);
-        unitData.AddUnit(new UnitEntry { UnitName = name, Level = 1, Exp = 0 });
+        string hireName = unitData.PickAvailableName() ?? GenerateMercName(unitData);
+        unitData.AddUnit(new UnitEntry { UnitName = hireName, Level = 1, Exp = 0 });
         UserDataManager.Instance.RequestSave();
         Refresh();
     }

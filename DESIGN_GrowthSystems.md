@@ -41,6 +41,22 @@
 - 스테이지 **회귀(런 종료) 시 초기화**
 - 등급이 있으며 특수 어빌리티는 전략 자체를 바꿀 수 있음
 - % 수치 증가 (절대값 아님)
+- 최대 보유 개수 **제한 없음**
+
+### 적용 범위 (AbilityTarget) — ✅ 확정
+어빌리티마다 적용 대상을 지정. 하나의 어빌리티는 하나의 Target만 가짐.
+
+| 값 | 대상 |
+|----|------|
+| `All` | 전체 장군 |
+| `Job_Knight` | 직업: 기사 |
+| `Job_Archer` | 직업: 궁수 |
+| `Job_Mage` | 직업: 마법사 |
+| `Job_ShieldBearer` | 직업: 방패병 |
+| `Range_Melee` | 근접 장군 (기사·방패병) |
+| `Range_Ranged` | 원거리 장군 (궁수·마법사) |
+| `Unit_General` | 장군만 (병사 제외) |
+| `Unit_Soldier` | 병사만 (장군 제외) |
 
 ### 등급 구조
 | 등급 | 특성 |
@@ -53,9 +69,11 @@
 - **일반/고급 어빌리티**: 동일 어빌리티 중복 등장 가능 → 수치 **합연산** 누적
 - **특수 어빌리티**: 1개만 보유, 중복 선택 불가
 
-### 획득 방식
+### 획득 방식 — ✅ 확정
 - 스테이지 클리어 후 **3택지** 중 1개 선택
-- 택지 구성은 현재 런 진행도·등급 가중치에 따라 랜덤
+- **3택 중 같은 AbilityId는 절대 중복 등장하지 않음**
+- 등급 가중치는 **스테이지 레벨과 무관한 고정 비율** (Normal 60% / Advanced 30% / Special 10%)
+- 팝업 노출 순서: **BattleResultPopup 확인 → AbilitySelectPopup 표시**
 
 ### 특수 어빌리티 예시 방향
 - 스킬 연계 효과 ("HeavyStrike 사용 후 다음 공격 치명타 100%")
@@ -109,6 +127,11 @@
 ## 구현 시 참고
 
 - 유물: `RelicData` SO + `RelicRuntimeSystem` — 현재 `PassiveSkillRuntimeSystem` 패턴 그대로 적용 가능
-- 어빌리티: `AbilityData` SO, 런 시작 시 `GeneralComponent`에 누적 적용, 런 종료 시 초기화
+- 어빌리티: `AbilityData` SO (Id, Name, Grade, **AbilityTarget**, StatType, Value, Icon)
+  - `AbilityTarget` enum으로 적용 대상 필터링 (All / Job_* / Range_* / Unit_*)
+  - `RunAbilityData` (ISaveSection) — 보유 AbilityId 목록 저장, 회귀 시 `SetDefaults()`로 초기화
+  - 3택 추첨 시 같은 AbilityId 중복 제외, 특수 보유 중이면 특수 재등장 제외
+  - 등급 가중치 고정: Normal 60% / Advanced 30% / Special 10% (스테이지 레벨 무관)
+  - **팝업 흐름**: BattleResultPopup onClose 콜백 → `AbilitySelectPopup` 열기 (BattleManager 또는 InGameManager에서 연결)
 - 장비: `EquipmentData` SO, `GeneralComponent`에 슬롯 2개, 절대값은 스탯 계산 최종 단계에서 합산
 - 세 시스템 모두 `StatType.cs` 기반으로 수치 적용 → 스탯 계산 우선순위: **유물(%)→ 어빌리티(%)→ 장비(절대값)** 순 권장

@@ -88,6 +88,15 @@ public class UnitData : ISaveSection
         if (entry != null) entry.SoldierBonus += amount;
     }
 
+    public string PickAvailableName()
+    {
+        var available = new List<string>(s_namePool.Length);
+        foreach (var n in s_namePool)
+            if (!HasUnit(n)) available.Add(n);
+        if (available.Count == 0) return null;
+        return available[UnityEngine.Random.Range(0, available.Count)];
+    }
+
     public void RemoveEquipment(string unitId, int slot)
     {
         if (slot < 0 || slot >= 2) return;
