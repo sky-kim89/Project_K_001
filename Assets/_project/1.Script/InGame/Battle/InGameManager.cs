@@ -82,10 +82,15 @@ public class InGameManager : MonoBehaviour
         // 로비에서 선택한 스테이지인 경우에만 진행 기록
         if (GameSession.Instance.HasStage)
         {
-            var stage    = GameSession.Instance.CurrentStage;
-            var unitData = UserDataManager.Instance.Get<UnitData>();
+            var stage      = GameSession.Instance.CurrentStage;
+            var unitData   = UserDataManager.Instance.Get<UnitData>();
+            var deployData = UserDataManager.Instance.Get<DeploymentData>();
+            var deployed   = deployData?.GetDeployedUnits();
+
             foreach (var unit in unitData.Units)
             {
+                if (deployed != null && !deployed.Contains(unit.UnitName)) continue;
+
                 int gained = unitData.AddUnitExp(unit.UnitName, stage.ExpReward);
                 if (gained > 0)
                     Debug.Log($"[InGameManager] {unit.UnitName} 레벨 업! → Lv.{unit.Level} (+{gained})");
@@ -115,7 +120,33 @@ public class InGameManager : MonoBehaviour
 
         if (PopupManager.Instance == null) return;
         var popup = PopupManager.Instance.Open<BattleResultPopup>(PopupType.BattleResult);
-        popup?.Setup(true, context, BattleManager.Instance?.EnemyKillCount ?? 0);
+        popup?.Setup(true, context, BattleManager.Instance?.EnemyKillCount ?? 0,
+            onConfirmed: OpenAbilitySelectOrReturnToLobby);
+    }
+
+    /// <summary>결과 팝업 확인 후 — 어빌리티를 뽑을 수 있으면 선택 팝업, 아니면 바로 로비.</summary>
+    void OpenAbilitySelectOrReturnToLobby()
+    {
+        var db         = AbilityDatabase.Current;
+        var runAbility = UserDataManager.Instance?.Get<RunAbilityData>();
+
+        if (db != null && runAbility != null && PopupManager.Instance != null)
+        {
+            var choices = AbilityPicker.Pick(db, runAbility);
+            if (choices.Length > 0)
+            {
+                var abilityPopup = PopupManager.Instance.Open<AbilitySelectPopup>(PopupType.AbilitySelect);
+                abilityPopup?.Setup(choices, chosen =>
+                {
+                    runAbility.AddAbility(chosen.Id);
+                    UserDataManager.Instance.RequestSave();
+                    LobbyManager.Instance.ReturnToLobby();
+                });
+                return;
+            }
+        }
+
+        LobbyManager.Instance.ReturnToLobby();
     }
 
     /// <summary>전투 패배 → 결과 팝업 오픈.</summary>

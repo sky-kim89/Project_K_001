@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System;
 
 // ============================================================
 //  BattleResultPopup.cs
@@ -34,7 +35,8 @@ public class BattleResultPopup : PopupBase
     [SerializeField] Button          _confirmButton;
 
     readonly List<RewardCardUI> _cards = new();
-    int _unopenedBoxes;
+    int    _unopenedBoxes;
+    Action _onConfirmed;
 
     // ── PopupBase 훅 ────────────────────────────────────────
 
@@ -45,8 +47,10 @@ public class BattleResultPopup : PopupBase
 
     // ── 공개 API ─────────────────────────────────────────────
 
-    public void Setup(bool isVictory, BattleContext context, int killCount)
+    /// <param name="onConfirmed">확인 버튼 눌러 팝업이 닫힌 뒤 호출. null이면 기본 동작(로비 복귀).</param>
+    public void Setup(bool isVictory, BattleContext context, int killCount, Action onConfirmed = null)
     {
+        _onConfirmed = onConfirmed;
         SetHeader(isVictory);
         SetStats(isVictory, context, killCount);
         BuildExpRows(context);
@@ -141,7 +145,7 @@ public class BattleResultPopup : PopupBase
                 card.TryOpen();
             return;
         }
-        Close(() => LobbyManager.Instance.ReturnToLobby());
+        Close(_onConfirmed ?? (() => LobbyManager.Instance.ReturnToLobby()));
     }
 
     static Color GetItemColor(eItem item) => item switch

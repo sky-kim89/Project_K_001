@@ -57,7 +57,7 @@ public static class IconGenerator
         Save(48, 48, ABILITY_PATH + "/ability_a05.png", p => DrawAbilIcon(p, DrawSymDef,    TargetCol(0), false));
         Save(48, 48, ABILITY_PATH + "/ability_a06.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymHpSm, TargetCol(1), false));
         Save(48, 48, ABILITY_PATH + "/ability_a07.png", p => DrawAbilIconDual(p, DrawSymRange, DrawSymASpdSm, TargetCol(2), false));
-        Save(48, 48, ABILITY_PATH + "/ability_a08.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymCdr,  TargetCol(3), false));
+        Save(48, 48, ABILITY_PATH + "/ability_a08.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymCdrSm,  TargetCol(3), false));
         Save(48, 48, ABILITY_PATH + "/ability_a09.png", p => DrawAbilIconDual(p, DrawSymDef,  DrawSymHpSm, TargetCol(4), false));
         Save(48, 48, ABILITY_PATH + "/ability_a10.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymMSpdSm, TargetCol(5), false));
         Save(48, 48, ABILITY_PATH + "/ability_a11.png", p => DrawAbilIconDual(p, DrawSymRange, DrawSymAtkSm, TargetCol(6), false));
@@ -73,7 +73,7 @@ public static class IconGenerator
         Save(48, 48, ABILITY_PATH + "/ability_b04.png", p => DrawAbilIcon(p, DrawSymMSpd,   TargetCol(0), true));
         Save(48, 48, ABILITY_PATH + "/ability_b05.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymHpSm, TargetCol(1), true));
         Save(48, 48, ABILITY_PATH + "/ability_b06.png", p => DrawAbilIconDual(p, DrawSymRange, DrawSymASpdSm, TargetCol(2), true));
-        Save(48, 48, ABILITY_PATH + "/ability_b07.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymCdr,  TargetCol(3), true));
+        Save(48, 48, ABILITY_PATH + "/ability_b07.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymCdrSm,  TargetCol(3), true));
         Save(48, 48, ABILITY_PATH + "/ability_b08.png", p => DrawAbilIconDual(p, DrawSymDef,  DrawSymHpSm, TargetCol(4), true));
         Save(48, 48, ABILITY_PATH + "/ability_b09.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymMSpdSm, TargetCol(5), true));
         Save(48, 48, ABILITY_PATH + "/ability_b10.png", p => DrawAbilIconDual(p, DrawSymRange, DrawSymAtkSm, TargetCol(6), true));
@@ -270,25 +270,13 @@ public static class IconGenerator
         p.FillTri(24, 43, 22, 38, 26, 38, c);
     }
 
-    // 스킬 쿨다운 감소 — 시계 화살표
-    static void DrawSymCdr(P p, Color32 accent, bool adv)
+    // 스킬 쿨다운 감소 — 시계 화살표 (소형, 우하단)
+    static void DrawSymCdrSm(P p)
     {
-        var c = adv ? Hex("BB88FF") : Hex("9966DD");
-        p.DrawCircle(24, 24, 14, 2, c);
-        p.DrawLine(24, 24, 24, 12, c, 2);
-        p.DrawLine(24, 24, 32, 28, c, 2);
-        // 반시계 화살표
-        for (int a = 90; a <= 250; a += 5)
-        {
-            float r1 = a * Mathf.Deg2Rad;
-            float r2 = (a + 5) * Mathf.Deg2Rad;
-            int x1 = 24 + Mathf.RoundToInt(Mathf.Cos(r1) * 18);
-            int y1 = 24 - Mathf.RoundToInt(Mathf.Sin(r1) * 18);
-            int x2 = 24 + Mathf.RoundToInt(Mathf.Cos(r2) * 18);
-            int y2 = 24 - Mathf.RoundToInt(Mathf.Sin(r2) * 18);
-            p.DrawLine(x1, y1, x2, y2, new Color32(c.r, c.g, c.b, 160), 2);
-        }
-        p.FillTri(8, 24, 12, 18, 14, 26, c); // 화살촉
+        var c = Hex("9966DD");
+        p.DrawCircle(38, 36, 6, 1, c);
+        p.DrawLine(38, 36, 38, 30, c, 1);
+        p.DrawLine(38, 36, 42, 38, c, 1);
     }
 
     // 왕관 — 장군 대상

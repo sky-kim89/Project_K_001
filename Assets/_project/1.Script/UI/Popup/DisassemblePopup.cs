@@ -90,38 +90,29 @@ public class DisassemblePopup : PopupBase
         var units = UserDataManager.Instance?.Get<UnitData>()?.Units;
         if (units == null) return;
 
+        var deployData = UserDataManager.Instance?.Get<DeploymentData>();
         var rowBgA = new Color(0.10f, 0.10f, 0.18f);
         var rowBgB = new Color(0.12f, 0.12f, 0.20f);
+        int rowIdx = 0;
 
         for (int i = 0; i < units.Count; i++)
         {
+            if (deployData != null && deployData.GetSlotOf(units[i].UnitName) >= 0) continue;
+
             var row = Instantiate(_heroRowTemplate, _heroContent);
             row.SetActive(true);
-            FillHeroRow(row, units[i], i % 2 == 0 ? rowBgA : rowBgB);
+            FillHeroRow(row, units[i], rowIdx % 2 == 0 ? rowBgA : rowBgB);
             _heroRows.Add(row);
+            rowIdx++;
         }
     }
 
     void FillHeroRow(GameObject row, UnitEntry entry, Color bgColor)
     {
         row.GetComponent<Image>().color = bgColor;
+        row.transform.Find("GradeBar").GetComponent<Image>().color = GradeStyle.GetColor(entry.Grade);
 
-        row.transform.Find("GradeBar")
-            .GetComponent<Image>().color = GradeStyle.GetColor(entry.Grade);
-
-        var nameBlock = row.transform.Find("NameBlock");
-        nameBlock.Find("NameTMP").GetComponent<TextMeshProUGUI>().text = entry.UnitName;
-
-        var gradeTmp = nameBlock.Find("GradeTMP").GetComponent<TextMeshProUGUI>();
-        gradeTmp.text  = GradeStyle.GetLabel(entry.Grade);
-        gradeTmp.color = GradeStyle.GetColor(entry.Grade);
-
-        row.transform.Find("LevelTMP").GetComponent<TextMeshProUGUI>().text
-            = $"Lv.{entry.Level}";
-
-        int shards = GetHeroShards(entry);
-        row.transform.Find("RewardTMP").GetComponent<TextMeshProUGUI>().text
-            = $"→ {shards}조각";
+        row.GetComponent<DisHeroRowUI>()?.Fill(entry);
 
         var btn = row.transform.Find("DisBtn").GetComponent<Button>();
         btn.onClick.RemoveAllListeners();
@@ -129,71 +120,45 @@ public class DisassemblePopup : PopupBase
         btn.onClick.AddListener(() => DisassembleHero(captured));
     }
 
-    // ── 장비 목록 ─────────────────────────────────────────────
+    // ── 장비 목록 (인벤토리 기반) ─────────────────────────────
 
     void BuildEquipList()
     {
         if (_equipContent == null || _equipRowTemplate == null) return;
         ClearRows(_equipRows);
 
-        var units   = UserDataManager.Instance?.Get<UnitData>()?.Units;
+        var inv    = UserDataManager.Instance?.Get<EquipInventoryData>();
         var equipDb = EquipmentDatabase.Current;
-        if (units == null || equipDb == null) return;
+        if (inv == null || equipDb == null) return;
 
         var rowBgA = new Color(0.10f, 0.10f, 0.18f);
         var rowBgB = new Color(0.12f, 0.12f, 0.20f);
         int rowIdx = 0;
 
-        foreach (var entry in units)
+        foreach (var id in inv.OwnedIds)
         {
-            for (int slot = 0; slot < 2; slot++)
-            {
-                string id = (entry.RunEquipSlots != null && slot < entry.RunEquipSlots.Length)
-                            ? entry.RunEquipSlots[slot] : "";
-                if (string.IsNullOrEmpty(id)) continue;
+            var equip = equipDb.Get(id);
+            if (equip == null) continue;
 
-                var equip = equipDb.Get(id);
-                if (equip == null) continue;
-
-                int enhance = (entry.RunEquipEnhance != null && slot < entry.RunEquipEnhance.Length)
-                              ? entry.RunEquipEnhance[slot] : 0;
-
-                var row = Instantiate(_equipRowTemplate, _equipContent);
-                row.SetActive(true);
-                FillEquipRow(row, entry, slot, equip, enhance, rowIdx % 2 == 0 ? rowBgA : rowBgB);
-                _equipRows.Add(row);
-                rowIdx++;
-            }
+            var row = Instantiate(_equipRowTemplate, _equipContent);
+            row.SetActive(true);
+            FillEquipRow(row, equip, rowIdx % 2 == 0 ? rowBgA : rowBgB);
+            _equipRows.Add(row);
+            rowIdx++;
         }
     }
 
-    void FillEquipRow(GameObject row, UnitEntry entry, int slot,
-                      EquipmentData equip, int enhance, Color bgColor)
+    void FillEquipRow(GameObject row, EquipmentData equip, Color bgColor)
     {
         row.GetComponent<Image>().color = bgColor;
+        row.transform.Find("GradeBar").GetComponent<Image>().color = GradeStyle.GetColor(equip.Grade);
 
-        row.transform.Find("GradeBar")
-            .GetComponent<Image>().color = GradeStyle.GetColor(equip.Grade);
-
-        var icon = row.transform.Find("IconBg/Icon").GetComponent<Image>();
-        icon.sprite = equip.Icon;
-        icon.color  = equip.Icon != null ? Color.white : GradeStyle.GetColor(equip.Grade);
-
-        var nameBlock = row.transform.Find("NameBlock");
-        string displayName = enhance > 0 ? $"{equip.EquipmentName} +{enhance}" : equip.EquipmentName;
-        nameBlock.Find("NameTMP").GetComponent<TextMeshProUGUI>().text  = displayName;
-        nameBlock.Find("OwnerTMP").GetComponent<TextMeshProUGUI>().text = entry.UnitName;
-
-        int stones = GetEquipStones(equip, enhance);
-        row.transform.Find("RewardTMP").GetComponent<TextMeshProUGUI>().text
-            = $"→ {stones}석";
+        row.GetComponent<DisEquipRowUI>()?.Fill(equip);
 
         var btn = row.transform.Find("DisBtn").GetComponent<Button>();
         btn.onClick.RemoveAllListeners();
-        string capturedId    = equip.EquipmentId;
-        var    capturedEntry = entry;
-        int    capturedSlot  = slot;
-        btn.onClick.AddListener(() => DisassembleEquip(capturedEntry, capturedSlot, capturedId, enhance));
+        string capturedId = equip.EquipmentId;
+        btn.onClick.AddListener(() => DisassembleEquip(capturedId));
     }
 
     // ── 분해 로직 ─────────────────────────────────────────────
@@ -218,17 +183,17 @@ public class DisassemblePopup : PopupBase
         BuildHeroList();
     }
 
-    void DisassembleEquip(UnitEntry entry, int slot, string equipId, int enhance)
+    void DisassembleEquip(string equipId)
     {
-        var unitData = UserDataManager.Instance?.Get<UnitData>();
+        var invData  = UserDataManager.Instance?.Get<EquipInventoryData>();
         var itemData = UserDataManager.Instance?.Get<ItemData>();
-        if (unitData == null || itemData == null) return;
+        if (invData == null || itemData == null) return;
 
         var equip = EquipmentDatabase.Current?.Get(equipId);
         if (equip == null) return;
 
-        int stones = GetEquipStones(equip, enhance);
-        unitData.RemoveEquipment(entry.UnitName, slot);
+        int stones = equip.ItemLevel;
+        invData.Remove(equipId);
         itemData.Add(eItem.EquipUpgradeStone, stones);
         UserDataManager.Instance.RequestSave();
 
@@ -244,8 +209,6 @@ public class DisassemblePopup : PopupBase
         return bases[gradeIdx] + e.Level / 5;
     }
 
-    static int GetEquipStones(EquipmentData equip, int enhance)
-        => equip.ItemLevel + enhance;
 
     // ── 유틸 ─────────────────────────────────────────────────
 

@@ -21,6 +21,7 @@ public static class PopupPrefabCreator
         CreateBattleResultPopup();
         CreatePausePopup();
         CreateLoadingPopup();
+        CreateAbilitySelectPopup();
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         Debug.Log("[PopupPrefabCreator] 팝업 프리팹 생성 완료");
@@ -387,6 +388,166 @@ public static class PopupPrefabCreator
     {
         var prop = so.FindProperty(field);
         if (prop != null) prop.objectReferenceValue = obj;
+    }
+
+    // ── AbilitySelectPopup ────────────────────────────────────
+
+    [MenuItem("Tools/Project K/Popup/Create AbilitySelectPopup Prefab")]
+    static void CreateAbilitySelectPopup()
+    {
+        const float popupW  = 920f;
+        const float popupH  = 760f;
+        const float cardW   = 272f;
+        const float cardH   = 580f;
+
+        var root  = CreateRoot<AbilitySelectPopup>("AbilitySelectPopup", popupW, popupH);
+        var popup = root.GetComponent<AbilitySelectPopup>();
+
+        AddBgPanel(root, new Color(0.08f, 0.10f, 0.16f, 0.96f));
+
+        // 제목
+        var titleTmp = AddTMP(root, "TitleText", "어빌리티 선택", UIScale.FontLg, FontStyles.Bold);
+        SetRect(titleTmp.rectTransform, new Vector2(0f, popupH / 2f - 60f), new Vector2(800f, 70f));
+
+        // 카드 영역 (HorizontalLayoutGroup)
+        var cardArea = new GameObject("CardArea", typeof(RectTransform));
+        cardArea.transform.SetParent(root.transform, false);
+        var cardAreaRt = cardArea.GetComponent<RectTransform>();
+        cardAreaRt.anchorMin        = new Vector2(0.5f, 0.5f);
+        cardAreaRt.anchorMax        = new Vector2(0.5f, 0.5f);
+        cardAreaRt.pivot            = new Vector2(0.5f, 0.5f);
+        cardAreaRt.anchoredPosition = new Vector2(0f, -30f);
+        cardAreaRt.sizeDelta        = new Vector2(popupW - 40f, cardH);
+        var hlg = cardArea.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing              = 16f;
+        hlg.childAlignment       = TextAnchor.MiddleCenter;
+        hlg.childControlWidth    = false;
+        hlg.childControlHeight   = false;
+        hlg.childForceExpandWidth  = false;
+        hlg.childForceExpandHeight = false;
+
+        // 카드 3장 생성
+        var cards = new AbilityCardUI[3];
+        for (int i = 0; i < 3; i++)
+        {
+            var card = BuildAbilityCard($"Card{i}", cardW, cardH);
+            card.transform.SetParent(cardArea.transform, false);
+            var cardRt = card.GetComponent<RectTransform>();
+            cardRt.sizeDelta = new Vector2(cardW, cardH);
+            cards[i] = card.GetComponent<AbilityCardUI>();
+        }
+
+        // SerializedObject 연결
+        var so = new SerializedObject(popup);
+        SetEnum(so, "_popupType", (int)PopupType.AbilitySelect);
+        SetObj (so, "_titleTmp",  titleTmp);
+
+        var cardsProp = so.FindProperty("_cards");
+        cardsProp.arraySize = 3;
+        for (int i = 0; i < 3; i++)
+            cardsProp.GetArrayElementAtIndex(i).objectReferenceValue = cards[i];
+
+        so.ApplyModifiedProperties();
+
+        Save(root, "AbilitySelectPopup");
+        Debug.Log("[PopupPrefabCreator] AbilitySelectPopup 저장 완료");
+    }
+
+    static GameObject BuildAbilityCard(string name, float w, float h)
+    {
+        var card = new GameObject(name, typeof(RectTransform), typeof(Image));
+        card.AddComponent<AbilityCardUI>();
+        card.GetComponent<Image>().color = new Color(0.12f, 0.14f, 0.22f, 1f);
+
+        // 등급 바 (상단)
+        var gradeBar = new GameObject("GradeBar", typeof(RectTransform), typeof(Image));
+        gradeBar.transform.SetParent(card.transform, false);
+        var gbRt = gradeBar.GetComponent<RectTransform>();
+        gbRt.anchorMin        = new Vector2(0f, 1f);
+        gbRt.anchorMax        = new Vector2(1f, 1f);
+        gbRt.pivot            = new Vector2(0.5f, 1f);
+        gbRt.anchoredPosition = Vector2.zero;
+        gbRt.sizeDelta        = new Vector2(0f, 8f);
+        gradeBar.GetComponent<Image>().color = new Color(0.70f, 0.70f, 0.75f);
+
+        // 아이콘 배경
+        float iconSz   = 90f;
+        float iconTopY = h / 2f - 60f;  // 카드 상단에서 60 내려온 위치(중앙 기준)
+        var iconBg = new GameObject("IconBg", typeof(RectTransform), typeof(Image));
+        iconBg.transform.SetParent(card.transform, false);
+        var iconBgRt = iconBg.GetComponent<RectTransform>();
+        iconBgRt.anchorMin        = new Vector2(0.5f, 0.5f);
+        iconBgRt.anchorMax        = new Vector2(0.5f, 0.5f);
+        iconBgRt.pivot            = new Vector2(0.5f, 0.5f);
+        iconBgRt.anchoredPosition = new Vector2(0f, iconTopY);
+        iconBgRt.sizeDelta        = new Vector2(iconSz + 8f, iconSz + 8f);
+        iconBg.GetComponent<Image>().color = new Color(0.06f, 0.08f, 0.14f, 1f);
+
+        // 아이콘
+        var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(Image));
+        iconGo.transform.SetParent(card.transform, false);
+        var iconRt = iconGo.GetComponent<RectTransform>();
+        iconRt.anchorMin        = new Vector2(0.5f, 0.5f);
+        iconRt.anchorMax        = new Vector2(0.5f, 0.5f);
+        iconRt.pivot            = new Vector2(0.5f, 0.5f);
+        iconRt.anchoredPosition = new Vector2(0f, iconTopY);
+        iconRt.sizeDelta        = new Vector2(iconSz, iconSz);
+        iconGo.GetComponent<Image>().color = Color.white;
+
+        // 등급 텍스트
+        var gradeTmp = AddCardTMP(card, "GradeTmp", "일반", UIScale.FontSm, FontStyles.Normal);
+        SetRect(gradeTmp.rectTransform, new Vector2(0f, iconTopY - iconSz / 2f - 22f), new Vector2(w - 20f, 36f));
+        gradeTmp.color = new Color(0.70f, 0.70f, 0.75f);
+
+        // 이름 텍스트
+        var nameTmp = AddCardTMP(card, "NameTmp", "어빌리티 이름", UIScale.FontMd, FontStyles.Bold);
+        SetRect(nameTmp.rectTransform, new Vector2(0f, iconTopY - iconSz / 2f - 68f), new Vector2(w - 20f, 48f));
+
+        // 대상 텍스트
+        var targetTmp = AddCardTMP(card, "TargetTmp", "전체", UIScale.FontSm, FontStyles.Normal);
+        SetRect(targetTmp.rectTransform, new Vector2(0f, iconTopY - iconSz / 2f - 112f), new Vector2(w - 20f, 36f));
+        targetTmp.color = new Color(0.65f, 0.80f, 0.65f);
+
+        // 구분선
+        var div = new GameObject("Divider", typeof(RectTransform), typeof(Image));
+        div.transform.SetParent(card.transform, false);
+        div.GetComponent<Image>().color = new Color(0.30f, 0.30f, 0.38f, 0.80f);
+        SetRect(div.GetComponent<RectTransform>(), new Vector2(0f, iconTopY - iconSz / 2f - 134f), new Vector2(w - 32f, 2f));
+
+        // 스탯 설명 텍스트
+        var descTmp = AddCardTMP(card, "DescTmp", "+0%", UIScale.FontSm, FontStyles.Normal);
+        SetRect(descTmp.rectTransform, new Vector2(0f, iconTopY - iconSz / 2f - 188f), new Vector2(w - 24f, 80f));
+        descTmp.color = new Color(0.85f, 0.85f, 0.90f);
+
+        // 선택 버튼
+        var selBtn = AddButton(card, "SelectBtn", "선택", new Color(0.20f, 0.45f, 0.75f), UIScale.FontSm);
+        SetRect(selBtn.GetComponent<RectTransform>(), new Vector2(0f, -(h / 2f - 44f)), new Vector2(w - 24f, UIScale.BtnSm));
+
+        // SerializedObject 로 AbilityCardUI 필드 연결
+        var cardSo = new SerializedObject(card.GetComponent<AbilityCardUI>());
+        SetObj(cardSo, "_gradeBar",  gradeBar.GetComponent<Image>());
+        SetObj(cardSo, "_icon",      iconGo.GetComponent<Image>());
+        SetObj(cardSo, "_gradeTmp",  gradeTmp);
+        SetObj(cardSo, "_nameTmp",   nameTmp);
+        SetObj(cardSo, "_targetTmp", targetTmp);
+        SetObj(cardSo, "_descTmp",   descTmp);
+        SetObj(cardSo, "_selectBtn", selBtn.GetComponent<Button>());
+        cardSo.ApplyModifiedProperties();
+
+        return card;
+    }
+
+    static TextMeshProUGUI AddCardTMP(GameObject parent, string name, string text, float size, FontStyles style)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
+        go.transform.SetParent(parent.transform, false);
+        var tmp = go.GetComponent<TextMeshProUGUI>();
+        tmp.text      = text;
+        tmp.fontSize  = size;
+        tmp.fontStyle = style;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.color     = Color.white;
+        return tmp;
     }
 
     static void Save(GameObject root, string fileName)

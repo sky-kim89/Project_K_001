@@ -58,6 +58,19 @@ namespace BattleGame.Units
             bool  allyDefeated  = BattleManager.Instance != null && BattleManager.Instance.IsAllyDefeated;
             bool  enemyDefeated = BattleManager.Instance != null && BattleManager.Instance.IsEnemyDefeated;
 
+            // 화면에 진입한 적이 있는지 확인 — 아군 전진 개시 조건
+            bool anyEnemyOnScreen = false;
+            foreach (var (identity, screen) in
+                SystemAPI.Query<RefRO<UnitIdentityComponent>, RefRO<ScreenStateComponent>>()
+                         .WithNone<DeadTag>())
+            {
+                if (identity.ValueRO.Team == TeamType.Enemy && screen.ValueRO.HasEnteredScreen)
+                {
+                    anyEnemyOnScreen = true;
+                    break;
+                }
+            }
+
             // ① 분리 그리드 빌드 (아군 + 적군 전체) ─────────────
             _sepGrid.Clear();
 
@@ -90,9 +103,10 @@ namespace BattleGame.Units
             // ③ 목적지 이동 ────────────────────────────────────────
             new MoveToDestinationJob
             {
-                DeltaTime     = deltaTime,
-                AllyDefeated  = allyDefeated,
-                EnemyDefeated = enemyDefeated,
+                DeltaTime        = deltaTime,
+                AllyDefeated     = allyDefeated,
+                EnemyDefeated    = enemyDefeated,
+                AnyEnemyOnScreen = anyEnemyOnScreen,
             }.ScheduleParallel();
 
             // ④ 넉백 ─────────────────────────────────────────────
@@ -195,8 +209,9 @@ namespace BattleGame.Units
     public partial struct MoveToDestinationJob : IJobEntity
     {
         public float DeltaTime;
-        public bool  AllyDefeated;   // 아군 전멸 시 적 진군 중지용
-        public bool  EnemyDefeated;  // 적 전멸(웨이브 클리어) 시 아군 이동 중지용
+        public bool  AllyDefeated;    // 아군 전멸 시 적 진군 중지용
+        public bool  EnemyDefeated;   // 적 전멸(웨이브 클리어) 시 아군 이동 중지용
+        public bool  AnyEnemyOnScreen; // 적이 화면에 진입했는지 — 아군 전진 개시 조건
 
         public void Execute(
             ref LocalTransform         transform,
@@ -216,13 +231,24 @@ namespace BattleGame.Units
                 return;
             }
 
-            if (unitState.Current == UnitState.Hit      ||
-                unitState.Current == UnitState.Dead     ||
-                unitState.Current == UnitState.Attacking)
+            if (unitState.Current == UnitState.Hit  ||
+                unitState.Current == UnitState.Dead)
             {
                 movement.Velocity = float3.zero;
                 movement.IsMoving = false;
                 return;
+            }
+
+            // 공격 중이지만 타겟이 사망해 없어진 경우 → Idle 복귀
+            if (unitState.Current == UnitState.Attacking)
+            {
+                if (attack.HasTarget)
+                {
+                    movement.Velocity = float3.zero;
+                    movement.IsMoving = false;
+                    return;
+                }
+                ChangeState(ref unitState, UnitState.Idle);
             }
 
             float moveSpeed = stat.Final[StatType.MoveSpeed];
@@ -237,9 +263,17 @@ namespace BattleGame.Units
                 return;
             }
 
-            // 아군 + 타겟 없음 → +X 전진 (Y 유지, 원점으로 끌려가지 않음)
+            // 아군 + 타겟 없음 → 적이 화면에 진입한 후에만 +X 전진
             if (identity.Team == TeamType.Ally && !attack.HasTarget)
             {
+                if (!AnyEnemyOnScreen)
+                {
+                    movement.Velocity = float3.zero;
+                    movement.IsMoving = false;
+                    if (unitState.Current != UnitState.Idle)
+                        ChangeState(ref unitState, UnitState.Idle);
+                    return;
+                }
                 movement.Velocity  = new float3(1f, 0f, 0f) * moveSpeed;
                 transform.Position += movement.Velocity * DeltaTime;
                 movement.IsMoving  = true;

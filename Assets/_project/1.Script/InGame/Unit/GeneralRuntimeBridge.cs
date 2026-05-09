@@ -126,13 +126,15 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         var rolledId  = ActiveSkillRoller.Roll(_unitName, _job, activeDb);
         var skillData = activeDb?.Get(rolledId);
 
+        float baseCooldown = skillData?.Cooldown ?? 15f;
+        float cdr          = Mathf.Clamp01(_stat.Get(StatType.SkillCooldownReduce));
         em.AddComponentData(entity, new GeneralActiveSkillComponent
         {
             SkillId           = (int)rolledId,
             EffectValue       = skillData?.EffectValue    ?? 1f,
             EffectRadius      = skillData?.EffectRadius   ?? 0f,
             EffectDuration    = skillData?.EffectDuration ?? 0f,
-            Cooldown          = skillData?.Cooldown       ?? 15f,
+            Cooldown          = baseCooldown * (1f - cdr),
             CooldownRemaining = 0f,  // 첫 발동은 즉시 가능
         });
 
