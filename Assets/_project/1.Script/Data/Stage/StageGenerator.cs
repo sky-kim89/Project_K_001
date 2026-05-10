@@ -6,9 +6,17 @@ using UnityEngine;
 //  StageGenerator.cs
 //  StageConfig 의 커브를 바탕으로 StageData 목록을 절차적으로 생성.
 //
-//  - 종족은 스테이지 번호를 시드 삼아 고정 (같은 번호 = 같은 종족)
-//  - 마지막 웨이브에 보스 추가
-//  - 엘리트 스테이지는 중반 이후 웨이브에 Elite 유닛 추가
+//  ■ 난이도 곡선 (기본 설정 기준)
+//    Stage  1: ×1.0    | 웨이브 2 | 적 ~9/wave   → ~18마리
+//    Stage  5: ×1.5 허들| 웨이브 5 | 적 ~30/wave  → ~150마리
+//    Stage 10: ×3.75 허들| 웨이브 6 | 적 ~45/wave → ~270마리
+//    Stage 15: ×9.75 허들| 웨이브 7 | 적 ~61/wave → ~427마리
+//    Stage 20: ×24  허들| 웨이브 8 | 적 ~77/wave  → ~616마리
+//    Stage 25: ×60  허들| 웨이브 9 | 적 ~92/wave  → ~828마리
+//    Stage 30: ×150 허들| 웨이브10 | 적 ~108/wave → ~1080마리
+//
+//  ■ 환생·유물 시스템 고려
+//    후반 블록(26~30) 100× 기준 — 환생 보너스가 없으면 클리어 불가 설계
 // ============================================================
 
 public static class StageGenerator
@@ -32,8 +40,22 @@ public static class StageGenerator
     {
         int   total      = mode == BattleMode.Normal ? config.NormalStageCount : config.EliteStageCount;
         float progress   = Mathf.Clamp01((float)stageNumber / total);
-        int   waveCount  = Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(config.WaveCountMin, config.WaveCountMax, progress)));
-        int   energyCost = mode == BattleMode.Normal ? config.EnergyCostNormal : config.EnergyCostElite;
+        bool  isHurdle   = config.IsHurdle(stageNumber);
+
+        // 허들 스테이지는 웨이브 + 1
+        int baseWaves = Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(config.WaveCountMin, config.WaveCountMax, progress)));
+        int waveCount = isHurdle ? baseWaves + config.HurdleExtraWaves : baseWaves;
+
+        int energyCost = mode == BattleMode.Normal ? config.EnergyCostNormal : config.EnergyCostElite;
+
+        // 스텟 배율 계산
+        float blockMult  = config.GetBlockMultiplier(stageNumber);
+        float hurdleMult = isHurdle ? config.HurdleStatMultiplier : 1f;
+        // 스테이지 1→20: EarlyGameStatStart(0.3) → 1.0 선형 완화, 21부터 완화 없음
+        float earlyMult  = stageNumber <= 20
+            ? Mathf.Lerp(config.EarlyGameStatStart, 1f, (stageNumber - 1) / 19f)
+            : 1f;
+        float statMult   = blockMult * hurdleMult * earlyMult;
 
         var rng   = new System.Random(HashSeed(mode, stageNumber));
         var waves = new List<WaveData>(waveCount);
@@ -41,12 +63,26 @@ public static class StageGenerator
         for (int w = 1; w <= waveCount; w++)
         {
             float waveT = waveCount > 1 ? (float)(w - 1) / (waveCount - 1) : 1f;
-            waves.Add(GenerateWave(config, mode, stageNumber, w, waveCount, progress, waveT, rng));
+            waves.Add(GenerateWave(config, mode, stageNumber, w, waveCount,
+                                   progress, waveT, statMult, isHurdle, rng));
         }
 
         int goldReward  = Mathf.Max(10,  Mathf.RoundToInt(Mathf.Lerp(config.GoldRewardMin,  config.GoldRewardMax,  progress)));
         int stoneReward = Mathf.Max(1,   Mathf.RoundToInt(Mathf.Lerp(config.StoneRewardMin, config.StoneRewardMax, progress)));
         int expReward   = Mathf.Max(1,   Mathf.RoundToInt(Mathf.Lerp(config.ExpRewardMin,   config.ExpRewardMax,   progress)));
+        int block        = (stageNumber - 1) / 5;
+        int shardReward  = config.ShardRewardBase + block * config.ShardRewardPerBlock
+                           + (isHurdle ? config.ShardHurdleBonus : 0);
+        int equipBoxReward = stageNumber >= config.EquipBoxThreshold3 ? 3
+                           : stageNumber >= config.EquipBoxThreshold2 ? 2
+                           : 1;
+
+        // 허들 보상 추가 — 일반 보상의 2배 + 전투석 추가
+        if (isHurdle)
+        {
+            goldReward  = Mathf.RoundToInt(goldReward * 2.0f);
+            stoneReward = stoneReward + 5;
+        }
 
         return new StageData
         {
@@ -56,7 +92,9 @@ public static class StageGenerator
             GoldReward  = goldReward,
             StoneReward = stoneReward,
             ExpReward   = expReward,
-            Waves       = waves,
+            ShardReward    = shardReward,
+            EquipBoxReward = equipBoxReward,
+            Waves          = waves,
         };
     }
 
@@ -66,60 +104,75 @@ public static class StageGenerator
         StageConfig config, BattleMode mode,
         int stageNumber, int wave, int totalWaves,
         float stageProgress, float waveProgress,
+        float statMult, bool isHurdle,
         System.Random rng)
     {
-        int       total      = mode == BattleMode.Normal ? config.NormalStageCount : config.EliteStageCount;
-        float     levelT     = total > 1 ? Mathf.Clamp01((float)(stageNumber - 1) / (total - 1)) : 1f;
-        int       enemyCount = Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(config.EnemyCountMin, config.EnemyCountMax, stageProgress)));
-        int       enemyLevel = Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(config.EnemyLevelMin, config.EnemyLevelMax, levelT)));
-        EnemyRace race       = AllRaces[rng.Next(AllRaces.Length)];
+        int   total      = mode == BattleMode.Normal ? config.NormalStageCount : config.EliteStageCount;
+        float levelT     = total > 1 ? Mathf.Clamp01((float)(stageNumber - 1) / (total - 1)) : 1f;
+        int   enemyLevel = Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(config.EnemyLevelMin, config.EnemyLevelMax, levelT)));
+
+        // 허들 스테이지 적 수 추가
+        int baseCount  = Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(config.EnemyCountMin, config.EnemyCountMax, stageProgress)));
+        int enemyCount = isHurdle ? baseCount + config.HurdleExtraEnemies : baseCount;
+
+        EnemyRace race = AllRaces[rng.Next(AllRaces.Length)];
 
         bool isLastWave = wave == totalWaves;
         bool hasElite   = mode == BattleMode.Elite && waveProgress >= 0.5f;
-        bool hasBoss    = isLastWave;
+        // 허들 스테이지는 모든 웨이브에 엘리트 추가, 일반은 마지막 웨이브 보스만
+        bool hasEliteNormal = isHurdle && stageNumber >= 5 && !isLastWave;
+        bool hasBoss        = isLastWave;
 
         var entries = new List<SpawnEntry>();
 
+        int eliteSlots  = (hasElite || hasEliteNormal) && !hasBoss ? 1 + (isHurdle ? stageNumber / 15 : 0) : 0;
         int normalCount = hasBoss ? Mathf.Max(1, enemyCount - 2)
-                        : hasElite ? Mathf.Max(1, enemyCount - 1)
+                        : eliteSlots > 0 ? Mathf.Max(1, enemyCount - eliteSlots)
                         : enemyCount;
 
         entries.Add(new SpawnEntry
         {
-            Name         = $"S{stageNumber}W{wave}E",
-            Level        = enemyLevel,
-            UnitType     = SpawnUnitType.Enemy,
-            Count        = normalCount,
-            DelayBetween = 0.3f,
-            DelayBefore  = 0f,
-            EnemyRace    = race,
+            Name           = $"S{stageNumber}W{wave}E",
+            Level          = enemyLevel,
+            UnitType       = SpawnUnitType.Enemy,
+            Count          = normalCount,
+            DelayBetween   = 0.3f,
+            DelayBefore    = 0f,
+            EnemyRace      = race,
+            StatMultiplier = statMult,
         });
 
-        if (hasElite && !hasBoss)
+        // 엘리트 유닛 추가 (엘리트 스테이지 중반 or 허들 스테이지 중간 웨이브)
+        if ((hasElite || hasEliteNormal) && !hasBoss)
         {
+            // 후반 허들일수록 엘리트 수 증가 (15스테이지마다 +1)
+            int eliteCount = 1 + (isHurdle ? stageNumber / 15 : 0);
             entries.Add(new SpawnEntry
             {
-                Name         = $"S{stageNumber}W{wave}El",
-                Level        = enemyLevel + 3,
-                UnitType     = SpawnUnitType.Elite,
-                Count        = 1,
-                DelayBefore  = 1.5f,
-                DelayBetween = 0f,
-                EnemyRace    = race,
+                Name           = $"S{stageNumber}W{wave}El",
+                Level          = enemyLevel + 3,
+                UnitType       = SpawnUnitType.Elite,
+                Count          = eliteCount,
+                DelayBefore    = 1.5f,
+                DelayBetween   = 1.0f,
+                EnemyRace      = race,
+                StatMultiplier = statMult,
             });
         }
 
+        // 마지막 웨이브 보스
         if (hasBoss)
         {
             entries.Add(new SpawnEntry
             {
-                Name         = $"S{stageNumber}Boss",
-                Level        = enemyLevel + 5,
-                UnitType     = SpawnUnitType.Boss,
-                Count        = 1,
-                DelayBefore  = 2f,
-                DelayBetween = 0f,
-                EnemyRace    = race,
+                Name           = $"S{stageNumber}Boss",
+                Level          = enemyLevel + 5,
+                UnitType       = SpawnUnitType.Boss,
+                Count          = 1,
+                DelayBefore    = 2f,
+                DelayBetween   = 0f,
+                EnemyRace      = race,
+                StatMultiplier = statMult,
             });
         }
 

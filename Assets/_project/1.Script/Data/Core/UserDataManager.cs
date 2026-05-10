@@ -116,6 +116,19 @@ public class UserDataManager : PureSingleton<UserDataManager>
         RegisterSection(new RunAbilityData());
 
         LoadAll();
+        AutoDeployFirstHeroIfNeeded();
+    }
+
+    void AutoDeployFirstHeroIfNeeded()
+    {
+        var unitData   = Get<UnitData>();
+        var deployData = Get<DeploymentData>();
+        if (unitData == null || deployData == null) return;
+        if (deployData.HasAnyDeployed()) return;
+        if (unitData.Units.Count == 0) return;
+
+        deployData.Deploy(unitData.Units[0].UnitName, 0);
+        RequestSave();
     }
 
     // ── 내부 ─────────────────────────────────────────────────

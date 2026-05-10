@@ -62,9 +62,6 @@ public static class UISetupTool
         // 4. PopupManager 루트 오브젝트 생성/업데이트
         CreateOrUpdatePopupManager(canvasGo);
 
-        // 5. InGameManager 참조 연결
-        WireInGameManager(loadingPrefab, resultPrefab, pausePrefab);
-
         AssetDatabase.SaveAssets();
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
         Debug.Log("[UISetupTool] ✓ InGame UI 셋업 완료 — 씬을 저장하세요 (Ctrl+S)");
@@ -683,36 +680,6 @@ public static class UISetupTool
     //  InGameManager 참조 연결
     // ══════════════════════════════════════════════════════════
 
-    static void WireInGameManager(GameObject loadingPrefab, GameObject resultPrefab, GameObject pausePrefab)
-    {
-        var igm = Object.FindObjectOfType<InGameManager>();
-        if (igm == null)
-        {
-            Debug.Log("[UISetupTool] InGameManager 를 씬에서 찾지 못했습니다. 수동으로 팝업 프리팹을 연결하세요.");
-            return;
-        }
-
-        var so = new SerializedObject(igm);
-
-        if (loadingPrefab != null)
-        {
-            var lp = AssetDatabase.LoadAssetAtPath<LoadingPopup>(LOADING_POPUP_PREFAB);
-            so.FindProperty("_loadingPopupPrefab").objectReferenceValue = lp;
-        }
-        if (resultPrefab != null)
-        {
-            var rp = AssetDatabase.LoadAssetAtPath<BattleResultPopup>(RESULT_POPUP_PREFAB);
-            so.FindProperty("_battleResultPopupPrefab").objectReferenceValue = rp;
-        }
-        if (pausePrefab != null)
-        {
-            var pp = AssetDatabase.LoadAssetAtPath<PausePopup>(PAUSE_POPUP_PREFAB);
-            so.FindProperty("_pausePopupPrefab").objectReferenceValue = pp;
-        }
-
-        so.ApplyModifiedPropertiesWithoutUndo();
-        Debug.Log("[UISetupTool] InGameManager 팝업 프리팹 참조 연결 완료");
-    }
 
     // ══════════════════════════════════════════════════════════
     //  헬퍼
@@ -778,12 +745,45 @@ public static class UISetupTool
     {
         var img = MakeImg(parent, name, color);
         var so = new SerializedObject(img);
+        so.FindProperty("m_Sprite").objectReferenceValue = GetOrCreateWhiteBarSprite();
         so.FindProperty("m_Type").intValue       = (int)Image.Type.Filled;
         so.FindProperty("m_FillMethod").intValue = (int)Image.FillMethod.Horizontal;
         so.FindProperty("m_FillAmount").floatValue = 1f;
         so.ApplyModifiedPropertiesWithoutUndo();
         Stretch(img.gameObject);
         return img;
+    }
+
+    static Sprite GetOrCreateWhiteBarSprite()
+    {
+        const string assetPath = "Assets/_project/3.Textures/UI/FillBar.png";
+
+        var existing = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+        if (existing != null) return existing;
+
+        string dir = System.IO.Path.GetDirectoryName(
+            System.IO.Path.Combine(Application.dataPath, "..", assetPath));
+        System.IO.Directory.CreateDirectory(dir);
+
+        var tex = new Texture2D(4, 4, TextureFormat.RGBA32, false);
+        var cols = new Color[16];
+        for (int i = 0; i < 16; i++) cols[i] = Color.white;
+        tex.SetPixels(cols);
+        tex.Apply();
+
+        string fullPath = System.IO.Path.Combine(Application.dataPath,
+            assetPath.Substring("Assets/".Length));
+        System.IO.File.WriteAllBytes(fullPath, tex.EncodeToPNG());
+        AssetDatabase.ImportAsset(assetPath);
+
+        var importer = (TextureImporter)AssetImporter.GetAtPath(assetPath);
+        importer.textureType      = TextureImporterType.Sprite;
+        importer.spriteImportMode = SpriteImportMode.Single;
+        importer.filterMode       = FilterMode.Point;
+        importer.mipmapEnabled    = false;
+        importer.SaveAndReimport();
+
+        return AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
     }
 
     static void SetTL(GameObject go, float x, float y, float w, float h)

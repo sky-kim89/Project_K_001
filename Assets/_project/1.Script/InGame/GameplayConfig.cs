@@ -145,49 +145,51 @@ public class GameplayConfig : ScriptableObject
 
     void Reset()
     {
-        // 적 스텟 범위
+        // 적 스텟 범위 — 스테이지 배율(StatMultiplier)·레벨 배율이 별도 적용되므로
+        // 여기는 스테이지 1 기준값만 정의한다.
         EnemyRange = new EnemyGradeStatRange
         {
-            Hp          = new FloatRange(100f,  400f),
-            Attack      = new FloatRange(10f,   50f),
+            Hp          = new FloatRange(200f,  600f),   // ×2 상향 (아군 대비 격차 해소)
+            Attack      = new FloatRange(18f,   65f),    // ×1.7 상향
             Defense     = new FloatRange(0.05f, 0.15f),
             AttackRange = new FloatRange(1.2f,  2.5f),
-            AttackSpeed = new FloatRange(0.5f,  1.5f),
+            AttackSpeed = new FloatRange(0.6f,  1.6f),
             MoveSpeed   = new FloatRange(2.0f,  4.0f),
             CritChance  = 0.05f,
             CritDamage  = 1.50f,
         };
         EliteRange = new EnemyGradeStatRange
         {
-            Hp          = new FloatRange(400f,  1200f),
-            Attack      = new FloatRange(50f,   150f),
-            Defense     = new FloatRange(0.10f, 0.30f),
+            Hp          = new FloatRange(700f,  2000f),  // ×1.7 상향
+            Attack      = new FloatRange(70f,   210f),   // ×1.5 상향
+            Defense     = new FloatRange(0.12f, 0.32f),
             AttackRange = new FloatRange(1.5f,  3.0f),
             AttackSpeed = new FloatRange(0.8f,  2.0f),
             MoveSpeed   = new FloatRange(2.5f,  4.5f),
-            CritChance  = 0.05f,
-            CritDamage  = 1.50f,
+            CritChance  = 0.08f,
+            CritDamage  = 1.60f,
         };
         BossRange = new EnemyGradeStatRange
         {
-            Hp          = new FloatRange(2000f, 8000f),
-            Attack      = new FloatRange(150f,  400f),
-            Defense     = new FloatRange(0.20f, 0.45f),
-            AttackRange = new FloatRange(2.0f,  4.0f),
-            AttackSpeed = new FloatRange(0.4f,  1.2f),
-            MoveSpeed   = new FloatRange(1.5f,  3.0f),
-            CritChance  = 0.05f,
-            CritDamage  = 1.50f,
+            Hp          = new FloatRange(5000f, 14000f), // ×1.8 상향 (AoE 공격 보정)
+            Attack      = new FloatRange(220f,  550f),   // AoE 기준 단일 피해
+            Defense     = new FloatRange(0.25f, 0.50f),
+            AttackRange = new FloatRange(2.5f,  4.5f),
+            AttackSpeed = new FloatRange(0.40f, 0.90f),  // AoE라 느리게 유지
+            MoveSpeed   = new FloatRange(2.0f,  3.5f),
+            CritChance  = 0.08f,
+            CritDamage  = 1.60f,
         };
 
-        // 아군 직업별 스텟 범위
+        // 아군 직업별 스텟 범위 — 직업 간 DPS 균형 조정
+        // 평균 DPS(크리 포함): Knight ~170, Archer ~158, Mage ~155, ShieldBearer ~90(탱킹 보정)
         KnightRange = new JobStatRange
         {
-            Hp           = new FloatRange(700f,   1500f),
-            Attack       = new FloatRange(60f,    150f),
-            Defense      = new FloatRange(0.08f,  0.22f),
+            Hp           = new FloatRange(800f,   1600f),  // +7% 상향
+            Attack       = new FloatRange(70f,    160f),   // +7% 상향
+            Defense      = new FloatRange(0.08f,  0.20f),
             AttackRange  = new FloatRange(0.8f,   1.2f),
-            AttackSpeed  = new FloatRange(0.8f,   1.8f),
+            AttackSpeed  = new FloatRange(0.9f,   1.9f),   // 소폭 상향
             MoveSpeed    = new FloatRange(2.5f,   3.0f),
             SoldierCount = new FloatRange(1f,     2f),
             CommandPower = new FloatRange(1f,     30f),
@@ -196,11 +198,11 @@ public class GameplayConfig : ScriptableObject
         };
         ArcherRange = new JobStatRange
         {
-            Hp           = new FloatRange(300f,   700f),
-            Attack       = new FloatRange(50f,    130f),
+            Hp           = new FloatRange(350f,   750f),   // +10% 상향
+            Attack       = new FloatRange(60f,    140f),   // +8% 상향
             Defense      = new FloatRange(0.03f,  0.10f),
             AttackRange  = new FloatRange(5.0f,   9.0f),
-            AttackSpeed  = new FloatRange(0.8f,   1.8f),
+            AttackSpeed  = new FloatRange(0.9f,   1.9f),   // 소폭 상향
             MoveSpeed    = new FloatRange(2.0f,   2.5f),
             SoldierCount = new FloatRange(1f,     2f),
             CommandPower = new FloatRange(1f,     30f),
@@ -209,11 +211,11 @@ public class GameplayConfig : ScriptableObject
         };
         MageRange = new JobStatRange
         {
-            Hp           = new FloatRange(250f,   600f),
-            Attack       = new FloatRange(120f,   350f),
+            Hp           = new FloatRange(270f,   620f),   // +4% 상향
+            Attack       = new FloatRange(130f,   370f),   // +6% 상향
             Defense      = new FloatRange(0.02f,  0.08f),
             AttackRange  = new FloatRange(4.0f,   7.0f),
-            AttackSpeed  = new FloatRange(0.3f,   0.7f),
+            AttackSpeed  = new FloatRange(0.35f,  0.75f),
             MoveSpeed    = new FloatRange(1.5f,   2.0f),
             SoldierCount = new FloatRange(1f,     2f),
             CommandPower = new FloatRange(1f,     30f),
@@ -222,11 +224,11 @@ public class GameplayConfig : ScriptableObject
         };
         ShieldBearerRange = new JobStatRange
         {
-            Hp           = new FloatRange(1500f,  4000f),
-            Attack       = new FloatRange(30f,    80f),
-            Defense      = new FloatRange(0.25f,  0.50f),
+            Hp           = new FloatRange(1200f,  3000f),  // -25% 하향 (과도한 HP 조정)
+            Attack       = new FloatRange(50f,    120f),   // +50% 상향 (DPS 보정)
+            Defense      = new FloatRange(0.30f,  0.55f),  // +5% 상향 (탱킹 특화)
             AttackRange  = new FloatRange(0.7f,   1.0f),
-            AttackSpeed  = new FloatRange(0.5f,   1.2f),
+            AttackSpeed  = new FloatRange(0.6f,   1.4f),   // 소폭 상향
             MoveSpeed    = new FloatRange(2.0f,   2.5f),
             SoldierCount = new FloatRange(1f,     2f),
             CommandPower = new FloatRange(1f,     30f),

@@ -150,10 +150,11 @@ public class BattleResultPopup : PopupBase
 
     static Color GetItemColor(eItem item) => item switch
     {
-        eItem.Gold        => new Color(1.00f, 0.80f, 0.20f, 1f),
-        eItem.Gem         => new Color(0.40f, 0.80f, 1.00f, 1f),
-        eItem.BattleStone => new Color(0.50f, 0.75f, 0.60f, 1f),
-        eItem.Energy      => new Color(0.90f, 0.50f, 0.20f, 1f),
-        _                 => new Color(0.60f, 0.60f, 0.70f, 1f),
+        eItem.Gold         => new Color(1.00f, 0.80f, 0.20f, 1f),
+        eItem.Gem          => new Color(0.40f, 0.80f, 1.00f, 1f),
+        eItem.BattleStone  => new Color(0.50f, 0.75f, 0.60f, 1f),
+        eItem.Energy       => new Color(0.90f, 0.50f, 0.20f, 1f),
+        eItem.SoldierShard => new Color(0.45f, 0.70f, 1.00f, 1f),
+        _                  => new Color(0.60f, 0.60f, 0.70f, 1f),
     };
 }

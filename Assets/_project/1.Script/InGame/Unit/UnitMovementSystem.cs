@@ -101,12 +101,14 @@ namespace BattleGame.Units
             }.ScheduleParallel();
 
             // ③ 목적지 이동 ────────────────────────────────────────
+            var bossLookup = SystemAPI.GetComponentLookup<BossComponent>(isReadOnly: true);
             new MoveToDestinationJob
             {
                 DeltaTime        = deltaTime,
                 AllyDefeated     = allyDefeated,
                 EnemyDefeated    = enemyDefeated,
                 AnyEnemyOnScreen = anyEnemyOnScreen,
+                BossLookup       = bossLookup,
             }.ScheduleParallel();
 
             // ④ 넉백 ─────────────────────────────────────────────
@@ -209,11 +211,13 @@ namespace BattleGame.Units
     public partial struct MoveToDestinationJob : IJobEntity
     {
         public float DeltaTime;
-        public bool  AllyDefeated;    // 아군 전멸 시 적 진군 중지용
-        public bool  EnemyDefeated;   // 적 전멸(웨이브 클리어) 시 아군 이동 중지용
-        public bool  AnyEnemyOnScreen; // 적이 화면에 진입했는지 — 아군 전진 개시 조건
+        public bool  AllyDefeated;
+        public bool  EnemyDefeated;
+        public bool  AnyEnemyOnScreen;
+        [ReadOnly] public ComponentLookup<BossComponent> BossLookup;
 
         public void Execute(
+            Entity                     entity,
             ref LocalTransform         transform,
             ref MovementComponent      movement,
             ref UnitStateComponent     unitState,
@@ -237,6 +241,28 @@ namespace BattleGame.Units
                 movement.Velocity = float3.zero;
                 movement.IsMoving = false;
                 return;
+            }
+
+            // 보스 돌진 패턴 — ChargeTarget 방향으로 ChargeSpeedMult 배 이동
+            if (BossLookup.HasComponent(entity))
+            {
+                BossComponent boss = BossLookup[entity];
+                if (boss.IsCharging)
+                {
+                    float3 toTarget = boss.ChargeTarget - transform.Position;
+                    float  dist     = math.length(toTarget);
+                    if (dist > 0.3f)
+                    {
+                        float  speed  = stat.Final[StatType.MoveSpeed] * boss.ChargeSpeedMult;
+                        float3 dir    = toTarget / dist;
+                        movement.Velocity   = dir * speed;
+                        transform.Position += movement.Velocity * DeltaTime;
+                        movement.IsMoving   = true;
+                        if (unitState.Current != UnitState.Moving)
+                            ChangeState(ref unitState, UnitState.Moving);
+                    }
+                    return;  // 돌진 중에는 일반 이동 로직 스킵
+                }
             }
 
             // 공격 중이지만 타겟이 사망해 없어진 경우 → Idle 복귀

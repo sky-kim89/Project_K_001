@@ -102,18 +102,47 @@ namespace BattleGame.Units
     // 보스 전용 컴포넌트
     // ──────────────────────────────────────────
 
-    /// <summary>보스 유닛 마커 + 페이즈 데이터.</summary>
+    /// <summary>보스 유닛 마커 + 페이즈 데이터 + AoE 공격 + 돌진 패턴.</summary>
     public struct BossComponent : IComponentData
     {
+        // ── 페이즈 ────────────────────────────────────────────
         public int   PhaseCount;
         public int   CurrentPhase;    // 현재 페이즈 (1부터 시작)
         public float Phase2HpRatio;   // 2페이즈 전환 체력 비율 (예: 0.5 = 50%)
         public float Phase3HpRatio;   // 3페이즈 전환 체력 비율 (PhaseCount < 3 이면 무시)
 
-        /// <summary>행동불능(스턴) 내성. 0 = 없음, 1 = 완전 면역. 스턴 지속 시간을 (1-값)배로 감소.</summary>
+        /// <summary>행동불능(스턴) 내성. 0 = 없음, 1 = 완전 면역.</summary>
         public float CCResistance;
-        /// <summary>넉백 내성. 0 = 없음, 1 = 완전 면역. 넉백 벡터를 (1-값)배로 감소.</summary>
+        /// <summary>넉백 내성. 0 = 없음, 1 = 완전 면역.</summary>
         public float KnockbackResistance;
+
+        // ── AoE 기본 공격 ─────────────────────────────────────
+        /// <summary>AoE 공격 반경. 타겟 주변 이 범위 내 아군도 피해를 받는다.</summary>
+        public float AoeRadius;
+        /// <summary>AoE 범위 피해 비율. 1.0 = 100%, 0.6 = 60%.</summary>
+        public float AoeSplashRatio;
+        /// <summary>공격 시 적용되는 넉백 강도 (이동 속도 단위).</summary>
+        public float AttackKnockbackForce;
+        /// <summary>넉백 지속 시간 (초).</summary>
+        public float AttackKnockbackDuration;
+
+        // ── 돌진 패턴 ────────────────────────────────────────
+        /// <summary>돌진 패턴 쿨다운 (초).</summary>
+        public float ChargePatternCooldown;
+        /// <summary>현재 쿨다운 잔여 시간. 0 이하가 되면 돌진 개시.</summary>
+        public float ChargePatternTimer;
+        /// <summary>돌진 중 이동속도 배율.</summary>
+        public float ChargeSpeedMult;
+        /// <summary>돌진 지속 시간 (초).</summary>
+        public float ChargeDuration;
+        /// <summary>돌진 중 공격력 추가 배율 (0.5 = +50%).</summary>
+        public float ChargeDamageBonus;
+        /// <summary>현재 돌진 중 여부.</summary>
+        public bool  IsCharging;
+        /// <summary>돌진 목표 위치 (돌진 시작 시 가장 가까운 적 위치를 고정).</summary>
+        public float3 ChargeTarget;
+        /// <summary>돌진 잔여 시간.</summary>
+        public float ChargeTimer;
     }
 
     // ──────────────────────────────────────────

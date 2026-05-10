@@ -153,7 +153,8 @@ public class BattleManager : Singleton<BattleManager>
     {
         while (_context.CurrentWave <= _context.TotalWaves)
         {
-            yield return StartCoroutine(RunWave(_context.CurrentWave));
+            bool isLastWave = _context.IsLastWave;
+            yield return StartCoroutine(RunWave(_context.CurrentWave, awaitSpawnOnly: !isLastWave));
 
             // 패배 시 루틴 종료
             if (_context.State == BattleState.BattleDefeat)
@@ -165,7 +166,7 @@ public class BattleManager : Singleton<BattleManager>
 
             // 마지막 웨이브면 승리 + 스테이지 클리어 보상 산정
             // 실제 지급은 BattleResultPopup 에서 RewardOpener 를 통해 처리
-            if (_context.IsLastWave)
+            if (isLastWave)
             {
                 _mode.ApplyStageClearReward();
                 _context.State = BattleState.BattleVictory;
@@ -178,7 +179,9 @@ public class BattleManager : Singleton<BattleManager>
         }
     }
 
-    IEnumerator RunWave(int wave)
+    // awaitSpawnOnly=true : 스폰 완료 시 즉시 다음 웨이브로 (적이 살아 있어도 진행)
+    // awaitSpawnOnly=false: 마지막 웨이브 — 적 전멸까지 대기
+    IEnumerator RunWave(int wave, bool awaitSpawnOnly)
     {
         _context.State = BattleState.Preparing;
         _mode.OnWaveStart(wave);
@@ -206,15 +209,26 @@ public class BattleManager : Singleton<BattleManager>
 
         _context.State = BattleState.InWave;
 
-        // ── 웨이브 종료 대기 (적 전멸 or 아군 전멸) ─────────────
-        yield return new WaitUntil(() =>
-            _context.State == BattleState.WaveClear ||
-            _context.State == BattleState.BattleDefeat);
+        // ── 웨이브 종료 대기 ──────────────────────────────────
+        if (awaitSpawnOnly)
+        {
+            // 스폰 완료 시 즉시 리턴 — 잔존 적은 다음 웨이브와 병행 처리
+            yield return new WaitUntil(() =>
+                !EnemySpawner.IsSpawning ||
+                _context.State == BattleState.BattleDefeat);
+        }
+        else
+        {
+            // 마지막 웨이브: 모든 웨이브 통산 적 전멸까지 대기
+            yield return new WaitUntil(() =>
+                _context.AliveEnemyCount <= 0 ||
+                _context.State == BattleState.BattleDefeat);
+        }
     }
 
     // ── 내부 ─────────────────────────────────────────────────
 
-    /// <summary>생존 카운트 기반으로 웨이브 클리어 / 패배를 판정한다.</summary>
+    /// <summary>아군 전멸 시 패배를 판정한다. 웨이브 클리어는 BattleRoutine 이 처리.</summary>
     void EvaluateBattleState()
     {
         if (_context.State != BattleState.InWave) return;
@@ -227,10 +241,6 @@ public class BattleManager : Singleton<BattleManager>
                       $"  적군 잔존: {_context.AliveEnemyCount}");
             _mode.OnBattleDefeat();
             OnDefeat?.Invoke();
-        }
-        else if (_context.IsEnemyClear)
-        {
-            _context.State = BattleState.WaveClear;
         }
     }
 

@@ -30,6 +30,10 @@ public class EnemySpawner : MonoBehaviour
     public float YMin = -3f;
     public float YMax =  3f;
 
+    [Header("스폰 딜레이 배율")]
+    [Tooltip("DelayBefore / DelayBetween 에 곱한다. 0.5 = 절반 시간에 스폰.")]
+    public float SpawnDelayMultiplier = 0.5f;
+
     // 외부(BattleManager)에서 스폰 중 여부 확인용
     public bool IsSpawning { get; private set; }
 
@@ -73,7 +77,8 @@ public class EnemySpawner : MonoBehaviour
                 if (unit != null)
                 {
                     if (unit.TryGetComponent<EnemyRuntimeBridge>(out var bridge))
-                        bridge.Initialize(entry.Name, entry.UnitType, entry.EnemyRace);
+                        bridge.Initialize(entry.Name, entry.UnitType, entry.EnemyRace,
+                                          entry.Level, entry.StatMultiplier);
                     PoolController.Instance.Despawn(unit);
                 }
 
@@ -92,7 +97,7 @@ public class EnemySpawner : MonoBehaviour
         foreach (SpawnEntry entry in entries)
         {
             if (entry.DelayBefore > 0f)
-                yield return new WaitForSeconds(entry.DelayBefore);
+                yield return new WaitForSeconds(entry.DelayBefore * SpawnDelayMultiplier);
 
             for (int i = 0; i < entry.Count; i++)
             {
@@ -109,13 +114,14 @@ public class EnemySpawner : MonoBehaviour
                 }
                 else
                 {
-                    // Name 을 시드로 적 스텟 초기화 + 종족 외형 적용
+                    // Name 시드 + 레벨 + 스테이지 배율로 스텟 초기화
                     if (unit.TryGetComponent<EnemyRuntimeBridge>(out var bridge))
-                        bridge.Initialize(entry.Name, entry.UnitType, entry.EnemyRace);
+                        bridge.Initialize(entry.Name, entry.UnitType, entry.EnemyRace,
+                                          entry.Level, entry.StatMultiplier);
                 }
 
                 if (i < entry.Count - 1 && entry.DelayBetween > 0f)
-                    yield return new WaitForSeconds(entry.DelayBetween);
+                    yield return new WaitForSeconds(entry.DelayBetween * SpawnDelayMultiplier);
             }
         }
 

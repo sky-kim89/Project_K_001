@@ -80,11 +80,12 @@ namespace BattleGame.Units
     // ──────────────────────────────────────────
 
     /// <summary>
-    /// RangedTag 없는 유닛(Knight, ShieldBearer, 일반 적)만 처리.
+    /// RangedTag·BossComponent 없는 유닛(Knight, ShieldBearer, 일반 적)만 처리.
+    /// 보스는 BossAttackSystem 이 별도로 처리한다 (AoE + 넉백 포함).
     /// 사거리 내 타겟이 있고 쿨다운 0 이면 HitEventBuffer 에 직접 추가.
     /// </summary>
     [BurstCompile]
-    [WithNone(typeof(DeadTag), typeof(RangedTag))]
+    [WithNone(typeof(DeadTag), typeof(RangedTag), typeof(BossComponent))]
     public partial struct MeleeAttackJob : IJobEntity
     {
         [ReadOnly] public ComponentLookup<LocalTransform>  TransformLookup;

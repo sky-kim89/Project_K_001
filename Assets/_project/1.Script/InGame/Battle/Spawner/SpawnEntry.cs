@@ -43,6 +43,9 @@ public class SpawnEntry
     [Tooltip("적군 종족. WaveData.DefaultRace 를 기본값으로 사용하되 항목별로 덮어쓸 수 있다.")]
     public EnemyRace EnemyRace = EnemyRace.Orc;
 
+    [Tooltip("스테이지 진행도 기반 스텟 배율. HP·공격력에 곱해진다 (1.0 = 기준값).")]
+    public float StatMultiplier = 1f;
+
     /// <summary>PoolController 에 전달할 풀 키. UnitType 에서 자동 파생.</summary>
     public string PoolKey => UnitType.ToString();
 }
