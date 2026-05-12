@@ -13,8 +13,8 @@ using UnityEngine.UI;
 //    _slotNumTexts[5] : "1"~"5" 번호 텍스트 (선택)
 //
 //  슬롯 색상:
-//    내가 배치됨    → ColMine  (파란 강조)
-//    다른 장수 배치 → ColOther (어두운 회색)
+//    내가 배치됨    → ColMine  (초록 강조)
+//    다른 장수 배치 → ColOther (파란 강조)
 //    비어 있음      → ColEmpty (진한 회색)
 //
 //  클릭 동작:
@@ -29,8 +29,8 @@ public class DeploySlotRowUI : MonoBehaviour
     [SerializeField] TextMeshProUGUI[] _slotNumTexts;
 
     static readonly Color ColEmpty = new Color(0.20f, 0.20f, 0.23f);
-    static readonly Color ColMine  = new Color(0.22f, 0.54f, 0.92f);
-    static readonly Color ColOther = new Color(0.36f, 0.36f, 0.40f);
+    static readonly Color ColMine  = new Color(0.18f, 0.65f, 0.28f);
+    static readonly Color ColOther = new Color(0.22f, 0.54f, 0.92f);
 
     UnitEntry      _current;
     DeploymentData _data;

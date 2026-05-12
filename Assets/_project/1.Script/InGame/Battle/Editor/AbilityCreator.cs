@@ -109,7 +109,9 @@ public static class AbilityCreator
         if (!AssetDatabase.IsValidFolder(SaveDir))
             AssetDatabase.CreateFolder("Assets/Resources", "Abilities");
 
-        var assets = new AbilityData[Defs.Length];
+        CreateSpecialAbilities();
+
+        var normalAdvanced = new AbilityData[Defs.Length];
 
         for (int i = 0; i < Defs.Length; i++)
         {
@@ -130,7 +132,7 @@ public static class AbilityCreator
             so.Value2      = def.Value2;
 
             // 아이콘 자동 연결
-            string idStr   = def.Id.ToString().ToLower();
+            string idStr    = def.Id.ToString().ToLower();
             string iconPath = $"{IconDir}/ability_{idStr}.png";
             var    sprite   = AssetDatabase.LoadAssetAtPath<Sprite>(iconPath);
             if (sprite != null) so.Icon = sprite;
@@ -138,8 +140,21 @@ public static class AbilityCreator
             if (existing == null) AssetDatabase.CreateAsset(so, path);
             else                  EditorUtility.SetDirty(so);
 
-            assets[i] = so;
+            normalAdvanced[i] = so;
         }
+
+        // 특수 어빌리티 로드 (CreateSpecialAbilities 에서 이미 저장됨)
+        var specials = new AbilityData[]
+        {
+            AssetDatabase.LoadAssetAtPath<AbilityData>($"{SaveDir}/Ability_C01.asset"),
+            AssetDatabase.LoadAssetAtPath<AbilityData>($"{SaveDir}/Ability_C02.asset"),
+            AssetDatabase.LoadAssetAtPath<AbilityData>($"{SaveDir}/Ability_C03.asset"),
+            AssetDatabase.LoadAssetAtPath<AbilityData>($"{SaveDir}/Ability_C04.asset"),
+        };
+
+        var allAssets = new AbilityData[normalAdvanced.Length + specials.Length];
+        normalAdvanced.CopyTo(allAssets, 0);
+        specials.CopyTo(allAssets, normalAdvanced.Length);
 
         // Database 생성/업데이트
         var dbExisting = AssetDatabase.LoadAssetAtPath<AbilityDatabase>(DatabasePath);
@@ -147,9 +162,9 @@ public static class AbilityCreator
 
         var serialized = new SerializedObject(db);
         var prop       = serialized.FindProperty("_abilities");
-        prop.arraySize = assets.Length;
-        for (int i = 0; i < assets.Length; i++)
-            prop.GetArrayElementAtIndex(i).objectReferenceValue = assets[i];
+        prop.arraySize = allAssets.Length;
+        for (int i = 0; i < allAssets.Length; i++)
+            prop.GetArrayElementAtIndex(i).objectReferenceValue = allAssets[i];
         serialized.ApplyModifiedProperties();
 
         if (dbExisting == null) AssetDatabase.CreateAsset(db, DatabasePath);
@@ -157,7 +172,58 @@ public static class AbilityCreator
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log($"[AbilityCreator] 어빌리티 {assets.Length}종 (Normal 15 + Advanced 12) + AbilityDatabase 생성 완료");
+        Debug.Log($"[AbilityCreator] 어빌리티 {allAssets.Length}종 (Normal 15 + Advanced 12 + Special 4) + AbilityDatabase 생성 완료");
+    }
+
+    // ── 특수(Special) 어빌리티 C01-C04 생성 ─────────────────
+
+    static void CreateSpecialAbilities()
+    {
+        // C01 — 흡혈 강습 (OnAttack)
+        var c01 = MakeSpecial<AbilityVampiricAssault>(AbilityId.C01, "Ability_C01", "흡혈 강습");
+        c01.VampireRatio = 0.15f;
+        EditorUtility.SetDirty(c01);
+
+        // C02 — 철갑 반응 (OnHit)
+        var c02 = MakeSpecial<AbilityArmorReaction>(AbilityId.C02, "Ability_C02", "철갑 반응");
+        c02.DefenseBuff  = 0.15f;
+        c02.BuffDuration = 5f;
+        EditorUtility.SetDirty(c02);
+
+        // C03 — 처치 연쇄 (OnEnemyKill)
+        var c03 = MakeSpecial<AbilityKillChain>(AbilityId.C03, "Ability_C03", "처치 연쇄");
+        c03.AttackBonusRatio = 0.20f;
+        c03.BuffDuration     = 5f;
+        EditorUtility.SetDirty(c03);
+
+        // C04 — 희생의 힘 (OnSoldierDeath)
+        var c04 = MakeSpecial<AbilitySacrificeForce>(AbilityId.C04, "Ability_C04", "희생의 힘");
+        c04.AttackBonusPerDeath = 20f;
+        c04.MaxHpBonusPerDeath  = 50f;
+        EditorUtility.SetDirty(c04);
+    }
+
+    static T MakeSpecial<T>(AbilityId id, string fileName, string name) where T : AbilityData
+    {
+        string path     = $"{SaveDir}/{fileName}.asset";
+        var    existing = AssetDatabase.LoadAssetAtPath<T>(path);
+        var    so       = existing != null ? existing : ScriptableObject.CreateInstance<T>();
+
+        so.Id          = id;
+        so.AbilityName = name;
+        so.Grade       = AbilityGrade.Special;
+        so.Target      = AbilityTarget.All;
+
+        // 아이콘 자동 연결 (ability_c01.png 등)
+        string idStr    = id.ToString().ToLower();
+        string iconPath = $"{IconDir}/ability_{idStr}.png";
+        var    sprite   = AssetDatabase.LoadAssetAtPath<Sprite>(iconPath);
+        if (sprite != null) so.Icon = sprite;
+
+        if (existing == null) AssetDatabase.CreateAsset(so, path);
+        else                  EditorUtility.SetDirty(so);
+
+        return so;
     }
 }
 #endif

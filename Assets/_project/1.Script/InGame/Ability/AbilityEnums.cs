@@ -37,6 +37,13 @@ public enum AbilityId
     B10 = 210, // 정밀 사격     — Ranged      AttackRange +12%, Attack +12%
     B11 = 211, // 영웅의 기상   — General     MaxHp +18%, Defense +12%
     B12 = 212, // 병사의 맹세   — Soldier     Attack +18%, MoveSpeed +12%
+
+    // ── 특수 (Special, 301~304) ─────────────────────────────
+    // Special 등급은 트리거 기반 — AbilityData 서브클래스로 구현
+    C01 = 301, // 흡혈 강습     — OnAttack:       공격 시 피해의 15% 즉시 체력 회복
+    C02 = 302, // 철갑 반응     — OnHit:          피격 시 방어율 +15% 5초 버프
+    C03 = 303, // 처치 연쇄     — OnEnemyKill:    처치 시 공격력 +20% 5초 버프
+    C04 = 304, // 희생의 힘     — OnSoldierDeath: 병사 사망 시 장군 공격력·체력 대폭 강화(1회)
 }
 
 public enum AbilityGrade

@@ -67,15 +67,30 @@ public class EquipmentData : ScriptableObject
 
     public int GetEnhanceStoneCost(int currentLevel) => BaseEnhanceStoneCost * (currentLevel + 1);
     public int GetEnhanceGoldCost(int currentLevel)  => BaseGoldCost         * (currentLevel + 1);
+
+    public static string FormatStat(StatType stat, float val) => stat switch
+    {
+        StatType.Defense      => $"{val * 100f:F1}%",
+        StatType.CritChance   => $"{val * 100f:F0}%",
+        StatType.CritDamage   => $"{val:F2}x",
+        StatType.AttackSpeed  => $"{val:F2}",
+        StatType.MoveSpeed    => $"{val:F1}",
+        StatType.AttackRange  => $"{val:F1}",
+        StatType.SoldierCount => $"{Mathf.RoundToInt(val)}명",
+        _                     => $"{val:N0}",
+    };
 }
 
 // ── 트리거 종류 ───────────────────────────────────────────────
 
 public enum EquipmentTrigger
 {
-    None     = 0,
-    OnAttack = 1,
-    OnHit    = 2,
+    None           = 0,
+    OnAttack       = 1,  // 장군 공격 시 발동
+    OnHit          = 2,  // 장군 피격 시 발동
+    OnEnemyKill    = 3,  // 적 처치 시 발동
+    OnSoldierDeath = 4,  // 병사 사망 시 발동
+    OnSkillUse     = 5,  // 스킬 사용 시 발동
 }
 
 // ── 퍼센트 기준 ──────────────────────────────────────────────

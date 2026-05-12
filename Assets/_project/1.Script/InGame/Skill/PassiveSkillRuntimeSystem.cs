@@ -56,6 +56,7 @@ namespace BattleGame.Units
                             EntityManager     = EntityManager,
                             Health            = health,
                             SoldierDeathCount = 0,
+                            DamageDealt       = 0f,
                         }));
                     }
                 })
@@ -78,13 +79,85 @@ namespace BattleGame.Units
                             EntityManager     = EntityManager,
                             Health            = health,
                             SoldierDeathCount = deathEvents.Length,
+                            DamageDealt       = 0f,
                         }));
                         deathEvents.Clear();
                     }
                 })
                 .Run();
 
-            // ── ③ 이벤트별 패시브 디스패치 ──────────────────────
+            // ── ③ 공격 이벤트 (TriggerType.OnAttack) ─────────────
+            Entities
+                .WithoutBurst()
+                .WithAll<GeneralPassiveSetComponent>()
+                .WithNone<DeadTag>()
+                .ForEach((Entity entity,
+                          in AttackComponent attack,
+                          in HealthComponent health) =>
+                {
+                    if (attack.AttackedThisFrame)
+                    {
+                        _queue.Add((entity, PassiveTrigger.OnAttack, new PassiveTriggerContext
+                        {
+                            GeneralEntity     = entity,
+                            EntityManager     = EntityManager,
+                            Health            = health,
+                            SoldierDeathCount = 0,
+                            DamageDealt       = attack.LastDamageDealt,
+                        }));
+                    }
+                })
+                .Run();
+
+            // ── ④ 적 처치 이벤트 (TriggerType.OnEnemyKill) ───────
+            Entities
+                .WithoutBurst()
+                .WithAll<GeneralPassiveSetComponent>()
+                .WithNone<DeadTag>()
+                .ForEach((Entity entity,
+                          DynamicBuffer<EnemyKillEvent> killEvents,
+                          in HealthComponent health) =>
+                {
+                    if (killEvents.Length > 0)
+                    {
+                        _queue.Add((entity, PassiveTrigger.OnEnemyKill, new PassiveTriggerContext
+                        {
+                            GeneralEntity     = entity,
+                            EntityManager     = EntityManager,
+                            Health            = health,
+                            SoldierDeathCount = 0,
+                            DamageDealt       = 0f,
+                        }));
+                        killEvents.Clear();
+                    }
+                })
+                .Run();
+
+            // ── ⑤ 스킬 사용 이벤트 (TriggerType.OnSkillUse) ──────
+            Entities
+                .WithoutBurst()
+                .WithAll<GeneralPassiveSetComponent>()
+                .WithNone<DeadTag>()
+                .ForEach((Entity entity,
+                          DynamicBuffer<SkillUseEvent> skillEvents,
+                          in HealthComponent health) =>
+                {
+                    if (skillEvents.Length > 0)
+                    {
+                        _queue.Add((entity, PassiveTrigger.OnSkillUse, new PassiveTriggerContext
+                        {
+                            GeneralEntity     = entity,
+                            EntityManager     = EntityManager,
+                            Health            = health,
+                            SoldierDeathCount = 0,
+                            DamageDealt       = 0f,
+                        }));
+                        skillEvents.Clear();
+                    }
+                })
+                .Run();
+
+            // ── ⑥ 이벤트별 패시브 디스패치 ──────────────────────
             foreach (var (generalEntity, trigger, ctx) in _queue)
             {
                 if (!EntityManager.Exists(generalEntity)) continue;

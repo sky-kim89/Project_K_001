@@ -86,6 +86,52 @@ namespace BattleGame.Units
         public float LastBonusRatio;    // 마지막 적용된 HP 비율 (0~1)
     }
 
+    // ── 스킬 사용 이벤트 버퍼 ────────────────────────────────
+
+    /// <summary>
+    /// 스킬 사용 이벤트 버퍼 — 제너럴 Entity 에 붙음.
+    /// ActiveSkillExecuteSystem 이 스킬 실행 직후 Add(default).
+    /// PassiveSkillRuntimeSystem 이 처리 후 Clear.
+    /// </summary>
+    [InternalBufferCapacity(2)]
+    public struct SkillUseEvent : IBufferElementData { }
+
+    // ── 적 처치 이벤트 버퍼 ──────────────────────────────────
+
+    /// <summary>
+    /// 적 처치 이벤트 버퍼 — 제너럴 Entity 에 붙음.
+    /// UnitDeathDespawnSystem 이 적 사망 감지 시 아군 장군 전체에 Add(default).
+    /// PassiveSkillRuntimeSystem 이 처리 후 Clear.
+    /// </summary>
+    [InternalBufferCapacity(4)]
+    public struct EnemyKillEvent : IBufferElementData { }
+
+    // ── 스택형 패시브 공용 버퍼 ───────────────────────────────
+
+    /// <summary>
+    /// 스택형 패시브(StrengthStack / KillMomentum / KillEmpower 등) 공용 버퍼.
+    /// 각 패시브가 PassiveType 키로 자신의 슬롯을 찾아 스택 수를 관리한다.
+    /// </summary>
+    [InternalBufferCapacity(4)]
+    public struct CombatStackElement : IBufferElementData
+    {
+        public PassiveSkillType PassiveType;
+        public int              StackCount;
+    }
+
+    // ── 장비·어빌리티 트리거 세트 (managed) ──────────────────
+
+    /// <summary>
+    /// 장군이 장착한 장비 레퍼런스와 Special 등급 트리거 어빌리티 목록.
+    /// GeneralRuntimeBridge 가 스폰 시 빌드, CombatTriggerSystem 이 읽는다.
+    /// </summary>
+    public class GeneralTriggerSetComponent : Unity.Entities.IComponentData
+    {
+        public EquipmentData[] EquipSlots    = new EquipmentData[2];
+        public int[]           EnhanceLevels = new int[2];
+        public System.Collections.Generic.List<AbilityData> TriggerAbilities = new();
+    }
+
     // ── 스켈레톤 소환용 병사 사망 위치 버퍼 ─────────────────
 
     /// <summary>

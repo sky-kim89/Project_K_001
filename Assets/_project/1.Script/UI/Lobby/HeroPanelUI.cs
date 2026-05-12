@@ -66,14 +66,18 @@ public class HeroPanelUI : MonoBehaviour
 
     // ── 스킬 ──────────────────────────────────────────────────
     [Header("스킬")]
-    [SerializeField] TextMeshProUGUI _activeSkillText;
-    [SerializeField] TextMeshProUGUI _activeSkillDescText;
+    [SerializeField] Image            _activeSkillIcon;
+    [SerializeField] TextMeshProUGUI  _activeSkillText;
+    [SerializeField] TextMeshProUGUI  _activeSkillDescText;
 
     // ── 패시브 스킬 ───────────────────────────────────────────
     [Header("패시브 스킬")]
     [SerializeField] TextMeshProUGUI _passive0Text;
     [SerializeField] TextMeshProUGUI _passive1Text;
     [SerializeField] TextMeshProUGUI _passive2Text;
+    [SerializeField] TextMeshProUGUI _passive0DescText;
+    [SerializeField] TextMeshProUGUI _passive1DescText;
+    [SerializeField] TextMeshProUGUI _passive2DescText;
 
     // ── 스킬 DB ───────────────────────────────────────────────
     [Header("스킬 DB")]
@@ -118,10 +122,9 @@ public class HeroPanelUI : MonoBehaviour
     Texture2D _portraitTexture;
 
     // ── 스탯 클릭 상세 ────────────────────────────────────────
-    UnitStat                             _baseStat;
-    readonly Dictionary<StatType, float> _equipBonuses = new();
-    int                                  _expandedStatIndex = -1;
-    Transform                            _statListContainer;
+    HeroStatResult _statResult;
+    int            _expandedStatIndex = -1;
+    Transform      _statListContainer;
 
     struct StatRowEntry
     {
@@ -131,7 +134,8 @@ public class HeroPanelUI : MonoBehaviour
     }
     StatRowEntry[] _statRowEntries;
 
-    const string HexEquip = "5599FF";
+    const string HexEquip   = "5599FF";
+    const string HexPassive = "55CC77";
 
     // ── 라이프사이클 ──────────────────────────────────────────
 
@@ -235,10 +239,7 @@ public class HeroPanelUI : MonoBehaviour
 
     void UpdateDetail(UnitEntry entry)
     {
-        UnitJob  job  = UnitJobRoller.GetJob(entry.UnitName);
-        UnitStat stat = GeneralStatRoller.Roll(entry.UnitName, entry.Level, entry.Grade);
-        if (entry.SoldierBonus > 0)
-            stat.Add(StatType.SoldierCount, entry.SoldierBonus, "bonus");
+        UnitJob job = UnitJobRoller.GetJob(entry.UnitName);
 
         UpdatePortrait(entry, job);
 
@@ -251,11 +252,8 @@ public class HeroPanelUI : MonoBehaviour
         _gradeBadge.color = gc;
         _gradeText.color  = gc;
 
-        // 스탯 (장비 보너스 합산)
-        _baseStat = stat;
-        _equipBonuses.Clear();
-        foreach (var kv in ComputeEquipBonuses(entry))
-            _equipBonuses[kv.Key] = kv.Value;
+        // 스탯 (기본 + 패시브 + 장비 일괄 계산)
+        _statResult        = HeroStatResolver.Resolve(entry);
         _expandedStatIndex = -1;
         RefreshAllStatTexts();
 
@@ -271,14 +269,21 @@ public class HeroPanelUI : MonoBehaviour
         _activeSkillText.text = LocalizationManager.Instance.Get(rolledId.ToString());
         if (_activeSkillDescText != null)
             _activeSkillDescText.text = skillData != null ? skillData.Description : "";
+        if (_activeSkillIcon != null)
+        {
+            var key = rolledId.IconKey();
+            var sp  = key != null ? SpriteManager.Instance?.GetGeneral(key) : null;
+            _activeSkillIcon.sprite = sp;
+            _activeSkillIcon.color  = sp != null ? Color.white : new Color(0.25f, 0.30f, 0.48f);
+        }
 
-        // 패시브
+        // 패시브 표시
         var passiveDb = _passiveSkillDatabase != null ? _passiveSkillDatabase : PassiveSkillDatabase.Current;
         var (p0, p1, p2) = PassiveSkillRoller.Roll(entry.UnitName);
         byte slots = PassiveSkillRoller.GetActiveSlotCount(entry.Grade);
-        RefreshPassiveSlot(_passive0Text, passiveDb, p0, slots >= 1);
-        RefreshPassiveSlot(_passive1Text, passiveDb, p1, slots >= 2);
-        RefreshPassiveSlot(_passive2Text, passiveDb, p2, slots >= 3);
+        RefreshPassiveSlot(_passive0Text, _passive0DescText, passiveDb, p0, slots >= 1);
+        RefreshPassiveSlot(_passive1Text, _passive1DescText, passiveDb, p1, slots >= 2);
+        RefreshPassiveSlot(_passive2Text, _passive2DescText, passiveDb, p2, slots >= 3);
 
         // 레벨업 비용
         if (_levelUpCostText != null)
@@ -352,9 +357,7 @@ public class HeroPanelUI : MonoBehaviour
             {
                 float val = equip.GetStatValue(e, enhance);
                 sb.Append(loc.Get(e.Stat.ToString())).Append(" +");
-                sb.AppendLine(e.Stat == StatType.Defense
-                    ? $"{val * 100f:F1}%"
-                    : $"{val:N0}");
+                sb.AppendLine(EquipmentData.FormatStat(e.Stat, val));
             }
             if (equip.TriggerType != EquipmentTrigger.None)
                 sb.AppendLine($"{loc.Get(equip.TriggerType.ToString())}: {loc.Get(equip.TriggerStat.ToString())}");
@@ -621,19 +624,22 @@ public class HeroPanelUI : MonoBehaviour
 
     // ── 패시브 슬롯 ───────────────────────────────────────────
 
-    void RefreshPassiveSlot(TextMeshProUGUI text, PassiveSkillDatabase db,
-                            PassiveSkillType type, bool active)
+    void RefreshPassiveSlot(TextMeshProUGUI nameText, TextMeshProUGUI descText,
+                            PassiveSkillDatabase db, PassiveSkillType type, bool active)
     {
-        if (text == null) return;
+        if (nameText == null) return;
         if (!active)
         {
-            text.text  = "—";
-            text.color = new Color(0.40f, 0.40f, 0.40f);
+            nameText.text  = "—";
+            nameText.color = new Color(0.40f, 0.40f, 0.40f);
+            if (descText != null) descText.text = "";
             return;
         }
-        var data   = db != null ? db.Get(type) : null;
-        text.text  = data != null ? data.SkillName : type.ToString();
-        text.color = Color.white;
+        var data       = db != null ? db.Get(type) : null;
+        nameText.text  = data != null ? data.SkillName : type.ToString();
+        nameText.color = Color.white;
+        if (descText != null)
+            descText.text = data != null ? data.Description : "";
     }
 
     // ============================================================
@@ -691,30 +697,6 @@ public class HeroPanelUI : MonoBehaviour
         }
     }
 
-    Dictionary<StatType, float> ComputeEquipBonuses(UnitEntry entry)
-    {
-        var result = new Dictionary<StatType, float>();
-        var db = EquipmentDatabase.Current;
-        if (db == null || entry.RunEquipSlots == null) return result;
-
-        for (int s = 0; s < 2; s++)
-        {
-            string id = s < entry.RunEquipSlots.Length ? entry.RunEquipSlots[s] : "";
-            if (string.IsNullOrEmpty(id)) continue;
-            var equip = db.Get(id);
-            if (equip == null) continue;
-
-            int enhance = (entry.RunEquipEnhance != null && s < entry.RunEquipEnhance.Length)
-                          ? entry.RunEquipEnhance[s] : 0;
-            foreach (var e in equip.StatEntries)
-            {
-                float val = equip.GetStatValue(e, enhance);
-                result[e.Stat] = result.TryGetValue(e.Stat, out var cur) ? cur + val : val;
-            }
-        }
-        return result;
-    }
-
     void ToggleStatRow(int index)
     {
         _expandedStatIndex = (_expandedStatIndex == index) ? -1 : index;
@@ -735,14 +717,15 @@ public class HeroPanelUI : MonoBehaviour
         var row = _statRowEntries[index];
         if (row.ValueTmp == null) return;
 
-        float baseVal  = _baseStat?.Get(row.Type) ?? 0f;
-        float equipVal = _equipBonuses.TryGetValue(row.Type, out var b) ? b : 0f;
-        float total    = baseVal + equipVal;
-        bool  expanded = index == _expandedStatIndex;
+        float baseVal    = _statResult?.Base.Get(row.Type) ?? 0f;
+        float equipVal   = _statResult?.GetEquip(row.Type)   ?? 0f;
+        float passiveVal = _statResult?.GetPassive(row.Type) ?? 0f;
+        float total      = baseVal + equipVal + passiveVal;
+        bool  expanded   = index == _expandedStatIndex;
 
-        if (expanded && equipVal != 0f)
+        if (expanded && (equipVal != 0f || passiveVal != 0f))
         {
-            row.ValueTmp.text = BuildBreakdownText(row.Type, baseVal, equipVal, total);
+            row.ValueTmp.text = BuildBreakdownText(row.Type, baseVal, equipVal, passiveVal, total);
             if (row.LayoutEl != null) row.LayoutEl.preferredHeight = 90f;
         }
         else
@@ -776,7 +759,7 @@ public class HeroPanelUI : MonoBehaviour
         };
     }
 
-    static string BuildBreakdownText(StatType stat, float baseVal, float equipVal, float total)
+    static string BuildBreakdownText(StatType stat, float baseVal, float equipVal, float passiveVal, float total)
     {
         var sb = new System.Text.StringBuilder();
         sb.Append(FormatStatTotal(stat, total));
@@ -784,6 +767,8 @@ public class HeroPanelUI : MonoBehaviour
         sb.Append(FormatStatDelta(stat, baseVal, false));
         if (equipVal != 0f)
             sb.Append($"  <color=#{HexEquip}>{FormatStatDelta(stat, equipVal, true)}</color>");
+        if (passiveVal != 0f)
+            sb.Append($"  <color=#{HexPassive}>{FormatStatDelta(stat, passiveVal, true)}</color>");
         sb.Append("</size>");
         return sb.ToString();
     }

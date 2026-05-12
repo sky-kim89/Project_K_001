@@ -80,10 +80,16 @@ public static class IconGenerator
         Save(48, 48, ABILITY_PATH + "/ability_b11.png", p => DrawAbilIconDual(p, DrawSymCrown, DrawSymDefSm, TargetCol(7), true));
         Save(48, 48, ABILITY_PATH + "/ability_b12.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymMSpdSm, TargetCol(8), true));
 
+        // Special (C01~C04) — dark crimson bg, diamond marker
+        Save(48, 48, ABILITY_PATH + "/ability_c01.png", DrawSpecialC01);
+        Save(48, 48, ABILITY_PATH + "/ability_c02.png", DrawSpecialC02);
+        Save(48, 48, ABILITY_PATH + "/ability_c03.png", DrawSpecialC03);
+        Save(48, 48, ABILITY_PATH + "/ability_c04.png", DrawSpecialC04);
+
         AssetDatabase.Refresh();
         ApplySpriteImportSettings(ABILITY_PATH, 48);
         AssetDatabase.SaveAssets();
-        Debug.Log("[IconGenerator] 어빌리티 아이콘 27장 생성 완료.");
+        Debug.Log("[IconGenerator] 어빌리티 아이콘 31장 생성 완료.");
     }
 
     // ─────────────────────────────────────────────────────
@@ -149,6 +155,108 @@ public static class IconGenerator
             p.DrawLine(ox, oy, ix, iy, Gold, 1);
         }
         p.FillCircle(x, y, 2, Gold);
+    }
+
+    // ─────────────────────────────────────────────────────
+    //  특수(Special) 어빌리티 아이콘
+    // ─────────────────────────────────────────────────────
+
+    static void SpecialBg(P p) => p.BgGradient(Hex("120008"), Hex("320020"));
+
+    // 특수 등급 마커 — 우상단 보라 다이아몬드
+    static void DrawSpecialDiamond(P p)
+    {
+        int x = 40, y = 8;
+        p.FillCircle(x, y, 5, Hex("120008"));
+        p.FillTri(x, y - 5, x - 4, y, x + 4, y, Hex("DD44FF"));
+        p.FillTri(x, y + 5, x - 4, y, x + 4, y, Hex("AA22CC"));
+        p.DrawLine(x, y - 5, x - 4, y, Hex("EE88FF"), 1);
+        p.DrawLine(x, y - 5, x + 4, y, Hex("EE88FF"), 1);
+    }
+
+    // C01 — 흡혈 강습 (OnAttack: 검 + 핏방울)
+    static void DrawSpecialC01(P p)
+    {
+        SpecialBg(p);
+        p.RoundedBorder(8, 2, Hex("CC2244"));
+        // 검
+        p.FillTri(24, 6, 20, 11, 28, 11, Silver);
+        p.FillRect(22, 11, 5, 20, Silver);
+        p.FillRect(21, 11, 3, 18, Tint(Silver, White, 0.4f));
+        p.FillRRect(16, 31, 16, 5, 2, Hex("AA2222"));
+        p.FillRRect(22, 36, 5, 6, 2, Wood);
+        // 핏방울 오른쪽 하단
+        var blood = Hex("EE1133");
+        p.FillCircle(37, 38, 7, blood);
+        p.FillTri(37, 25, 32, 38, 42, 38, blood);
+        p.FillCircleAlpha(34, 30, 2, new Color32(255, 120, 140, 120));
+        DrawSpecialDiamond(p);
+    }
+
+    // C02 — 철갑 반응 (OnHit: 방패 + 번개)
+    static void DrawSpecialC02(P p)
+    {
+        SpecialBg(p);
+        p.RoundedBorder(8, 2, Hex("2266CC"));
+        var sc = Hex("3388EE");
+        // 방패
+        FillShieldShape(p, 22, 7, 44, 10, Hex("0A1A2A"), Hex("123050"));
+        DrawShieldOutline(p, 22, 7, 44, 10, sc, 2);
+        // 번개 (방패 위)
+        p.FillTri(24, 13, 20, 26, 25, 26, Hex("FFEE33"));
+        p.FillTri(23, 26, 28, 26, 24, 38, Hex("FFEE33"));
+        p.DrawLine(24, 13, 20, 26, Hex("FFFFFF"), 1);
+        p.DrawLine(28, 26, 24, 38, Hex("FFFFAA"), 1);
+        // 충격 스파크
+        p.DrawLine(10, 34, 16, 30, sc, 2);
+        p.DrawLine(10, 40, 17, 38, sc, 1);
+        p.DrawLine(36, 34, 42, 30, sc, 2);
+        DrawSpecialDiamond(p);
+    }
+
+    // C03 — 처치 연쇄 (OnEnemyKill: 검 + 연쇄 링)
+    static void DrawSpecialC03(P p)
+    {
+        SpecialBg(p);
+        p.RoundedBorder(8, 2, Hex("CC8800"));
+        var gc = Hex("FFB800");
+        // 검 (대각)
+        p.DrawLine(10, 42, 38, 10, Silver, 5);
+        p.DrawLine(10, 42, 38, 10, Tint(Silver, White, 0.5f), 2);
+        p.FillTri(38, 10, 32, 12, 36, 16, Silver);
+        p.FillRRect(8, 40, 8, 4, 2, Gold);
+        // 연쇄 링 오른쪽 하단 (두 개)
+        p.DrawCircle(34, 36, 6, 2, gc);
+        p.DrawCircle(42, 38, 5, 2, Tint(gc, Hex("000000"), 0.3f));
+        p.DrawLine(34, 30, 34, 34, gc, 2);
+        p.DrawLine(42, 33, 42, 36, Tint(gc, Hex("000000"), 0.3f), 2);
+        // 처치 X 표시
+        p.DrawLine(16, 28, 24, 20, Red, 2);
+        p.DrawLine(24, 28, 16, 20, Red, 2);
+        DrawSpecialDiamond(p);
+    }
+
+    // C04 — 희생의 힘 (OnSoldierDeath: 병사 실루엣 + 상승 화살표)
+    static void DrawSpecialC04(P p)
+    {
+        SpecialBg(p);
+        p.RoundedBorder(8, 2, Hex("8833CC"));
+        var pc = Hex("BB44EE");
+        // 병사 실루엣 (검은 작은 사람 형태, 중앙 하단)
+        p.FillCircle(24, 30, 5, Hex("221133"));
+        p.FillRRect(20, 35, 8, 10, 2, Hex("221133"));
+        p.DrawCircle(24, 30, 5, 1, Hex("553366"));
+        p.DrawCircle(24, 40, 5, 1, Hex("553366"));
+        // 상승 화살표 (중앙 → 위)
+        p.DrawLine(24, 26, 24, 8, pc, 3);
+        p.FillTri(24, 5, 18, 14, 30, 14, pc);
+        // 강화 광선 (방사형)
+        var glow = new Color32(187, 68, 238, 100);
+        p.DrawLine(24, 10, 14, 4,  glow, 1);
+        p.DrawLine(24, 10, 34, 4,  glow, 1);
+        p.DrawLine(24, 10, 8,  14, glow, 1);
+        p.DrawLine(24, 10, 40, 14, glow, 1);
+        DrawSpecialDiamond(p);
     }
 
     // ─────────────────────────────────────────────────────

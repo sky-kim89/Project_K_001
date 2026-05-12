@@ -35,6 +35,7 @@ public enum PassiveTrigger : byte
     OnAttack       = 2,  // 제너럴이 공격할 때
     OnEnemyKill    = 3,  // 제너럴 또는 소속 병사가 적을 처치할 때
     OnSoldierDeath = 4,  // 소속 병사가 사망할 때
+    OnSkillUse     = 5,  // 제너럴이 액티브 스킬을 사용할 때
 }
 
 [CreateAssetMenu(fileName = "PassiveSkillData", menuName = "BattleGame/PassiveSkillData")]
@@ -128,6 +129,7 @@ public struct PassiveTriggerContext
     public EntityManager  EntityManager;
 
     // TriggerType 별 부가 데이터
-    public HealthComponent Health;       // OnHit: 피격 시점 체력 스냅샷
-    public int             SoldierDeathCount; // OnSoldierDeath: 이번 프레임 사망 병사 수
+    public HealthComponent Health;             // OnHit: 피격 시점 체력 스냅샷
+    public int             SoldierDeathCount;  // OnSoldierDeath: 이번 프레임 사망 병사 수
+    public float           DamageDealt;        // OnAttack: 이번 공격으로 가한 피해 (흡혈 등에 사용)
 }

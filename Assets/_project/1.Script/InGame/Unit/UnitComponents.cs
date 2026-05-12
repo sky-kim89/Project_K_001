@@ -215,11 +215,13 @@ namespace BattleGame.Units
     /// </summary>
     public struct AttackComponent : IComponentData
     {
-        public float  AttackCooldown;   // 다음 공격까지 남은 시간
+        public float  AttackCooldown;      // 다음 공격까지 남은 시간
         public Entity TargetEntity;
-        public float3 TargetPosition;   // 타겟 마지막 위치 캐시 (Chasing 이동용, 3프레임마다 갱신)
+        public float3 TargetPosition;      // 타겟 마지막 위치 캐시 (Chasing 이동용, 3프레임마다 갱신)
         public bool   HasTarget;
-        public uint   RandomSeed;       // 크리티컬 판정용 per-entity 랜덤 시드
+        public uint   RandomSeed;          // 크리티컬 판정용 per-entity 랜덤 시드
+        public bool   AttackedThisFrame;   // 이번 프레임에 공격 발생 — CooldownTickJob이 매 프레임 초기화
+        public float  LastDamageDealt;     // 마지막 공격으로 가한 피해 — OnAttack 트리거용
     }
 
     /// <summary>

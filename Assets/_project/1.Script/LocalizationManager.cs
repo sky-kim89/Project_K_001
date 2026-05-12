@@ -34,9 +34,11 @@ public class LocalizationManager : SingletonPure<LocalizationManager>
         { "Defense",      "방어율" },
         { "MoveSpeed",    "이속"   },
         { "AttackSpeed",  "공속"   },
-        { "AttackRange",  "사거리" },
-        { "SoldierCount", "용병수" },
-        { "CommandPower", "지휘력" },
+        { "AttackRange",  "사거리"   },
+        { "CritChance",   "치명타율" },
+        { "CritDamage",   "치명타배율" },
+        { "SoldierCount", "용병수"   },
+        { "CommandPower", "지휘력"   },
 
         // ── EquipmentTrigger ──────────────────────────────────
         { "OnAttack", "공격 시" },

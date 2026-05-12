@@ -48,7 +48,7 @@ public static class LobbyPrefabCreator
 
         TopBarCreator.Build(root);
         CreateNavBar(root);
-        CreateStagePanel(root);
+        BattlePanelCreator.Build(root);
 
         PrefabUtility.SaveAsPrefabAsset(root, $"{SavePath}/LobbyCanvas.prefab");
         Object.DestroyImmediate(root);
@@ -77,113 +77,6 @@ public static class LobbyPrefabCreator
             if (i == 2) btn.GetComponent<Image>().color = TabActiveColor;
         }
         return bar;
-    }
-
-    // ── StageSelectPanel ──────────────────────────────────────
-
-    static GameObject CreateStagePanel(GameObject parent)
-    {
-        var panel = new GameObject("StageSelectPanel", typeof(RectTransform));
-        panel.transform.SetParent(parent.transform, false);
-
-        var rt = panel.GetComponent<RectTransform>();
-        rt.anchorMin = Vector2.zero;
-        rt.anchorMax = Vector2.one;
-        rt.offsetMin = new Vector2(0, NavBarH);
-        rt.offsetMax = new Vector2(0, -TopBarH);
-
-        var ui = panel.AddComponent<StageSelectUI>();
-
-        // ── TabRow ────────────────────────────────────────────
-        var tabRow = new GameObject("TabRow", typeof(RectTransform));
-        tabRow.transform.SetParent(panel.transform, false);
-        AnchorTopInside(tabRow, TabH + 16f, 0);
-
-        var normalTab = CreateButton(tabRow, "NormalTab", "일반",   TabActiveColor,   UIScale.FontMd);
-        var eliteTab  = CreateButton(tabRow, "EliteTab",  "엘리트", TabInactiveColor, UIScale.FontMd);
-        SetRect(normalTab.GetComponent<RectTransform>(), new Vector2(-220, 0), new Vector2(360, TabH));
-        SetRect(eliteTab .GetComponent<RectTransform>(), new Vector2( 220, 0), new Vector2(360, TabH));
-
-        // ── StageInfo ─────────────────────────────────────────
-        float infoH = 160f;
-        var infoArea = new GameObject("StageInfo", typeof(RectTransform));
-        infoArea.transform.SetParent(panel.transform, false);
-        AnchorTopInside(infoArea, infoH, TabH + 16f);
-
-        var stageName   = CreateTMP(infoArea, "StageNameText",  "일반 스테이지 1", UIScale.FontLg, FontStyles.Bold);
-        var bestRecord  = CreateTMP(infoArea, "BestRecordText", "최고 기록  --:--", UIScale.FontSm, FontStyles.Normal);
-        SetRect(stageName.GetComponent<RectTransform>(),  new Vector2(0,  40), new Vector2(900, 70));
-        SetRect(bestRecord.GetComponent<RectTransform>(), new Vector2(0, -40), new Vector2(900, 48));
-        bestRecord.color = new Color(0.7f, 0.7f, 0.7f);
-
-        // ── PreviewArea ───────────────────────────────────────
-        float battleAreaH = 280f;
-        var previewArea = new GameObject("PreviewArea", typeof(RectTransform));
-        previewArea.transform.SetParent(panel.transform, false);
-        var previewRt = previewArea.GetComponent<RectTransform>();
-        previewRt.anchorMin = Vector2.zero;
-        previewRt.anchorMax = Vector2.one;
-        previewRt.offsetMin = new Vector2(0, battleAreaH);
-        previewRt.offsetMax = new Vector2(0, -(TabH + 16f + infoH));
-
-        var previewBg  = CreateImage(previewArea, "PreviewBg",    PreviewBgColor);
-        var previewImg = CreateImage(previewArea, "PreviewImage", new Color(1, 1, 1, 0));
-        previewImg.preserveAspect = true;
-
-        var previewBgRt = previewBg.GetComponent<RectTransform>();
-        previewBgRt.anchorMin = new Vector2(0.05f, 0.05f);
-        previewBgRt.anchorMax = new Vector2(0.95f, 0.95f);
-        previewBgRt.offsetMin = previewBgRt.offsetMax = Vector2.zero;
-
-        var previewImgRt = previewImg.GetComponent<RectTransform>();
-        previewImgRt.anchorMin = new Vector2(0.1f, 0.1f);
-        previewImgRt.anchorMax = new Vector2(0.9f, 0.9f);
-        previewImgRt.offsetMin = previewImgRt.offsetMax = Vector2.zero;
-
-        float arrowSize = 110f;
-        var prevBtn = CreateButton(previewArea, "PrevBtn", "<", ArrowBtnColor, UIScale.FontLg);
-        var nextBtn = CreateButton(previewArea, "NextBtn", ">", ArrowBtnColor, UIScale.FontLg);
-        SetRect(prevBtn.GetComponent<RectTransform>(), new Vector2(-460, 0), new Vector2(arrowSize, arrowSize));
-        SetRect(nextBtn.GetComponent<RectTransform>(), new Vector2( 460, 0), new Vector2(arrowSize, arrowSize));
-        prevBtn.GetComponentInChildren<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
-        nextBtn.GetComponentInChildren<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
-
-        // ── BattleArea ────────────────────────────────────────
-        var battleArea = new GameObject("BattleArea", typeof(RectTransform));
-        battleArea.transform.SetParent(panel.transform, false);
-        AnchorBottomInside(battleArea, battleAreaH, 0);
-
-        var progressText = CreateTMP(battleArea, "ProgressText", "스테이지 1 클리어  0 / 1", UIScale.FontSm, FontStyles.Normal);
-        SetRect(progressText.GetComponent<RectTransform>(), new Vector2(0, 110), new Vector2(800, 48));
-        progressText.color = new Color(0.65f, 0.65f, 0.65f);
-
-        var battleBtn   = CreateButton(battleArea, "BattleStartBtn", "전투 시작", BattleBtnColor, UIScale.FontLg);
-        var battleBtnRt = battleBtn.GetComponent<RectTransform>();
-        battleBtnRt.anchorMin        = new Vector2(0.08f, 0f);
-        battleBtnRt.anchorMax        = new Vector2(0.92f, 0f);
-        battleBtnRt.anchoredPosition = new Vector2(0, UIScale.BtnLg / 2f + 10f);
-        battleBtnRt.sizeDelta        = new Vector2(0, UIScale.BtnLg);
-        battleBtn.GetComponentInChildren<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
-
-        var energyText = CreateTMP(battleArea, "EnergyCostText", "⚡  5", UIScale.FontSm, FontStyles.Normal);
-        SetRect(energyText.GetComponent<RectTransform>(), new Vector2(0, -60), new Vector2(400, 48));
-        energyText.color = new Color(0.4f, 0.9f, 1.0f);
-
-        // ── StageSelectUI 필드 연결 ───────────────────────────
-        var so = new SerializedObject(ui);
-        SetObj(so, "_normalTabBtn",   normalTab.GetComponent<Button>());
-        SetObj(so, "_eliteTabBtn",    eliteTab .GetComponent<Button>());
-        SetObj(so, "_stageNameText",  stageName);
-        SetObj(so, "_bestRecordText", bestRecord);
-        SetObj(so, "_previewImage",   previewImg);
-        SetObj(so, "_prevBtn",        prevBtn.GetComponent<Button>());
-        SetObj(so, "_nextBtn",        nextBtn.GetComponent<Button>());
-        SetObj(so, "_battleStartBtn", battleBtn.GetComponent<Button>());
-        SetObj(so, "_energyCostText", energyText);
-        SetObj(so, "_progressText",   progressText);
-        so.ApplyModifiedProperties();
-
-        return panel;
     }
 
     // ── UI 생성 헬퍼 ─────────────────────────────────────────

@@ -36,6 +36,7 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
     int       _level;
     UnitGrade _grade;
     UnitJob   _job;
+    UnitEntry _unitEntry;   // AddComponents() 에서 GeneralTriggerSetComponent 빌드용
 
     // ── 패시브 스킬 슬롯 ─────────────────────────────────────
     PassiveSkillType _passive0;
@@ -51,9 +52,10 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
     /// </summary>
     public void Initialize(string unitName, int level = 1, UnitEntry unitEntry = null)
     {
-        _unitName = unitName;
-        _level    = level;
-        _grade    = UnitJobRoller.GetBirthGrade(unitName);
+        _unitName  = unitName;
+        _level     = level;
+        _unitEntry = unitEntry;
+        _grade     = UnitJobRoller.GetBirthGrade(unitName);
         _job      = UnitJobRoller.GetJob(unitName);
         _stat     = GeneralStatRoller.Roll(unitName, _level, _grade);
 
@@ -169,6 +171,59 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
                 InitialSoldierCount = Mathf.RoundToInt(_stat.Get(StatType.SoldierCount)),
             });
         }
+
+        // ── 새 트리거 패시브용 공용 버퍼 ───────────────────
+        bool needsStackBuf =
+            PassiveSkillApplier.HasPassive(passives, PassiveSkillType.StrengthStack) ||
+            PassiveSkillApplier.HasPassive(passives, PassiveSkillType.KillMomentum)  ||
+            PassiveSkillApplier.HasPassive(passives, PassiveSkillType.KillEmpower);
+        if (needsStackBuf)
+            em.AddBuffer<CombatStackElement>(entity);
+
+        // StatusEffectBuffer — 새 트리거 패시브 다수가 필요
+        bool needsStatusBuf =
+            PassiveSkillApplier.HasPassive(passives, PassiveSkillType.DefenseShield)   ||
+            PassiveSkillApplier.HasPassive(passives, PassiveSkillType.CounterStrike)   ||
+            PassiveSkillApplier.HasPassive(passives, PassiveSkillType.SkillAdrenaline);
+        if (needsStatusBuf && !em.HasBuffer<StatusEffectBufferElement>(entity))
+            em.AddBuffer<StatusEffectBufferElement>(entity);
+
+        // ── 적 처치 / 스킬 사용 이벤트 버퍼 ── 모든 장군에 추가
+        em.AddBuffer<EnemyKillEvent>(entity);
+        em.AddBuffer<SkillUseEvent>(entity);
+
+        // SoldierDeathEvent — OnSoldierDeath 트리거 패시브 또는 기존 SoldierDeathEmpower 가 없어도 추가
+        // (CombatTriggerSystem 의 OnSoldierDeath 감지를 위해 항상 필요)
+        if (!em.HasBuffer<SoldierDeathEvent>(entity))
+            em.AddBuffer<SoldierDeathEvent>(entity);
+
+        // ── GeneralTriggerSetComponent 빌드 (장비 + 특수 어빌리티) ──
+        var trigSet  = new GeneralTriggerSetComponent();
+        var equipDb  = EquipmentDatabase.Current;
+        if (equipDb != null && _unitEntry?.RunEquipSlots != null)
+        {
+            for (int i = 0; i < 2 && i < _unitEntry.RunEquipSlots.Length; i++)
+            {
+                string id = _unitEntry.RunEquipSlots[i];
+                if (string.IsNullOrEmpty(id)) continue;
+                trigSet.EquipSlots[i]    = equipDb.Get(id);
+                trigSet.EnhanceLevels[i] = (_unitEntry.RunEquipEnhance != null && i < _unitEntry.RunEquipEnhance.Length)
+                    ? _unitEntry.RunEquipEnhance[i] : 0;
+            }
+        }
+
+        var abilityDb2    = AbilityDatabase.Current;
+        var heldAbilities2 = UserDataManager.Instance?.Get<RunAbilityData>()?.HeldAbilities;
+        if (abilityDb2 != null && heldAbilities2 != null)
+        {
+            foreach (var aid in heldAbilities2)
+            {
+                var data = abilityDb2.Get(aid);
+                if (data != null && data.Grade == AbilityGrade.Special && data.GetTriggerType() != PassiveTrigger.None)
+                    trigSet.TriggerAbilities.Add(data);
+            }
+        }
+        em.AddComponentObject(entity, trigSet);
     }
 
     /// <summary>풀 재사용 시 스킬 / 조건 상태 초기화.</summary>
@@ -188,6 +243,15 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
 
         if (em.HasComponent<BloodPactState>(entity))
             em.SetComponentData(entity, new BloodPactState { LastBonusRatio = 0f });
+
+        if (em.HasBuffer<EnemyKillEvent>(entity))
+            em.GetBuffer<EnemyKillEvent>(entity).Clear();
+
+        if (em.HasBuffer<SkillUseEvent>(entity))
+            em.GetBuffer<SkillUseEvent>(entity).Clear();
+
+        if (em.HasBuffer<CombatStackElement>(entity))
+            em.GetBuffer<CombatStackElement>(entity).Clear();
 
         if (em.HasComponent<PassiveConditionState>(entity))
             em.SetComponentData(entity, new PassiveConditionState

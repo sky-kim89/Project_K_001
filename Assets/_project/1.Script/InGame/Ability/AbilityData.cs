@@ -28,4 +28,18 @@ public class AbilityData : ScriptableObject
     public float    Value2;
 
     public Sprite   Icon;
+
+    // ── 트리거 어빌리티 지원 (Special 등급 서브클래스 전용) ───
+
+    /// <summary>
+    /// 이 어빌리티의 트리거 종류. None 이면 트리거 없음 (스폰 시 즉시 적용).
+    /// CombatTriggerSystem 이 이 값을 보고 디스패치 여부를 결정한다.
+    /// </summary>
+    public virtual PassiveTrigger GetTriggerType() => PassiveTrigger.None;
+
+    /// <summary>
+    /// TriggerType 에 해당하는 이벤트 발생 시 호출.
+    /// 기본 구현은 아무것도 하지 않음. 서브클래스(Special 등급)에서 오버라이드.
+    /// </summary>
+    public virtual void OnTrigger(PassiveTriggerContext ctx) { }
 }

@@ -72,6 +72,7 @@ namespace BattleGame.Units
         {
             if (attack.AttackCooldown > 0f)
                 attack.AttackCooldown -= DeltaTime;
+            attack.AttackedThisFrame = false;   // 매 프레임 초기화, 이후 AttackJob에서 설정
         }
     }
 
@@ -119,6 +120,9 @@ namespace BattleGame.Units
 
             float finalDamage = RollDamage(ref attack, in stat);
             float3 hitDir     = math.normalize(targetPos - transform.Position);
+
+            attack.AttackedThisFrame = true;
+            attack.LastDamageDealt   = finalDamage;
 
             Ecb.AppendToBuffer(chunkIndex, attack.TargetEntity, new HitEventBufferElement
             {
@@ -186,6 +190,9 @@ namespace BattleGame.Units
             ChangeState(ref unitState, UnitState.Attacking);
 
             float finalDamage = RollDamage(ref attack, in stat);
+
+            attack.AttackedThisFrame = true;
+            attack.LastDamageDealt   = finalDamage;
 
             launchBuffer.Add(new ProjectileLaunchRequest
             {

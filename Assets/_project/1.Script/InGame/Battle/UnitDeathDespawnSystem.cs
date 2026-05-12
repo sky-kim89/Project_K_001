@@ -44,10 +44,12 @@ namespace BattleGame.Units
         // GO 반납 목록 — ForEach 외부에서 처리하기 위해 캐싱
         // generalEntity: 병사 사망 시 소속 장군 알림용 (병사 아니면 Entity.Null)
         readonly System.Collections.Generic.List<(GameObject obj, TeamType team, Entity generalEntity)> _pending = new();
+        bool _anyEnemyDied;
 
         protected override void OnUpdate()
         {
             _pending.Clear();
+            _anyEnemyDied = false;
 
             // ── ① 사망 유닛 수집 + 링크 컴포넌트 제거 예약 ─────
             var ecb = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
@@ -73,13 +75,29 @@ namespace BattleGame.Units
 
                     _pending.Add((link.LinkedObject, identity.Team, generalEntity));
                     ecb.RemoveComponent<UnitPoolLinkComponent>(entity);
+
+                    if (identity.Team == TeamType.Enemy)
+                        _anyEnemyDied = true;
                 })
                 .Run();
 
             ecb.Playback(EntityManager);
             ecb.Dispose();
 
-            // ── ② 병사 사망 이벤트 → 소속 장군에게 알림 ─────────
+            // ── ② 적 처치 이벤트 → 아군 장군 전체에 브로드캐스트 ─
+            if (_anyEnemyDied)
+            {
+                foreach (var (killBuf, id) in SystemAPI
+                    .Query<DynamicBuffer<EnemyKillEvent>, RefRO<UnitIdentityComponent>>()
+                    .WithAll<GeneralComponent>()
+                    .WithNone<DeadTag>())
+                {
+                    if (id.ValueRO.Team == TeamType.Ally)
+                        killBuf.Add(default);
+                }
+            }
+
+            // ── ③ 병사 사망 이벤트 → 소속 장군에게 알림 ─────────
             // SoldierDeathEvent 버퍼가 있는 장군에게 사망 이벤트를 추가한다.
             // PassiveSkillRuntimeSystem 이 다음 프레임에 이 버퍼를 처리한다.
             foreach (var (_, _, generalEntity) in _pending)

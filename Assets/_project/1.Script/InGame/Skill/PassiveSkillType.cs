@@ -39,4 +39,28 @@ public enum PassiveSkillType : byte
     BloodPact                = 16,  // 제너럴 체력 낮을수록 공격력 최대 +X%
     IronWill                 = 17,  // 제너럴 체력 Y% 이하 시 공체 +X% (1회)
     LastStand                = 18,  // 병사 수 초기의 Y% 이하 시 남은 병사 공체 +X% (1회)
+
+    // ── OnAttack 트리거 ─────────────────────────────────────
+    VampiricStrike           = 19,  // 공격 시 준 피해의 X% 즉시 체력 회복
+    StrengthStack            = 20,  // 연속 공격마다 공격력 N 누적 (최대 5스택)
+    SoldierMorale            = 21,  // 공격 시 X% 확률로 병사 공격력 T초 버프
+
+    // ── OnHit 트리거 ────────────────────────────────────────
+    DefenseShield            = 22,  // 피격 시 방어율 +N% T초 버프
+    QuickRecovery            = 23,  // 피격 시 최대체력의 X% 즉시 회복
+    CounterStrike            = 24,  // 피격 시 X% 확률로 공격력 +N% T초 버프
+
+    // ── OnEnemyKill 트리거 ───────────────────────────────────
+    KillMomentum             = 25,  // 처치마다 이동속도 N 누적 (최대 5스택)
+    KillEmpower              = 26,  // 처치마다 공격력 N 누적 (최대 5스택)
+    KillHeal                 = 27,  // 처치 시 최대체력의 X% 즉시 회복
+    SoldierVigor             = 28,  // 처치 시 병사 공격력 T초 버프
+
+    // ── OnSoldierDeath 트리거 ────────────────────────────────
+    SacrificeAbsorb          = 29,  // 병사 사망 시 사망 수 × N만큼 즉시 체력 회복
+
+    // ── OnSkillUse 트리거 ────────────────────────────────────
+    SkillAdrenaline          = 30,  // 스킬 사용 시 공격력·공격속도 T초 버프
+    SkillInstinct            = 31,  // 스킬 사용 시 X% 확률로 즉시 최대체력의 Y% 회복
+    SkillRally               = 32,  // 스킬 사용 시 병사 전체 공격력·이동속도 T초 버프
 }

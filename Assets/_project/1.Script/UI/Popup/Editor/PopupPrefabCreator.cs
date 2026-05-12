@@ -22,6 +22,7 @@ public static class PopupPrefabCreator
         CreatePausePopup();
         CreateLoadingPopup();
         CreateAbilitySelectPopup();
+        CreateAbilityListPopup();
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         Debug.Log("[PopupPrefabCreator] 팝업 프리팹 생성 완료");
@@ -548,6 +549,207 @@ public static class PopupPrefabCreator
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color     = Color.white;
         return tmp;
+    }
+
+    // ── AbilityListPopup ──────────────────────────────────────
+
+    [MenuItem("Tools/Project K/Popup/Create AbilityList Popup Prefab")]
+    static void CreateAbilityListPopup()
+    {
+        const float popupW    = 980f;
+        const float popupH    = 1400f;
+        const float headerH   = 100f;
+        const float iconGridH = 440f;
+        const float bottomH   = popupH - headerH - iconGridH;  // 860
+
+        var root  = CreateRoot<AbilityListPopup>("AbilityListPopup", popupW, popupH);
+        var popup = root.GetComponent<AbilityListPopup>();
+        AddBgPanel(root, new Color(0.08f, 0.08f, 0.14f, 1f));
+
+        // 헤더
+        var header = new GameObject("Header", typeof(RectTransform), typeof(Image));
+        header.transform.SetParent(root.transform, false);
+        header.GetComponent<Image>().color = new Color(0.10f, 0.10f, 0.18f, 1f);
+        AnchorTopLocal(header, headerH, 0);
+
+        var titleTmp = AddTMP(header, "TitleText", "어빌리티 목록", UIScale.FontMd, FontStyles.Bold);
+        SetRect(titleTmp.rectTransform, new Vector2(-40f, 0), new Vector2(popupW - 120f, headerH - 10f));
+
+        var closeBtn = AddButton(header, "CloseBtn", "✕", new Color(0.55f, 0.18f, 0.18f, 1f), UIScale.FontMd);
+        SetRect(closeBtn.GetComponent<RectTransform>(), new Vector2(popupW * 0.5f - 50f, 0), new Vector2(80f, 70f));
+
+        // 아이콘 스크롤 뷰
+        var scrollGo = new GameObject("IconScrollView",
+            typeof(RectTransform), typeof(Image), typeof(ScrollRect));
+        scrollGo.transform.SetParent(root.transform, false);
+        scrollGo.GetComponent<Image>().color = new Color(0.06f, 0.06f, 0.12f, 1f);
+        AnchorTopLocal(scrollGo, iconGridH, headerH);
+
+        var vp = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(Mask));
+        vp.transform.SetParent(scrollGo.transform, false);
+        vp.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.01f);
+        vp.GetComponent<Mask>().showMaskGraphic = false;
+        var vpRt = vp.GetComponent<RectTransform>();
+        vpRt.anchorMin = Vector2.zero; vpRt.anchorMax = Vector2.one;
+        vpRt.offsetMin = vpRt.offsetMax = Vector2.zero;
+
+        var iconContent = new GameObject("IconGridContent",
+            typeof(RectTransform), typeof(GridLayoutGroup), typeof(ContentSizeFitter));
+        iconContent.transform.SetParent(vp.transform, false);
+        var icRt = iconContent.GetComponent<RectTransform>();
+        icRt.anchorMin = new Vector2(0, 1); icRt.anchorMax = new Vector2(1, 1);
+        icRt.pivot     = new Vector2(0.5f, 1f);
+        icRt.offsetMin = icRt.offsetMax = Vector2.zero;
+        var grid             = iconContent.GetComponent<GridLayoutGroup>();
+        grid.padding         = new RectOffset(10, 10, 10, 10);
+        grid.cellSize        = new Vector2(120f, 120f);
+        grid.spacing         = new Vector2(10f, 10f);
+        grid.constraint      = GridLayoutGroup.Constraint.FixedColumnCount;
+        grid.constraintCount = 6;
+        grid.childAlignment  = TextAnchor.UpperCenter;
+        iconContent.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        var sr      = scrollGo.GetComponent<ScrollRect>();
+        sr.content  = icRt; sr.viewport = vpRt;
+        sr.horizontal = false; sr.vertical = true;
+        sr.movementType = ScrollRect.MovementType.Elastic;
+
+        // 하단 영역
+        var bottomRow = new GameObject("BottomRow", typeof(RectTransform), typeof(Image));
+        bottomRow.transform.SetParent(root.transform, false);
+        bottomRow.GetComponent<Image>().color = new Color(0.08f, 0.08f, 0.14f, 1f);
+        AnchorBottomLocal(bottomRow, bottomH, 0);
+
+        // InfoPanel (좌 45%)
+        var infoPanel = new GameObject("InfoPanel", typeof(RectTransform), typeof(Image));
+        infoPanel.transform.SetParent(bottomRow.transform, false);
+        infoPanel.GetComponent<Image>().color = new Color(0.12f, 0.12f, 0.20f, 1f);
+        var ipRt = infoPanel.GetComponent<RectTransform>();
+        ipRt.anchorMin = new Vector2(0f, 0f); ipRt.anchorMax = new Vector2(0.45f, 1f);
+        ipRt.offsetMin = new Vector2(8f, 8f);  ipRt.offsetMax = new Vector2(-4f, -8f);
+
+        var infoIconGo = new GameObject("InfoIcon", typeof(RectTransform), typeof(Image));
+        infoIconGo.transform.SetParent(infoPanel.transform, false);
+        infoIconGo.GetComponent<Image>().color = new Color(0.18f, 0.18f, 0.28f, 1f);
+        var iiRt = infoIconGo.GetComponent<RectTransform>();
+        iiRt.anchorMin = new Vector2(0.5f, 1f); iiRt.anchorMax = new Vector2(0.5f, 1f);
+        iiRt.pivot = new Vector2(0.5f, 1f);
+        iiRt.anchoredPosition = new Vector2(0, -24f); iiRt.sizeDelta = new Vector2(140f, 140f);
+
+        var gradeBarGo = new GameObject("InfoGradeBar", typeof(RectTransform), typeof(Image));
+        gradeBarGo.transform.SetParent(infoPanel.transform, false);
+        gradeBarGo.GetComponent<Image>().color = new Color(0.30f, 0.30f, 0.40f, 1f);
+        var gbRt = gradeBarGo.GetComponent<RectTransform>();
+        gbRt.anchorMin = new Vector2(0.5f, 1f); gbRt.anchorMax = new Vector2(0.5f, 1f);
+        gbRt.pivot = new Vector2(0.5f, 1f);
+        gbRt.anchoredPosition = new Vector2(0, -172f); gbRt.sizeDelta = new Vector2(140f, 8f);
+
+        var gradeTmp = AddTMP(infoPanel, "InfoGradeTmp", "일반", UIScale.FontSm, FontStyles.Normal);
+        PinTop(gradeTmp.rectTransform, -188f, UIScale.FontSm + 8f);
+
+        var nameTmp = AddTMP(infoPanel, "InfoNameTmp", "어빌리티 이름", UIScale.FontMd, FontStyles.Bold);
+        PinTop(nameTmp.rectTransform, -(188f + UIScale.FontSm + 14f), UIScale.FontMd + 8f);
+
+        var targetTmp = AddTMP(infoPanel, "InfoTargetTmp", "대상: 전체", UIScale.FontSm, FontStyles.Normal);
+        targetTmp.color = new Color(0.70f, 0.70f, 0.80f);
+        PinTop(targetTmp.rectTransform, -(188f + UIScale.FontSm + 14f + UIScale.FontMd + 14f), UIScale.FontSm + 8f);
+
+        // StatPanel (우 55%)
+        var statPanel = new GameObject("StatPanel", typeof(RectTransform), typeof(Image));
+        statPanel.transform.SetParent(bottomRow.transform, false);
+        statPanel.GetComponent<Image>().color = new Color(0.12f, 0.12f, 0.20f, 1f);
+        var spRt = statPanel.GetComponent<RectTransform>();
+        spRt.anchorMin = new Vector2(0.45f, 0f); spRt.anchorMax = new Vector2(1f, 1f);
+        spRt.offsetMin = new Vector2(4f, 8f); spRt.offsetMax = new Vector2(-8f, -8f);
+
+        var statTitle = AddTMP(statPanel, "StatTitle", "스텟 증가", UIScale.FontSm, FontStyles.Bold);
+        PinTop(statTitle.rectTransform, -10f, UIScale.FontSm + 8f);
+
+        float titleRowH = UIScale.FontSm + 20f;
+        var statScroll = new GameObject("StatScrollView", typeof(RectTransform), typeof(ScrollRect));
+        statScroll.transform.SetParent(statPanel.transform, false);
+        var ssRt = statScroll.GetComponent<RectTransform>();
+        ssRt.anchorMin = Vector2.zero; ssRt.anchorMax = Vector2.one;
+        ssRt.offsetMin = Vector2.zero; ssRt.offsetMax = new Vector2(0, -titleRowH);
+
+        var statVp = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(Mask));
+        statVp.transform.SetParent(statScroll.transform, false);
+        statVp.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.01f);
+        statVp.GetComponent<Mask>().showMaskGraphic = false;
+        var svpRt = statVp.GetComponent<RectTransform>();
+        svpRt.anchorMin = Vector2.zero; svpRt.anchorMax = Vector2.one;
+        svpRt.offsetMin = svpRt.offsetMax = Vector2.zero;
+
+        var statContent = new GameObject("StatListContent",
+            typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+        statContent.transform.SetParent(statVp.transform, false);
+        var scRt = statContent.GetComponent<RectTransform>();
+        scRt.anchorMin = new Vector2(0, 1); scRt.anchorMax = new Vector2(1, 1);
+        scRt.pivot = new Vector2(0.5f, 1f); scRt.offsetMin = scRt.offsetMax = Vector2.zero;
+        var vlg = statContent.GetComponent<VerticalLayoutGroup>();
+        vlg.padding = new RectOffset(10, 10, 10, 6); vlg.spacing = 6f;
+        vlg.childForceExpandWidth = true; vlg.childForceExpandHeight = false;
+        vlg.childControlHeight = false;
+        statContent.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        var statSr = statScroll.GetComponent<ScrollRect>();
+        statSr.content = scRt; statSr.viewport = svpRt;
+        statSr.horizontal = false; statSr.vertical = true;
+        statSr.movementType = ScrollRect.MovementType.Elastic;
+
+        // StatRowTemplate (비활성)
+        var rowGo = new GameObject("StatRowTemplate", typeof(RectTransform), typeof(TextMeshProUGUI));
+        rowGo.transform.SetParent(statContent.transform, false);
+        var rowTmp = rowGo.GetComponent<TextMeshProUGUI>();
+        rowTmp.text = "<color=#AAAAAA>스텟 이름</color>  +0%";
+        rowTmp.fontSize = UIScale.FontSm; rowTmp.alignment = TextAlignmentOptions.MidlineLeft;
+        rowTmp.color = Color.white;
+        var rowRt = rowGo.GetComponent<RectTransform>();
+        rowRt.anchorMin = new Vector2(0, 0); rowRt.anchorMax = new Vector2(1, 0);
+        rowRt.sizeDelta = new Vector2(0, UIScale.FontSm + 12f);
+        rowGo.SetActive(false);
+
+        // 필드 연결
+        var so = new SerializedObject(popup);
+        SetEnum(so, "_popupType",       (int)PopupType.AbilityList);
+        SetObj (so, "_iconGridContent", iconContent.transform);
+        SetObj (so, "_infoIcon",        infoIconGo.GetComponent<Image>());
+        SetObj (so, "_infoGradeBar",    gradeBarGo.GetComponent<Image>());
+        SetObj (so, "_infoGradeTmp",    gradeTmp);
+        SetObj (so, "_infoNameTmp",     nameTmp);
+        SetObj (so, "_infoTargetTmp",   targetTmp);
+        SetObj (so, "_statListContent", statContent.transform);
+        SetObj (so, "_statRowTemplate", rowTmp);
+        SetObj (so, "_closeBtn",        closeBtn.GetComponent<Button>());
+        so.ApplyModifiedProperties();
+
+        Save(root, "AbilityListPopup");
+        Debug.Log("[PopupPrefabCreator] AbilityListPopup 저장 완료");
+    }
+
+    // 상단 앵커 고정 (full-width)
+    static void AnchorTopLocal(GameObject go, float height, float offsetFromTop)
+    {
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0, 1); rt.anchorMax = new Vector2(1, 1);
+        rt.offsetMin = new Vector2(0, -(offsetFromTop + height));
+        rt.offsetMax = new Vector2(0, -offsetFromTop);
+    }
+
+    // 하단 앵커 고정 (full-width)
+    static void AnchorBottomLocal(GameObject go, float height, float offsetFromBottom)
+    {
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0, 0); rt.anchorMax = new Vector2(1, 0);
+        rt.offsetMin = new Vector2(0, offsetFromBottom);
+        rt.offsetMax = new Vector2(0, offsetFromBottom + height);
+    }
+
+    // 상단 앵커 + full-width (InfoPanel 자식용)
+    static void PinTop(RectTransform rt, float anchoredY, float height)
+    {
+        rt.anchorMin = new Vector2(0f, 1f); rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot     = new Vector2(0.5f, 1f);
+        rt.anchoredPosition = new Vector2(0, anchoredY);
+        rt.sizeDelta        = new Vector2(0, height);
     }
 
     static void Save(GameObject root, string fileName)

@@ -25,7 +25,8 @@ public class HeroCardUI : MonoBehaviour
     [SerializeField] TextMeshProUGUI      _defText;
     [SerializeField] TextMeshProUGUI      _soldierText;
     [SerializeField] Button               _button;
-    [SerializeField] TextMeshProUGUI      _deployText;   // "출전 1" 등, 배치 슬롯 표시
+    [SerializeField] GameObject           _deployBadge;  // 배치 배지 컨테이너 (초상화 우상단)
+    [SerializeField] TextMeshProUGUI      _deployText;   // 배치 슬롯 번호
 
     public UnitEntry Entry { get; private set; }
 
@@ -48,30 +49,14 @@ public class HeroCardUI : MonoBehaviour
         if (_gradeBadge  != null) _gradeBadge.color  = gc;
         if (_gradeText   != null) _gradeText.color   = Color.white;
 
-        UnitJob  job  = UnitJobRoller.GetJob(entry.UnitName);
-        UnitStat stat = GeneralStatRoller.Roll(entry.UnitName, entry.Level, entry.Grade);
-
-        var equipDb = EquipmentDatabase.Current;
-        if (equipDb != null && entry.RunEquipSlots != null)
-        {
-            for (int s = 0; s < 2; s++)
-            {
-                string eid = s < entry.RunEquipSlots.Length ? entry.RunEquipSlots[s] : "";
-                if (string.IsNullOrEmpty(eid)) continue;
-                var equip = equipDb.Get(eid);
-                if (equip == null) continue;
-                int enhance = (entry.RunEquipEnhance != null && s < entry.RunEquipEnhance.Length)
-                              ? entry.RunEquipEnhance[s] : 0;
-                foreach (var e in equip.StatEntries)
-                    stat.Add(e.Stat, equip.GetStatValue(e, enhance), EquipmentApplier.SlotKey(s));
-            }
-        }
+        UnitJob        job    = UnitJobRoller.GetJob(entry.UnitName);
+        HeroStatResult result = HeroStatResolver.Resolve(entry);
 
         if (_jobText     != null) _jobText.text     = JobStyle.GetLabel(job);
-        if (_hpText      != null) _hpText.text      = $"{stat.Get(StatType.MaxHp):N0}";
-        if (_atkText     != null) _atkText.text      = $"{stat.Get(StatType.Attack):N0}";
-        if (_defText     != null) _defText.text      = $"{stat.Get(StatType.Defense) * 100f:F0}%";
-        if (_soldierText != null) _soldierText.text  = $"{Mathf.RoundToInt(stat.Get(StatType.SoldierCount))}명";
+        if (_hpText      != null) _hpText.text      = $"{result.Total(StatType.MaxHp):N0}";
+        if (_atkText     != null) _atkText.text     = $"{result.Total(StatType.Attack):N0}";
+        if (_defText     != null) _defText.text     = $"{result.Total(StatType.Defense) * 100f:F0}%";
+        if (_soldierText != null) _soldierText.text = $"{Mathf.RoundToInt(result.Total(StatType.SoldierCount))}명";
 
         if (_button != null)
         {
@@ -87,10 +72,9 @@ public class HeroCardUI : MonoBehaviour
 
     public void RefreshDeploy(DeploymentData data)
     {
-        if (_deployText == null) return;
         int slot = data.GetSlotOf(Entry.UnitName);
-        _deployText.gameObject.SetActive(slot >= 0);
-        if (slot >= 0) _deployText.text = $"출전 {slot + 1}번";
+        if (_deployBadge != null) _deployBadge.SetActive(slot >= 0);
+        if (_deployText  != null && slot >= 0) _deployText.text = $"{slot + 1}";
     }
 
     public void SetSelected(bool selected)

@@ -44,6 +44,7 @@ public enum PopupType
     EquipCompare    = 7,   // 장비 비교/교체
     Disassemble     = 8,   // 장수·장비 분해
     AbilitySelect   = 9,   // 어빌리티 3택 선택
+    AbilityList     = 10,  // 어빌리티 전체 목록 확인
 }
 
 // ── 로그인 상태 ───────────────────────────────────────────────

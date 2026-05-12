@@ -84,6 +84,10 @@ namespace BattleGame.Units
 
                 Debug.Log($"[ActiveSkill] {skillData.SkillName} ({skillData.SkillId}) 발동 | 시전자: {entity.Index} | 타겟: {(context.HasTarget ? context.TargetEntity.Index.ToString() : "없음")}");
                 skillData.Execute(context);
+
+                // OnSkillUse 패시브 트리거용 이벤트 기록
+                if (EntityManager.HasBuffer<SkillUseEvent>(entity))
+                    EntityManager.GetBuffer<SkillUseEvent>(entity).Add(default);
             }
         }
     }

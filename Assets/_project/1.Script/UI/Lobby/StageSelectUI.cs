@@ -26,6 +26,7 @@ public class StageSelectUI : MonoBehaviour
     [SerializeField] Image  _previewImage;
     [SerializeField] Button _prevBtn;
     [SerializeField] Button _nextBtn;
+    [SerializeField] Button _abilityListBtn;
 
     [Header("전투")]
     [SerializeField] Button          _battleStartBtn;
@@ -42,6 +43,7 @@ public class StageSelectUI : MonoBehaviour
         _normalTabBtn?  .onClick.AddListener(() => LobbyManager.Instance.SetTab(BattleMode.Normal));
         _eliteTabBtn?   .onClick.AddListener(() => LobbyManager.Instance.SetTab(BattleMode.Elite));
         _battleStartBtn?.onClick.AddListener(() => LobbyManager.Instance.StartBattle());
+        _abilityListBtn?.onClick.AddListener(OpenAbilityList);
 
         // 스테이지 직접 내비게이션 비활성 — 이전/다음 버튼 숨김
         _prevBtn?.gameObject.SetActive(false);
@@ -50,6 +52,9 @@ public class StageSelectUI : MonoBehaviour
         if (LobbyManager.Instance != null)
             Refresh(LobbyManager.Instance.CurrentStage);
     }
+
+    void OpenAbilityList()
+        => PopupManager.Instance?.Open<AbilityListPopup>(PopupType.AbilityList);
 
     // ── 갱신 ─────────────────────────────────────────────────
 

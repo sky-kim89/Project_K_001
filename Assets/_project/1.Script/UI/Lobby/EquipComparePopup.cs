@@ -143,23 +143,13 @@ public class EquipComparePopup : PopupBase
             {
                 float val = equip.GetStatValue(e, enhance);
                 sb.Append(loc.Get(e.Stat.ToString())).Append(" +");
-                sb.AppendLine(FormatEquipStat(e.Stat, val));
+                sb.AppendLine(EquipmentData.FormatStat(e.Stat, val));
             }
             if (equip.TriggerType != EquipmentTrigger.None)
                 sb.AppendLine($"{loc.Get(equip.TriggerType.ToString())}: {loc.Get(equip.TriggerStat.ToString())}");
             statText.text = sb.ToString().TrimEnd();
         }
     }
-
-    static string FormatEquipStat(StatType stat, float val) => stat switch
-    {
-        StatType.Defense      => $"{val * 100f:F1}%",
-        StatType.AttackSpeed  => $"{val:F2}",
-        StatType.MoveSpeed    => $"{val:F1}",
-        StatType.AttackRange  => $"{val:F1}",
-        StatType.SoldierCount => $"{Mathf.RoundToInt(val)}",
-        _                     => $"{val:N0}",
-    };
 
     void BuildInventoryList()
     {
