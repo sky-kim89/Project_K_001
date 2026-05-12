@@ -33,6 +33,7 @@ public static class AbilityApplier
         {
             var data = db.Get(id);
             if (data == null) continue;
+            if (data.Grade == AbilityGrade.Special) continue;   // Special은 OnTrigger에서만 처리
             if (data.Target == AbilityTarget.Unit_Soldier) continue;
             if (!MatchesGeneralTarget(data.Target, job)) continue;
 
@@ -92,7 +93,7 @@ public static class AbilityApplier
 
     // ── 내부 ──────────────────────────────────────────────────
 
-    static bool MatchesGeneralTarget(AbilityTarget target, UnitJob job)
+    public static bool MatchesGeneralTarget(AbilityTarget target, UnitJob job)
     {
         switch (target)
         {

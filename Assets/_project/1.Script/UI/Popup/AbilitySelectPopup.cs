@@ -13,6 +13,8 @@ using UnityEngine;
 
 public class AbilitySelectPopup : PopupBase
 {
+    public override bool BlockBackgroundClose => true;
+
     [Header("카드 슬롯 (3개, 왼쪽부터)")]
     [SerializeField] AbilityCardUI[] _cards;
 

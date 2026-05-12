@@ -21,6 +21,7 @@ public enum SaveKey
     EquipInventory  = 4,
     DeploymentData  = 5,
     RunAbility      = 6,
+    RelicInventory  = 7,
 }
 
 public interface ISaveSection

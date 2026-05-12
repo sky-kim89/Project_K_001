@@ -186,20 +186,18 @@ public static class AbilityCreator
 
         // C02 — 철갑 반응 (OnHit)
         var c02 = MakeSpecial<AbilityArmorReaction>(AbilityId.C02, "Ability_C02", "철갑 반응");
-        c02.DefenseBuff  = 0.15f;
-        c02.BuffDuration = 5f;
+        c02.DefenseBuff = 0.01f;
         EditorUtility.SetDirty(c02);
 
         // C03 — 처치 연쇄 (OnEnemyKill)
         var c03 = MakeSpecial<AbilityKillChain>(AbilityId.C03, "Ability_C03", "처치 연쇄");
-        c03.AttackBonusRatio = 0.20f;
-        c03.BuffDuration     = 5f;
+        c03.AttackBonusRatio = 0.05f;
         EditorUtility.SetDirty(c03);
 
         // C04 — 희생의 힘 (OnSoldierDeath)
         var c04 = MakeSpecial<AbilitySacrificeForce>(AbilityId.C04, "Ability_C04", "희생의 힘");
-        c04.AttackBonusPerDeath = 20f;
-        c04.MaxHpBonusPerDeath  = 50f;
+        c04.AttackBonusRatio = 0.05f;
+        c04.MaxHpBonusRatio  = 0.05f;
         EditorUtility.SetDirty(c04);
     }
 

@@ -32,7 +32,10 @@ public class AbilityCardUI : MonoBehaviour
         }
 
         if (_nameTmp   != null) _nameTmp.text   = data.AbilityName;
-        if (_targetTmp != null) _targetTmp.text = GetTargetLabel(data.Target);
+        if (_targetTmp != null)
+            _targetTmp.text = data.Grade == AbilityGrade.Special
+                ? $"발동: {GetTriggerLabel(data.GetTriggerType())}"
+                : GetTargetLabel(data.Target);
         if (_descTmp   != null) _descTmp.text   = BuildDesc(data);
 
         if (_selectBtn != null)
@@ -77,10 +80,23 @@ public class AbilityCardUI : MonoBehaviour
 
     static string BuildDesc(AbilityData data)
     {
+        if (data.Grade == AbilityGrade.Special)
+            return data.Description;
+
         string d = $"{StatLabel(data.Stat1)} +{data.Value1 * 100f:0}%";
         if (data.HasStat2) d += $"\n{StatLabel(data.Stat2)} +{data.Value2 * 100f:0}%";
         return d;
     }
+
+    static string GetTriggerLabel(PassiveTrigger t) => t switch
+    {
+        PassiveTrigger.OnAttack       => "공격 시",
+        PassiveTrigger.OnHit          => "피격 시",
+        PassiveTrigger.OnEnemyKill    => "처치 시",
+        PassiveTrigger.OnSoldierDeath => "병사 사망 시",
+        PassiveTrigger.OnSkillUse     => "스킬 사용 시",
+        _                             => "즉시"
+    };
 
     static string StatLabel(StatType type) => type switch
     {

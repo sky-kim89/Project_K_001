@@ -113,8 +113,6 @@ public class InGameManager : MonoBehaviour
                 }
             }
 
-            var progress = UserDataManager.Instance.Get<StageProgressData>();
-            progress.RecordClear(stage.Mode, stage.StageNumber);
             UserDataManager.Instance.RequestSave();
         }
 
@@ -127,18 +125,21 @@ public class InGameManager : MonoBehaviour
     /// <summary>결과 팝업 확인 후 — 어빌리티를 뽑을 수 있으면 선택 팝업, 아니면 바로 로비.</summary>
     void OpenAbilitySelectOrReturnToLobby()
     {
-        var db         = AbilityDatabase.Current;
-        var runAbility = UserDataManager.Instance?.Get<RunAbilityData>();
+        var db             = AbilityDatabase.Current;
+        var runAbility     = UserDataManager.Instance?.Get<RunAbilityData>();
+        var relicInventory = UserDataManager.Instance?.Get<RelicInventoryData>();
+        var relicDb        = RelicDatabase.Current;
 
         if (db != null && runAbility != null && PopupManager.Instance != null)
         {
-            var choices = AbilityPicker.Pick(db, runAbility);
+            var choices = AbilityPicker.Pick(db, runAbility, relicInventory, relicDb);
             if (choices.Length > 0)
             {
                 var abilityPopup = PopupManager.Instance.Open<AbilitySelectPopup>(PopupType.AbilitySelect);
                 abilityPopup?.Setup(choices, chosen =>
                 {
                     runAbility.AddAbility(chosen.Id);
+                    RecordStageClear();
                     UserDataManager.Instance.RequestSave();
                     LobbyManager.Instance.ReturnToLobby();
                 });
@@ -146,7 +147,18 @@ public class InGameManager : MonoBehaviour
             }
         }
 
+        // 선택지가 없을 때는 선택 없이 클리어 처리
+        RecordStageClear();
+        UserDataManager.Instance?.RequestSave();
         LobbyManager.Instance.ReturnToLobby();
+    }
+
+    void RecordStageClear()
+    {
+        if (!GameSession.Instance.HasStage) return;
+        var stage    = GameSession.Instance.CurrentStage;
+        var progress = UserDataManager.Instance?.Get<StageProgressData>();
+        progress?.RecordClear(stage.Mode, stage.StageNumber);
     }
 
     /// <summary>전투 패배 → 결과 팝업 오픈.</summary>

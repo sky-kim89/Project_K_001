@@ -642,22 +642,22 @@ public static class HeroPanelCreator
         hlg.childForceExpandHeight = true;
         hlg.childAlignment         = TextAnchor.MiddleLeft;
         hlg.spacing                = 0;
-        hlg.padding                = new RectOffset(16, 16, 0, 0);
+        hlg.padding                = new RectOffset(8, 4, 0, 0);  // 좌8 우4 — 값 영역 최대화
 
-        // 레이블 (고정 너비 110px)
+        // 레이블 (고정 너비 90px — 최대 3글자 한글 수용)
         var lbl = CreateTMP(row, "Label", label, FntSub, FontStyles.Normal);
         lbl.alignment        = TextAlignmentOptions.Left;
         lbl.color            = LabelColor;
         lbl.textWrappingMode = TextWrappingModes.NoWrap;
         lbl.overflowMode     = TextOverflowModes.Ellipsis;
         var lblLE = lbl.gameObject.AddComponent<LayoutElement>();
-        lblLE.preferredWidth = 110f;
+        lblLE.preferredWidth = 90f;
         lblLE.flexibleWidth  = 0f;
 
-        // 값 (나머지 너비 전부)
+        // 값 (나머지 너비 전부 — 450-90-8-4 = 348px)
         var val = CreateTMP(row, "Value", "—", FntMain, FontStyles.Bold);
         val.alignment          = TextAlignmentOptions.Right;
-        val.textWrappingMode = TextWrappingModes.NoWrap;
+        val.textWrappingMode   = TextWrappingModes.NoWrap;
         val.overflowMode       = TextOverflowModes.Ellipsis;
         val.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1f;
 
@@ -771,7 +771,7 @@ public static class HeroPanelCreator
             rt.anchorMin = new Vector2(0, 0.60f);
             rt.anchorMax = new Vector2(1, 1);
             rt.offsetMin = new Vector2(textLeft, 2);
-            rt.offsetMax = new Vector2(-EnhBtnW - 14f, -4);
+            rt.offsetMax = new Vector2(-8f, -4);
         }
         nameText.alignment = TextAlignmentOptions.Left;
 
@@ -821,8 +821,8 @@ public static class HeroPanelCreator
             rt.anchorMin = new Vector2(1, 1);
             rt.anchorMax = new Vector2(1, 1);
             rt.pivot     = new Vector2(1, 1);
-            rt.offsetMin = new Vector2(-EnhBtnW - 6f, -8f - EnhBtnH);
-            rt.offsetMax = new Vector2(-6f, -8f);
+            rt.offsetMin = new Vector2(-EnhBtnW - 6f, -62f - EnhBtnH);
+            rt.offsetMax = new Vector2(-6f, -62f);
         }
         var enhBtn = enhGo.AddComponent<Button>();
         enhBtn.targetGraphic = enhGo.GetComponent<Image>();

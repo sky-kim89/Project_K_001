@@ -38,6 +38,11 @@ public class AbilityData : ScriptableObject
     public virtual PassiveTrigger GetTriggerType() => PassiveTrigger.None;
 
     /// <summary>
+    /// UI에 표시할 효과 설명. Special 서브클래스가 오버라이드한다.
+    /// </summary>
+    public virtual string Description => string.Empty;
+
+    /// <summary>
     /// TriggerType 에 해당하는 이벤트 발생 시 호출.
     /// 기본 구현은 아무것도 하지 않음. 서브클래스(Special 등급)에서 오버라이드.
     /// </summary>

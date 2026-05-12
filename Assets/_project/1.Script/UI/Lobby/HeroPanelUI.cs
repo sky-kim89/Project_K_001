@@ -134,8 +134,7 @@ public class HeroPanelUI : MonoBehaviour
     }
     StatRowEntry[] _statRowEntries;
 
-    const string HexEquip   = "5599FF";
-    const string HexPassive = "55CC77";
+    // 색상·포맷은 UIConstants.cs 의 StatBonusColors / StatDisplayHelper 공통 사용
 
     // ── 라이프사이클 ──────────────────────────────────────────
 
@@ -685,9 +684,7 @@ public class HeroPanelUI : MonoBehaviour
             if (_statListContainer == null && rowGo.transform.parent != null)
                 _statListContainer = rowGo.transform.parent;
 
-            tmp.overflowMode     = TextOverflowModes.Overflow;
-            tmp.textWrappingMode = TextWrappingModes.Normal;
-
+            // 래핑 모드는 RefreshStatRow 에서 확장 상태에 따라 제어
             _statRowEntries[i] = new StatRowEntry
             {
                 ValueTmp = tmp,
@@ -717,59 +714,29 @@ public class HeroPanelUI : MonoBehaviour
         var row = _statRowEntries[index];
         if (row.ValueTmp == null) return;
 
-        float baseVal    = _statResult?.Base.Get(row.Type) ?? 0f;
-        float equipVal   = _statResult?.GetEquip(row.Type)   ?? 0f;
-        float passiveVal = _statResult?.GetPassive(row.Type) ?? 0f;
-        float total      = baseVal + equipVal + passiveVal;
+        float baseVal    = _statResult?.Base.Get(row.Type)    ?? 0f;
+        float equipVal   = _statResult?.GetEquip(row.Type)    ?? 0f;
+        float passiveVal = _statResult?.GetPassive(row.Type)  ?? 0f;
+        float abilityVal = _statResult?.GetAbility(row.Type)  ?? 0f;
+        float total      = baseVal + equipVal + passiveVal + abilityVal;
         bool  expanded   = index == _expandedStatIndex;
+        bool  hasBonus   = equipVal != 0f || passiveVal != 0f || abilityVal != 0f;
 
-        if (expanded && (equipVal != 0f || passiveVal != 0f))
+        if (expanded && hasBonus)
         {
-            row.ValueTmp.text = BuildBreakdownText(row.Type, baseVal, equipVal, passiveVal, total);
-            if (row.LayoutEl != null) row.LayoutEl.preferredHeight = 90f;
+            // 합계 숨기고 합산 과정만 표시: "기본  +장비  +패시브  +어빌리티"
+            row.ValueTmp.overflowMode     = TextOverflowModes.Overflow;
+            row.ValueTmp.textWrappingMode = TextWrappingModes.NoWrap;
+            row.ValueTmp.text = StatDisplayHelper.BuildBreakdown(row.Type, baseVal, equipVal, passiveVal, abilityVal);
+            if (row.LayoutEl != null) row.LayoutEl.preferredHeight = 50f;
         }
         else
         {
-            row.ValueTmp.text = FormatStatTotal(row.Type, total);
+            row.ValueTmp.overflowMode     = TextOverflowModes.Ellipsis;
+            row.ValueTmp.textWrappingMode = TextWrappingModes.NoWrap;
+            row.ValueTmp.text = StatDisplayHelper.FormatTotal(row.Type, total);
             if (row.LayoutEl != null) row.LayoutEl.preferredHeight = 50f;
         }
     }
 
-    static string FormatStatTotal(StatType stat, float value) => stat switch
-    {
-        StatType.Defense      => $"{value * 100f:F1}%",
-        StatType.AttackSpeed  => $"{value:F2}/초",
-        StatType.MoveSpeed    => $"{value:F1}",
-        StatType.AttackRange  => $"{value:F1}",
-        StatType.SoldierCount => $"{Mathf.RoundToInt(value)}명",
-        _                     => $"{value:N0}",
-    };
-
-    static string FormatStatDelta(StatType stat, float value, bool withSign)
-    {
-        string sign = (withSign && value >= 0f) ? "+" : "";
-        return stat switch
-        {
-            StatType.Defense      => $"{sign}{value * 100f:F1}%",
-            StatType.AttackSpeed  => $"{sign}{value:F2}",
-            StatType.MoveSpeed    => $"{sign}{value:F1}",
-            StatType.AttackRange  => $"{sign}{value:F1}",
-            StatType.SoldierCount => $"{sign}{Mathf.RoundToInt(value)}명",
-            _                     => $"{sign}{value:N0}",
-        };
-    }
-
-    static string BuildBreakdownText(StatType stat, float baseVal, float equipVal, float passiveVal, float total)
-    {
-        var sb = new System.Text.StringBuilder();
-        sb.Append(FormatStatTotal(stat, total));
-        sb.Append("\n<size=70%>");
-        sb.Append(FormatStatDelta(stat, baseVal, false));
-        if (equipVal != 0f)
-            sb.Append($"  <color=#{HexEquip}>{FormatStatDelta(stat, equipVal, true)}</color>");
-        if (passiveVal != 0f)
-            sb.Append($"  <color=#{HexPassive}>{FormatStatDelta(stat, passiveVal, true)}</color>");
-        sb.Append("</size>");
-        return sb.ToString();
-    }
 }

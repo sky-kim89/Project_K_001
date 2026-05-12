@@ -262,14 +262,13 @@ public static class UISetupTool
     }
 
     // ══════════════════════════════════════════════════════════
-    //  단독 재생성 — BattleResultPopup + RewardCard
+    //  단독 재생성 — RewardCard (BattleResultPopup은 PopupPrefabCreator 사용)
     // ══════════════════════════════════════════════════════════
 
-    [MenuItem("Tools/Project K/Popup/Rebuild BattleResult Popup")]
     public static void RebuildBattleResultPopup()
     {
-        var cardPrefab = CreateRewardCardPrefab();
-        CreateBattleResultPopupPrefab(cardPrefab);
+        CreateRewardCardPrefab();
+        PopupPrefabCreator.CreateBattleResultPopup();
         AssetDatabase.SaveAssets();
         Debug.Log("[UISetupTool] BattleResultPopup + RewardCard 재생성 완료");
     }
@@ -351,103 +350,13 @@ public static class UISetupTool
     }
 
     // ══════════════════════════════════════════════════════════
-    //  팝업 프리팹 — BattleResultPopup
+    //  팝업 프리팹 — BattleResultPopup (PopupPrefabCreator에 위임)
     // ══════════════════════════════════════════════════════════
 
     static GameObject CreateBattleResultPopupPrefab(GameObject rewardCardPrefab = null)
     {
-        var root = new GameObject("BattleResultPopup");
-        SetupPopupRoot(root, 520f, 600f);
-        var popup = root.AddComponent<BattleResultPopup>();
-
-        // 패널 배경
-        var bg = root.AddComponent<Image>();
-        bg.color = new Color(0.04f, 0.04f, 0.08f, 0.96f);
-
-        // 결과 텍스트 (승리! / 패배)
-        var resultText = MakeTMP(root, "ResultText", "승리!", 52, FontStyle.Bold);
-        resultText.color = new Color(1f, 0.85f, 0.1f);
-        SetRT(resultText.gameObject,
-            new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(0f, -60f), new Vector2(0f, 70f));
-
-        // 부제 텍스트
-        var subText = MakeTMP(root, "SubText", "모든 적을 물리쳤습니다!", 16, FontStyle.Normal);
-        subText.color = new Color(0.85f, 0.85f, 0.85f);
-        SetRT(subText.gameObject,
-            new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(0f, -138f), new Vector2(0f, 30f));
-
-        // 통계 텍스트
-        var statsText = MakeTMP(root, "StatsText", "처치  0   |   웨이브  1 / 5", 14, FontStyle.Normal);
-        statsText.color = new Color(0.75f, 0.75f, 0.75f);
-        SetRT(statsText.gameObject,
-            new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(0f, -178f), new Vector2(0f, 26f));
-
-        // 구분선
-        var divider = MakeImg(root, "Divider", new Color(0.3f, 0.3f, 0.3f, 0.5f));
-        SetRT(divider.gameObject,
-            new Vector2(0.1f, 1f), new Vector2(0.9f, 1f),
-            new Vector2(0f, -214f), new Vector2(0f, 2f));
-
-        // 보상 카드 영역 (HLG)
-        var rewardArea = MakeRect(root, "RewardArea");
-        SetRT(rewardArea,
-            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-            new Vector2(0f, -240f), new Vector2(480f, 140f));
-        var hlg = rewardArea.AddComponent<HorizontalLayoutGroup>();
-        hlg.spacing              = 8f;
-        hlg.childAlignment       = TextAnchor.MiddleCenter;
-        hlg.childForceExpandWidth  = false;
-        hlg.childForceExpandHeight = false;
-        hlg.padding = new RectOffset(4, 4, 0, 0);
-
-        // 힌트 텍스트
-        var hintText = MakeTMP(root, "HintText", "장비 박스를 열어주세요", 13, FontStyle.Normal);
-        hintText.color = new Color(1f, 0.65f, 0.1f);
-        SetRT(hintText.gameObject,
-            new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(0f, -392f), new Vector2(0f, 24f));
-        hintText.gameObject.SetActive(false);
-
-        // 확인 버튼
-        var confirmBtn = MakeRect(root, "ConfirmButton");
-        SetRT(confirmBtn,
-            new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
-            new Vector2(0f, 44f), new Vector2(200f, 52f));
-        var confirmBtnImg = confirmBtn.AddComponent<Image>();
-        confirmBtnImg.color = new Color(0.18f, 0.42f, 0.72f);
-        var confirmButton = confirmBtn.AddComponent<Button>();
-        var confirmLabel  = MakeRect(confirmBtn, "Label");
-        Stretch(confirmLabel);
-        var confirmTmp = confirmLabel.AddComponent<TextMeshProUGUI>();
-        confirmTmp.text      = "확인";
-        confirmTmp.fontSize  = 20;
-        confirmTmp.fontStyle = FontStyles.Bold;
-        confirmTmp.alignment = TextAlignmentOptions.Center;
-        confirmTmp.color     = Color.white;
-
-        // 필드 연결
-        var rewardCardComp = rewardCardPrefab != null
-            ? rewardCardPrefab.GetComponent<RewardCardUI>()
-            : null;
-
-        var so = new SerializedObject(popup);
-        so.FindProperty("_popupType").intValue                  = (int)PopupType.BattleResult;
-        so.FindProperty("_resultText").objectReferenceValue     = resultText;
-        so.FindProperty("_subText").objectReferenceValue        = subText;
-        so.FindProperty("_statsText").objectReferenceValue      = statsText;
-        so.FindProperty("_rewardArea").objectReferenceValue     = rewardArea.GetComponent<Transform>();
-        so.FindProperty("_rewardCardPrefab").objectReferenceValue = rewardCardComp;
-        so.FindProperty("_hintText").objectReferenceValue       = hintText;
-        so.FindProperty("_confirmButton").objectReferenceValue  = confirmButton;
-        so.ApplyModifiedPropertiesWithoutUndo();
-
-        var prefab = PrefabUtility.SaveAsPrefabAsset(root, RESULT_POPUP_PREFAB);
-        Object.DestroyImmediate(root);
-        Debug.Log($"[UISetupTool] BattleResultPopup 프리팹 저장 → {RESULT_POPUP_PREFAB}");
-        return prefab;
+        PopupPrefabCreator.CreateBattleResultPopup();
+        return AssetDatabase.LoadAssetAtPath<GameObject>(RESULT_POPUP_PREFAB);
     }
 
     // ══════════════════════════════════════════════════════════

@@ -200,7 +200,11 @@ public class PopupManager : Singleton<PopupManager>
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;
         btn.transition    = Selectable.Transition.None;
-        btn.onClick.AddListener(() => CloseTop());
+        btn.onClick.AddListener(() =>
+        {
+            if (_stack.Count > 0 && _stack[_stack.Count - 1].BlockBackgroundClose) return;
+            CloseTop();
+        });
 
         return go;
     }

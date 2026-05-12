@@ -14,20 +14,23 @@ using UnityEngine;
 
 public class HeroStatResult
 {
-    public UnitStat                    Base           = new();
-    public Dictionary<StatType, float> EquipBonuses   = new();
-    public Dictionary<StatType, float> PassiveBonuses = new();
+    public UnitStat                    Base            = new();
+    public Dictionary<StatType, float> EquipBonuses    = new();
+    public Dictionary<StatType, float> PassiveBonuses  = new();
+    public Dictionary<StatType, float> AbilityBonuses  = new();
 
     public float Total(StatType stat)
     {
         float b = Base?.Get(stat) ?? 0f;
-        float e = EquipBonuses.TryGetValue(stat, out var ev)   ? ev : 0f;
-        float p = PassiveBonuses.TryGetValue(stat, out var pv) ? pv : 0f;
-        return b + e + p;
+        float e = EquipBonuses.TryGetValue(stat,   out var ev) ? ev : 0f;
+        float p = PassiveBonuses.TryGetValue(stat,  out var pv) ? pv : 0f;
+        float a = AbilityBonuses.TryGetValue(stat,  out var av) ? av : 0f;
+        return b + e + p + a;
     }
 
-    public float GetEquip(StatType stat)   => EquipBonuses.TryGetValue(stat, out var v)   ? v : 0f;
+    public float GetEquip(StatType stat)   => EquipBonuses.TryGetValue(stat,  out var v) ? v : 0f;
     public float GetPassive(StatType stat) => PassiveBonuses.TryGetValue(stat, out var v) ? v : 0f;
+    public float GetAbility(StatType stat) => AbilityBonuses.TryGetValue(stat, out var v) ? v : 0f;
 }
 
 public static class HeroStatResolver
@@ -82,6 +85,36 @@ public static class HeroStatResolver
                     result.EquipBonuses[e.Stat] =
                         result.EquipBonuses.TryGetValue(e.Stat, out var cur) ? cur + val : val;
                 }
+            }
+        }
+
+        // 4. 어빌리티 보너스 (base+passive+equip 합산 기준 % 증가 — AbilityApplier와 동일 방식)
+        var abilityDb     = AbilityDatabase.Current;
+        var heldAbilities = UserDataManager.Instance?.Get<RunAbilityData>()?.HeldAbilities;
+        if (abilityDb != null && heldAbilities?.Count > 0)
+        {
+            UnitJob job = UnitJobRoller.GetJob(entry.UnitName);
+
+            // 비율 합산 (StatType별)
+            var ratios = new Dictionary<StatType, float>();
+            foreach (var id in heldAbilities)
+            {
+                var data = abilityDb.Get(id);
+                if (data == null || data.Grade == AbilityGrade.Special) continue;
+                if (data.Target == AbilityTarget.Unit_Soldier) continue;
+                if (!AbilityApplier.MatchesGeneralTarget(data.Target, job)) continue;
+
+                ratios[data.Stat1] = ratios.GetValueOrDefault(data.Stat1) + data.Value1;
+                if (data.HasStat2)
+                    ratios[data.Stat2] = ratios.GetValueOrDefault(data.Stat2) + data.Value2;
+            }
+
+            // 이 시점 result.Total() = base + passive + equip (어빌리티 미포함) → % 기준 동일
+            foreach (var kvp in ratios)
+            {
+                float delta = result.Total(kvp.Key) * kvp.Value;
+                if (UnityEngine.Mathf.Abs(delta) > 0.001f)
+                    result.AbilityBonuses[kvp.Key] = delta;
             }
         }
 

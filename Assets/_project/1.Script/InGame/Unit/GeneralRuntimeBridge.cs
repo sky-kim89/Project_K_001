@@ -55,9 +55,14 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         _unitName  = unitName;
         _level     = level;
         _unitEntry = unitEntry;
-        _grade     = UnitJobRoller.GetBirthGrade(unitName);
+        // 등급 업그레이드 횟수 반영 (unitEntry 없으면 태생 등급 사용)
+        _grade     = unitEntry != null ? unitEntry.Grade : UnitJobRoller.GetBirthGrade(unitName);
         _job      = UnitJobRoller.GetJob(unitName);
         _stat     = GeneralStatRoller.Roll(unitName, _level, _grade);
+
+        // 용병 업그레이드 보너스 (HeroStatResolver와 동일하게 base 스탯 직후 적용)
+        if (unitEntry?.SoldierBonus > 0)
+            _stat.Add(StatType.SoldierCount, unitEntry.SoldierBonus, "bonus");
 
         // ── 패시브 스킬 결정 ──────────────────────────────────
         (_passive0, _passive1, _passive2) = PassiveSkillRoller.Roll(_unitName);
@@ -85,6 +90,12 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         var heldAbilities = UserDataManager.Instance?.Get<RunAbilityData>()?.HeldAbilities;
         if (abilityDb != null && heldAbilities != null)
             AbilityApplier.ApplyToGeneralStat(_stat, _job, heldAbilities, abilityDb);
+
+        // ── 유물 스텟 적용 (영구 보유) ────────────────────────────
+        var relicDb        = RelicDatabase.Current;
+        var relicInventory = UserDataManager.Instance?.Get<RelicInventoryData>();
+        if (relicDb != null && relicInventory != null)
+            RelicApplier.ApplyToGeneralStat(_stat, _job, relicInventory, relicDb);
 
         // 외형 적용 (ECS Entity 생성과 독립적으로 실행)
         GetComponent<UnitAppearanceBridge>()?.ApplyAlly(unitName, _job, _grade);
@@ -226,9 +237,10 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         em.AddComponentObject(entity, trigSet);
     }
 
-    /// <summary>풀 재사용 시 스킬 / 조건 상태 초기화.</summary>
+    /// <summary>풀 재사용 시 스킬 / 조건 상태 초기화 + 장군별 컴포넌트 갱신.</summary>
     protected override void OnEntityReset(EntityManager em, Entity entity)
     {
+        // ── 버퍼 초기화 ──────────────────────────────────────────
         if (em.HasBuffer<ProjectileLaunchRequest>(entity))
             em.GetBuffer<ProjectileLaunchRequest>(entity).Clear();
 
@@ -237,12 +249,6 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
 
         if (em.HasBuffer<SoldierDeathEvent>(entity))
             em.GetBuffer<SoldierDeathEvent>(entity).Clear();
-
-        if (em.HasComponent<SoldierDeathEmpowerState>(entity))
-            em.SetComponentData(entity, new SoldierDeathEmpowerState { DeathCount = 0 });
-
-        if (em.HasComponent<BloodPactState>(entity))
-            em.SetComponentData(entity, new BloodPactState { LastBonusRatio = 0f });
 
         if (em.HasBuffer<EnemyKillEvent>(entity))
             em.GetBuffer<EnemyKillEvent>(entity).Clear();
@@ -253,6 +259,13 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         if (em.HasBuffer<CombatStackElement>(entity))
             em.GetBuffer<CombatStackElement>(entity).Clear();
 
+        // ── 상태 컴포넌트 초기화 ─────────────────────────────────
+        if (em.HasComponent<SoldierDeathEmpowerState>(entity))
+            em.SetComponentData(entity, new SoldierDeathEmpowerState { DeathCount = 0 });
+
+        if (em.HasComponent<BloodPactState>(entity))
+            em.SetComponentData(entity, new BloodPactState { LastBonusRatio = 0f });
+
         if (em.HasComponent<PassiveConditionState>(entity))
             em.SetComponentData(entity, new PassiveConditionState
             {
@@ -260,6 +273,84 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
                 LastStandTriggered  = false,
                 InitialSoldierCount = Mathf.RoundToInt(_stat.Get(StatType.SoldierCount)),
             });
+
+        // ── 직업 갱신 ────────────────────────────────────────────
+        em.SetComponentData(entity, new UnitJobComponent { Job = _job });
+
+        // ── 원거리 태그·버퍼 갱신 ────────────────────────────────
+        bool isRanged = _job == UnitJob.Archer || _job == UnitJob.Mage;
+        if (isRanged)
+        {
+            if (!em.HasComponent<RangedTag>(entity))
+                em.AddComponent<RangedTag>(entity);
+            if (!em.HasBuffer<ProjectileLaunchRequest>(entity))
+                em.AddBuffer<ProjectileLaunchRequest>(entity);
+        }
+        else
+        {
+            if (em.HasComponent<RangedTag>(entity))
+                em.RemoveComponent<RangedTag>(entity);
+        }
+
+        // ── 패시브 슬롯 갱신 ─────────────────────────────────────
+        em.SetComponentData(entity, new GeneralPassiveSetComponent
+        {
+            Slot0           = _passive0,
+            Slot1           = _passive1,
+            Slot2           = _passive2,
+            ActiveSlotCount = _activePassiveCount,
+        });
+
+        // ── 액티브 스킬 갱신 ─────────────────────────────────────
+        var activeDb  = ActiveSkillDatabase.Current;
+        var rolledId  = ActiveSkillRoller.Roll(_unitName, _job, activeDb);
+        var skillData = activeDb?.Get(rolledId);
+        float cdr     = Mathf.Clamp01(_stat.Get(StatType.SkillCooldownReduce));
+        em.SetComponentData(entity, new GeneralActiveSkillComponent
+        {
+            SkillId           = (int)rolledId,
+            EffectValue       = skillData?.EffectValue    ?? 1f,
+            EffectRadius      = skillData?.EffectRadius   ?? 0f,
+            EffectDuration    = skillData?.EffectDuration ?? 0f,
+            Cooldown          = (skillData?.Cooldown ?? 15f) * (1f - cdr),
+            CooldownRemaining = 0f,
+        });
+
+        // ── GeneralTriggerSetComponent 갱신 (managed) ────────────
+        var trigSet = em.GetComponentObject<GeneralTriggerSetComponent>(entity);
+        if (trigSet != null)
+        {
+            trigSet.EquipSlots[0]    = null;
+            trigSet.EquipSlots[1]    = null;
+            trigSet.EnhanceLevels[0] = 0;
+            trigSet.EnhanceLevels[1] = 0;
+            trigSet.TriggerAbilities.Clear();
+
+            var equipDb = EquipmentDatabase.Current;
+            if (equipDb != null && _unitEntry?.RunEquipSlots != null)
+            {
+                for (int i = 0; i < 2 && i < _unitEntry.RunEquipSlots.Length; i++)
+                {
+                    string id = _unitEntry.RunEquipSlots[i];
+                    if (string.IsNullOrEmpty(id)) continue;
+                    trigSet.EquipSlots[i]    = equipDb.Get(id);
+                    trigSet.EnhanceLevels[i] = (_unitEntry.RunEquipEnhance != null && i < _unitEntry.RunEquipEnhance.Length)
+                        ? _unitEntry.RunEquipEnhance[i] : 0;
+                }
+            }
+
+            var abilityDb2     = AbilityDatabase.Current;
+            var heldAbilities2 = UserDataManager.Instance?.Get<RunAbilityData>()?.HeldAbilities;
+            if (abilityDb2 != null && heldAbilities2 != null)
+            {
+                foreach (var aid in heldAbilities2)
+                {
+                    var data = abilityDb2.Get(aid);
+                    if (data != null && data.Grade == AbilityGrade.Special && data.GetTriggerType() != PassiveTrigger.None)
+                        trigSet.TriggerAbilities.Add(data);
+                }
+            }
+        }
     }
 
     // ── 병사 스폰 ─────────────────────────────────────────────
@@ -334,6 +425,13 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
                         if (aDb != null && abls != null)
                             AbilityApplier.ApplyToSoldierEntity(
                                 soldierLink.Entity, world.EntityManager, abls, aDb);
+
+                        // 유물 병사 스텟 적용 (Unit_Soldier 대상, 영구)
+                        var rDb  = RelicDatabase.Current;
+                        var rInv = UserDataManager.Instance?.Get<RelicInventoryData>();
+                        if (rDb != null && rInv != null)
+                            RelicApplier.ApplyToSoldierEntity(
+                                soldierLink.Entity, world.EntityManager, rInv, rDb);
                     }
                 }
             }

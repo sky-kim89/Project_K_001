@@ -14,6 +14,9 @@ public class AbilityVampiricAssault : AbilityData
     [Range(0f, 0.5f)]
     public float VampireRatio = 0.15f;
 
+    public override string Description
+        => $"공격마다 가한 피해의 {VampireRatio * 100f:0}% 즉시 체력 회복";
+
     public override PassiveTrigger GetTriggerType() => PassiveTrigger.OnAttack;
 
     public override void OnTrigger(PassiveTriggerContext ctx)

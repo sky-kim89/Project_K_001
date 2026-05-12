@@ -17,6 +17,8 @@ using TMPro;
 
 public class LoadingPopup : PopupBase
 {
+    public override bool BlockBackgroundClose => true;
+
     [SerializeField] TextMeshProUGUI _titleText;
     [SerializeField] TextMeshProUGUI _statusText;
 

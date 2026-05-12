@@ -55,6 +55,9 @@ public abstract class PopupBase : MonoBehaviour
     /// <summary>팝업이 열려 있는지 여부.</summary>
     public bool IsOpen { get; private set; }
 
+    /// <summary>true 이면 백그라운드(블로커) 클릭으로 닫히지 않는다.</summary>
+    public virtual bool BlockBackgroundClose => false;
+
     /// <summary>열기 애니메이션이 완료됐는지 여부. CloseRoutine 이 이 값을 기다린다.</summary>
     bool _openComplete;
 

@@ -1,6 +1,7 @@
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Burst;
+using Unity.Collections;
 
 // ============================================================
 //  UnitStatusEffectSystem.cs
@@ -11,6 +12,7 @@ using Unity.Burst;
 //  2. Dot(도트 데미지) → HitEventBuffer 에 피해 주입
 //  3. StatComponent.Final 재계산:
 //     Final = Base, 이후 Add 모드 적용, 마지막 Multiply 모드 적용
+//  4. MaxHp 증가 시 CurrentHp 동기화 (ComponentLookup 으로 공통 처리)
 //
 //  Add 먼저, Multiply 나중 순서 이유:
 //    공격력 100 + 50(Add) = 150, × 1.3(Multiply) = 195
@@ -29,7 +31,12 @@ namespace BattleGame.Units
         {
             float deltaTime  = SystemAPI.Time.DeltaTime;
             float defenseMax = GameplayConfig.Current != null ? GameplayConfig.Current.DefenseMax : 0.95f;
-            new StatusEffectTickJob { DeltaTime = deltaTime, DefenseMax = defenseMax }.ScheduleParallel();
+            new StatusEffectTickJob
+            {
+                DeltaTime    = deltaTime,
+                DefenseMax   = defenseMax,
+                HealthLookup = SystemAPI.GetComponentLookup<HealthComponent>(),
+            }.ScheduleParallel();
         }
     }
 
@@ -40,7 +47,13 @@ namespace BattleGame.Units
         public float DeltaTime;
         public float DefenseMax;
 
+        // HealthComponent 가 없는 엔티티도 처리 가능하도록 Lookup 으로 주입.
+        // 병렬 job 에서 엔티티별로 서로 다른 컴포넌트를 쓰므로 실질적 경쟁 없음.
+        [NativeDisableParallelForRestriction]
+        public ComponentLookup<HealthComponent> HealthLookup;
+
         public void Execute(
+            Entity                                       entity,
             ref StatComponent                            stat,
             ref DynamicBuffer<StatusEffectBufferElement> buffs,
             ref DynamicBuffer<HitEventBufferElement>     hitBuffer)
@@ -73,7 +86,8 @@ namespace BattleGame.Units
                 buffs[i] = buff;
             }
 
-            // ── Step 2. Final = Base 로 초기화 ─────────────────────
+            // ── Step 2. Final = Base 로 초기화 (MaxHp 변화 감지용 기록) ──
+            float prevMaxHp = stat.Final[StatType.MaxHp];
             stat.ResetFinalToBase();
 
             // ── Step 3. Add 모드 버프 적용 ─────────────────────────
@@ -92,16 +106,27 @@ namespace BattleGame.Units
                     stat.Final[buff.Stat] *= buff.Delta;
             }
 
-            // ── Step 5. 스텟 하한선 보정 ────────────────────────────
-            float defense    = stat.Final[StatType.Defense];
-            float atkSpeed   = stat.Final[StatType.AttackSpeed];
-            float moveSpeed  = stat.Final[StatType.MoveSpeed];
-            float attack     = stat.Final[StatType.Attack];
+            // ── Step 5. MaxHp 증가분만큼 CurrentHp 동기화 ──────────
+            // HealthComponent 가 없는 엔티티(병사 외 오브젝트 등)는 안전하게 건너뜀.
+            float newMaxHp = stat.Final[StatType.MaxHp];
+            if (newMaxHp > prevMaxHp && HealthLookup.HasComponent(entity))
+            {
+                var hr = HealthLookup.GetRefRW(entity);
+                hr.ValueRW.CurrentHp = math.min(
+                    hr.ValueRO.CurrentHp + (newMaxHp - prevMaxHp),
+                    newMaxHp);
+            }
 
-            stat.Final[StatType.Defense]     = math.clamp(defense,   0f, DefenseMax);
-            stat.Final[StatType.AttackSpeed] = math.max(atkSpeed,    0.1f);
-            stat.Final[StatType.MoveSpeed]   = math.max(moveSpeed,   0.1f);
-            stat.Final[StatType.Attack]      = math.max(attack,      0f);
+            // ── Step 6. 스텟 하한선 보정 ────────────────────────────
+            float defense  = stat.Final[StatType.Defense];
+            float atkSpeed = stat.Final[StatType.AttackSpeed];
+            float moveSpeed= stat.Final[StatType.MoveSpeed];
+            float attack   = stat.Final[StatType.Attack];
+
+            stat.Final[StatType.Defense]     = math.clamp(defense,    0f, DefenseMax);
+            stat.Final[StatType.AttackSpeed] = math.max(atkSpeed,     0.1f);
+            stat.Final[StatType.MoveSpeed]   = math.max(moveSpeed,    0.1f);
+            stat.Final[StatType.Attack]      = math.max(attack,       0f);
         }
     }
 }

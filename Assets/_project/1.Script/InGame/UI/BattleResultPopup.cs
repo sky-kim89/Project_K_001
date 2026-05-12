@@ -24,6 +24,8 @@ using System;
 
 public class BattleResultPopup : PopupBase
 {
+    public override bool BlockBackgroundClose => true;
+
     [SerializeField] TextMeshProUGUI _resultText;
     [SerializeField] TextMeshProUGUI _subText;
     [SerializeField] TextMeshProUGUI _statsText;

@@ -148,7 +148,7 @@ public static class GameAssetCreator
 
         Make<PassiveSkillData>(db, PassiveSkillType.BerserkerPact, "BerserkerPact",
             "광전사의 맹약",
-            "전체 공격력·공격속도 +25%. 방어율 -0.15.",
+            "전체 공격력·공격속도 +25%. 방어율 -15%.",
             PassiveTrigger.None,
             Mod(StatType.Attack,      0.25f,  true,  Target.General),
             Mod(StatType.AttackSpeed, 0.25f,  true,  Target.General),
@@ -168,7 +168,7 @@ public static class GameAssetCreator
 
         var titan = Make<PassiveSkillData>(db, PassiveSkillType.TitanGeneral, "TitanGeneral",
             "거인 장군",
-            "장군 체력·공격력 +30%·+20%. 공격·이동속도 -15%. 체격 +30%.",
+            "장군 체력·공격력 +30%·+20%. 공격·이동속도 -15%. 크기 +30%.",
             PassiveTrigger.None,
             Mod(StatType.MaxHp,       0.30f,  true, Target.General),
             Mod(StatType.Attack,      0.20f,  true, Target.General),

@@ -1,45 +1,65 @@
-using Unity.Entities;
 using BattleGame.Units;
 
 // ============================================================
 //  AbilitySacrificeForce.cs  [Special / OnSoldierDeath]
-//  C04 희생의 힘 — 병사 사망 수 × BonusPerDeath 만큼 공격력·최대체력 영구 증가 (1회 제한).
-//  PassiveConditionState 를 재사용해 1회 발동을 추적한다.
+//  C04 희생의 힘 — 병사 사망마다 장군 공격력·체력 누적 증가.
+//  전투 내내 유지 (Duration -1), 스테이지 종료 시 초기화.
+//  Attack / MaxHp 각각 영구 Add 항목으로 버퍼에 합산 관리.
 // ============================================================
 
 [UnityEngine.CreateAssetMenu(fileName = "Ability_C04_SacrificeForce", menuName = "ProjectK/Ability/Special/SacrificeForce")]
 public class AbilitySacrificeForce : AbilityData
 {
     [UnityEngine.Header("희생의 힘 설정")]
-    public float AttackBonusPerDeath = 20f;
-    public float MaxHpBonusPerDeath  = 50f;
+    [UnityEngine.Range(0f, 1f)]
+    public float AttackBonusRatio = 0.05f;
+    [UnityEngine.Range(0f, 1f)]
+    public float MaxHpBonusRatio  = 0.05f;
 
-    // PassiveConditionState 에 IronWill 플래그를 재사용 (SacrificeForce 1회 발동 추적)
+    public override string Description
+        => $"병사 사망마다 공격력 +{AttackBonusRatio * 100f:0}%, 체력 +{MaxHpBonusRatio * 100f:0}%  (전투 내 누적)";
+
     public override PassiveTrigger GetTriggerType() => PassiveTrigger.OnSoldierDeath;
 
     public override void OnTrigger(PassiveTriggerContext ctx)
     {
         if (ctx.SoldierDeathCount <= 0) return;
         var em = ctx.EntityManager;
+        if (!em.HasBuffer<StatusEffectBufferElement>(ctx.GeneralEntity)) return;
         if (!em.HasComponent<StatComponent>(ctx.GeneralEntity)) return;
 
-        // 1회 발동 추적 — PassiveConditionState 가 없으면 조건 없이 항상 발동
-        if (em.HasComponent<PassiveConditionState>(ctx.GeneralEntity))
+        var  stat   = em.GetComponentData<StatComponent>(ctx.GeneralEntity);
+        var  buf    = em.GetBuffer<StatusEffectBufferElement>(ctx.GeneralEntity);
+        int  deaths = ctx.SoldierDeathCount;
+
+        float atkBonus = stat.Base[StatType.Attack] * AttackBonusRatio * deaths;
+        float hpBonus  = stat.Base[StatType.MaxHp]  * MaxHpBonusRatio  * deaths;
+
+        AddOrMerge(buf, StatType.Attack, atkBonus);
+        AddOrMerge(buf, StatType.MaxHp,  hpBonus);
+    }
+
+    static void AddOrMerge(
+        Unity.Entities.DynamicBuffer<StatusEffectBufferElement> buf,
+        StatType stat, float delta)
+    {
+        for (int i = 0; i < buf.Length; i++)
         {
-            var cond = em.GetComponentData<PassiveConditionState>(ctx.GeneralEntity);
-            if (cond.IronWillTriggered) return;  // 이미 발동했으면 종료
-            cond.IronWillTriggered = true;
-            em.SetComponentData(ctx.GeneralEntity, cond);
+            var b = buf[i];
+            if (b.Stat == stat && b.Mode == EffectMode.Add && b.Duration < 0f)
+            {
+                b.Delta += delta;
+                buf[i]   = b;
+                return;
+            }
         }
-
-        float atkBonus = AttackBonusPerDeath * ctx.SoldierDeathCount;
-        float hpBonus  = MaxHpBonusPerDeath  * ctx.SoldierDeathCount;
-
-        var stat = em.GetComponentData<StatComponent>(ctx.GeneralEntity);
-        stat.Base[StatType.Attack]  += atkBonus;
-        stat.Base[StatType.MaxHp]   += hpBonus;
-        stat.Final[StatType.Attack] += atkBonus;
-        stat.Final[StatType.MaxHp]  += hpBonus;
-        em.SetComponentData(ctx.GeneralEntity, stat);
+        buf.Add(new StatusEffectBufferElement
+        {
+            Stat      = stat,
+            Delta     = delta,
+            Mode      = EffectMode.Add,
+            Duration  = -1f,
+            Remaining = float.MaxValue,
+        });
     }
 }

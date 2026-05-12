@@ -114,6 +114,7 @@ public class UserDataManager : PureSingleton<UserDataManager>
         RegisterSection(new EquipInventoryData());
         RegisterSection(new DeploymentData());
         RegisterSection(new RunAbilityData());
+        RegisterSection(new RelicInventoryData());
 
         LoadAll();
         AutoDeployFirstHeroIfNeeded();
