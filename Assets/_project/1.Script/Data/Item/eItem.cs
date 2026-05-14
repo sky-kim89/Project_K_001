@@ -21,7 +21,8 @@ public enum eItem
     Gem     = 1,
     Energy  = 2,
     Stamina = 3,
-    Honor   = 4,   // 명예 — PvP 콘텐츠용
+    Honor               = 4,   // 명예 — PvP 콘텐츠용
+    ReincarnationPoint  = 5,   // 환생 포인트 — 유물 강화에 사용
 
     // ── 성장 재료 (Material) ────────────────── 100~199
     ExpBook             = 100,  // 경험서         — 유닛 경험치
@@ -60,6 +61,7 @@ public static class ItemExtensions
         eItem.Energy              => "에너지",
         eItem.Stamina             => "스태미나",
         eItem.Honor               => "명예",
+        eItem.ReincarnationPoint  => "환생 포인트",
         eItem.ExpBook             => "경험서",
         eItem.BattleStone         => "전투석",
         eItem.SkillScroll         => "스킬 서적",
@@ -83,6 +85,7 @@ public static class ItemExtensions
         eItem.Energy              => "item_energy",
         eItem.Stamina             => "item_stamina",
         eItem.Honor               => "item_honor",
+        eItem.ReincarnationPoint  => "item_reincarnation_point",
         eItem.ExpBook             => "item_expbook",
         eItem.BattleStone         => "item_battlestone",
         eItem.SkillScroll         => "item_skillscroll",

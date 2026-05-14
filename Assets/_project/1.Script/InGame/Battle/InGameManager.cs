@@ -125,10 +125,11 @@ public class InGameManager : MonoBehaviour
     /// <summary>결과 팝업 확인 후 — 어빌리티를 뽑을 수 있으면 선택 팝업, 아니면 바로 로비.</summary>
     void OpenAbilitySelectOrReturnToLobby()
     {
-        var db             = AbilityDatabase.Current;
-        var runAbility     = UserDataManager.Instance?.Get<RunAbilityData>();
-        var relicInventory = UserDataManager.Instance?.Get<RelicInventoryData>();
-        var relicDb        = RelicDatabase.Current;
+        var db                = AbilityDatabase.Current;
+        var runAbility        = UserDataManager.Instance?.Get<RunAbilityData>();
+        var relicInventory    = UserDataManager.Instance?.Get<RelicInventoryData>();
+        var relicDb           = RelicDatabase.Current;
+        var reincarnationData = UserDataManager.Instance?.Get<ReincarnationData>();
 
         if (db != null && runAbility != null && PopupManager.Instance != null)
         {
@@ -142,7 +143,7 @@ public class InGameManager : MonoBehaviour
                     RecordStageClear();
                     UserDataManager.Instance.RequestSave();
                     LobbyManager.Instance.ReturnToLobby();
-                });
+                }, db, runAbility, relicInventory, relicDb, reincarnationData);
                 return;
             }
         }

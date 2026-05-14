@@ -51,6 +51,20 @@ public class RelicData : ScriptableObject
     [Tooltip("true 이면 값을 % 배율이 아닌 절대값으로 적용 (SoldierCount, SkillCooldownReduce 등)")]
     public bool IsAbsoluteValue;
 
+    // ── 카테고리 ──────────────────────────────────────────────
+
+    public RelicCategory GetCategory()
+    {
+        if (EffectType == RelicEffectType.Stat) return RelicCategory.Stat;
+        return SystemEffect switch
+        {
+            RelicSystemEffect.AbilityRefreshCount   => RelicCategory.Ability,
+            RelicSystemEffect.AbilityChoiceCount     => RelicCategory.Ability,
+            RelicSystemEffect.AbilityAdvancedChance  => RelicCategory.Ability,
+            _                                        => RelicCategory.Currency,
+        };
+    }
+
     // ── 설명 자동 생성 ────────────────────────────────────────
 
     /// <summary>현재 레벨 기준 효과 설명 문자열.</summary>

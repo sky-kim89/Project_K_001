@@ -22,6 +22,7 @@ public enum SaveKey
     DeploymentData  = 5,
     RunAbility      = 6,
     RelicInventory  = 7,
+    Reincarnation   = 8,
 }
 
 public interface ISaveSection

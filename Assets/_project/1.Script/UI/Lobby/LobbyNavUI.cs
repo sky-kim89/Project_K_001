@@ -6,7 +6,7 @@ using UnityEngine.UI;
 //  하단 내비게이션 바 — 탭 버튼과 컨텐츠 패널을 연결한다.
 //
 //  Inspector 설정:
-//    NavButtons : 하단 버튼 5개 (홈·영웅·전투·상점·프로필 순서)
+//    NavButtons : 하단 버튼 5개 (상점·영웅·전투·유물·프로필 순서)
 //    Panels     : 대응하는 컨텐츠 패널 5개 (같은 순서)
 //    DefaultTab : 첫 활성 탭 인덱스 (기본 2 = 전투)
 //

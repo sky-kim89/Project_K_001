@@ -50,11 +50,12 @@ public static class ItemIconGenerator
         Save("item_equip_upgrade_stone.png",  DrawEquipUpgradeStone);
         Save("item_equipbox.png",             DrawEquipBox);
         Save("item_soldier_shard.png",        DrawSoldierShard);
+        Save("item_reincarnation_point.png",  DrawReincarnationPoint);
 
         AssetDatabase.Refresh();
         ApplySpriteImport(ITEM_PATH, 48);
         AssetDatabase.SaveAssets();
-        Debug.Log("[ItemIconGenerator] 아이템 아이콘 12종 생성 완료.");
+        Debug.Log("[ItemIconGenerator] 아이템 아이콘 13종 생성 완료.");
     }
 
     // ═══════════════════════════════════════════════════════
@@ -312,6 +313,37 @@ public static class ItemIconGenerator
         // 광택 하이라이트
         p.FillCircleAlpha(16, 14, 4, HA("BBEEFF", 110));
         p.FillCircle(16, 14, 2, HA("FFFFFF", 180));
+    }
+
+    // ── Reincarnation Point (환생 포인트) ─────────────────
+    static void DrawReincarnationPoint(P p)
+    {
+        p.BgGrad(H("100804"), H("2C1804"));
+        p.RoundedBorder(10, 2, H("CC8822"));
+        // 외곽 글로우
+        p.FillCircleAlpha(24, 24, 18, HA("FF9900", 35));
+        p.FillCircleAlpha(24, 24, 12, HA("FFBB44", 30));
+        // 원형 화살표 호 (30° ~ 320°, 시계 방향)
+        var gold  = H("D4A840");
+        var ltGold = H("FFE080");
+        for (int i = 30; i <= 320; i += 5)
+        {
+            float a = i * Mathf.Deg2Rad;
+            int x = 24 + Mathf.RoundToInt(Mathf.Cos(a) * 14);
+            int y = 24 + Mathf.RoundToInt(Mathf.Sin(a) * 14);
+            p.FillCircle(x, y, 3, gold);
+            int xi = 24 + Mathf.RoundToInt(Mathf.Cos(a) * 12);
+            int yi = 24 + Mathf.RoundToInt(Mathf.Sin(a) * 12);
+            p.FillCircle(xi, yi, 1, ltGold);
+        }
+        // 화살표 머리 (320° 근처)
+        float ah = 320 * Mathf.Deg2Rad;
+        int ax = 24 + Mathf.RoundToInt(Mathf.Cos(ah) * 14);
+        int ay = 24 + Mathf.RoundToInt(Mathf.Sin(ah) * 14);
+        p.FillTri(ax, ay, ax + 7, ay - 3, ax + 3, ay + 8, gold);
+        // 중앙 별
+        DrawStar(p, 24, 24, 7, 3, H("FFD060"), H("D4A840"));
+        p.FillCircle(24, 24, 2, H("FFFFAA"));
     }
 
     // ── EquipBox (장비 박스) ──────────────────────────────

@@ -40,6 +40,12 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
 
         GetComponent<UnitAppearanceBridge>()?.ApplyEnemy(race, unitName);
 
+        // 유물 적 약화 적용 (EnemyMaxHpReduction / EnemyAttackReduction)
+        var relicDb  = RelicDatabase.Current;
+        var relicInv = UserDataManager.Instance?.Get<RelicInventoryData>();
+        if (relicDb != null && relicInv != null)
+            RelicApplier.ApplyEnemyWeaken(_stat, relicInv, relicDb);
+
         SpawnEntity();
     }
 

@@ -15,6 +15,14 @@ public enum RelicRarity
     Legendary = 4,  // 전설   — 주황  (UnitGrade.Epic     과 동일)
 }
 
+// ── 유물 표시 카테고리 (정렬 순서: 스탯→재화→어빌리티) ──────────
+public enum RelicCategory
+{
+    Stat     = 0,  // 장수·병사 스탯 유물 (IDs 2xx, 3xx)
+    Currency = 1,  // 보상·재화 관련 시스템 유물 (IDs 104~108)
+    Ability  = 2,  // 어빌리티 관련 시스템 유물 (IDs 101~103)
+}
+
 // ── 유물 효과 분류 ────────────────────────────────────────────
 public enum RelicEffectType
 {

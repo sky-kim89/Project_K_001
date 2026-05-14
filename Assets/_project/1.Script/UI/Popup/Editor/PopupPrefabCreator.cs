@@ -424,10 +424,11 @@ public static class PopupPrefabCreator
     [MenuItem("Tools/Project K/Popup/Create AbilitySelectPopup Prefab")]
     static void CreateAbilitySelectPopup()
     {
-        const float popupW  = 920f;
-        const float popupH  = 760f;
-        const float cardW   = 272f;
-        const float cardH   = 580f;
+        const float popupW       = 920f;
+        const float popupH       = 840f;   // 새로고침 행 추가로 높이 증가
+        const float cardW        = 272f;
+        const float cardH        = 580f;
+        const float refreshRowH  = 64f;
 
         var root  = CreateRoot<AbilitySelectPopup>("AbilitySelectPopup", popupW, popupH);
         var popup = root.GetComponent<AbilitySelectPopup>();
@@ -438,14 +439,30 @@ public static class PopupPrefabCreator
         var titleTmp = AddTMP(root, "TitleText", "어빌리티 선택", UIScale.FontLg, FontStyles.Bold);
         SetRect(titleTmp.rectTransform, new Vector2(0f, popupH / 2f - 60f), new Vector2(800f, 70f));
 
-        // 카드 영역 (HorizontalLayoutGroup)
+        // ── 새로고침 행 ───────────────────────────────────────
+        var refreshRow = new GameObject("RefreshRow", typeof(RectTransform));
+        refreshRow.transform.SetParent(root.transform, false);
+        SetRect(refreshRow.GetComponent<RectTransform>(),
+            new Vector2(0f, popupH / 2f - 130f), new Vector2(popupW - 40f, refreshRowH));
+
+        var refreshBtn = AddButton(refreshRow, "RefreshBtn", "새로고침",
+            new Color(0.15f, 0.40f, 0.55f), UIScale.FontSm);
+        SetRect(refreshBtn.GetComponent<RectTransform>(), new Vector2(-200f, 0f), new Vector2(220f, 56f));
+
+        var refreshCountTmp = AddTMP(refreshRow, "RefreshCountText",
+            "새로고침  0회 남음", UIScale.FontSm, FontStyles.Normal);
+        refreshCountTmp.color = new Color(0.60f, 0.85f, 1.0f);
+        refreshCountTmp.alignment = TextAlignmentOptions.Left;
+        SetRect(refreshCountTmp.rectTransform, new Vector2(130f, 0f), new Vector2(380f, refreshRowH));
+
+        // ── 카드 영역 (HorizontalLayoutGroup) ─────────────────
         var cardArea = new GameObject("CardArea", typeof(RectTransform));
         cardArea.transform.SetParent(root.transform, false);
         var cardAreaRt = cardArea.GetComponent<RectTransform>();
         cardAreaRt.anchorMin        = new Vector2(0.5f, 0.5f);
         cardAreaRt.anchorMax        = new Vector2(0.5f, 0.5f);
         cardAreaRt.pivot            = new Vector2(0.5f, 0.5f);
-        cardAreaRt.anchoredPosition = new Vector2(0f, -30f);
+        cardAreaRt.anchoredPosition = new Vector2(0f, -60f);
         cardAreaRt.sizeDelta        = new Vector2(popupW - 40f, cardH);
         var hlg = cardArea.AddComponent<HorizontalLayoutGroup>();
         hlg.spacing              = 16f;
@@ -466,10 +483,12 @@ public static class PopupPrefabCreator
             cards[i] = card.GetComponent<AbilityCardUI>();
         }
 
-        // SerializedObject 연결
+        // ── SerializedObject 연결 ─────────────────────────────
         var so = new SerializedObject(popup);
-        SetEnum(so, "_popupType", (int)PopupType.AbilitySelect);
-        SetObj (so, "_titleTmp",  titleTmp);
+        SetEnum(so, "_popupType",       (int)PopupType.AbilitySelect);
+        SetObj (so, "_titleTmp",        titleTmp);
+        SetObj (so, "_refreshBtn",      refreshBtn.GetComponent<Button>());
+        SetObj (so, "_refreshCountTmp", refreshCountTmp);
 
         var cardsProp = so.FindProperty("_cards");
         cardsProp.arraySize = 3;

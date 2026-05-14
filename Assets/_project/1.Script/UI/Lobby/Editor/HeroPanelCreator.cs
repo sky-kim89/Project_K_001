@@ -2137,7 +2137,7 @@ public static class HeroPanelCreator
         }
 
         var grid = content.GetComponent<GridLayoutGroup>();
-        grid.cellSize        = new Vector2(360, 170);
+        grid.cellSize        = new Vector2(356, 170);
         grid.spacing         = new Vector2(10, 10);
         grid.padding         = new RectOffset(10, 10, 10, 10);
         grid.constraint      = GridLayoutGroup.Constraint.FixedColumnCount;
@@ -2155,7 +2155,7 @@ public static class HeroPanelCreator
     }
 
     // ============================================================
-    //  HeroCard 프리팹 (360×170px)
+    //  HeroCard 프리팹 (356×170px)
     //  레이아웃: [초상화 100px] | 이름  등급
     //                            Lv.X  직업
     //                            ──────────
