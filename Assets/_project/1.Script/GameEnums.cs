@@ -45,6 +45,8 @@ public enum PopupType
     Disassemble     = 8,   // 장수·장비 분해
     AbilitySelect   = 9,   // 어빌리티 3택 선택
     AbilityList     = 10,  // 어빌리티 전체 목록 확인
+    MercenaryShop   = 11,  // 용병 상점 (신규 고용 / 해고)
+    HeroDetail      = 12,  // 배치 장수 상세 + 해고
 }
 
 // ── 로그인 상태 ───────────────────────────────────────────────

@@ -13,7 +13,7 @@ public class AbilityArmorReaction : AbilityData
 {
     [UnityEngine.Header("철갑 반응 설정")]
     [UnityEngine.Range(0f, 0.5f)]
-    public float DefenseBuff = 0.02f;
+    public float DefenseBuff = 0.01f;
 
     public override string Description
         => $"피격마다 방어율 +{DefenseBuff * 100f:0}%  (전투 내 누적, 최대 95%)";

@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Project K — UI 시안 (가로형)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0a;font-family:'Segoe UI',sans-serif;display:flex;flex-direction:column;align-items:center;padding:20px 0 40px;min-height:100vh}
+
+.switcher{display:flex;gap:8px;margin-bottom:14px}
+.switcher button{padding:9px 22px;border:2px solid #333;background:#1a1a1a;color:#888;border-radius:7px;cursor:pointer;font-size:13px;font-weight:700;transition:.2s}
+.switcher button.on{border-color:#f0a832;color:#f0a832;background:#201a08}
+
+/* 게임 프레임 960×540 */
+.frame{width:960px;height:540px;border-radius:10px;overflow:hidden;position:relative;border:2px solid #333;box-shadow:0 0 40px rgba(0,0,0,.9)}
+.design{display:none;width:100%;height:100%;position:relative}
+.design.on{display:block}
+
+.screen{position:absolute;inset:0;overflow:hidden;display:none}
+.screen.on{display:flex;flex-direction:column}
+
+/* ═══════════════════════════════════════════════════════
+   DESIGN A  —  좌측 패널 + 우측 컨텐츠  (다크 네이비/골드)
+═══════════════════════════════════════════════════════ */
+#A{background:#0d1117}
+
+/* 상단 HUD */
+.A-hud{height:44px;background:#161b22;border-bottom:1px solid #21262d;display:flex;align-items:center;padding:0 16px;gap:0;flex-shrink:0}
+.A-hud .logo{color:#e6edf3;font-weight:800;font-size:15px;margin-right:auto}
+.A-hud .cur{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700;margin-left:16px}
+.A-hud .stage-info{font-size:12px;color:#8b949e;margin-right:16px}
+
+/* 좌측 사이드바 */
+.A-body{display:flex;flex:1;overflow:hidden}
+.A-side{width:160px;background:#161b22;border-right:1px solid #21262d;display:flex;flex-direction:column;padding:10px 8px;gap:4px;flex-shrink:0}
+.A-nav{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;color:#8b949e;font-size:13px;font-weight:600;transition:.15s;border:1px solid transparent}
+.A-nav:hover,.A-nav.on{background:#21262d;color:#f0a832;border-color:#f0a83220}
+.A-nav .ni{font-size:18px;flex-shrink:0}
+.A-main{flex:1;overflow-y:auto;padding:14px;background:#0d1117}
+.A-main::-webkit-scrollbar{width:3px}
+.A-main::-webkit-scrollbar-thumb{background:#30363d;border-radius:2px}
+
+/* A 홈 — 2열 레이아웃 */
+.A-home-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;height:100%}
+.A-panel{background:#161b22;border:1px solid #21262d;border-radius:12px;padding:14px;overflow-y:auto}
+.A-panel::-webkit-scrollbar{width:2px}
+.A-panel::-webkit-scrollbar-thumb{background:#30363d}
+.Ap-title{font-size:11px;font-weight:700;color:#8b949e;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+
+/* 장수 카드 (홈) */
+.gcard{display:flex;align-items:center;gap:10px;padding:10px;background:#0d1117;border:1px solid #21262d;border-radius:10px;margin-bottom:8px;cursor:pointer;transition:.15s}
+.gcard:hover{border-color:#f0a83240;background:#111820}
+.gav{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.gname{color:#e6edf3;font-size:13px;font-weight:700}
+.gjob{color:#8b949e;font-size:11px;margin-top:1px}
+.ggrade{display:inline-block;font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;margin-top:4px}
+.ge{background:#7c3aed18;color:#a78bfa;border:1px solid #7c3aed33}
+.gr{background:#1d4ed818;color:#60a5fa;border:1px solid #1d4ed833}
+.gu{background:#15803d18;color:#4ade80;border:1px solid #15803d33}
+.gn{background:#37415118;color:#9ca3af;border:1px solid #37415133}
+.gstats{display:flex;gap:8px;margin-top:5px}
+.gstat{font-size:10px;color:#8b949e}
+.gstat b{color:#e6edf3}
+
+/* 스탯 그리드 */
+.sg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.sc{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:8px;text-align:center}
+.sv{font-size:16px;font-weight:800;color:#e6edf3}
+.sk{font-size:9px;color:#8b949e;margin-top:2px}
+
+/* 스킬/장비 행 */
+.slot-row{display:flex;gap:8px;margin-bottom:10px}
+.slot{flex:1;background:#0d1117;border:1px solid #21262d;border-radius:9px;padding:8px;text-align:center;cursor:pointer;transition:.15s;position:relative}
+.slot:hover{border-color:#f0a83240}
+.slot-icon{font-size:22px;display:block}
+.slot-name{font-size:10px;color:#e6edf3;font-weight:600;margin-top:3px}
+.slot-sub{font-size:9px;color:#8b949e;margin-top:1px}
+.slot-enh{position:absolute;top:3px;right:3px;background:#f0a832;color:#0d1117;font-size:8px;font-weight:800;padding:1px 4px;border-radius:3px}
+.slot.empty{border-style:dashed;border-color:#30363d;opacity:.5}
+
+/* 어빌리티 칩 */
+.ablist{display:flex;flex-direction:column;gap:6px}
+.abitem{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:9px 10px;cursor:pointer;transition:.15s}
+.abitem:hover{border-color:#6366f140}
+.abname{color:#e6edf3;font-size:12px;font-weight:700}
+.abdesc{color:#8b949e;font-size:10px;margin-top:2px;line-height:1.4}
+.abbadge{display:inline-block;font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;margin-bottom:4px}
+.bN{background:#37415118;color:#9ca3af;border:1px solid #37415133}
+.bA{background:#1d4ed818;color:#60a5fa;border:1px solid #1d4ed833}
+.bS{background:#7c3aed18;color:#a78bfa;border:1px solid #7c3aed33}
+
+/* 유물 그리드 */
+.rgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.rcell{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:7px;text-align:center;cursor:pointer;transition:.15s;position:relative}
+.rcell:hover{border-color:#f0a83240}
+.rbar{height:2px;border-radius:1px;margin-bottom:5px}
+.rcell .ri{font-size:20px;display:block}
+.rcell .rn{font-size:8px;color:#8b949e;margin-top:2px;line-height:1.3}
+.rcell .rlv{font-size:8px;font-weight:800;color:#f0a832;margin-top:2px}
+.rcell.lk{opacity:.3;filter:grayscale(.8)}
+.rC{background:#6b7280}.rU{background:#22c55e}.rR{background:#3b82f6}.rEp{background:#8b5cf6}.rL{background:linear-gradient(90deg,#f59e0b,#fcd34d,#f59e0b)}
+
+/* 환생 */
+.reinc-box{background:linear-gradient(135deg,#1a0f2e,#0d1117);border:1px solid #7c3aed33;border-radius:10px;padding:12px;margin-bottom:10px;text-align:center}
+.reinc-pts{font-size:24px;font-weight:900;color:#f0d080;margin:4px 0}
+.reinc-sub{font-size:10px;color:#8b949e;margin-bottom:10px}
+.rbtn{width:100%;padding:10px;background:linear-gradient(135deg,#7c3aed,#6d28d9);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;transition:.15s}
+.rbtn:hover{filter:brightness(1.1)}
+
+/* 전투 */
+.stage-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-bottom:12px}
+.stg{aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-weight:800;font-size:13px;transition:.15s}
+.stg:hover{filter:brightness(1.15)}
+.stg.done{background:#22c55e18;border:1px solid #22c55e33;color:#22c55e}
+.stg.cur{background:#f0a83218;border:2px solid #f0a832;color:#f0a832}
+.stg.lock{background:#21262d;border:1px dashed #30363d;color:#30363d;cursor:default}
+.battle-btn{width:100%;padding:13px;background:linear-gradient(135deg,#f0a832,#e07c0a);border:none;border-radius:10px;color:#0d1117;font-size:15px;font-weight:800;cursor:pointer;transition:.15s}
+.battle-btn:hover{filter:brightness(1.1)}
+.deploy-row{display:flex;gap:8px;margin-bottom:12px}
+.dslot{flex:1;background:#0d1117;border:1px solid #21262d;border-radius:9px;padding:10px;text-align:center;cursor:pointer;transition:.15s}
+.dslot:hover{border-color:#f0a83240}
+.dslot.empty{border-style:dashed;border-color:#30363d;opacity:.5}
+.dslot .di{font-size:24px;display:block}
+.dslot .dn{font-size:10px;color:#e6edf3;font-weight:600;margin-top:4px}
+.dslot .ds{font-size:9px;color:#8b949e;margin-top:1px}
+
+/* ═══════════════════════════════════════════════════════
+   DESIGN B  —  상단 탭 네비 (RPG 황금 다크)
+═══════════════════════════════════════════════════════ */
+#B{background:#110e0a}
+
+.B-hud{height:48px;background:linear-gradient(180deg,#1e1712,#110e0a);border-bottom:2px solid #8b691440;display:flex;align-items:center;padding:0 16px;flex-shrink:0}
+.B-hud .logo{color:#f0d080;font-weight:800;font-size:16px;text-shadow:0 0 12px rgba(240,160,50,.3);margin-right:16px}
+.B-tabs{display:flex;gap:2px;flex:1}
+.B-tab{padding:8px 18px;background:transparent;border:none;border-bottom:2px solid transparent;color:#7a6040;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;letter-spacing:.03em}
+.B-tab:hover,.B-tab.on{color:#f0d080;border-bottom-color:#f0a832;background:#f0a83208}
+.B-curs{display:flex;gap:12px;margin-left:auto}
+.B-cur{font-size:13px;font-weight:700}
+.Bgold{color:#f0a832}.Bgem{color:#60a5fa}.Bpt{color:#a78bfa}
+
+.B-body{flex:1;display:flex;overflow:hidden}
+/* B는 탭에 따라 컨텐츠 패널이 통째로 바뀜 */
+.B-panel{flex:1;overflow-y:auto;padding:14px;display:none}
+.B-panel.on{display:flex;gap:12px}
+.B-panel::-webkit-scrollbar{width:3px}
+.B-panel::-webkit-scrollbar-thumb{background:#3a2a10;border-radius:2px}
+
+/* B 카드 */
+.Bc{background:#1a1410;border:1px solid #8b691428;border-radius:12px;padding:12px;position:relative;overflow:hidden}
+.Bc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#8b6914,transparent)}
+.Bsec{font-size:10px;font-weight:700;color:#8b6914;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+
+/* B 장수 패널 (좌: 목록, 우: 상세) */
+.Bgen-list{width:190px;flex-shrink:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto}
+.Bgen-list::-webkit-scrollbar{width:2px}
+.Bgc{background:#1a1410;border:1px solid #8b691428;border-radius:10px;padding:10px;cursor:pointer;transition:.15s;display:flex;gap:8px;align-items:center}
+.Bgc:hover,.Bgc.on{border-color:#8b691480;background:#201812}
+.Bgc .gavi{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;border:1px solid #8b691430;flex-shrink:0}
+.Bgc .gn{color:#f0d080;font-size:12px;font-weight:700}
+.Bgc .gj{color:#7a6040;font-size:10px;margin-top:2px}
+.Bgen-detail{flex:1;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
+.Bgen-detail::-webkit-scrollbar{width:2px}
+
+.Bstat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.Bsc{background:#110e0a;border-radius:7px;padding:7px;text-align:center}
+.Bsv{font-size:15px;font-weight:800;color:#f0d080}
+.Bsk{font-size:8px;color:#7a6040;margin-top:2px}
+
+.Bslot-row{display:flex;gap:6px}
+.Bslot{flex:1;background:#110e0a;border:1px solid #8b691428;border-radius:8px;padding:8px;text-align:center;cursor:pointer;transition:.15s;position:relative}
+.Bslot:hover{border-color:#8b691480}
+.Bslot-icon{font-size:20px;display:block}
+.Bslot-name{font-size:9px;color:#e0c070;font-weight:600;margin-top:3px}
+.Bslot-sub{font-size:8px;color:#7a6040;margin-top:1px}
+.Benh{position:absolute;top:3px;right:3px;font-size:7px;font-weight:800;color:#f0a832;border:1px solid #8b691440;padding:1px 3px;border-radius:2px}
+
+/* B 어빌리티 */
+.Babi-filters{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.Bfilt{padding:4px 12px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;background:#110e0a;color:#7a6040;border:1px solid #8b691428;transition:.15s}
+.Bfilt:hover,.Bfilt.on{background:#2a1e10;color:#f0d080;border-color:#8b6914}
+.Babi-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;overflow-y:auto;align-content:start}
+.Babi-grid::-webkit-scrollbar{width:2px}
+.Babc{background:#110e0a;border:1px solid #8b691428;border-radius:10px;padding:10px;cursor:pointer;transition:.15s}
+.Babc:hover{border-color:#8b691470;background:#1a1410}
+.Babname{color:#f0d080;font-size:12px;font-weight:700}
+.Babdesc{color:#7a6040;font-size:10px;margin-top:3px;line-height:1.4}
+
+/* B 유물 */
+.Brel-left{width:220px;flex-shrink:0;display:flex;flex-direction:column;gap:8px}
+.Breinc{background:linear-gradient(135deg,#1a0f2e,#110e0a);border:1px solid #7c3aed33;border-radius:10px;padding:14px;text-align:center}
+.Bpts{font-size:28px;font-weight:900;color:#f0d080;margin:4px 0}
+.Brb{width:100%;padding:10px;background:linear-gradient(135deg,#7c3aed,#6d28d9);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:800;cursor:pointer;transition:.15s}
+.Brb:hover{filter:brightness(1.1)}
+.Brel-grid{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:7px;align-content:start;overflow-y:auto}
+.Brel-grid::-webkit-scrollbar{width:2px}
+.Brc{background:#110e0a;border:1px solid #8b691428;border-radius:9px;padding:8px;text-align:center;cursor:pointer;transition:.15s;position:relative}
+.Brc:hover{border-color:#8b691470}
+.Brc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:9px 9px 0 0}
+.Brc.rC::before{background:#6b7280}.Brc.rU::before{background:#22c55e}.Brc.rR::before{background:#3b82f6}.Brc.rEp::before{background:#8b5cf6}.Brc.rL::before{background:linear-gradient(90deg,#f59e0b,#fcd34d,#f59e0b)}
+.Brc .bri{font-size:22px;display:block;margin-top:4px}
+.Brc .brn{font-size:8px;color:#e0c070;font-weight:600;margin-top:3px}
+.Brc .brlv{font-size:8px;font-weight:800;color:#f0a832;margin-top:2px}
+.Brc.lk{opacity:.3;filter:grayscale(.8)}
+
+/* B 전투 */
+.Bbat-left{width:260px;flex-shrink:0;display:flex;flex-direction:column;gap:8px}
+.Bstage-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.Bstg{aspect-ratio:1;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-weight:800;font-size:12px;transition:.15s}
+.Bstg.done{background:#22c55e18;border:1px solid #22c55e33;color:#22c55e}
+.Bstg.cur{background:#f0a83218;border:2px solid #f0a832;color:#f0a832}
+.Bstg.lock{background:#1a1410;border:1px dashed #3a2a10;color:#3a2a10;cursor:default}
+.Bbattle-btn{width:100%;padding:12px;background:linear-gradient(135deg,#dc2626,#b91c1c);border:2px solid #ef4444;border-radius:9px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;transition:.15s;text-shadow:0 0 10px rgba(239,68,68,.5)}
+.Bbattle-btn:hover{filter:brightness(1.1)}
+.Bbat-right{flex:1;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
+.Bdeploy{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.Bdslot{background:#110e0a;border:1px solid #8b691428;border-radius:9px;padding:12px 8px;text-align:center;cursor:pointer;transition:.15s}
+.Bdslot:hover{border-color:#8b691470}
+.Bdslot.empty{border-style:dashed;opacity:.4}
+.Bdslot .bdi{font-size:26px;display:block}
+.Bdslot .bdn{font-size:10px;color:#f0d080;font-weight:600;margin-top:4px}
+.Bdslot .bds{font-size:9px;color:#7a6040;margin-top:1px}
+
+/* ═══════════════════════════════════════════════════════
+   DESIGN C  —  중앙 허브 + 슬라이드 패널 (청보라 퓨처)
+═══════════════════════════════════════════════════════ */
+#C{background:#080c14}
+
+.C-hud{height:46px;background:#0d1424;border-bottom:1px solid #1e3a5f;display:flex;align-items:center;padding:0 16px;flex-shrink:0}
+.C-hud .logo{color:#e2e8f0;font-weight:800;font-size:15px;flex:1}
+.C-navbtns{display:flex;gap:6px;margin-right:16px}
+.C-nb{padding:6px 14px;background:#0d1424;border:1px solid #1e3a5f;border-radius:6px;color:#64748b;font-size:12px;font-weight:700;cursor:pointer;transition:.15s}
+.C-nb:hover,.C-nb.on{background:#1e3a5f;color:#60a5fa;border-color:#3b82f6}
+.C-curs{display:flex;gap:12px}
+.Cc{font-size:13px;font-weight:700}
+.Ccg{color:#f0a832}.Ccd{color:#60a5fa}.Ccp{color:#a78bfa}
+
+.C-body{flex:1;display:flex;overflow:hidden;position:relative}
+
+/* C: 홈 허브 — 좌측 장수 패널 + 중앙 큰 메뉴 */
+.C-hub{display:flex;width:100%;height:100%}
+.C-hub-left{width:220px;background:#0d1424;border-right:1px solid #1e3a5f;padding:12px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex-shrink:0}
+.C-hub-left::-webkit-scrollbar{width:2px}
+.C-hub-left::-webkit-scrollbar-thumb{background:#1e3a5f;border-radius:2px}
+.Chub-gcard{background:#080c14;border:1px solid #1e3a5f;border-radius:10px;padding:10px;cursor:pointer;transition:.15s;display:flex;gap:8px;align-items:center}
+.Chub-gcard:hover{border-color:#3b82f6;background:#0f1929}
+.Chub-gcard.on{border-color:#3b82f6;background:#0f1929}
+
+.C-hub-center{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:10px;padding:14px}
+.Chub-card{border-radius:14px;cursor:pointer;transition:.2s;display:flex;flex-direction:column;justify-content:space-between;padding:18px;position:relative;overflow:hidden}
+.Chub-card:hover{transform:translateY(-2px);filter:brightness(1.1)}
+.Chub-card:active{transform:scale(.98)}
+.Chub-card .cc-icon{font-size:40px}
+.Chub-card .cc-name{font-size:16px;font-weight:800;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5)}
+.Chub-card .cc-sub{font-size:11px;color:rgba(255,255,255,.6);margin-top:3px}
+.Chub-card .cc-glow{position:absolute;bottom:-30px;right:-30px;width:100px;height:100px;border-radius:50%;opacity:.2;filter:blur(20px)}
+.chc-gen{background:linear-gradient(135deg,#1e3a5f,#1e4080)}.chc-gen .cc-glow{background:#3b82f6}
+.chc-abi{background:linear-gradient(135deg,#2d1b69,#4c1d95)}.chc-abi .cc-glow{background:#8b5cf6}
+.chc-rel{background:linear-gradient(135deg,#1a1208,#3d2800)}.chc-rel .cc-glow{background:#f59e0b}
+.chc-bat{background:linear-gradient(135deg,#1a0808,#6b1111)}.chc-bat .cc-glow{background:#ef4444}
+
+/* C 슬라이드 패널 (오른쪽에서 슬라이드) */
+.C-slide{position:absolute;top:0;right:-100%;bottom:0;width:100%;background:#080c14;transition:right .25s ease;display:flex;flex-direction:column;z-index:10}
+.C-slide.open{right:0}
+.C-slide-head{height:46px;background:#0d1424;border-bottom:1px solid #1e3a5f;display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0}
+.C-back{background:transparent;border:1px solid #1e3a5f;border-radius:6px;color:#60a5fa;font-size:13px;font-weight:700;cursor:pointer;padding:5px 12px;transition:.15s}
+.C-back:hover{background:#1e3a5f}
+.C-slide-head .stitle{color:#e2e8f0;font-weight:700;font-size:15px}
+.C-slide-body{flex:1;overflow:hidden;display:flex;gap:0}
+
+/* C 장수 슬라이드 — 3분할 */
+.Cg-list{width:180px;background:#0d1424;border-right:1px solid #1e3a5f;padding:10px;display:flex;flex-direction:column;gap:5px;overflow-y:auto;flex-shrink:0}
+.Cg-list::-webkit-scrollbar{width:2px}
+.Cgc{background:#080c14;border:1px solid #1e3a5f;border-radius:9px;padding:9px;cursor:pointer;transition:.15s;display:flex;gap:8px;align-items:center}
+.Cgc:hover,.Cgc.on{border-color:#3b82f6;background:#0f1929}
+.Cgc .cavi{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;border:1px solid #1e3a5f;flex-shrink:0}
+.Cgc .cgn{color:#e2e8f0;font-size:12px;font-weight:700}
+.Cgc .cgj{color:#64748b;font-size:10px;margin-top:1px}
+
+.Cg-detail{flex:1;padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+.Cg-detail::-webkit-scrollbar{width:2px}
+.Cdc{background:#0d1424;border:1px solid #1e3a5f;border-radius:10px;padding:12px}
+.Cdtitle{font-size:10px;font-weight:700;color:#64748b;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.Cstat-g{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.Csc{background:#080c14;border:1px solid #1e3a5f;border-radius:7px;padding:7px;text-align:center}
+.Csv{font-size:14px;font-weight:800;color:#e2e8f0}
+.Csk{font-size:8px;color:#64748b;margin-top:2px}
+.Csd{font-size:8px;font-weight:700;color:#4ade80;margin-top:2px}
+
+.Cslot-row{display:flex;gap:6px}
+.Cslot{flex:1;background:#080c14;border:1px solid #1e3a5f;border-radius:8px;padding:8px;text-align:center;cursor:pointer;transition:.15s;position:relative}
+.Cslot:hover{border-color:#3b82f6}
+.Cslot-icon{font-size:20px;display:block}
+.Cslot-name{font-size:9px;color:#e2e8f0;font-weight:600;margin-top:3px}
+.Cslot-sub{font-size:8px;color:#64748b;margin-top:1px}
+.Cenh{position:absolute;top:3px;right:3px;font-size:7px;font-weight:800;color:#f0a832;background:#3d2800;padding:1px 4px;border-radius:3px}
+
+.Cg-effect{width:200px;background:#0d1424;border-left:1px solid #1e3a5f;padding:12px;flex-shrink:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto}
+.Cg-effect::-webkit-scrollbar{width:2px}
+.Ceff-title{font-size:10px;font-weight:700;color:#64748b;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.Ceff-item{background:#080c14;border:1px solid #1e3a5f;border-radius:7px;padding:8px}
+.Ceff-name{font-size:11px;color:#e2e8f0;font-weight:700}
+.Ceff-desc{font-size:9px;color:#64748b;margin-top:2px;line-height:1.4}
+.Ceff-badge{display:inline-block;font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;margin-bottom:4px}
+.CbN{background:#1e3a5f;color:#60a5fa}
+.CbA{background:#2d1b69;color:#a78bfa}
+.CbS{background:#7c1d1d;color:#f87171}
+
+/* C 어빌리티 슬라이드 */
+.Cabi-body{display:flex;gap:0;width:100%;height:100%}
+.Cabi-filter-col{width:140px;background:#0d1424;border-right:1px solid #1e3a5f;padding:10px;display:flex;flex-direction:column;gap:4px;flex-shrink:0}
+.Cafi{padding:8px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;color:#64748b;transition:.15s;border:1px solid transparent}
+.Cafi:hover,.Cafi.on{background:#1e3a5f;color:#60a5fa;border-color:#3b82f620}
+.Cafi-label{font-size:9px;color:#475569;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:8px 12px 4px;margin-top:4px}
+.Cabi-list{flex:1;padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.Cabi-list::-webkit-scrollbar{width:2px}
+.Cabi-item{background:#0d1424;border:1px solid #1e3a5f;border-radius:10px;padding:11px;display:flex;gap:10px;align-items:flex-start;cursor:pointer;transition:.15s}
+.Cabi-item:hover{border-color:#3b82f6;background:#0f1929}
+.Cabi-ico{width:40px;height:40px;background:#080c14;border:1px solid #1e3a5f;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.Cabi-info .can{color:#e2e8f0;font-size:12px;font-weight:700}
+.Cabi-info .cad{color:#64748b;font-size:10px;margin-top:3px;line-height:1.4}
+.Cabi-info .cat{font-size:9px;color:#475569;margin-top:3px}
+.Cabi-stat{margin-left:auto;text-align:right;flex-shrink:0}
+.Cabi-stat .pct{font-size:14px;font-weight:800;color:#4ade80}
+.Cabi-stat .ptg{font-size:9px;color:#64748b;margin-top:1px}
+
+/* C 유물 슬라이드 */
+.Crel-body{display:flex;gap:0;width:100%;height:100%}
+.Crel-left{width:200px;background:#0d1424;border-right:1px solid #1e3a5f;padding:12px;display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.Creinc-panel{background:linear-gradient(135deg,#0d1424,#1a0f2e);border:1px solid #3b1f7a;border-radius:10px;padding:14px;text-align:center}
+.Creinc-title{color:#a78bfa;font-size:10px;font-weight:700;letter-spacing:.1em;margin-bottom:6px}
+.Creinc-pts{font-size:26px;font-weight:900;color:#e2e8f0;margin-bottom:2px}
+.Creinc-sub{font-size:9px;color:#64748b;margin-bottom:10px}
+.Crb{width:100%;padding:10px;background:linear-gradient(135deg,#7c3aed,#4c1d95);border:1px solid #8b5cf6;border-radius:8px;color:#fff;font-size:12px;font-weight:800;cursor:pointer;transition:.15s}
+.Crb:hover{filter:brightness(1.15)}
+.Crel-grid{flex:1;padding:12px;overflow-y:auto;display:grid;grid-template-columns:repeat(5,1fr);gap:7px;align-content:start}
+.Crel-grid::-webkit-scrollbar{width:2px}
+.Crc{background:#0d1424;border:1px solid #1e3a5f;border-radius:9px;padding:8px;text-align:center;cursor:pointer;transition:.15s;position:relative;overflow:hidden}
+.Crc:hover{border-color:#60a5fa;background:#0f1929}
+.Crc .cr-bar{height:2px;border-radius:1px;margin-bottom:5px}
+.Crc .cr-icon{font-size:22px;display:block}
+.Crc .cr-name{font-size:8px;color:#94a3b8;margin-top:3px;line-height:1.3;font-weight:600}
+.Crc .cr-lv{font-size:8px;font-weight:800;color:#f0a832;margin-top:2px}
+.Crc .cr-cost{font-size:8px;color:#f0a832;margin-top:2px}
+.Crc.lk{opacity:.25;filter:grayscale(.8)}
+
+/* C 전투 슬라이드 */
+.Cbat-body{display:flex;gap:0;width:100%;height:100%}
+.Cbat-left{width:280px;background:#0d1424;border-right:1px solid #1e3a5f;padding:12px;display:flex;flex-direction:column;gap:10px;flex-shrink:0;overflow-y:auto}
+.Cbat-left::-webkit-scrollbar{width:2px}
+.Cbat-right{flex:1;padding:12px;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+.Cbat-right::-webkit-scrollbar{width:2px}
+.Cstage-g{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.Cstg{aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-weight:800;font-size:12px;transition:.15s}
+.Cstg.done{background:#0d241a;border:1px solid #22c55e33;color:#22c55e}
+.Cstg.cur{background:#0f1929;border:2px solid #3b82f6;color:#60a5fa}
+.Cstg.lock{background:#0d1424;border:1px dashed #1e3a5f;color:#1e3a5f;cursor:default}
+.Cdeploy{display:flex;gap:8px;flex-wrap:wrap}
+.Cdslot{background:#080c14;border:1px solid #1e3a5f;border-radius:10px;padding:12px 10px;text-align:center;cursor:pointer;transition:.15s;width:calc(20% - 7px)}
+.Cdslot:hover{border-color:#3b82f6;background:#0f1929}
+.Cdslot.empty{border-style:dashed;opacity:.4}
+.Cdslot .cdi{font-size:24px;display:block}
+.Cdslot .cdn{font-size:10px;color:#e2e8f0;font-weight:600;margin-top:4px}
+.Cdslot .cds{font-size:9px;color:#64748b;margin-top:1px}
+.C-battle-btn{width:100%;padding:14px;background:linear-gradient(135deg,#1e3a5f,#1e4080);border:1px solid #3b82f6;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;transition:.15s;margin-top:auto}
+.C-battle-btn:hover{filter:brightness(1.15);box-shadow:0 0 20px rgba(59,130,246,.2)}
+
+/* 공통 유틸 */
+.gold{color:#f0a832}.gem{color:#60a5fa}.pt{color:#a78bfa}
+.sec-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.sec-lbl{font-size:10px;font-weight:700;color:#64748b;letter-spacing:.08em;text-transform:uppercase}
+.sec-more{font-size:10px;color:#60a5fa;cursor:pointer;font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="switcher">
+  <button class="on" onclick="sw('A',this)">시안 A — 좌측 사이드바</button>
+  <button onclick="sw('B',this)">시안 B — 상단 탭</button>
+  <button onclick="sw('C',this)">시안 C — 허브 + 슬라이드</button>
+</div>
+
+<div class="frame">
+
+<!-- ══════ DESIGN A ══════ -->
+<div id="A" class="design on">
+
+  <!-- A: 홈 -->
+  <div id="A-home" class="screen on">
+    <div class="A-hud">
+      <span class="logo">⚔️ Project K</span>
+      <span class="stage-info">스테이지 7 진행 중</span>
+      <span class="cur gold">💰 2,450</span>
+      <span class="cur gem">💎 30</span>
+      <span class="cur pt">🔮 125pt</span>
+    </div>
+    <div class="A-body">
+      <div class="A-side">
+        <div class="A-nav on" onclick="Ago('A-home');Aon(this)"><span class="ni">🏠</span> 홈</div>
+        <div class="A-nav" onclick="Ago('A-gen');Aon(this)"><span class="ni">⚔️</span> 장수</div>
+        <div class="A-nav" onclick="Ago('A-abi');Aon(this)"><span class="ni">✨</span> 어빌리티</div>
+        <div class="A-nav" onclick="Ago('A-rel');Aon(this)"><span class="ni">🔮</span> 유물</div>
+        <div style="flex:1"></div>
+        <div class="A-nav" onclick="Ago('A-bat');Aon(this)"><span class="ni">🗡️</span> 전투</div>
+      </div>
+      <div class="A-main">
+        <div class="A-home-grid">
+          <!-- 좌 패널: 장수 목록 -->
+          <div class="A-panel">
+            <div class="Ap-title">장수 현황</div>
+            <div class="gcard" onclick="Ago('A-gen');Aon(document.querySelectorAll('#A .A-nav')[1])">
+              <div class="gav" style="background:linear-gradient(135deg,#1e3a5f,#2d4a8f)">🛡️</div>
+              <div><div class="gname">아서</div><div class="gjob">기사 · Lv.12</div><span class="ggrade ge">Epic</span><div class="gstats"><span class="gstat">⚔️<b>340</b></span><span class="gstat">❤️<b>1820</b></span><span class="gstat">🛡️<b>22%</b></span></div></div>
+            </div>
+            <div class="gcard" onclick="Ago('A-gen');Aon(document.querySelectorAll('#A .A-nav')[1])">
+              <div class="gav" style="background:linear-gradient(135deg,#1a3a1a,#2d6a2d)">🏹</div>
+              <div><div class="gname">드레이크</div><div class="gjob">궁수 · Lv.9</div><span class="ggrade gr">Rare</span><div class="gstats"><span class="gstat">⚔️<b>280</b></span><span class="gstat">❤️<b>1100</b></span><span class="gstat">🛡️<b>12%</b></span></div></div>
+            </div>
+            <div class="gcard" onclick="Ago('A-gen');Aon(document.querySelectorAll('#A .A-nav')[1])">
+              <div class="gav" style="background:linear-gradient(135deg,#3a1a3a,#6a2d6a)">🧙</div>
+              <div><div class="gname">마커스</div><div class="gjob">법사 · Lv.7</div><span class="ggrade gu">Uncommon</span><div class="gstats"><span class="gstat">⚔️<b>410</b></span><span class="gstat">❤️<b>880</b></span></div></div>
+            </div>
+          </div>
+          <!-- 우 패널: 요약 -->
+          <div class="A-panel">
+            <div class="Ap-title">어빌리티 요약</div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">
+              <span class="abbadge bN">전투의지</span><span class="abbadge bN">강철 체력</span>
+              <span class="abbadge bA">기사의 투지</span><span class="abbadge bA">방패 전문가</span>
+              <span class="abbadge bS">불사의 용병</span><span class="abbadge bN">빠른 발걸음</span>
+              <span class="abbadge bN">날카로운 눈</span>
+            </div>
+            <div class="Ap-title">유물 현황 · 125pt</div>
+            <div class="rgrid" style="grid-template-columns:repeat(6,1fr)">
+              <div class="rcell"><div class="rbar rEp"></div><span class="ri">⚔️</span><div class="rn">전쟁의심장</div><div class="rlv">Lv.3</div></div>
+              <div class="rcell"><div class="rbar rR"></div><span class="ri">🛡️</span><div class="rn">수호의문장</div><div class="rlv">Lv.2</div></div>
+              <div class="rcell"><div class="rbar rC"></div><span class="ri">💪</span><div class="rn">힘의 반지</div><div class="rlv">Lv.1</div></div>
+              <div class="rcell"><div class="rbar rU"></div><span class="ri">💰</span><div class="rn">황금 두뇌</div><div class="rlv">Lv.2</div></div>
+              <div class="rcell lk"><div class="rbar rL"></div><span class="ri">🌟</span><div class="rn">신성갑옷</div><div class="rlv" style="color:#8b949e">80pt</div></div>
+              <div class="rcell lk"><div class="rbar rEp"></div><span class="ri">🏆</span><div class="rn">승리의 잔</div><div class="rlv" style="color:#8b949e">40pt</div></div>
+            </div>
+            <div style="margin-top:auto;padding-top:10px">
+              <button class="battle-btn" onclick="Ago('A-bat');Aon(document.querySelectorAll('#A .A-nav')[4])">⚔️ 스테이지 7 전투 시작</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- A: 장수 -->
+  <div id="A-gen" class="screen">
+    <div class="A-hud"><span class="logo">⚔️ 장수 관리</span><span class="cur gold">💰 2,450</span><span class="cur gem">💎 30</span></div>
+    <div class="A-body">
+      <div class="A-side">
+        <div class="A-nav" onclick="Ago('A-home');Aon(this)"><span class="ni">🏠</span> 홈</div>
+        <div class="A-nav on"><span class="ni">⚔️</span> 장수</div>
+        <div class="A-nav" onclick="Ago('A-abi');Aon(this)"><span class="ni">✨</span> 어빌리티</div>
+        <div class="A-nav" onclick="Ago('A-rel');Aon(this)"><span class="ni">🔮</span> 유물</div>
+        <div style="flex:1"></div>
+        <div class="A-nav" onclick="Ago('A-bat');Aon(this)"><span class="ni">🗡️</span> 전투</div>
+      </div>
+      <div class="A-main" style="display:flex;gap:10px;padding:12px">
+        <!-- 장수 목록 -->
+        <div style="width:160px;flex-shrink:0;display:flex;flex-direction:column;gap:6px">
+          <div class="gcard on" style="flex-direction:column;align-items:flex-start;padding:10px;cursor:pointer;border-color:#f0a83240">
+            <div style="display:flex;gap:8px;align-items:center;width:100%">
+              <div class="gav" style="background:linear-gradient(135deg,#1e3a5f,#2d4a8f);width:36px;height:36px;font-size:18px">🛡️</div>
+              <div><div class="gname">아서</div><div class="gjob">기사·Lv.12</div></div>
+            </div>
+          </div>
+          <div class="gcard" style="flex-direction:column;align-items:flex-start;padding:10px;cursor:pointer">
+            <div style="display:flex;gap:8px;align-items:center;width:100%">
+              <div class="gav" style="background:linear-gradient(135deg,#1a3a1a,#2d6a2d);width:36px;height:36px;font-size:18px">🏹</div>
+              <div><div class="gname">드레이크</div><div class="gjob">궁수·Lv.9</div></div>
+            </div>
+          </div>
+          <div class="gcard" style="flex-direction:column;align-items:flex-start;padding:10px;cursor:pointer">
+            <div style="display:flex;gap:8px;align-items:center;width:100%">
+              <div class="gav" style="background:linear-gradient(135deg,#3a1a3a,#6a2d6a);width:36px;height:36px;font-size:18px">🧙</div>
+              <div><div class="gname">마커스</div><div class="gjob">법사·Lv.7</div></div>
+            </div>
+          </div>
+        </div>
+        <!-- 스탯 + 스킬 -->
+        <div style="flex:1;display:flex;flex-direction:column;gap:8px;overflow-y:auto">
+          <div style="text-align:center;padding:8px">
+            <div style="width:60px;height:60px;background:linear-gradient(135deg,#1e3a5f,#2d4a8f);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 6px;border:2px solid #3b82f620">🛡️</div>
+            <div style="color:#e6edf3;font-size:17px;font-weight:800">아서</div>
+            <div style="color:#8b949e;font-size:12px">기사 · Lv.12 · <span style="color:#a78bfa">Epic</span></div>
+          </div>
+          <div class="sg">
+            <div class="sc"><div class="sv">340</div><div class="sk">⚔️ 공격력</div></div>
+            <div class="sc"><div class="sv">1820</div><div class="sk">❤️ 체력</div></div>
+            <div class="sc"><div class="sv">22%</div><div class="sk">🛡️ 방어율</div></div>
+            <div class="sc"><div class="sv">1.8</div><div class="sk">⚡ 공속</div></div>
+            <div class="sc"><div class="sv">3.2</div><div class="sk">👣 이동</div></div>
+            <div class="sc"><div class="sv">180</div><div class="sk">🔍 사거리</div></div>
+          </div>
+          <div class="Ap-title">스킬</div>
+          <div class="slot-row">
+            <div class="slot"><span class="slot-icon">⚡</span><span class="slot-name">강타</span><span class="slot-sub">쿨다운 8s</span></div>
+            <div class="slot"><span class="slot-icon">🛡️</span><span class="slot-name">철벽방어</span><span class="slot-sub">쿨다운 15s</span></div>
+            <div class="slot"><span class="slot-icon">💜</span><span class="slot-name">강인한의지</span><span class="slot-sub">패시브</span></div>
+          </div>
+          <div class="Ap-title">장비</div>
+          <div class="slot-row">
+            <div class="slot"><span class="slot-enh">+4</span><span class="slot-icon">⚔️</span><span class="slot-name">기사의 검</span><span class="slot-sub" style="color:#4ade80">+85 공격력</span></div>
+            <div class="slot"><span class="slot-enh">+2</span><span class="slot-icon">🛡️</span><span class="slot-name">강철 갑옷</span><span class="slot-sub" style="color:#4ade80">+12% 방어</span></div>
+          </div>
+        </div>
+        <!-- 패시브 효과 요약 -->
+        <div style="width:180px;flex-shrink:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto">
+          <div class="Ap-title">적용 어빌리티</div>
+          <div class="abitem"><span class="abbadge bA">고급</span><div class="abname">기사의 투지</div><div class="abdesc">기사 공격력 +25%</div></div>
+          <div class="abitem"><span class="abbadge bN">일반</span><div class="abname">전투의지</div><div class="abdesc">전체 공격력 +12%</div></div>
+          <div class="abitem"><span class="abbadge bS">특수</span><div class="abname">불사의 용병</div><div class="abdesc">병사 사망 시 HP 10% 회복</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- A: 어빌리티 -->
+  <div id="A-abi" class="screen">
+    <div class="A-hud"><span class="logo">✨ 어빌리티</span><span class="cur" style="color:#a78bfa">보유 7개</span></div>
+    <div class="A-body">
+      <div class="A-side">
+        <div class="A-nav" onclick="Ago('A-home');Aon(this)"><span class="ni">🏠</span> 홈</div>
+        <div class="A-nav" onclick="Ago('A-gen');Aon(this)"><span class="ni">⚔️</span> 장수</div>
+        <div class="A-nav on"><span class="ni">✨</span> 어빌리티</div>
+        <div class="A-nav" onclick="Ago('A-rel');Aon(this)"><span class="ni">🔮</span> 유물</div>
+        <div style="flex:1"></div>
+        <div class="A-nav" onclick="Ago('A-bat');Aon(this)"><span class="ni">🗡️</span> 전투</div>
+      </div>
+      <div class="A-main" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;align-content:start">
+        <div class="abitem"><span class="abbadge bN">일반</span><div class="abname">전투의지</div><div class="abdesc">전체 장수·병사 공격력 +12%</div></div>
+        <div class="abitem"><span class="abbadge bN">일반</span><div class="abname">강철 체력</div><div class="abdesc">전체 장수·병사 체력 +15%</div></div>
+        <div class="abitem"><span class="abbadge bA">고급</span><div class="abname">기사의 투지</div><div class="abdesc">기사 공격력 +25%</div></div>
+        <div class="abitem"><span class="abbadge bA">고급</span><div class="abname">방패 전문가</div><div class="abdesc">방패 방어율 +30%</div></div>
+        <div class="abitem"><span class="abbadge bS">특수</span><div class="abname">불사의 용병</div><div class="abdesc">병사 사망 시 체력 10% 회복</div></div>
+        <div class="abitem"><span class="abbadge bN">일반</span><div class="abname">빠른 발걸음</div><div class="abdesc">전체 이동속도 +10%</div></div>
+        <div class="abitem"><span class="abbadge bN">일반</span><div class="abname">날카로운 눈</div><div class="abdesc">궁수 사거리 +8%</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- A: 유물 -->
+  <div id="A-rel" class="screen">
+    <div class="A-hud"><span class="logo">🔮 유물 &amp; 환생</span><span class="cur pt">🔮 125pt</span></div>
+    <div class="A-body">
+      <div class="A-side">
+        <div class="A-nav" onclick="Ago('A-home');Aon(this)"><span class="ni">🏠</span> 홈</div>
+        <div class="A-nav" onclick="Ago('A-gen');Aon(this)"><span class="ni">⚔️</span> 장수</div>
+        <div class="A-nav" onclick="Ago('A-abi');Aon(this)"><span class="ni">✨</span> 어빌리티</div>
+        <div class="A-nav on"><span class="ni">🔮</span> 유물</div>
+        <div style="flex:1"></div>
+        <div class="A-nav" onclick="Ago('A-bat');Aon(this)"><span class="ni">🗡️</span> 전투</div>
+      </div>
+      <div class="A-main" style="display:flex;gap:12px">
+        <div style="width:180px;flex-shrink:0">
+          <div class="reinc-box">
+            <div style="color:#a78bfa;font-size:10px;font-weight:700;letter-spacing:.08em">REINCARNATION</div>
+            <div class="reinc-pts">125 pt</div>
+            <div class="reinc-sub">스테이지 7 클리어 → +49pt</div>
+            <button class="rbtn" onclick="alert('환생!\n+49pt 적립\n모든 런 데이터 초기화')">✦ 즉시 환생</button>
+          </div>
+        </div>
+        <div style="flex:1;overflow-y:auto">
+          <div class="Ap-title" style="margin-bottom:8px">스탯 유물</div>
+          <div class="rgrid" style="margin-bottom:12px">
+            <div class="rcell"><div class="rbar rEp"></div><span class="ri">⚔️</span><div class="rn">전쟁의 심장</div><div class="rlv">Lv.3</div></div>
+            <div class="rcell"><div class="rbar rR"></div><span class="ri">🛡️</span><div class="rn">수호의 문장</div><div class="rlv">Lv.2</div></div>
+            <div class="rcell"><div class="rbar rC"></div><span class="ri">💪</span><div class="rn">힘의 반지</div><div class="rlv">Lv.1</div></div>
+            <div class="rcell lk"><div class="rbar rL"></div><span class="ri">🌟</span><div class="rn">신성한 갑옷</div><div class="rlv" style="color:#8b949e">80pt</div></div>
+            <div class="rcell lk"><div class="rbar rEp"></div><span class="ri">⚡</span><div class="rn">번개 심장</div><div class="rlv" style="color:#8b949e">40pt</div></div>
+          </div>
+          <div class="Ap-title" style="margin-bottom:8px">재화 유물</div>
+          <div class="rgrid">
+            <div class="rcell"><div class="rbar rU"></div><span class="ri">💰</span><div class="rn">황금 두뇌</div><div class="rlv">Lv.2</div></div>
+            <div class="rcell lk"><div class="rbar rR"></div><span class="ri">💎</span><div class="rn">젬 증폭기</div><div class="rlv" style="color:#8b949e">20pt</div></div>
+            <div class="rcell lk"><div class="rbar rEp"></div><span class="ri">🏆</span><div class="rn">승리의 잔</div><div class="rlv" style="color:#8b949e">40pt</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- A: 전투 -->
+  <div id="A-bat" class="screen">
+    <div class="A-hud"><span class="logo">🗡️ 전투 준비</span><span class="cur gold">💰 2,450</span></div>
+    <div class="A-body">
+      <div class="A-side">
+        <div class="A-nav" onclick="Ago('A-home');Aon(this)"><span class="ni">🏠</span> 홈</div>
+        <div class="A-nav" onclick="Ago('A-gen');Aon(this)"><span class="ni">⚔️</span> 장수</div>
+        <div class="A-nav" onclick="Ago('A-abi');Aon(this)"><span class="ni">✨</span> 어빌리티</div>
+        <div class="A-nav" onclick="Ago('A-rel');Aon(this)"><span class="ni">🔮</span> 유물</div>
+        <div style="flex:1"></div>
+        <div class="A-nav on"><span class="ni">🗡️</span> 전투</div>
+      </div>
+      <div class="A-main" style="display:flex;gap:12px">
+        <div style="flex:1">
+          <div class="Ap-title">스테이지 선택</div>
+          <div class="stage-grid">
+            <div class="stg done">1</div><div class="stg done">2</div><div class="stg done">3</div><div class="stg done">4</div>
+            <div class="stg done">5</div><div class="stg done">6</div><div class="stg cur">7</div><div class="stg lock">🔒</div>
+          </div>
+          <div class="Ap-title">출전 장수</div>
+          <div class="deploy-row">
+            <div class="dslot"><span class="di">🛡️</span><span class="dn">아서</span><span class="ds">기사</span></div>
+            <div class="dslot"><span class="di">🏹</span><span class="dn">드레이크</span><span class="ds">궁수</span></div>
+            <div class="dslot empty"><span class="di">＋</span><span class="dn">배치</span></div>
+            <div class="dslot empty"><span class="di">＋</span><span class="dn">배치</span></div>
+            <div class="dslot empty"><span class="di">＋</span><span class="dn">배치</span></div>
+          </div>
+        </div>
+        <div style="width:200px;flex-shrink:0;display:flex;flex-direction:column;justify-content:flex-end">
+          <button class="battle-btn">⚔️ 스테이지 7 전투 시작</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /A -->
+
+
+<!-- ══════ DESIGN B ══════ -->
+<div id="B" class="design">
+
+  <div class="B-hud">
+    <span class="B-hud logo">⚔️ Project K</span>
+    <div class="B-tabs">
+      <button class="B-tab on" onclick="Bgo('B-gen');Bon(this)">⚔️ 장수</button>
+      <button class="B-tab" onclick="Bgo('B-abi');Bon(this)">✨ 어빌리티</button>
+      <button class="B-tab" onclick="Bgo('B-rel');Bon(this)">🔮 유물</button>
+      <button class="B-tab" onclick="Bgo('B-bat');Bon(this)">🗡️ 전투</button>
+    </div>
+    <div class="B-curs">
+      <span class="B-cur Bgold">💰 2,450</span>
+      <span class="B-cur Bgem">💎 30</span>
+      <span class="B-cur Bpt">🔮 125pt</span>
+    </div>
+  </div>
+
+  <div class="B-body">
+
+    <!-- B: 장수 -->
+    <div id="B-gen" class="B-panel on">
+      <div class="Bgen-list">
+        <div class="Bc" style="padding:8px 10px;cursor:pointer" onclick="">
+          <div class="Bsec">장수 목록</div>
+          <div class="Bgc on"><div class="gavi" style="background:linear-gradient(135deg,#1e3a5f,#2d4a8f)">🛡️</div><div><div class="gn">아서</div><div class="gj">기사·Lv.12·Epic</div></div></div>
+          <div class="Bgc" style="margin-top:4px"><div class="gavi" style="background:linear-gradient(135deg,#1a3a1a,#2d6a2d)">🏹</div><div><div class="gn">드레이크</div><div class="gj">궁수·Lv.9·Rare</div></div></div>
+          <div class="Bgc" style="margin-top:4px"><div class="gavi" style="background:linear-gradient(135deg,#3a1a3a,#6a2d6a)">🧙</div><div><div class="gn">마커스</div><div class="gj">법사·Lv.7·Uncommon</div></div></div>
+        </div>
+      </div>
+      <div class="Bgen-detail">
+        <div class="Bc" style="text-align:center;padding:14px">
+          <div style="width:56px;height:56px;background:linear-gradient(135deg,#1e3a5f,#2d4a8f);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 8px;border:2px solid #8b691430">🛡️</div>
+          <div style="color:#f0d080;font-size:16px;font-weight:800;text-shadow:0 0 8px rgba(240,160,50,.3)">아서</div>
+          <div style="color:#7a6040;font-size:11px;margin-top:2px">기사 · Lv.12 · <span style="color:#a78bfa">Epic</span></div>
+        </div>
+        <div class="Bc">
+          <div class="Bsec">기본 스탯</div>
+          <div class="Bstat-grid">
+            <div class="Bsc"><div class="Bsv">340</div><div class="Bsk">⚔️ 공격력</div></div>
+            <div class="Bsc"><div class="Bsv">1820</div><div class="Bsk">❤️ 체력</div></div>
+            <div class="Bsc"><div class="Bsv">22%</div><div class="Bsk">🛡️ 방어율</div></div>
+            <div class="Bsc"><div class="Bsv">1.8</div><div class="Bsk">⚡ 공속</div></div>
+            <div class="Bsc"><div class="Bsv">3.2</div><div class="Bsk">👣 이동</div></div>
+            <div class="Bsc"><div class="Bsv">180</div><div class="Bsk">🔍 사거리</div></div>
+          </div>
+        </div>
+        <div class="Bc">
+          <div class="Bsec">스킬</div>
+          <div class="Bslot-row">
+            <div class="Bslot"><span class="Bslot-icon">⚡</span><span class="Bslot-name">강타</span><span class="Bslot-sub">8초</span></div>
+            <div class="Bslot"><span class="Bslot-icon">🛡️</span><span class="Bslot-name">철벽방어</span><span class="Bslot-sub">15초</span></div>
+            <div class="Bslot"><span class="Bslot-icon">💜</span><span class="Bslot-name">강인한의지</span><span class="Bslot-sub">패시브</span></div>
+          </div>
+        </div>
+        <div class="Bc">
+          <div class="Bsec">장비</div>
+          <div class="Bslot-row">
+            <div class="Bslot"><span class="Benh">+4</span><span class="Bslot-icon">⚔️</span><span class="Bslot-name">기사의 검</span><span class="Bslot-sub" style="color:#4ade80">+85 공격력</span></div>
+            <div class="Bslot"><span class="Benh">+2</span><span class="Bslot-icon">🛡️</span><span class="Bslot-name">강철 갑옷</span><span class="Bslot-sub" style="color:#4ade80">+12% 방어</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- B: 어빌리티 -->
+    <div id="B-abi" class="B-panel" style="flex-direction:column">
+      <div class="Babi-filters">
+        <div class="Bfilt on">전체</div><div class="Bfilt">일반</div><div class="Bfilt">고급</div>
+        <div class="Bfilt">특수</div><div class="Bfilt">기사</div><div class="Bfilt">궁수</div>
+        <div class="Bfilt">법사</div><div class="Bfilt">방패</div><div class="Bfilt">병사</div>
+      </div>
+      <div class="Babi-grid" style="flex:1">
+        <div class="Babc"><span class="abbadge bN">일반</span><div class="Babname">전투의지</div><div class="Babdesc">전체 장수·병사 공격력 +12%</div></div>
+        <div class="Babc"><span class="abbadge bN">일반</span><div class="Babname">강철 체력</div><div class="Babdesc">전체 장수·병사 체력 +15%</div></div>
+        <div class="Babc"><span class="abbadge bA">고급</span><div class="Babname">기사의 투지</div><div class="Babdesc">기사 공격력 +25%</div></div>
+        <div class="Babc"><span class="abbadge bA">고급</span><div class="Babname">방패 전문가</div><div class="Babdesc">방패 방어율 +30%</div></div>
+        <div class="Babc"><span class="abbadge bS">특수</span><div class="Babname">불사의 용병</div><div class="Babdesc">병사 사망 시 체력 10% 회복</div></div>
+        <div class="Babc"><span class="abbadge bN">일반</span><div class="Babname">빠른 발걸음</div><div class="Babdesc">전체 이동속도 +10%</div></div>
+        <div class="Babc"><span class="abbadge bN">일반</span><div class="Babname">날카로운 눈</div><div class="Babdesc">궁수 사거리 +8%</div></div>
+      </div>
+    </div>
+
+    <!-- B: 유물 -->
+    <div id="B-rel" class="B-panel">
+      <div class="Brel-left">
+        <div class="Breinc">
+          <div style="color:#a78bfa;font-size:10px;font-weight:700;letter-spacing:.08em;margin-bottom:4px">REINCARNATION</div>
+          <div class="Bpts">125 pt</div>
+          <div style="color:#7a6040;font-size:10px;margin-bottom:10px">스테이지 7 → +49pt</div>
+          <button class="Brb" onclick="alert('환생!\n+49pt 적립')">✦ 즉시 환생</button>
+        </div>
+        <div class="Bc"><div class="Bsec">카테고리</div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <div class="Bfilt on" style="text-align:center">스탯 유물</div>
+            <div class="Bfilt" style="text-align:center">재화 유물</div>
+            <div class="Bfilt" style="text-align:center">어빌리티 유물</div>
+          </div>
+        </div>
+      </div>
+      <div class="Brel-grid">
+        <div class="Brc rEp"><span class="bri">⚔️</span><div class="brn">전쟁의 심장</div><div class="brlv">Lv.3</div></div>
+        <div class="Brc rR"><span class="bri">🛡️</span><div class="brn">수호의 문장</div><div class="brlv">Lv.2</div></div>
+        <div class="Brc rC"><span class="bri">💪</span><div class="brn">힘의 반지</div><div class="brlv">Lv.1</div></div>
+        <div class="Brc rU"><span class="bri">💰</span><div class="brn">황금 두뇌</div><div class="brlv">Lv.2</div></div>
+        <div class="Brc rL lk"><span class="bri">🌟</span><div class="brn">신성한 갑옷</div><div style="font-size:8px;color:#8b6914">80pt</div></div>
+        <div class="Brc rEp lk"><span class="bri">⚡</span><div class="brn">번개 심장</div><div style="font-size:8px;color:#8b6914">40pt</div></div>
+        <div class="Brc rR lk"><span class="bri">🔥</span><div class="brn">화염의 핵</div><div style="font-size:8px;color:#8b6914">20pt</div></div>
+        <div class="Brc rEp lk"><span class="bri">🏆</span><div class="brn">승리의 잔</div><div style="font-size:8px;color:#8b6914">40pt</div></div>
+      </div>
+    </div>
+
+    <!-- B: 전투 -->
+    <div id="B-bat" class="B-panel">
+      <div class="Bbat-left">
+        <div class="Bc"><div class="Bsec">스테이지 선택</div>
+          <div class="Bstage-grid">
+            <div class="Bstg done">1</div><div class="Bstg done">2</div><div class="Bstg done">3</div><div class="Bstg done">4</div>
+            <div class="Bstg done">5</div><div class="Bstg done">6</div><div class="Bstg cur">7</div><div class="Bstg lock">🔒</div>
+          </div>
+        </div>
+        <div style="margin-top:auto">
+          <button class="Bbattle-btn">⚔️ 스테이지 7 전투 시작</button>
+        </div>
+      </div>
+      <div class="Bbat-right">
+        <div class="Bc"><div class="Bsec">출전 장수 (최대 5명)</div>
+          <div class="Bdeploy">
+            <div class="Bdslot"><span class="bdi">🛡️</span><span class="bdn">아서</span><span class="bds">기사</span></div>
+            <div class="Bdslot"><span class="bdi">🏹</span><span class="bdn">드레이크</span><span class="bds">궁수</span></div>
+            <div class="Bdslot empty"><span class="bdi">＋</span><span class="bdn">배치</span></div>
+            <div class="Bdslot empty"><span class="bdi">＋</span><span class="bdn">배치</span></div>
+            <div class="Bdslot empty"><span class="bdi">＋</span><span class="bdn">배치</span></div>
+          </div>
+        </div>
+        <div class="Bc"><div class="Bsec">적용 어빌리티 (7개)</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px">
+            <span class="abbadge bN">전투의지</span><span class="abbadge bN">강철 체력</span>
+            <span class="abbadge bA">기사의 투지</span><span class="abbadge bA">방패 전문가</span>
+            <span class="abbadge bS">불사의 용병</span><span class="abbadge bN">빠른 발걸음</span>
+            <span class="abbadge bN">날카로운 눈</span>
+          </div>
+        </div>
+        <div class="Bc"><div class="Bsec">유물 보너스</div>
+          <div style="display:flex;gap:8px">
+            <span style="font-size:11px;color:#8b949e">⚔️ <b style="color:#e6edf3">전쟁의심장 Lv.3</b> — 공격력 +9%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /B -->
+
+
+<!-- ══════ DESIGN C ══════ -->
+<div id="C" class="design">
+
+  <div class="C-hud">
+    <span class="logo" style="color:#e2e8f0;font-weight:800;font-size:15px;margin-right:auto">⚔️ Project K</span>
+    <div class="C-navbtns">
+      <div class="C-nb on" onclick="Copen('C-gen');Con(this)">⚔️ 장수</div>
+      <div class="C-nb" onclick="Copen('C-abi');Con(this)">✨ 어빌리티</div>
+      <div class="C-nb" onclick="Copen('C-rel');Con(this)">🔮 유물</div>
+      <div class="C-nb" onclick="Copen('C-bat');Con(this)">🗡️ 전투</div>
+    </div>
+    <div class="C-curs">
+      <span class="Cc Ccg">💰 2,450</span>
+      <span class="Cc Ccd">💎 30</span>
+      <span class="Cc Ccp">🔮 125pt</span>
+    </div>
+  </div>
+
+  <div class="C-body">
+
+    <!-- 허브 홈 -->
+    <div class="C-hub">
+      <div class="C-hub-left">
+        <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">출전 장수</div>
+        <div class="Chub-gcard on" onclick="Copen('C-gen');Con(document.querySelectorAll('#C .C-nb')[0])">
+          <div class="gav" style="background:linear-gradient(135deg,#1e3a5f,#2d4a8f);width:36px;height:36px;font-size:18px;flex-shrink:0">🛡️</div>
+          <div><div style="color:#e2e8f0;font-size:12px;font-weight:700">아서</div><div style="color:#64748b;font-size:10px">기사·Lv.12·<span style="color:#a78bfa">Ep</span></div></div>
+        </div>
+        <div class="Chub-gcard" onclick="Copen('C-gen');Con(document.querySelectorAll('#C .C-nb')[0])">
+          <div class="gav" style="background:linear-gradient(135deg,#1a3a1a,#2d6a2d);width:36px;height:36px;font-size:18px;flex-shrink:0">🏹</div>
+          <div><div style="color:#e2e8f0;font-size:12px;font-weight:700">드레이크</div><div style="color:#64748b;font-size:10px">궁수·Lv.9·<span style="color:#60a5fa">Ra</span></div></div>
+        </div>
+        <div class="Chub-gcard" onclick="Copen('C-gen');Con(document.querySelectorAll('#C .C-nb')[0])">
+          <div class="gav" style="background:linear-gradient(135deg,#3a1a3a,#6a2d6a);width:36px;height:36px;font-size:18px;flex-shrink:0">🧙</div>
+          <div><div style="color:#e2e8f0;font-size:12px;font-weight:700">마커스</div><div style="color:#64748b;font-size:10px">법사·Lv.7·<span style="color:#4ade80">Un</span></div></div>
+        </div>
+        <div style="margin-top:auto">
+          <div style="background:#0d1424;border:1px solid #1e3a5f;border-radius:8px;padding:10px;margin-bottom:8px">
+            <div style="font-size:9px;color:#475569;font-weight:700;letter-spacing:.06em;margin-bottom:5px">어빌리티</div>
+            <div style="display:flex;flex-wrap:wrap;gap:3px">
+              <span style="font-size:8px;font-weight:700;padding:2px 5px;border-radius:3px;background:#1e3a5f;color:#60a5fa">전투의지</span>
+              <span style="font-size:8px;font-weight:700;padding:2px 5px;border-radius:3px;background:#2d1b69;color:#a78bfa">기사의 투지</span>
+              <span style="font-size:8px;font-weight:700;padding:2px 5px;border-radius:3px;background:#7c1d1d;color:#f87171">불사의 용병</span>
+              <span style="font-size:8px;color:#475569;cursor:pointer" onclick="Copen('C-abi');Con(document.querySelectorAll('#C .C-nb')[1])">+4더보기</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="C-hub-center">
+        <div class="Chub-card chc-gen" onclick="Copen('C-gen');Con(document.querySelectorAll('#C .C-nb')[0])">
+          <div class="cc-glow"></div>
+          <span class="cc-icon">⚔️</span>
+          <div><div class="cc-name">장수 관리</div><div class="cc-sub">3명 · 스탯·스킬·장비</div></div>
+        </div>
+        <div class="Chub-card chc-abi" onclick="Copen('C-abi');Con(document.querySelectorAll('#C .C-nb')[1])">
+          <div class="cc-glow"></div>
+          <span class="cc-icon">✨</span>
+          <div><div class="cc-name">어빌리티</div><div class="cc-sub">7개 보유 · 런 초기화</div></div>
+        </div>
+        <div class="Chub-card chc-rel" onclick="Copen('C-rel');Con(document.querySelectorAll('#C .C-nb')[2])">
+          <div class="cc-glow"></div>
+          <span class="cc-icon">🔮</span>
+          <div><div class="cc-name">유물 &amp; 환생</div><div class="cc-sub">125pt · 영구 성장</div></div>
+        </div>
+        <div class="Chub-card chc-bat" onclick="Copen('C-bat');Con(document.querySelectorAll('#C .C-nb')[3])">
+          <div class="cc-glow"></div>
+          <span class="cc-icon">🗡️</span>
+          <div><div class="cc-name">전투 시작</div><div class="cc-sub">스테이지 7</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- C 슬라이드: 장수 -->
+    <div id="C-gen" class="C-slide">
+      <div class="C-slide-head">
+        <button class="C-back" onclick="Cclose('C-gen');CclearNav()">← 닫기</button>
+        <span class="stitle">⚔️ 장수 관리</span>
+      </div>
+      <div class="C-slide-body">
+        <div class="Cg-list">
+          <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;text-transform:uppercase;padding:4px 4px 8px">장수 목록</div>
+          <div class="Cgc on"><div class="cavi" style="background:linear-gradient(135deg,#1e3a5f,#2d4a8f)">🛡️</div><div><div class="cgn">아서</div><div class="cgj">기사·Lv.12</div></div></div>
+          <div class="Cgc"><div class="cavi" style="background:linear-gradient(135deg,#1a3a1a,#2d6a2d)">🏹</div><div><div class="cgn">드레이크</div><div class="cgj">궁수·Lv.9</div></div></div>
+          <div class="Cgc"><div class="cavi" style="background:linear-gradient(135deg,#3a1a3a,#6a2d6a)">🧙</div><div><div class="cgn">마커스</div><div class="cgj">법사·Lv.7</div></div></div>
+        </div>
+        <div class="Cg-detail">
+          <div class="Cdc" style="text-align:center;padding:12px">
+            <div style="width:54px;height:54px;background:linear-gradient(135deg,#1e3a5f,#2d4a8f);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 6px;border:1px solid #3b82f620">🛡️</div>
+            <div style="color:#e2e8f0;font-size:15px;font-weight:800">아서</div>
+            <div style="color:#64748b;font-size:11px">기사 · Lv.12 · <span style="color:#a78bfa">Epic</span></div>
+          </div>
+          <div class="Cdc">
+            <div class="Cdtitle">기본 스탯</div>
+            <div class="Cstat-g">
+              <div class="Csc"><div class="Csv">340</div><div class="Csk">⚔️ 공격</div><div class="Csd">+85▲</div></div>
+              <div class="Csc"><div class="Csv">1820</div><div class="Csk">❤️ 체력</div></div>
+              <div class="Csc"><div class="Csv">22%</div><div class="Csk">🛡️ 방어</div></div>
+              <div class="Csc"><div class="Csv">1.8</div><div class="Csk">⚡ 공속</div></div>
+              <div class="Csc"><div class="Csv">3.2</div><div class="Csk">👣 이동</div></div>
+              <div class="Csc"><div class="Csv">180</div><div class="Csk">🔍 사거리</div></div>
+            </div>
+          </div>
+          <div class="Cdc">
+            <div class="Cdtitle">스킬</div>
+            <div class="Cslot-row">
+              <div class="Cslot"><span class="Cslot-icon">⚡</span><span class="Cslot-name">강타</span><span class="Cslot-sub">8초</span></div>
+              <div class="Cslot"><span class="Cslot-icon">🛡️</span><span class="Cslot-name">철벽방어</span><span class="Cslot-sub">15초</span></div>
+              <div class="Cslot"><span class="Cslot-icon">💜</span><span class="Cslot-name">강인한의지</span><span class="Cslot-sub">패시브</span></div>
+            </div>
+          </div>
+          <div class="Cdc">
+            <div class="Cdtitle">장비</div>
+            <div class="Cslot-row">
+              <div class="Cslot"><span class="Cenh">+4</span><span class="Cslot-icon">⚔️</span><span class="Cslot-name">기사의 검</span><span class="Cslot-sub" style="color:#4ade80">+85 공격</span></div>
+              <div class="Cslot"><span class="Cenh">+2</span><span class="Cslot-icon">🛡️</span><span class="Cslot-name">강철 갑옷</span><span class="Cslot-sub" style="color:#4ade80">+12% 방어</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="Cg-effect">
+          <div class="Ceff-title">적용 효과</div>
+          <div class="Ceff-item"><span class="Ceff-badge CbA">고급</span><div class="Ceff-name">기사의 투지</div><div class="Ceff-desc">기사 공격력 +25%</div></div>
+          <div class="Ceff-item"><span class="Ceff-badge CbN">일반</span><div class="Ceff-name">전투의지</div><div class="Ceff-desc">전체 공격력 +12%</div></div>
+          <div class="Ceff-item"><span class="Ceff-badge CbS">특수</span><div class="Ceff-name">불사의 용병</div><div class="Ceff-desc">병사 사망 시 HP 10% 회복</div></div>
+          <div class="Ceff-item"><span class="Ceff-badge CbN">일반</span><div class="Ceff-name">강철 체력</div><div class="Ceff-desc">전체 체력 +15%</div></div>
+          <div style="margin-top:6px;padding:8px;background:#080c14;border:1px solid #1e3a5f;border-radius:7px">
+            <div style="font-size:9px;color:#475569;margin-bottom:4px">유물 보너스</div>
+            <div style="font-size:10px;color:#f0a832">전쟁의심장 Lv.3 · 공격 +9%</div>
+            <div style="font-size:10px;color:#60a5fa;margin-top:2px">수호의문장 Lv.2 · 방어 +4%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- C 슬라이드: 어빌리티 -->
+    <div id="C-abi" class="C-slide">
+      <div class="C-slide-head">
+        <button class="C-back" onclick="Cclose('C-abi');CclearNav()">← 닫기</button>
+        <span class="stitle">✨ 어빌리티</span>
+        <span style="margin-left:auto;font-size:12px;color:#64748b">보유 7개</span>
+      </div>
+      <div class="C-slide-body">
+        <div class="Cabi-body">
+          <div class="Cabi-filter-col">
+            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;text-transform:uppercase;padding:4px 0 6px">등급</div>
+            <div class="Cafi on">전체</div>
+            <div class="Cafi">일반</div>
+            <div class="Cafi">고급</div>
+            <div class="Cafi">특수</div>
+            <div class="Cafi-label">대상</div>
+            <div class="Cafi">전체</div>
+            <div class="Cafi">기사</div>
+            <div class="Cafi">궁수</div>
+            <div class="Cafi">법사</div>
+            <div class="Cafi">방패</div>
+            <div class="Cafi">병사</div>
+          </div>
+          <div class="Cabi-list">
+            <div class="Cabi-item">
+              <div class="Cabi-ico">⚔️</div>
+              <div class="Cabi-info"><span class="Ceff-badge CbN">일반</span><div class="can">전투의지</div><div class="cad">전체 장수·병사 공격력 +12%</div><div class="cat">대상: 전체</div></div>
+              <div class="Cabi-stat"><div class="pct">+12%</div><div class="ptg">공격력</div></div>
+            </div>
+            <div class="Cabi-item">
+              <div class="Cabi-ico">❤️</div>
+              <div class="Cabi-info"><span class="Ceff-badge CbN">일반</span><div class="can">강철 체력</div><div class="cad">전체 장수·병사 체력 +15%</div><div class="cat">대상: 전체</div></div>
+              <div class="Cabi-stat"><div class="pct">+15%</div><div class="ptg">체력</div></div>
+            </div>
+            <div class="Cabi-item">
+              <div class="Cabi-ico">🏆</div>
+              <div class="Cabi-info"><span class="Ceff-badge CbA">고급</span><div class="can">기사의 투지</div><div class="cad">기사 장수 공격력 +25%</div><div class="cat">대상: 기사</div></div>
+              <div class="Cabi-stat"><div class="pct">+25%</div><div class="ptg">공격력</div></div>
+            </div>
+            <div class="Cabi-item">
+              <div class="Cabi-ico">🛡️</div>
+              <div class="Cabi-info"><span class="Ceff-badge CbA">고급</span><div class="can">방패 전문가</div><div class="cad">방패 장수 방어율 +30%</div><div class="cat">대상: 방패</div></div>
+              <div class="Cabi-stat"><div class="pct">+30%</div><div class="ptg">방어율</div></div>
+            </div>
+            <div class="Cabi-item">
+              <div class="Cabi-ico">💀</div>
+              <div class="Cabi-info"><span class="Ceff-badge CbS">특수</span><div class="can">불사의 용병</div><div class="cad">병사 사망 시 체력 10% 회복 (전투 중 1회)</div><div class="cat">대상: 병사</div></div>
+              <div class="Cabi-stat"><div class="pct" style="color:#f87171">특수</div></div>
+            </div>
+            <div class="Cabi-item">
+              <div class="Cabi-ico">👣</div>
+              <div class="Cabi-info"><span class="Ceff-badge CbN">일반</span><div class="can">빠른 발걸음</div><div class="cad">전체 이동속도 +10%</div><div class="cat">대상: 전체</div></div>
+              <div class="Cabi-stat"><div class="pct">+10%</div><div class="ptg">이동속도</div></div>
+            </div>
+            <div class="Cabi-item">
+              <div class="Cabi-ico">🎯</div>
+              <div class="Cabi-info"><span class="Ceff-badge CbN">일반</span><div class="can">날카로운 눈</div><div class="cad">궁수 사거리 +8%</div><div class="cat">대상: 궁수</div></div>
+              <div class="Cabi-stat"><div class="pct">+8%</div><div class="ptg">사거리</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- C 슬라이드: 유물 -->
+    <div id="C-rel" class="C-slide">
+      <div class="C-slide-head">
+        <button class="C-back" onclick="Cclose('C-rel');CclearNav()">← 닫기</button>
+        <span class="stitle">🔮 유물 &amp; 환생</span>
+      </div>
+      <div class="C-slide-body">
+        <div class="Crel-body">
+          <div class="Crel-left">
+            <div class="Creinc-panel">
+              <div class="Creinc-title">REINCARNATION</div>
+              <div class="Creinc-pts">125 pt</div>
+              <div class="Creinc-sub">스테이지 7 → +49pt 예정</div>
+              <div style="height:4px;background:#1e3a5f;border-radius:2px;margin-bottom:12px;overflow:hidden"><div style="height:100%;width:62%;background:linear-gradient(90deg,#7c3aed,#a78bfa);border-radius:2px"></div></div>
+              <button class="Crb" onclick="alert('환생!\n+49pt 적립\n모든 런 데이터 초기화')">✦ 즉시 환생하기</button>
+            </div>
+            <div style="background:#0d1424;border:1px solid #1e3a5f;border-radius:9px;padding:10px">
+              <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">카테고리</div>
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <div style="padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;background:#1e3a5f;color:#60a5fa;border:1px solid #3b82f620">스탯 유물</div>
+                <div style="padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;color:#64748b;border:1px solid transparent">재화 유물</div>
+                <div style="padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;color:#64748b;border:1px solid transparent">어빌리티 유물</div>
+              </div>
+            </div>
+          </div>
+          <div class="Crel-grid">
+            <div class="Crc"><div class="cr-bar rEp"></div><span class="cr-icon">⚔️</span><div class="cr-name">전쟁의 심장</div><div class="cr-lv">Lv.3</div></div>
+            <div class="Crc"><div class="cr-bar rR"></div><span class="cr-icon">🛡️</span><div class="cr-name">수호의 문장</div><div class="cr-lv">Lv.2</div></div>
+            <div class="Crc"><div class="cr-bar rC"></div><span class="cr-icon">💪</span><div class="cr-name">힘의 반지</div><div class="cr-lv">Lv.1</div></div>
+            <div class="Crc"><div class="cr-bar rU"></div><span class="cr-icon">💰</span><div class="cr-name">황금 두뇌</div><div class="cr-lv">Lv.2</div></div>
+            <div class="Crc lk"><div class="cr-bar rL"></div><span class="cr-icon">🌟</span><div class="cr-name">신성한 갑옷</div><div class="cr-cost">80pt</div></div>
+            <div class="Crc lk"><div class="cr-bar rEp"></div><span class="cr-icon">⚡</span><div class="cr-name">번개 심장</div><div class="cr-cost">40pt</div></div>
+            <div class="Crc lk"><div class="cr-bar rR"></div><span class="cr-icon">🔥</span><div class="cr-name">화염의 핵</div><div class="cr-cost">20pt</div></div>
+            <div class="Crc lk"><div class="cr-bar rEp"></div><span class="cr-icon">🏆</span><div class="cr-name">승리의 잔</div><div class="cr-cost">40pt</div></div>
+            <div class="Crc lk"><div class="cr-bar rL"></div><span class="cr-icon">🌙</span><div class="cr-name">달의 축복</div><div class="cr-cost">80pt</div></div>
+            <div class="Crc lk"><div class="cr-bar rR"></div><span class="cr-icon">🗡️</span><div class="cr-name">전사의 혼</div><div class="cr-cost">20pt</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- C 슬라이드: 전투 -->
+    <div id="C-bat" class="C-slide">
+      <div class="C-slide-head">
+        <button class="C-back" onclick="Cclose('C-bat');CclearNav()">← 닫기</button>
+        <span class="stitle">🗡️ 전투 준비</span>
+      </div>
+      <div class="C-slide-body">
+        <div class="Cbat-body">
+          <div class="Cbat-left">
+            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">스테이지 선택</div>
+            <div class="Cstage-g">
+              <div class="Cstg done">1<br><span style="font-size:8px;opacity:.6">★★★</span></div>
+              <div class="Cstg done">2<br><span style="font-size:8px;opacity:.6">★★★</span></div>
+              <div class="Cstg done">3<br><span style="font-size:8px;opacity:.6">★★☆</span></div>
+              <div class="Cstg done">4<br><span style="font-size:8px;opacity:.6">★★☆</span></div>
+              <div class="Cstg done">5<br><span style="font-size:8px;opacity:.6">★☆☆</span></div>
+              <div class="Cstg done">6<br><span style="font-size:8px;opacity:.6">★☆☆</span></div>
+              <div class="Cstg cur">7<br><span style="font-size:8px;opacity:.6">현재</span></div>
+              <div class="Cstg lock">🔒</div>
+            </div>
+            <div style="margin-top:auto">
+              <button class="C-battle-btn">⚔️ 스테이지 7 전투 시작</button>
+            </div>
+          </div>
+          <div class="Cbat-right">
+            <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">출전 장수 (최대 5명)</div>
+            <div class="Cdeploy">
+              <div class="Cdslot"><span class="cdi">🛡️</span><span class="cdn">아서</span><span class="cds">기사</span></div>
+              <div class="Cdslot"><span class="cdi">🏹</span><span class="cdn">드레이크</span><span class="cds">궁수</span></div>
+              <div class="Cdslot empty"><span class="cdi">＋</span><span class="cdn">배치</span></div>
+              <div class="Cdslot empty"><span class="cdi">＋</span><span class="cdn">배치</span></div>
+              <div class="Cdslot empty"><span class="cdi">＋</span><span class="cdn">배치</span></div>
+            </div>
+            <div style="background:#0d1424;border:1px solid #1e3a5f;border-radius:9px;padding:10px">
+              <div style="font-size:9px;font-weight:700;color:#475569;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">적용 어빌리티</div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px">
+                <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:#1e3a5f;color:#60a5fa">전투의지</span>
+                <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:#1e3a5f;color:#60a5fa">강철 체력</span>
+                <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:#2d1b69;color:#a78bfa">기사의 투지</span>
+                <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:#2d1b69;color:#a78bfa">방패 전문가</span>
+                <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:#7c1d1d;color:#f87171">불사의 용병</span>
+                <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:#1e3a5f;color:#60a5fa">빠른 발걸음</span>
+                <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:#1e3a5f;color:#60a5fa">날카로운 눈</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /C -->
+
+</div><!-- /frame -->
+
+<script>
+// Design 전환
+function sw(id,btn){
+  document.querySelectorAll('.design').forEach(d=>d.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  document.querySelectorAll('.switcher button').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+}
+
+// A 네비
+function Ago(id){document.querySelectorAll('#A .screen').forEach(s=>s.classList.remove('on'));document.getElementById(id).classList.add('on')}
+function Aon(el){document.querySelectorAll('#A .A-nav').forEach(n=>n.classList.remove('on'));el.classList.add('on')}
+
+// B 탭
+function Bgo(id){document.querySelectorAll('#B .B-panel').forEach(p=>p.classList.remove('on'));document.getElementById(id).classList.add('on')}
+function Bon(el){document.querySelectorAll('#B .B-tab').forEach(t=>t.classList.remove('on'));el.classList.add('on')}
+// B 필터 토글
+document.querySelectorAll('#B .Bfilt').forEach(f=>f.addEventListener('click',function(){
+  // 같은 부모의 형제만
+  this.closest('.Bc,.B-panel').querySelectorAll('.Bfilt').forEach(x=>x.classList.remove('on'));
+  this.classList.add('on');
+}));
+
+// C 슬라이드
+function Copen(id){document.querySelectorAll('#C .C-slide').forEach(s=>s.classList.remove('open'));document.getElementById(id).classList.add('open')}
+function Cclose(id){document.getElementById(id).classList.remove('open')}
+function CclearNav(){document.querySelectorAll('#C .C-nb').forEach(b=>b.classList.remove('on'))}
+function Con(el){document.querySelectorAll('#C .C-nb').forEach(b=>b.classList.remove('on'));el.classList.add('on')}
+// C 필터 토글
+document.querySelectorAll('.Cafi').forEach(f=>f.addEventListener('click',function(){
+  this.closest('.Cabi-filter-col').querySelectorAll('.Cafi').forEach(x=>x.classList.remove('on'));
+  this.classList.add('on');
+}));
+
+// B 기본 탭 설정
+Bgo('B-gen');
+</script>
+</body>
+</html>

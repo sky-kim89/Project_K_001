@@ -249,19 +249,10 @@ public class RelicPanelUI : MonoBehaviour
 
     void OnReincarnate()
     {
-        if (_reincData == null) return;
-
         int cleared = _stageData?.ClearedNormalStages ?? 0;
         if (!ReincarnationData.CanReincarnate(cleared)) return;
 
-        _reincData.EarnPointsByStage(cleared);
-        _reincData.ResetOnReincarnation();
-        UserDataManager.Instance?.Get<RunAbilityData>()?.Clear();
-
-        UserDataManager.Instance?.RequestSave();
+        UserDataManager.Instance?.Reincarnate();
         Refresh();
-
-        int pts = ReincarnationData.CalculateReincarnationPoints(cleared);
-        Debug.Log($"[RelicPanelUI] 환생 — +{pts}pt (스테이지 {cleared})");
     }
 }

@@ -4,101 +4,111 @@ using TMPro;
 
 // ============================================================
 //  StageSelectUI.cs
-//  로비 중앙 — 스테이지 선택 전체를 담당하는 UI 컴포넌트.
+//  BattlePanel 전체 컨트롤러.
 //
-//  LobbyManager.OnStageChanged 이벤트를 구독해 자동 갱신.
-//  버튼 클릭 → LobbyManager API 호출.
+//  좌측: 5개 DeploySlotUI (배치 슬롯)
+//  우측: 스테이지 정보 + 어빌리티 목록 버튼 + 용병 구매 버튼 + 전투 시작 버튼
+//
+//  Inspector 연결:
+//    _deploySlots[0~4] : DeploySlotUI 컴포넌트
+//    _stageText        : "스테이지 N 도전" TMP
+//    _progressText     : "N 스테이지 클리어" TMP
+//    _abilityListBtn   : 어빌리티 목록 버튼
+//    _hireBtn          : 용병 구매 버튼
+//    _battleStartBtn   : 전투 시작 버튼
 // ============================================================
 
 public class StageSelectUI : MonoBehaviour
 {
-    [Header("탭")]
-    [SerializeField] Button _normalTabBtn;
-    [SerializeField] Button _eliteTabBtn;
-    [SerializeField] Color  _tabActiveColor   = new Color(0.20f, 0.70f, 0.90f, 1f);
-    [SerializeField] Color  _tabInactiveColor = new Color(0.22f, 0.22f, 0.28f, 1f);
+    [Header("배치 슬롯 (0~4)")]
+    [SerializeField] DeploySlotUI[] _deploySlots;
 
     [Header("스테이지 정보")]
-    [SerializeField] TextMeshProUGUI _stageNameText;
-    [SerializeField] TextMeshProUGUI _bestRecordText;
-
-    [Header("프리뷰")]
-    [SerializeField] Image  _previewImage;
-    [SerializeField] Button _prevBtn;
-    [SerializeField] Button _nextBtn;
-    [SerializeField] Button _abilityListBtn;
-
-    [Header("전투")]
-    [SerializeField] Button          _battleStartBtn;
-    [SerializeField] TextMeshProUGUI _energyCostText;
+    [SerializeField] TextMeshProUGUI _stageText;
     [SerializeField] TextMeshProUGUI _progressText;
+
+    [Header("버튼")]
+    [SerializeField] Button _abilityListBtn;
+    [SerializeField] Button _hireBtn;
+    [SerializeField] Button _battleStartBtn;
 
     // ── 생명주기 ──────────────────────────────────────────────
 
-    void OnEnable()  => LobbyManager.OnStageChanged += Refresh;
-    void OnDisable() => LobbyManager.OnStageChanged -= Refresh;
-
-    void Start()
+    void OnEnable()
     {
-        _normalTabBtn?  .onClick.AddListener(() => LobbyManager.Instance.SetTab(BattleMode.Normal));
-        _eliteTabBtn?   .onClick.AddListener(() => LobbyManager.Instance.SetTab(BattleMode.Elite));
-        _battleStartBtn?.onClick.AddListener(() => LobbyManager.Instance.StartBattle());
-        _abilityListBtn?.onClick.AddListener(OpenAbilityList);
-
-        // 스테이지 직접 내비게이션 비활성 — 이전/다음 버튼 숨김
-        _prevBtn?.gameObject.SetActive(false);
-        _nextBtn?.gameObject.SetActive(false);
-
-        if (LobbyManager.Instance != null)
-            Refresh(LobbyManager.Instance.CurrentStage);
+        LobbyManager.OnStageChanged += OnStageChanged;
+        BindButtons();
+        Refresh();
     }
 
-    void OpenAbilityList()
-        => PopupManager.Instance?.Open<AbilityListPopup>(PopupType.AbilityList);
-
-    // ── 갱신 ─────────────────────────────────────────────────
-
-    void Refresh(StageData stage)
+    void OnDisable()
     {
-        if (LobbyManager.Instance == null) return;
+        LobbyManager.OnStageChanged -= OnStageChanged;
+    }
 
-        var tab = LobbyManager.Instance.CurrentTab;
+    // ── 버튼 연결 ─────────────────────────────────────────────
 
-        // 탭 색상
-        SetTabColor(_normalTabBtn, tab == BattleMode.Normal);
-        SetTabColor(_eliteTabBtn,  tab == BattleMode.Elite);
+    void BindButtons()
+    {
+        _abilityListBtn?.onClick.RemoveAllListeners();
+        _abilityListBtn?.onClick.AddListener(() =>
+            PopupManager.Instance?.Open<AbilityListPopup>(PopupType.AbilityList));
 
-        // 엘리트 탭 잠금 — 일반 스테이지 5 클리어 전에는 비활성
-        var progress       = UserDataManager.Instance?.Get<StageProgressData>();
-        bool eliteUnlocked = progress?.IsEliteUnlocked ?? false;
-        if (_eliteTabBtn != null) _eliteTabBtn.interactable = eliteUnlocked;
+        _hireBtn?.onClick.RemoveAllListeners();
+        _hireBtn?.onClick.AddListener(OpenMercenaryShop);
 
-        if (stage == null) return;
+        _battleStartBtn?.onClick.RemoveAllListeners();
+        _battleStartBtn?.onClick.AddListener(() => LobbyManager.Instance?.StartBattle());
+    }
 
-        if (_stageNameText  != null) _stageNameText.text  = stage.DisplayName;
-        if (_bestRecordText != null) _bestRecordText.text = "최고 기록  --:--";   // TODO: UserData 연동
-        if (_energyCostText != null) _energyCostText.text = $"⚡  {stage.EnergyCost}";
-        if (_progressText   != null)
+    // ── 전체 갱신 ─────────────────────────────────────────────
+
+    public void Refresh()
+    {
+        RefreshStageInfo();
+        RefreshSlots();
+    }
+
+    void OnStageChanged(StageData _) => RefreshStageInfo();
+
+    void RefreshStageInfo()
+    {
+        var progress = UserDataManager.Instance?.Get<StageProgressData>();
+        int cleared  = progress?.ClearedNormalStages ?? 0;
+        int current  = cleared + 1;
+
+        if (_stageText    != null) _stageText.text    = $"스테이지 {current} 도전";
+        if (_progressText != null) _progressText.text = cleared > 0
+            ? $"{cleared} 스테이지 클리어"
+            : "첫 번째 스테이지";
+    }
+
+    void RefreshSlots()
+    {
+        if (_deploySlots == null) return;
+        for (int i = 0; i < _deploySlots.Length; i++)
         {
-            int limit = stage.DailyClearLimit > 0 ? stage.DailyClearLimit : 0;
-            _progressText.text = limit > 0
-                ? $"{stage.DisplayName} 클리어  0 / {limit}"
-                : stage.DisplayName;
-        }
-
-        if (_previewImage != null)
-        {
-            _previewImage.sprite  = stage.PreviewSprite;
-            _previewImage.enabled = stage.PreviewSprite != null;
+            int capturedIdx = i;
+            _deploySlots[i]?.Setup(capturedIdx,
+                onEmpty:    () => OpenMercenaryShop(),
+                onOccupied: (entry, slot) => OpenHeroDetail(entry, slot));
         }
     }
 
-    // ── 헬퍼 ─────────────────────────────────────────────────
+    // ── 팝업 열기 ─────────────────────────────────────────────
 
-    void SetTabColor(Button btn, bool active)
+    void OpenMercenaryShop()
     {
-        if (btn == null) return;
-        var img = btn.GetComponent<Image>();
-        if (img != null) img.color = active ? _tabActiveColor : _tabInactiveColor;
+        PopupManager.Instance?.Open<MercenaryShopPopup>(
+            PopupType.MercenaryShop,
+            onClose: Refresh);
+    }
+
+    void OpenHeroDetail(UnitEntry entry, int slot)
+    {
+        PopupManager.Instance?.Open<HeroDetailPopup>(
+            PopupType.HeroDetail,
+            onClose: Refresh)
+            ?.Setup(entry, slot);
     }
 }

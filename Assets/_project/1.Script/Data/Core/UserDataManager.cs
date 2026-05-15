@@ -103,6 +103,39 @@ public class UserDataManager : PureSingleton<UserDataManager>
         PlayerPrefs.Save();
     }
 
+    // ── 환생 ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// 환생: 환생 포인트 적립 후 유물·환생 데이터·유저 정보를 제외한
+    /// 모든 런 데이터(장수·장비·어빌리티·재화·스테이지)를 초기화.
+    /// </summary>
+    public void Reincarnate()
+    {
+        var stageData = Get<StageProgressData>();
+        var reincData = Get<ReincarnationData>();
+
+        int cleared = stageData?.ClearedNormalStages ?? 0;
+
+        // 포인트 적립 (초기화 전에 먼저 계산)
+        reincData?.EarnPointsByStage(cleared);
+        reincData?.ResetOnReincarnation();
+
+        // 런 데이터 전체 초기화 (UserData·RelicInventory·ReincarnationData 제외)
+        Get<UnitData>()?.SetDefaults();
+        Get<ItemData>()?.SetDefaults();
+        Get<StageProgressData>()?.SetDefaults();
+        Get<EquipInventoryData>()?.SetDefaults();
+        Get<DeploymentData>()?.SetDefaults();
+        Get<RunAbilityData>()?.SetDefaults();
+
+        // 초기 장수 자동 배치
+        AutoDeployFirstHeroIfNeeded();
+
+        SaveAll();
+
+        Debug.Log($"[UserDataManager] 환생 완료 — +{ReincarnationData.CalculateReincarnationPoints(cleared)}pt, 누적 {reincData?.ReincarnationPoints}pt");
+    }
+
     // ── 초기화 ───────────────────────────────────────────────
 
     protected override void OnInitialize()

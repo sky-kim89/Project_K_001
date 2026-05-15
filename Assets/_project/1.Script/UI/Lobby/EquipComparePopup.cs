@@ -43,6 +43,9 @@ public class EquipComparePopup : PopupBase
     [SerializeField] Button          _equipBtn;
     [SerializeField] TextMeshProUGUI _warningText;
 
+    [Header("닫기")]
+    [SerializeField] Button _closeBtn;
+
     // ── 인벤토리 목록 ─────────────────────────────────────────
     [Header("인벤토리 목록")]
     [SerializeField] Transform       _listContent;
@@ -78,6 +81,7 @@ public class EquipComparePopup : PopupBase
     {
         base.Awake();
         _equipBtn?.onClick.AddListener(OnEquipClick);
+        _closeBtn?.onClick.AddListener(() => Close());
     }
 
     protected override void OnAfterClose()

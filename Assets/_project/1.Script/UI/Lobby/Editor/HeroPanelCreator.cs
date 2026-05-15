@@ -878,7 +878,7 @@ public static class HeroPanelCreator
             rt.anchorMin        = new Vector2(0.5f, 0.5f);
             rt.anchorMax        = new Vector2(0.5f, 0.5f);
             rt.pivot            = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = Vector2.zero;
+            rt.anchoredPosition = new Vector2(250f, 0f);
             rt.sizeDelta        = new Vector2(W, H);
         }
 
@@ -899,13 +899,32 @@ public static class HeroPanelCreator
             rt.offsetMax = Vector2.zero;
         }
 
+        // X 닫기 버튼 (헤더 우측)
+        const float XBtnW = 52f;
+        var xBtnGo = CreatePanel(header, "CloseButton", new Color(0.30f, 0.10f, 0.10f, 0.90f));
+        {
+            var rt = xBtnGo.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(1, 0);
+            rt.anchorMax = new Vector2(1, 1);
+            rt.pivot     = new Vector2(1, 0.5f);
+            rt.offsetMin = new Vector2(-(XBtnW + 6f), 8f);
+            rt.offsetMax = new Vector2(-6f, -8f);
+        }
+        var xBtn = xBtnGo.AddComponent<Button>();
+        xBtn.targetGraphic = xBtnGo.GetComponent<Image>();
+        var xLbl = CreateTMP(xBtnGo, "Label", "X", FntMain, FontStyles.Bold);
+        xLbl.rectTransform.anchorMin = Vector2.zero;
+        xLbl.rectTransform.anchorMax = Vector2.one;
+        xLbl.alignment = TextAlignmentOptions.Center;
+        SetObj(pso, "_closeBtn", xBtn);
+
         var title = CreateTMP(header, "TitleText", "슬롯 1 장비 교체", FntHero, FontStyles.Bold);
         {
             var rt = title.rectTransform;
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
             rt.offsetMin = new Vector2(14, 0);
-            rt.offsetMax = Vector2.zero;
+            rt.offsetMax = new Vector2(-(XBtnW + 12f), 0);
         }
         title.alignment = TextAlignmentOptions.Left;
         SetObj(pso, "_titleText", title);
@@ -2163,7 +2182,7 @@ public static class HeroPanelCreator
     //                            방어 X%  용병 XX명
     // ============================================================
 
-    static GameObject BuildCardPrefab()
+    public static GameObject BuildCardPrefab()
     {
         var card = CreatePanel(null, "HeroCard", CardColor);
         SetRect(card.GetComponent<RectTransform>(), Vector2.zero, new Vector2(360, 170));

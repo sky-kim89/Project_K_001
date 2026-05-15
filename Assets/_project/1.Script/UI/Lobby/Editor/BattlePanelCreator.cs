@@ -6,52 +6,49 @@ using UnityEngine.UI;
 // ============================================================
 //  BattlePanelCreator.cs
 //  Tools > Project K > 로비 UI > Create BattlePanel Prefab
-//  또는 LobbyPrefabCreator.CreateLobby() 에서 Build(root) 로 호출된다.
+//  또는 LobbyPrefabCreator.CreateLobby() 에서 Build(root) 로 호출.
 //
 //  저장: Assets/_project/2.Prefabs/UI/Lobby/BattlePanel.prefab
 //
 //  생성 구조:
-//    BattlePanel (TopBar~NavBar 사이 채움)
-//    ├── TabRow          (상단 TabH+16px)
-//    │   ├── NormalTab
-//    │   └── EliteTab
-//    ├── StageInfo       (TabRow 아래 160px)
-//    │   ├── StageNameText
-//    │   └── BestRecordText
-//    ├── PreviewArea     (중간)
-//    │   ├── PreviewBg
-//    │   ├── PreviewImage
-//    │   ├── PrevBtn
-//    │   ├── NextBtn          ← 원본 위치 그대로 (460, 0)
-//    │   └── AbilityListBtn   ← NextBtn 바로 아래
-//    └── BattleArea      (하단 280px)
-//        ├── ProgressText
-//        ├── BattleStartBtn
-//        └── EnergyCostText
+//    BattlePanel
+//    ├── DeployArea  (좌측 420px — 5개 배치 슬롯)
+//    │   ├── Slot_0 ... Slot_4  (DeploySlotUI)
+//    └── ActionArea (나머지 공간)
+//        ├── StageText        ("스테이지 N 도전")
+//        ├── ProgressText     ("N 스테이지 클리어")
+//        ├── AbilityListBtn
+//        ├── HireBtn
+//        └── BattleStartBtn
 // ============================================================
 
 public static class BattlePanelCreator
 {
     const string SavePath = "Assets/_project/2.Prefabs/UI/Lobby/BattlePanel.prefab";
 
-    const float TopBarH = 180f;
-    const float NavBarH = 160f;
-    const float TabH    = UIScale.BtnSm;
+    const float TopBarH     = 180f;
+    const float NavBarH     = 160f;
+    const float DeployW     = 420f;   // 좌측 배치 슬롯 너비
+    const float SlotGap     = 8f;
+    const int   SlotCount   = 5;
 
-    static readonly Color BarColor         = new Color(0.07f, 0.07f, 0.13f, 1f);
-    static readonly Color PanelColor       = new Color(0.09f, 0.09f, 0.16f, 1f);
-    static readonly Color TabActiveColor   = new Color(0.20f, 0.70f, 0.90f, 1f);
-    static readonly Color TabInactiveColor = new Color(0.22f, 0.22f, 0.28f, 1f);
-    static readonly Color BattleBtnColor   = new Color(0.11f, 0.72f, 0.58f, 1f);
-    static readonly Color ArrowBtnColor    = new Color(0.25f, 0.25f, 0.35f, 0.70f);
-    static readonly Color PreviewBgColor   = new Color(0.04f, 0.04f, 0.09f, 1f);
-    static readonly Color AbilityBtnColor  = new Color(0.18f, 0.18f, 0.28f, 0.90f);
+    static readonly Color BgDark       = new Color(0.07f, 0.07f, 0.13f, 1f);
+    static readonly Color SlotBgEmpty  = new Color(0.12f, 0.12f, 0.20f, 1f);
+    static readonly Color SlotBgOccup  = new Color(0.12f, 0.15f, 0.23f, 1f);
+    static readonly Color GradePlaceholder = new Color(0.25f, 0.25f, 0.35f, 1f);
+    static readonly Color PortraitBg   = new Color(0.12f, 0.12f, 0.20f, 1f);
+    static readonly Color ActionBg     = new Color(0.05f, 0.05f, 0.10f, 1f);
+    static readonly Color BattleBtnC   = new Color(0.11f, 0.72f, 0.58f, 1f);
+    static readonly Color AbilityBtnC  = new Color(0.18f, 0.25f, 0.45f, 1f);
+    static readonly Color HireBtnC     = new Color(0.45f, 0.25f, 0.18f, 1f);
+    static readonly Color MutedText    = new Color(0.55f, 0.55f, 0.60f);
 
     [MenuItem("Tools/Project K/로비 UI/Create BattlePanel Prefab")]
     static void CreateStandalone()
     {
         var canvas = new GameObject("_TempCanvas", typeof(RectTransform));
-        canvas.GetComponent<RectTransform>().sizeDelta = new Vector2(UIScale.RefWidth, UIScale.RefHeight);
+        canvas.GetComponent<RectTransform>().sizeDelta =
+            new Vector2(UIScale.RefWidth, UIScale.RefHeight);
 
         var panel = Build(canvas);
         PrefabUtility.SaveAsPrefabAsset(panel, SavePath);
@@ -61,130 +58,226 @@ public static class BattlePanelCreator
         Debug.Log("[BattlePanelCreator] BattlePanel.prefab 생성 완료");
     }
 
-    // LobbyPrefabCreator 에서 호출
     public static GameObject Build(GameObject parent)
     {
+        // ── BattlePanel 루트 ──────────────────────────────────
         var panel = new GameObject("BattlePanel", typeof(RectTransform));
         panel.transform.SetParent(parent.transform, false);
-        var rt = panel.GetComponent<RectTransform>();
-        rt.anchorMin = Vector2.zero;
-        rt.anchorMax = Vector2.one;
-        rt.offsetMin = new Vector2(0, NavBarH);
-        rt.offsetMax = new Vector2(0, -TopBarH);
+        var panelRt = panel.GetComponent<RectTransform>();
+        panelRt.anchorMin = Vector2.zero;
+        panelRt.anchorMax = Vector2.one;
+        panelRt.offsetMin = new Vector2(0,  NavBarH);
+        panelRt.offsetMax = new Vector2(0, -TopBarH);
 
         var ui = panel.AddComponent<StageSelectUI>();
 
-        // ── TabRow ────────────────────────────────────────────
-        var tabRow = new GameObject("TabRow", typeof(RectTransform));
-        tabRow.transform.SetParent(panel.transform, false);
-        AnchorTopInside(tabRow, TabH + 16f, 0);
+        // ── DeployArea (좌측) ─────────────────────────────────
+        var deployArea = MakeGo("DeployArea", panel);
+        var deployRt   = deployArea.GetComponent<RectTransform>();
+        deployRt.anchorMin = new Vector2(0, 0);
+        deployRt.anchorMax = new Vector2(0, 1);
+        deployRt.offsetMin = Vector2.zero;
+        deployRt.offsetMax = new Vector2(DeployW, 0);
 
-        var normalTab = CreateButton(tabRow, "NormalTab", "일반",   TabActiveColor,   UIScale.FontMd);
-        var eliteTab  = CreateButton(tabRow, "EliteTab",  "엘리트", TabInactiveColor, UIScale.FontMd);
-        SetRect(normalTab.GetComponent<RectTransform>(), new Vector2(-220, 0), new Vector2(360, TabH));
-        SetRect(eliteTab .GetComponent<RectTransform>(), new Vector2( 220, 0), new Vector2(360, TabH));
+        var deployBg = deployArea.AddComponent<Image>();
+        deployBg.color = BgDark;
 
-        // ── StageInfo ─────────────────────────────────────────
-        const float infoH = 160f;
-        var infoArea = new GameObject("StageInfo", typeof(RectTransform));
-        infoArea.transform.SetParent(panel.transform, false);
-        AnchorTopInside(infoArea, infoH, TabH + 16f);
+        // VerticalLayoutGroup으로 5 슬롯을 균등 분할
+        var vlg = deployArea.AddComponent<VerticalLayoutGroup>();
+        vlg.childAlignment        = TextAnchor.UpperCenter;
+        vlg.spacing               = SlotGap;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = true;
+        vlg.padding               = new RectOffset(4, 4, 4, 4);
 
-        var stageName  = CreateTMP(infoArea, "StageNameText",  "일반 스테이지 1", UIScale.FontLg, FontStyles.Bold);
-        var bestRecord = CreateTMP(infoArea, "BestRecordText", "최고 기록  --:--", UIScale.FontSm, FontStyles.Normal);
-        SetRect(stageName .GetComponent<RectTransform>(), new Vector2(0,  40), new Vector2(900, 70));
-        SetRect(bestRecord.GetComponent<RectTransform>(), new Vector2(0, -40), new Vector2(900, 48));
-        bestRecord.color = new Color(0.7f, 0.7f, 0.7f);
+        float slotH = (UIScale.RefHeight - TopBarH - NavBarH
+                       - SlotGap * (SlotCount - 1) - 8f) / SlotCount;
 
-        // ── BattleArea ────────────────────────────────────────
-        const float battleAreaH = 280f;
-        var battleArea = new GameObject("BattleArea", typeof(RectTransform));
-        battleArea.transform.SetParent(panel.transform, false);
-        AnchorBottomInside(battleArea, battleAreaH, 0);
+        var slots = new DeploySlotUI[SlotCount];
+        for (int i = 0; i < SlotCount; i++)
+        {
+            var slot = BuildSlot(deployArea, i, slotH);
+            slots[i] = slot.GetComponent<DeploySlotUI>();
+        }
 
-        var progressText = CreateTMP(battleArea, "ProgressText", "스테이지 1 클리어  0 / 1", UIScale.FontSm, FontStyles.Normal);
-        SetRect(progressText.GetComponent<RectTransform>(), new Vector2(0, 110), new Vector2(800, 48));
-        progressText.color = new Color(0.65f, 0.65f, 0.65f);
+        // ── ActionArea (우측) ─────────────────────────────────
+        var actionArea = MakeGo("ActionArea", panel);
+        var actionRt   = actionArea.GetComponent<RectTransform>();
+        actionRt.anchorMin = new Vector2(0, 0);
+        actionRt.anchorMax = new Vector2(1, 1);
+        actionRt.offsetMin = new Vector2(DeployW, 0);
+        actionRt.offsetMax = Vector2.zero;
 
-        var battleBtn   = CreateButton(battleArea, "BattleStartBtn", "전투 시작", BattleBtnColor, UIScale.FontLg);
+        var actionBg = actionArea.AddComponent<Image>();
+        actionBg.color = ActionBg;
+
+        // 스테이지 텍스트 (상단 중앙)
+        var stageText = CreateTMP(actionArea, "StageText", "스테이지 1 도전",
+            UIScale.FontLg, FontStyles.Bold);
+        SetRect(stageText.GetComponent<RectTransform>(),
+            new Vector2(0, 220), new Vector2(1100, 80));
+
+        var progressText = CreateTMP(actionArea, "ProgressText", "첫 번째 스테이지",
+            UIScale.FontMd, FontStyles.Normal);
+        SetRect(progressText.GetComponent<RectTransform>(),
+            new Vector2(0, 150), new Vector2(1000, 56));
+        progressText.color = MutedText;
+
+        // 어빌리티·용병 버튼 (중간)
+        var abilityBtn = CreateButton(actionArea, "AbilityListBtn", "어빌리티 목록", AbilityBtnC, UIScale.FontMd);
+        SetRect(abilityBtn.GetComponent<RectTransform>(),
+            new Vector2(-220, 20), new Vector2(380, UIScale.BtnSm));
+
+        var hireBtn = CreateButton(actionArea, "HireBtn", "용병 구매", HireBtnC, UIScale.FontMd);
+        SetRect(hireBtn.GetComponent<RectTransform>(),
+            new Vector2( 220, 20), new Vector2(380, UIScale.BtnSm));
+
+        // 전투 시작 버튼 (하단)
+        var battleBtn   = CreateButton(actionArea, "BattleStartBtn", "전투 시작", BattleBtnC, UIScale.FontLg);
         var battleBtnRt = battleBtn.GetComponent<RectTransform>();
         battleBtnRt.anchorMin        = new Vector2(0.08f, 0f);
         battleBtnRt.anchorMax        = new Vector2(0.92f, 0f);
-        battleBtnRt.anchoredPosition = new Vector2(0, UIScale.BtnLg / 2f + 10f);
+        battleBtnRt.anchoredPosition = new Vector2(0, UIScale.BtnLg / 2f + 40f);
         battleBtnRt.sizeDelta        = new Vector2(0, UIScale.BtnLg);
         battleBtn.GetComponentInChildren<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
-
-        var energyText = CreateTMP(battleArea, "EnergyCostText", "⚡  5", UIScale.FontSm, FontStyles.Normal);
-        SetRect(energyText.GetComponent<RectTransform>(), new Vector2(0, -60), new Vector2(400, 48));
-        energyText.color = new Color(0.4f, 0.9f, 1.0f);
-
-        // ── PreviewArea ───────────────────────────────────────
-        var previewArea = new GameObject("PreviewArea", typeof(RectTransform));
-        previewArea.transform.SetParent(panel.transform, false);
-        var previewRt = previewArea.GetComponent<RectTransform>();
-        previewRt.anchorMin = Vector2.zero;
-        previewRt.anchorMax = Vector2.one;
-        previewRt.offsetMin = new Vector2(0, battleAreaH);
-        previewRt.offsetMax = new Vector2(0, -(TabH + 16f + infoH));
-
-        var previewBg  = CreateImage(previewArea, "PreviewBg",    PreviewBgColor);
-        var previewImg = CreateImage(previewArea, "PreviewImage", new Color(1, 1, 1, 0));
-        previewImg.preserveAspect = true;
-
-        var previewBgRt = previewBg.GetComponent<RectTransform>();
-        previewBgRt.anchorMin = new Vector2(0.05f, 0.05f);
-        previewBgRt.anchorMax = new Vector2(0.95f, 0.95f);
-        previewBgRt.offsetMin = previewBgRt.offsetMax = Vector2.zero;
-
-        var previewImgRt = previewImg.GetComponent<RectTransform>();
-        previewImgRt.anchorMin = new Vector2(0.1f, 0.1f);
-        previewImgRt.anchorMax = new Vector2(0.9f, 0.9f);
-        previewImgRt.offsetMin = previewImgRt.offsetMax = Vector2.zero;
-
-        const float arrowSize = 110f;
-        var prevBtn = CreateButton(previewArea, "PrevBtn", "<", ArrowBtnColor, UIScale.FontLg);
-        var nextBtn = CreateButton(previewArea, "NextBtn", ">", ArrowBtnColor, UIScale.FontLg);
-        SetRect(prevBtn.GetComponent<RectTransform>(), new Vector2(-460, 0), new Vector2(arrowSize, arrowSize));
-        SetRect(nextBtn.GetComponent<RectTransform>(), new Vector2( 460, 0), new Vector2(arrowSize, arrowSize));
-        prevBtn.GetComponentInChildren<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
-        nextBtn.GetComponentInChildren<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
-
-        // AbilityListBtn — NextBtn 아래, NextBtn 위치 변경 없음
-        // NextBtn 하단: y=0 - arrowSize/2 = -55, 간격 12, 버튼 높이 56 → center y = -55-12-28 = -95
-        var abilityBtn = CreateButton(previewArea, "AbilityListBtn", "어빌리티", AbilityBtnColor, UIScale.FontSm);
-        SetRect(abilityBtn.GetComponent<RectTransform>(), new Vector2(460, -95), new Vector2(130, 56));
 
         // ── StageSelectUI 필드 연결 ───────────────────────────
         var so = new SerializedObject(ui);
         so.Update();
-        SetObj(so, "_normalTabBtn",   normalTab.GetComponent<Button>());
-        SetObj(so, "_eliteTabBtn",    eliteTab .GetComponent<Button>());
-        SetObj(so, "_stageNameText",  stageName);
-        SetObj(so, "_bestRecordText", bestRecord);
-        SetObj(so, "_previewImage",   previewImg);
-        SetObj(so, "_prevBtn",        prevBtn.GetComponent<Button>());
-        SetObj(so, "_nextBtn",        nextBtn.GetComponent<Button>());
-        SetObj(so, "_abilityListBtn", abilityBtn.GetComponent<Button>());
-        SetObj(so, "_battleStartBtn", battleBtn.GetComponent<Button>());
-        SetObj(so, "_energyCostText", energyText);
+
+        var slotsProp = so.FindProperty("_deploySlots");
+        if (slotsProp != null)
+        {
+            slotsProp.arraySize = SlotCount;
+            for (int i = 0; i < SlotCount; i++)
+                slotsProp.GetArrayElementAtIndex(i).objectReferenceValue = slots[i];
+        }
+
+        SetObj(so, "_stageText",      stageText);
         SetObj(so, "_progressText",   progressText);
+        SetObj(so, "_abilityListBtn", abilityBtn.GetComponent<Button>());
+        SetObj(so, "_hireBtn",        hireBtn.GetComponent<Button>());
+        SetObj(so, "_battleStartBtn", battleBtn.GetComponent<Button>());
         so.ApplyModifiedProperties();
 
         return panel;
     }
 
-    // ── UI 생성 헬퍼 ─────────────────────────────────────────
+    // ── 슬롯 구성 ────────────────────────────────────────────
 
-    static Image CreateImage(GameObject parent, string name, Color color)
+    static T FindChild<T>(Transform root, string name) where T : Component
+        => root.Find(name)?.GetComponent<T>();
+
+    static GameObject BuildSlot(GameObject parent, int index, float height)
     {
-        var go = new GameObject(name, typeof(RectTransform), typeof(Image));
-        go.transform.SetParent(parent.transform, false);
-        var img = go.GetComponent<Image>();
-        img.color = color;
-        return img;
+        var go   = MakeGo($"Slot_{index}", parent);
+        var goRt = go.GetComponent<RectTransform>();
+        goRt.sizeDelta = new Vector2(360f, 160f);   // 에디터 기본값 명시 (VLG가 런타임에 재계산)
+
+        var le = go.AddComponent<LayoutElement>();
+        le.minHeight       = 110f;
+        le.preferredHeight = height;
+
+        var slotUi = go.AddComponent<DeploySlotUI>();
+
+        // 슬롯 배경 + 버튼 (항상 활성 — 빈/점유 모두 처리)
+        var slotImg = go.AddComponent<Image>();
+        slotImg.color = SlotBgEmpty;
+        var slotBtn = go.AddComponent<Button>();
+        slotBtn.targetGraphic = slotImg;
+        ColorBlock cb = slotBtn.colors;
+        cb.highlightedColor = new Color(0.20f, 0.25f, 0.38f, 1f);
+        cb.pressedColor     = new Color(0.12f, 0.15f, 0.24f, 1f);
+        slotBtn.colors = cb;
+
+        // ── EmptyGroup ───────────────────────────────────────
+        var emptyGo = MakeGo("EmptyGroup", go);
+        FullStretch(emptyGo);
+        var emptyLabel = CreateTMP(emptyGo, "EmptyLabel", $"+ 슬롯 {index + 1} 비어 있음",
+            UIScale.FontMd, FontStyles.Normal);
+        {
+            var rt = emptyLabel.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = rt.offsetMax = Vector2.zero;
+        }
+        emptyLabel.color = MutedText;
+
+        // ── OccupiedGroup = HeroCard 프리팹 구조 ─────────────
+        var cardGo = HeroPanelCreator.BuildCardPrefab();
+        cardGo.name = "OccupiedGroup";
+        cardGo.transform.SetParent(go.transform, false);
+        cardGo.SetActive(false);
+
+        // 슬롯 크기에 full-stretch (HeroCard 내부 레이아웃은 비율 앵커 사용이므로 자동 대응)
+        {
+            var rt = cardGo.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+        }
+
+        // HeroCardUI 제거 — DeploySlotUI가 대신 관리
+        var heroCardUi = cardGo.GetComponent<HeroCardUI>();
+        if (heroCardUi != null) Object.DestroyImmediate(heroCardUi);
+
+        // 카드의 Button 제거 — 슬롯 루트 버튼으로 통일
+        var cardBtn = cardGo.GetComponent<Button>();
+        if (cardBtn != null) Object.DestroyImmediate(cardBtn);
+
+        // 모든 자식 Image·TMP 의 raycastTarget = false → 클릭이 슬롯 버튼으로 통과
+        foreach (var img in cardGo.GetComponentsInChildren<Image>(true))
+            img.raycastTarget = false;
+        foreach (var tmp in cardGo.GetComponentsInChildren<TextMeshProUGUI>(true))
+            tmp.raycastTarget = false;
+
+        // ── DeploySlotUI 직렬화 필드 연결 ────────────────────
+        var so = new SerializedObject(slotUi);
+        so.Update();
+        SetObj(so, "_button",         slotBtn);
+        SetObj(so, "_emptyGroup",     emptyGo);
+        SetObj(so, "_emptyLabel",     emptyLabel);
+        SetObj(so, "_occupiedGroup",  cardGo);
+        SetObj(so, "_gradeBorder",    FindChild<Image>(cardGo.transform, "GradeBorder"));
+        SetObj(so, "_gradeBadge",     FindChild<Image>(cardGo.transform, "GradeBadge"));
+        SetObj(so, "_portraitBg",     FindChild<Image>(cardGo.transform, "PortraitBg"));
+        SetObj(so, "_portraitImg",    FindChild<Image>(cardGo.transform, "PortraitImage"));
+        SetObj(so, "_portraitBridge", FindChild<UnitAppearanceBridge>(cardGo.transform, "PortraitPreview"));
+        SetObj(so, "_nameText",       FindChild<TextMeshProUGUI>(cardGo.transform, "NameText"));
+        SetObj(so, "_levelText",      FindChild<TextMeshProUGUI>(cardGo.transform, "LevelText"));
+        SetObj(so, "_gradeText",      FindChild<TextMeshProUGUI>(cardGo.transform, "GradeText"));
+        SetObj(so, "_jobText",        FindChild<TextMeshProUGUI>(cardGo.transform, "JobText"));
+        SetObj(so, "_hpText",         FindChild<TextMeshProUGUI>(cardGo.transform, "HpText"));
+        SetObj(so, "_atkText",        FindChild<TextMeshProUGUI>(cardGo.transform, "AtkText"));
+        SetObj(so, "_defText",        FindChild<TextMeshProUGUI>(cardGo.transform, "DefText"));
+        SetObj(so, "_soldierText",    FindChild<TextMeshProUGUI>(cardGo.transform, "SoldierText"));
+        so.ApplyModifiedProperties();
+
+        return go;
     }
 
-    static TextMeshProUGUI CreateTMP(GameObject parent, string name, string text, float size, FontStyles style)
+    // ── UI 생성 헬퍼 ─────────────────────────────────────────
+
+    static GameObject MakeGo(string name, GameObject parent, params System.Type[] components)
+    {
+        var go = new GameObject(name, typeof(RectTransform));
+        if (components != null)
+            foreach (var c in components) go.AddComponent(c);
+        go.transform.SetParent(parent.transform, false);
+        return go;
+    }
+
+    static void FullStretch(GameObject go)
+    {
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = rt.offsetMax = Vector2.zero;
+    }
+
+    static TextMeshProUGUI CreateTMP(GameObject parent, string name, string text,
+        float size, FontStyles style)
     {
         var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
         go.transform.SetParent(parent.transform, false);
@@ -197,11 +290,36 @@ public static class BattlePanelCreator
         return tmp;
     }
 
-    static GameObject CreateButton(GameObject parent, string name, string label, Color bgColor, float fontSize)
+    // 중앙 앵커 기반 TMP (OccupiedGroup 내 정보 텍스트용)
+    // position.x = 중앙에서 오른쪽 offset, position.y = 중앙에서 위/아래 offset
+    static TextMeshProUGUI CreateTMPAt(GameObject parent, string name, string text,
+        float size, FontStyles style, Vector2 position, Vector2 sizeDelta)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
+        go.transform.SetParent(parent.transform, false);
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin        = new Vector2(0, 0.5f);
+        rt.anchorMax        = new Vector2(0, 0.5f);
+        rt.pivot            = new Vector2(0, 0.5f);
+        rt.anchoredPosition = position;
+        rt.sizeDelta        = sizeDelta;
+        var tmp = go.GetComponent<TextMeshProUGUI>();
+        tmp.text             = text;
+        tmp.fontSize         = size;
+        tmp.fontStyle        = style;
+        tmp.alignment        = TextAlignmentOptions.Left;
+        tmp.color            = Color.white;
+        tmp.overflowMode     = TextOverflowModes.Ellipsis;
+        return tmp;
+    }
+
+    static GameObject CreateButton(GameObject parent, string name, string label,
+        Color bgColor, float fontSize)
     {
         var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
         go.transform.SetParent(parent.transform, false);
         go.GetComponent<Image>().color = bgColor;
+
         var lGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
         lGo.transform.SetParent(go.transform, false);
         var lRt = lGo.GetComponent<RectTransform>();
@@ -217,24 +335,6 @@ public static class BattlePanelCreator
     }
 
     // ── RectTransform 헬퍼 ───────────────────────────────────
-
-    static void AnchorTopInside(GameObject go, float height, float offsetFromTop)
-    {
-        var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = new Vector2(0, 1);
-        rt.anchorMax = new Vector2(1, 1);
-        rt.offsetMin = new Vector2(0, -(offsetFromTop + height));
-        rt.offsetMax = new Vector2(0, -offsetFromTop);
-    }
-
-    static void AnchorBottomInside(GameObject go, float height, float offsetFromBottom)
-    {
-        var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = new Vector2(0, 0);
-        rt.anchorMax = new Vector2(1, 0);
-        rt.offsetMin = new Vector2(0, offsetFromBottom);
-        rt.offsetMax = new Vector2(0, offsetFromBottom + height);
-    }
 
     static void SetRect(RectTransform rt, Vector2 pos, Vector2 size)
     {

@@ -97,6 +97,14 @@ public class UnitData : ISaveSection
         return available[UnityEngine.Random.Range(0, available.Count)];
     }
 
+    public List<string> GetAvailableNames()
+    {
+        var available = new List<string>(s_namePool.Length);
+        foreach (var n in s_namePool)
+            if (!HasUnit(n)) available.Add(n);
+        return available;
+    }
+
     public void RemoveEquipment(string unitId, int slot)
     {
         if (slot < 0 || slot >= 2) return;
