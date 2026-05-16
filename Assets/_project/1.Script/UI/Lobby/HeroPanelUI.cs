@@ -359,7 +359,9 @@ public class HeroPanelUI : MonoBehaviour
                 sb.AppendLine(EquipmentData.FormatStat(e.Stat, val));
             }
             if (equip.TriggerType != EquipmentTrigger.None)
-                sb.AppendLine($"{loc.Get(equip.TriggerType.ToString())}: {loc.Get(equip.TriggerStat.ToString())}");
+                sb.AppendLine(EquipmentData.FormatTriggerLine(equip,
+                    loc.Get(equip.TriggerType.ToString()),
+                    loc.Get(equip.TriggerStat.ToString())));
             statText.text = sb.ToString().TrimEnd();
         }
 
@@ -718,16 +720,17 @@ public class HeroPanelUI : MonoBehaviour
         float equipVal   = _statResult?.GetEquip(row.Type)    ?? 0f;
         float passiveVal = _statResult?.GetPassive(row.Type)  ?? 0f;
         float abilityVal = _statResult?.GetAbility(row.Type)  ?? 0f;
-        float total      = baseVal + equipVal + passiveVal + abilityVal;
+        float relicVal   = _statResult?.GetRelic(row.Type)    ?? 0f;
+        float total      = baseVal + equipVal + passiveVal + abilityVal + relicVal;
         bool  expanded   = index == _expandedStatIndex;
-        bool  hasBonus   = equipVal != 0f || passiveVal != 0f || abilityVal != 0f;
+        bool  hasBonus   = equipVal != 0f || passiveVal != 0f || abilityVal != 0f || relicVal != 0f;
 
         if (expanded && hasBonus)
         {
-            // 합계 숨기고 합산 과정만 표시: "기본  +장비  +패시브  +어빌리티"
+            // 합계 숨기고 합산 과정만 표시: "기본  +장비  +패시브  +어빌리티  +유물"
             row.ValueTmp.overflowMode     = TextOverflowModes.Overflow;
             row.ValueTmp.textWrappingMode = TextWrappingModes.NoWrap;
-            row.ValueTmp.text = StatDisplayHelper.BuildBreakdown(row.Type, baseVal, equipVal, passiveVal, abilityVal);
+            row.ValueTmp.text = StatDisplayHelper.BuildBreakdown(row.Type, baseVal, equipVal, passiveVal, abilityVal, relicVal);
             if (row.LayoutEl != null) row.LayoutEl.preferredHeight = 50f;
         }
         else

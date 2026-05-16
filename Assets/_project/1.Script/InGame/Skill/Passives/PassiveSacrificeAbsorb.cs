@@ -21,13 +21,10 @@ public class PassiveSacrificeAbsorb : PassiveSkillData
     {
         if (ctx.SoldierDeathCount <= 0) return;
         var em = ctx.EntityManager;
-        if (!em.HasComponent<HealthComponent>(ctx.GeneralEntity)) return;
-        if (!em.HasComponent<StatComponent>(ctx.GeneralEntity)) return;
+        if (!em.HasBuffer<HealEventBufferElement>(ctx.GeneralEntity)) return;
 
-        float maxHp  = em.GetComponentData<StatComponent>(ctx.GeneralEntity).Final[StatType.MaxHp];
-        float heal   = HealPerDeath * ctx.SoldierDeathCount;
-        var   health = em.GetComponentData<HealthComponent>(ctx.GeneralEntity);
-        health.CurrentHp = Mathf.Min(health.CurrentHp + heal, maxHp);
-        em.SetComponentData(ctx.GeneralEntity, health);
+        float heal = HealPerDeath * ctx.SoldierDeathCount;
+        em.GetBuffer<HealEventBufferElement>(ctx.GeneralEntity).Add(
+            new HealEventBufferElement { Amount = heal, SourceEntity = ctx.GeneralEntity });
     }
 }

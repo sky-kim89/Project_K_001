@@ -234,6 +234,7 @@ namespace BattleGame.Units
         public float  Damage;
         public float3 HitDirection;    // 넉백 방향 계산용
         public Entity AttackerEntity;
+        public bool   IsSkillHit;      // 스킬 직접 타격 여부 (통계 분류용)
     }
 
     // ──────────────────────────────────────────
@@ -397,10 +398,46 @@ namespace BattleGame.Units
     public struct ProjectileLaunchRequest : IBufferElementData
     {
         public Entity   TargetEntity;
+        public Entity   AttackerEntity;  // 통계 귀속용
         public float3   AttackerPos;
         public float3   TargetPos;
         public float    Damage;
         public float    Speed;
         public TeamType Team;
     }
+
+    // ──────────────────────────────────────────
+    // 전투 통계 버퍼 / 태그
+    // ──────────────────────────────────────────
+
+    /// <summary>
+    /// 피격 처리 결과 버퍼. ProcessHitEventsJob 이 TARGET 엔티티에 기록.
+    /// BattleStatCollectorSystem 이 매 프레임 읽고 BattleStatsTracker 에 귀속 후 Clear.
+    /// </summary>
+    [InternalBufferCapacity(4)]
+    public struct DamageResultElement : IBufferElementData
+    {
+        public Entity AttackerEntity;   // 공격자 (딜 귀속용)
+        public float  ActualDamage;     // 방어 적용 후 실제 피해
+        public float  AbsorbedDamage;   // 방어로 감소된 피해
+        public bool   IsKill;           // 이 히트로 대상이 사망했는가
+        public bool   IsSkillHit;       // 스킬 직접 타격 여부 (통계 분류용)
+    }
+
+    /// <summary>
+    /// 힐 이벤트 버퍼. 모든 힐 소스가 TARGET 엔티티에 Append.
+    /// UnitHealSystem 이 매 프레임 읽어 HP 회복 + BattleStatsTracker 기록 후 Clear.
+    /// </summary>
+    [InternalBufferCapacity(4)]
+    public struct HealEventBufferElement : IBufferElementData
+    {
+        public float  Amount;        // 회복량 (최대 체력 클램프 전)
+        public Entity SourceEntity;  // 회복 주체 (미래 확장용)
+    }
+
+    /// <summary>
+    /// 소환 스킬로 생성된 유닛 마커 (SummonSkeleton / SummonElite 등).
+    /// 딜 귀속 시 SoldierDmg 가 아닌 SkillDmg 로 분류하기 위해 사용.
+    /// </summary>
+    public struct SummonedTag : IComponentData { }
 }

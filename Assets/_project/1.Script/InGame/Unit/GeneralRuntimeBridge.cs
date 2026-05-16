@@ -74,10 +74,11 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         {
             PassiveSkillApplier.ApplyToGeneralStat(_stat, GetActivePassives(), db);
 
-            // TitanGeneral 크기 변경
+            // TitanGeneral 크기 변경 (풀 재사용 시 이전 스케일 누적 방지: 항상 리셋 후 적용)
+            transform.localScale = Vector3.one;
             float scaleMult = PassiveSkillApplier.GetGeneralScaleMultiplier(GetActivePassives(), db);
             if (!Mathf.Approximately(scaleMult, 1f))
-                transform.localScale *= scaleMult;
+                transform.localScale = new Vector3(scaleMult, scaleMult, scaleMult);
         }
 
         // ── 장비 스탯 적용 (패시브 이후, SpawnEntity 직전) ────
@@ -103,6 +104,10 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         SpawnEntity();
         SpawnSoldiers();
 
+        // 배틀 통계 트래커에 장군 등록
+        if (TryGetComponent<EntityLink>(out var entityLink) && entityLink.Entity != Unity.Entities.Entity.Null)
+            BattleStatsTracker.Instance?.RegisterGeneral(entityLink.Entity, _unitName);
+
         OnSpawned?.Invoke(this);
     }
 
@@ -117,6 +122,7 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
     /// <summary>장군 전용 ECS 컴포넌트 추가 — 직업, 원거리 태그, 패시브/액티브 스킬, 발사 요청 버퍼.</summary>
     protected override void AddComponents(EntityManager em, Entity entity)
     {
+        em.AddComponentData(entity, new GeneralComponent { CommandRadius = 15f });
         em.AddComponentData(entity, new UnitJobComponent { Job = _job });
 
         if (_job == UnitJob.Archer || _job == UnitJob.Mage)

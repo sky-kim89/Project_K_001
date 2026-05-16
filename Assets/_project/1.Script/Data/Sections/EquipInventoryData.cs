@@ -8,7 +8,7 @@ using UnityEngine;
 //
 //  장착 시 → OwnedIds 에서 제거, UnitEntry.RunEquipSlots 로 이동.
 //  교체 시 → 기존 장비는 소멸 (OwnedIds 로 반환하지 않음).
-//  회귀 시 → RunEquipSlots 는 초기화되나 이 목록은 유지됨.
+//  회귀 시 → RunEquipSlots·인벤토리 모두 초기화 (런 스코프 데이터).
 // ============================================================
 
 public class EquipInventoryData : ISaveSection
@@ -38,12 +38,5 @@ public class EquipInventoryData : ISaveSection
     public void SetDefaults()
     {
         _raw = new Raw();
-        // 테스트용 기본 보유 장비
-        _raw.Ids.Add("equip_armor_normal");
-        _raw.Ids.Add("equip_sword_normal");
-        _raw.Ids.Add("equip_cmd_normal");
-        _raw.Ids.Add("equip_armor_uncommon");
-        _raw.Ids.Add("equip_sword_uncommon");
-        _raw.Ids.Add("equip_cmd_rare");
     }
 }

@@ -87,16 +87,17 @@ public class ProjectileView : MonoBehaviour
 
         var projData = new ProjectileComponent
         {
-            TargetEntity = req.TargetEntity,
-            TargetPos    = req.TargetPos,
-            Damage       = req.Damage,
-            Speed        = req.Speed,
-            Lifetime     = Lifetime,
-            Team         = req.Team,
-            StartPos     = req.AttackerPos,
-            ArcHeight    = arcHeight,
-            TotalTime    = totalTime,
-            ElapsedTime  = 0f,
+            TargetEntity   = req.TargetEntity,
+            AttackerEntity = req.AttackerEntity,
+            TargetPos      = req.TargetPos,
+            Damage         = req.Damage,
+            Speed          = req.Speed,
+            Lifetime       = Lifetime,
+            Team           = req.Team,
+            StartPos       = req.AttackerPos,
+            ArcHeight      = arcHeight,
+            TotalTime      = totalTime,
+            ElapsedTime    = 0f,
         };
 
         if (_link.Entity != Entity.Null && em.Exists(_link.Entity))

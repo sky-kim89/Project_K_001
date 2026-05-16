@@ -432,6 +432,7 @@ namespace BattleGame.Units
     /// <summary>
     /// 이동·분리·넉백이 모두 끝난 뒤 실행.
     /// 유닛이 화면에 한 번이라도 진입하면 이후로는 화면 밖으로 밀리지 않는다.
+    /// 미진입 상태에서 화면 외곽 4칸 이상 벗어나면 즉시 사망 처리한다.
     /// Camera.main 이 없거나 Perspective 카메라면 동작하지 않는다.
     /// </summary>
     [UpdateInGroup(typeof(SimulationSystemGroup))]
@@ -448,10 +449,14 @@ namespace BattleGame.Units
             float camX = cam.transform.position.x;
             float camY = cam.transform.position.y;
 
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb          = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+
             new ScreenClampJob
             {
                 Min = new float2(camX - w, camY - h),
                 Max = new float2(camX + w, camY + h),
+                Ecb = ecb,
             }.ScheduleParallel();
         }
     }
@@ -462,13 +467,23 @@ namespace BattleGame.Units
     {
         public float2 Min;
         public float2 Max;
+        public EntityCommandBuffer.ParallelWriter Ecb;
 
-        public void Execute(ref LocalTransform transform, ref ScreenStateComponent screen)
+        // 스폰 후 화면 미진입 유닛이 이 거리 이상 벗어나면 즉시 사망 처리
+        // — 대형 넉백으로 타겟 탐색 범위 밖에 영구 방치되는 버그 방지
+        const float OutOfBoundsKillDist = 4f;
+
+        public void Execute(
+            [ChunkIndexInQuery] int    chunkIndex,
+            Entity                     entity,
+            ref LocalTransform         transform,
+            ref ScreenStateComponent   screen,
+            ref HealthComponent        health)
         {
             float x = transform.Position.x;
             float y = transform.Position.y;
 
-            // 화면 안에 들어왔는지 확인
+            // 화면 진입 감지
             if (!screen.HasEnteredScreen &&
                 x >= Min.x && x <= Max.x &&
                 y >= Min.y && y <= Max.y)
@@ -476,11 +491,22 @@ namespace BattleGame.Units
                 screen.HasEnteredScreen = true;
             }
 
-            // 진입 후에는 화면 밖으로 나가지 않도록 클램프
             if (screen.HasEnteredScreen)
             {
+                // 진입 후: 화면 밖으로 나가지 않도록 엄격히 클램프
                 transform.Position.x = math.clamp(x, Min.x, Max.x);
                 transform.Position.y = math.clamp(y, Min.y, Max.y);
+            }
+            else
+            {
+                // 미진입 상태에서 허용 범위 초과 시 즉시 사망 처리
+                bool outX = x < Min.x - OutOfBoundsKillDist || x > Max.x + OutOfBoundsKillDist;
+                bool outY = y < Min.y - OutOfBoundsKillDist || y > Max.y + OutOfBoundsKillDist;
+                if (outX || outY)
+                {
+                    health.CurrentHp = 0f;
+                    Ecb.AddComponent<DeadTag>(chunkIndex, entity);
+                }
             }
         }
     }

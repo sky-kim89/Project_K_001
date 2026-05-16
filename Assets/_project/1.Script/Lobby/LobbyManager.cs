@@ -109,6 +109,13 @@ public class LobbyManager : Singleton<LobbyManager>
         OnStageChanged?.Invoke(CurrentStage);
     }
 
+    /// <summary>환생 후 1스테이지로 초기화. OnStageChanged 이벤트를 발행해 StageSelectUI를 갱신한다.</summary>
+    public void ResetToFirstStage()
+    {
+        _currentIndex = 0;
+        OnStageChanged?.Invoke(CurrentStage);
+    }
+
     public void StartBattle()
     {
         if (_isBattleStarting) return;

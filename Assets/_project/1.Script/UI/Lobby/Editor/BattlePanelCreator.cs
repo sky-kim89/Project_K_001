@@ -32,15 +32,15 @@ public static class BattlePanelCreator
     const float SlotGap     = 8f;
     const int   SlotCount   = 5;
 
-    static readonly Color BgDark       = new Color(0.07f, 0.07f, 0.13f, 1f);
-    static readonly Color SlotBgEmpty  = new Color(0.12f, 0.12f, 0.20f, 1f);
-    static readonly Color SlotBgOccup  = new Color(0.12f, 0.15f, 0.23f, 1f);
-    static readonly Color GradePlaceholder = new Color(0.25f, 0.25f, 0.35f, 1f);
-    static readonly Color PortraitBg   = new Color(0.12f, 0.12f, 0.20f, 1f);
-    static readonly Color ActionBg     = new Color(0.05f, 0.05f, 0.10f, 1f);
+    const float HireBtnH = 80f;
+
+    static readonly Color BgDark      = new Color(0.07f, 0.07f, 0.13f, 1f);
+    static readonly Color SlotBgEmpty = new Color(0.12f, 0.12f, 0.20f, 1f);
+    static readonly Color ActionBg    = new Color(0.05f, 0.05f, 0.10f, 1f);
     static readonly Color BattleBtnC   = new Color(0.11f, 0.72f, 0.58f, 1f);
     static readonly Color AbilityBtnC  = new Color(0.18f, 0.25f, 0.45f, 1f);
     static readonly Color HireBtnC     = new Color(0.45f, 0.25f, 0.18f, 1f);
+    static readonly Color RelicBtnC    = new Color(0.35f, 0.18f, 0.50f, 1f);
     static readonly Color MutedText    = new Color(0.55f, 0.55f, 0.60f);
 
     [MenuItem("Tools/Project K/로비 UI/Create BattlePanel Prefab")]
@@ -66,7 +66,7 @@ public static class BattlePanelCreator
         var panelRt = panel.GetComponent<RectTransform>();
         panelRt.anchorMin = Vector2.zero;
         panelRt.anchorMax = Vector2.one;
-        panelRt.offsetMin = new Vector2(0,  NavBarH);
+        panelRt.offsetMin = new Vector2(0,  0);
         panelRt.offsetMax = new Vector2(0, -TopBarH);
 
         var ui = panel.AddComponent<StageSelectUI>();
@@ -84,13 +84,13 @@ public static class BattlePanelCreator
 
         // VerticalLayoutGroup으로 5 슬롯을 균등 분할
         var vlg = deployArea.AddComponent<VerticalLayoutGroup>();
-        vlg.childAlignment        = TextAnchor.UpperCenter;
-        vlg.spacing               = SlotGap;
-        vlg.childForceExpandWidth = true;
+        vlg.childAlignment         = TextAnchor.UpperCenter;
+        vlg.spacing                = SlotGap;
+        vlg.childForceExpandWidth  = true;
         vlg.childForceExpandHeight = true;
-        vlg.padding               = new RectOffset(4, 4, 4, 4);
+        vlg.padding                = new RectOffset(4, 4, 4, 4);
 
-        float slotH = (UIScale.RefHeight - TopBarH - NavBarH
+        float slotH = (UIScale.RefHeight - TopBarH
                        - SlotGap * (SlotCount - 1) - 8f) / SlotCount;
 
         var slots = new DeploySlotUI[SlotCount];
@@ -123,23 +123,81 @@ public static class BattlePanelCreator
             new Vector2(0, 150), new Vector2(1000, 56));
         progressText.color = MutedText;
 
-        // 어빌리티·용병 버튼 (중간)
+        // 어빌리티·유물 버튼 (중간 — NavBar 제거 후 중앙보다 살짝 아래)
         var abilityBtn = CreateButton(actionArea, "AbilityListBtn", "어빌리티 목록", AbilityBtnC, UIScale.FontMd);
         SetRect(abilityBtn.GetComponent<RectTransform>(),
-            new Vector2(-220, 20), new Vector2(380, UIScale.BtnSm));
+            new Vector2(-220, -20), new Vector2(380, UIScale.BtnSm));
 
-        var hireBtn = CreateButton(actionArea, "HireBtn", "용병 구매", HireBtnC, UIScale.FontMd);
-        SetRect(hireBtn.GetComponent<RectTransform>(),
-            new Vector2( 220, 20), new Vector2(380, UIScale.BtnSm));
+        var relicBtn = CreateButton(actionArea, "RelicBtn", "유물", RelicBtnC, UIScale.FontMd);
+        SetRect(relicBtn.GetComponent<RectTransform>(),
+            new Vector2( 220, -20), new Vector2(380, UIScale.BtnSm));
 
-        // 전투 시작 버튼 (하단)
+        // 전투 시작 버튼 (하단 — NavBar 제거로 80px 여유, 하단 마진 120px)
         var battleBtn   = CreateButton(actionArea, "BattleStartBtn", "전투 시작", BattleBtnC, UIScale.FontLg);
         var battleBtnRt = battleBtn.GetComponent<RectTransform>();
         battleBtnRt.anchorMin        = new Vector2(0.08f, 0f);
         battleBtnRt.anchorMax        = new Vector2(0.92f, 0f);
-        battleBtnRt.anchoredPosition = new Vector2(0, UIScale.BtnLg / 2f + 40f);
+        battleBtnRt.anchoredPosition = new Vector2(0, UIScale.BtnLg / 2f + 120f);
         battleBtnRt.sizeDelta        = new Vector2(0, UIScale.BtnLg);
         battleBtn.GetComponentInChildren<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
+
+        // ── 용병 고용 버튼 (BattlePanel 루트 자식, Slot 1 바로 위 TopBar 영역) ──
+        var hireBtn = new GameObject("HireBtn", typeof(RectTransform), typeof(Image), typeof(Button));
+        hireBtn.transform.SetParent(panel.transform, false);
+        hireBtn.GetComponent<Image>().color = HireBtnC;
+        var hireBtnRt = hireBtn.GetComponent<RectTransform>();
+        hireBtnRt.anchorMin        = new Vector2(0f, 1f);
+        hireBtnRt.anchorMax        = new Vector2(0f, 1f);
+        hireBtnRt.pivot            = new Vector2(0f, 1f);
+        hireBtnRt.anchoredPosition = new Vector2(0f, HireBtnH);
+        hireBtnRt.sizeDelta        = new Vector2(DeployW, HireBtnH);
+
+        // 내용 행 (HLG — 이름 + 골드 아이콘 + 비용)
+        var hireRow = new GameObject("ContentRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+        hireRow.transform.SetParent(hireBtn.transform, false);
+        var hireRowRt = hireRow.GetComponent<RectTransform>();
+        hireRowRt.anchorMin = Vector2.zero;
+        hireRowRt.anchorMax = Vector2.one;
+        hireRowRt.offsetMin = hireRowRt.offsetMax = Vector2.zero;
+        var hlg = hireRow.GetComponent<HorizontalLayoutGroup>();
+        hlg.childAlignment        = TextAnchor.MiddleCenter;
+        hlg.spacing               = 10f;
+        hlg.padding               = new RectOffset(12, 12, 0, 0);
+        hlg.childForceExpandWidth = false;
+        hlg.childForceExpandHeight = true;
+
+        // "용병 고용" 라벨
+        var hireNameGo  = new GameObject("NameLabel", typeof(RectTransform), typeof(TextMeshProUGUI));
+        hireNameGo.transform.SetParent(hireRow.transform, false);
+        hireNameGo.AddComponent<LayoutElement>().preferredWidth = 200f;
+        var hireNameTmp = hireNameGo.GetComponent<TextMeshProUGUI>();
+        hireNameTmp.text      = "용병 고용";
+        hireNameTmp.fontSize  = UIScale.FontMd;
+        hireNameTmp.alignment = TextAlignmentOptions.Right;
+        hireNameTmp.color     = Color.white;
+
+        // 골드 아이콘
+        var hireIconGo  = new GameObject("GoldIcon", typeof(RectTransform), typeof(Image));
+        hireIconGo.transform.SetParent(hireRow.transform, false);
+        hireIconGo.GetComponent<RectTransform>().sizeDelta = new Vector2(44f, 44f);
+        var hireIconLe  = hireIconGo.AddComponent<LayoutElement>();
+        hireIconLe.minWidth  = hireIconLe.preferredWidth  = 44f;
+        hireIconLe.minHeight = hireIconLe.preferredHeight = 44f;
+        var hireIconImg = hireIconGo.GetComponent<Image>();
+        hireIconImg.preserveAspect = true;
+        var goldSprite = AssetDatabase.LoadAssetAtPath<Sprite>(
+            "Assets/_project/3.Textures/Icons/Items/item_gold.png");
+        if (goldSprite != null) hireIconImg.sprite = goldSprite;
+
+        // "+500" 비용 텍스트
+        var hireCostGo  = new GameObject("CostLabel", typeof(RectTransform), typeof(TextMeshProUGUI));
+        hireCostGo.transform.SetParent(hireRow.transform, false);
+        hireCostGo.AddComponent<LayoutElement>().preferredWidth = 120f;
+        var hireCostTmp = hireCostGo.GetComponent<TextMeshProUGUI>();
+        hireCostTmp.text      = "+500";
+        hireCostTmp.fontSize  = UIScale.FontMd;
+        hireCostTmp.alignment = TextAlignmentOptions.Left;
+        hireCostTmp.color     = new Color(1f, 0.85f, 0.20f);
 
         // ── StageSelectUI 필드 연결 ───────────────────────────
         var so = new SerializedObject(ui);
@@ -157,6 +215,8 @@ public static class BattlePanelCreator
         SetObj(so, "_progressText",   progressText);
         SetObj(so, "_abilityListBtn", abilityBtn.GetComponent<Button>());
         SetObj(so, "_hireBtn",        hireBtn.GetComponent<Button>());
+        SetObj(so, "_hireCostText",   hireCostTmp);
+        SetObj(so, "_relicBtn",       relicBtn.GetComponent<Button>());
         SetObj(so, "_battleStartBtn", battleBtn.GetComponent<Button>());
         so.ApplyModifiedProperties();
 
@@ -190,18 +250,49 @@ public static class BattlePanelCreator
         cb.pressedColor     = new Color(0.12f, 0.15f, 0.24f, 1f);
         slotBtn.colors = cb;
 
-        // ── EmptyGroup ───────────────────────────────────────
+        // ── EmptyGroup — "용병 고용 (골드아이콘) +500" ──────────
         var emptyGo = MakeGo("EmptyGroup", go);
         FullStretch(emptyGo);
-        var emptyLabel = CreateTMP(emptyGo, "EmptyLabel", $"+ 슬롯 {index + 1} 비어 있음",
-            UIScale.FontMd, FontStyles.Normal);
+
+        // 중앙 정렬 콘텐츠 행
+        var emptyRow = MakeGo("EmptyContentRow", emptyGo);
         {
-            var rt = emptyLabel.GetComponent<RectTransform>();
+            var rt = emptyRow.GetComponent<RectTransform>();
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
             rt.offsetMin = rt.offsetMax = Vector2.zero;
         }
+        var eHlg = emptyRow.AddComponent<HorizontalLayoutGroup>();
+        eHlg.childAlignment        = TextAnchor.MiddleCenter;
+        eHlg.spacing               = 8f;
+        eHlg.childForceExpandWidth  = false;
+        eHlg.childForceExpandHeight = false;
+        eHlg.padding               = new RectOffset(8, 8, 0, 0);
+
+        // "용병 고용" 라벨
+        var emptyLabel = CreateTMP(emptyRow, "EmptyLabel", "용병 고용", UIScale.FontMd, FontStyles.Normal);
         emptyLabel.color = MutedText;
+        emptyLabel.alignment = TextAlignmentOptions.Right;
+        emptyLabel.gameObject.AddComponent<LayoutElement>().preferredWidth = 150f;
+
+        // 골드 아이콘
+        var eIconGo = new GameObject("GoldIcon", typeof(RectTransform), typeof(Image));
+        eIconGo.transform.SetParent(emptyRow.transform, false);
+        eIconGo.GetComponent<RectTransform>().sizeDelta = new Vector2(34f, 34f);
+        var eIconLe = eIconGo.AddComponent<LayoutElement>();
+        eIconLe.minWidth = eIconLe.preferredWidth = 34f;
+        eIconLe.minHeight = eIconLe.preferredHeight = 34f;
+        var eIconImg = eIconGo.GetComponent<Image>();
+        eIconImg.preserveAspect = true;
+        var eGoldSprite = AssetDatabase.LoadAssetAtPath<Sprite>(
+            "Assets/_project/3.Textures/Icons/Items/item_gold.png");
+        if (eGoldSprite != null) eIconImg.sprite = eGoldSprite;
+
+        // "+500" 비용 라벨
+        var emptyCost = CreateTMP(emptyRow, "CostLabel", "+500", UIScale.FontMd, FontStyles.Normal);
+        emptyCost.color = new Color(1f, 0.85f, 0.20f);
+        emptyCost.alignment = TextAlignmentOptions.Left;
+        emptyCost.gameObject.AddComponent<LayoutElement>().preferredWidth = 75f;
 
         // ── OccupiedGroup = HeroCard 프리팹 구조 ─────────────
         var cardGo = HeroPanelCreator.BuildCardPrefab();
@@ -287,29 +378,6 @@ public static class BattlePanelCreator
         tmp.fontStyle = style;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color     = Color.white;
-        return tmp;
-    }
-
-    // 중앙 앵커 기반 TMP (OccupiedGroup 내 정보 텍스트용)
-    // position.x = 중앙에서 오른쪽 offset, position.y = 중앙에서 위/아래 offset
-    static TextMeshProUGUI CreateTMPAt(GameObject parent, string name, string text,
-        float size, FontStyles style, Vector2 position, Vector2 sizeDelta)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
-        go.transform.SetParent(parent.transform, false);
-        var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin        = new Vector2(0, 0.5f);
-        rt.anchorMax        = new Vector2(0, 0.5f);
-        rt.pivot            = new Vector2(0, 0.5f);
-        rt.anchoredPosition = position;
-        rt.sizeDelta        = sizeDelta;
-        var tmp = go.GetComponent<TextMeshProUGUI>();
-        tmp.text             = text;
-        tmp.fontSize         = size;
-        tmp.fontStyle        = style;
-        tmp.alignment        = TextAlignmentOptions.Left;
-        tmp.color            = Color.white;
-        tmp.overflowMode     = TextOverflowModes.Ellipsis;
         return tmp;
     }
 

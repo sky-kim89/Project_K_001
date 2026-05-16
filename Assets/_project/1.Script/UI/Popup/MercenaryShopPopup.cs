@@ -5,74 +5,49 @@ using UnityEngine.UI;
 
 // ============================================================
 //  MercenaryShopPopup.cs
-//  용병 상점 팝업.
+//  용병 상점 팝업 (전체 화면 오버레이).
 //
-//  [빈 슬롯 있음] CandidateView → 3명 랜덤 후보 카드
-//    카드 클릭 → DetailView (스탯·스킬 확인)
-//    [고용] → UnitData 추가 + 빈 슬롯 배치 + 팝업 닫기
-//    [포기] → DetailView 닫고 CandidateView 복귀
+//  레이아웃:
+//    SlotFullView  — 좌측, BattlePanel DeployArea와 동일 위치
+//                    배치된 장수 5명 표시 + 해고 버튼
+//    CandidatePanel— 우측 플로팅 패널
+//                    후보 카드 3장 + 고용/분해 버튼
 //
-//  [빈 슬롯 없음] SlotFullView → 현재 용병 목록 + 개별 [해고] 버튼
+//  양쪽이 항상 동시에 표시되므로 현재 장수와 새 후보를 나란히 비교 가능.
+//  자세히 보기 클릭 → HeroDetailPopup(preview) + 선택 카드 하일라이트.
 //
-//  Inspector 연결:
-//    _candidateView      : 후보 카드 뷰 GO
-//    _candidateCards[0~2]: MercCandidateCardUI 3개
-//    _detailView         : 상세 뷰 GO
-//    _slotFullView       : 슬롯 꽉 찼을 때 뷰 GO
-//    _fullList           : SlotFullView 안의 목록 부모 Transform
-//    _fullRowTemplate    : 목록 행 GO (비활성 템플릿)
-//    _detailGradeBorder, _detailPortraitBg, _detailPortraitImg,
-//    _detailPortraitBridge, _detailNameText, _detailGradeText,
-//    _detailJobText, _detailHpText, _detailAtkText, _detailDefText,
-//    _detailSpdText, _detailSoldierText, _detailActiveSkillText,
-//    _detailPassive0~2Text : 상세 뷰 필드들
-//    _hireBtn, _passBtn, _passShardText : 하단 버튼
-//    _closeBtn : 닫기 버튼
+//  팝업 닫힘 시 무조건 골드 소모 (GameplayConfig.HireMercenaryCost).
 // ============================================================
 
 public class MercenaryShopPopup : PopupBase
 {
-    [Header("뷰 컨테이너")]
+    public override bool BlockBackgroundClose => true;
+
+    [Header("뷰 컨테이너 (참조용)")]
     [SerializeField] GameObject _candidateView;
-    [SerializeField] GameObject _detailView;
     [SerializeField] GameObject _slotFullView;
 
     [Header("후보 카드 (CandidateView)")]
     [SerializeField] MercCandidateCardUI[] _candidateCards;   // 3개
 
-    [Header("상세 뷰 (DetailView)")]
-    [SerializeField] Image                _detailGradeBorder;
-    [SerializeField] Image                _detailPortraitBg;
-    [SerializeField] Image                _detailPortraitImg;
-    [SerializeField] UnitAppearanceBridge _detailPortraitBridge;
-    [SerializeField] TextMeshProUGUI      _detailNameText;
-    [SerializeField] TextMeshProUGUI      _detailGradeText;
-    [SerializeField] TextMeshProUGUI      _detailJobText;
-    [SerializeField] TextMeshProUGUI      _detailHpText;
-    [SerializeField] TextMeshProUGUI      _detailAtkText;
-    [SerializeField] TextMeshProUGUI      _detailDefText;
-    [SerializeField] TextMeshProUGUI      _detailSpdText;
-    [SerializeField] TextMeshProUGUI      _detailActiveSkillText;
-    [SerializeField] TextMeshProUGUI      _detailPassive0Text;
-    [SerializeField] TextMeshProUGUI      _detailPassive1Text;
-    [SerializeField] TextMeshProUGUI      _detailPassive2Text;
+    [Header("고용 액션")]
     [SerializeField] Button          _hireBtn;
     [SerializeField] Button          _passBtn;
-    [SerializeField] TextMeshProUGUI _passShardText;
+    [SerializeField] TextMeshProUGUI _passBtnLabel;
+    [SerializeField] Image           _passShardIcon;
 
-    [Header("슬롯 꽉 찼을 때 뷰 (SlotFullView)")]
-    [SerializeField] Transform  _fullList;
-    [SerializeField] GameObject _fullRowTemplate;
+    [Header("슬롯 카드 (SlotFullView)")]
+    [SerializeField] MercSlotCardUI[] _slotCards;             // 5개
 
     [Header("닫기")]
     [SerializeField] Button _closeBtn;
 
     // ── 런타임 상태 ──────────────────────────────────────────
 
-    readonly List<UnitEntry>   _candidates = new();
-    UnitEntry                  _selected;
-    Texture2D                  _detailTexture;
-    readonly List<GameObject>  _fullRows   = new();
+    readonly List<UnitEntry> _candidates          = new();
+    UnitEntry                _selected;
+    int                      _targetSlot          = -1;
+    int                      _totalCandidateShards;
 
     // ── 생명주기 ──────────────────────────────────────────────
 
@@ -81,7 +56,20 @@ public class MercenaryShopPopup : PopupBase
         base.Awake();
         _closeBtn?.onClick.AddListener(() => Close());
         _hireBtn ?.onClick.AddListener(OnHire);
-        _passBtn ?.onClick.AddListener(OnPass);
+        _passBtn ?.onClick.AddListener(OnDecompose);
+
+        if (_passShardIcon != null)
+        {
+            var sp = SpriteManager.Instance?.GetItem(eItem.SoldierShard.IconKey());
+            _passShardIcon.sprite = sp;
+            _passShardIcon.color  = sp != null ? Color.white : new Color(0.45f, 0.70f, 1.00f);
+        }
+    }
+
+    public MercenaryShopPopup Setup(int targetSlot)
+    {
+        _targetSlot = targetSlot;
+        return this;
     }
 
     protected override void OnAfterOpen()
@@ -92,7 +80,13 @@ public class MercenaryShopPopup : PopupBase
 
     protected override void OnAfterClose()
     {
-        ClearFullRows();
+        var pm = PopupManager.Instance;
+        if (pm != null && pm.IsOpen(PopupType.HeroDetail))
+            pm.Get<HeroDetailPopup>(PopupType.HeroDetail)?.Close();
+
+        int cost = GameplayConfig.Current?.HireMercenaryCost ?? 500;
+        UserDataManager.Instance?.Get<ItemData>()?.Spend(eItem.Gold, cost);
+        UserDataManager.Instance?.RequestSave();
     }
 
     // ── 후보 생성 ─────────────────────────────────────────────
@@ -100,42 +94,36 @@ public class MercenaryShopPopup : PopupBase
     void GenerateCandidates()
     {
         _candidates.Clear();
+        _totalCandidateShards = 0;
+
         var unitData = UserDataManager.Instance?.Get<UnitData>();
         if (unitData == null) return;
 
-        // 미보유 이름 목록
         var pool  = unitData.GetAvailableNames();
         int count = Mathf.Min(3, pool.Count);
 
-        // Fisher-Yates 부분 셔플로 3명 랜덤 픽
         for (int i = 0; i < count; i++)
         {
-            int idx      = Random.Range(i, pool.Count);
+            int idx = Random.Range(i, pool.Count);
             (pool[i], pool[idx]) = (pool[idx], pool[i]);
-            _candidates.Add(new UnitEntry { UnitName = pool[i], Level = 1, Exp = 0 });
+            var entry = new UnitEntry { UnitName = pool[i], Level = 1, Exp = 0 };
+            _candidates.Add(entry);
+            _totalCandidateShards += CalcShards(entry);
         }
+
+        if (_passBtnLabel != null)
+            _passBtnLabel.text = $"+{_totalCandidateShards}";
     }
 
-    // ── 뷰 전환 ──────────────────────────────────────────────
+    // ── 뷰 갱신 (항상 양쪽 모두 표시) ────────────────────────
 
     void RefreshView()
     {
-        int emptySlot = GetFirstEmptySlot();
-        bool hasFreeSlot = emptySlot >= 0;
-
-        if (_candidateView != null) _candidateView.SetActive(hasFreeSlot && _selected == null);
-        if (_detailView    != null) _detailView   .SetActive(hasFreeSlot && _selected != null);
-        if (_slotFullView  != null) _slotFullView .SetActive(!hasFreeSlot);
-
-        if (hasFreeSlot)
-        {
-            if (_selected == null) BuildCandidateCards();
-            else                   FillDetailView(_selected);
-        }
-        else
-        {
-            BuildFullList();
-        }
+        _selected = null;
+        ClearHighlights();
+        RefreshHireBar();
+        BuildCandidateCards();
+        RefreshSlotView();
     }
 
     void BuildCandidateCards()
@@ -148,7 +136,8 @@ public class MercenaryShopPopup : PopupBase
             {
                 int capturedIdx = i;
                 _candidateCards[i].gameObject.SetActive(true);
-                _candidateCards[i].Setup(_candidates[i], () => SelectCandidate(_candidates[capturedIdx]));
+                _candidateCards[i].Setup(_candidates[i],
+                    () => SelectCandidate(_candidates[capturedIdx], capturedIdx));
             }
             else
             {
@@ -157,152 +146,124 @@ public class MercenaryShopPopup : PopupBase
         }
     }
 
-    void SelectCandidate(UnitEntry entry)
+    void RefreshSlotView()
     {
-        _selected = entry;
-        RefreshView();
-    }
-
-    void FillDetailView(UnitEntry entry)
-    {
-        UnitJob        job    = UnitJobRoller.GetJob(entry.UnitName);
-        HeroStatResult result = HeroStatResolver.Resolve(entry);
-        Color          gc     = GradeStyle.GetColor(entry.Grade);
-
-        if (_detailGradeBorder != null) _detailGradeBorder.color = gc;
-        if (_detailGradeText   != null) { _detailGradeText.text  = GradeStyle.GetLabel(entry.Grade); _detailGradeText.color = gc; }
-        if (_detailNameText    != null) _detailNameText.text    = entry.UnitName;
-        if (_detailJobText     != null) _detailJobText.text     = JobStyle.GetLabel(job);
-        if (_detailHpText  != null) _detailHpText.text  = $"{result.Total(StatType.MaxHp):N0}";
-        if (_detailAtkText != null) _detailAtkText.text = $"{result.Total(StatType.Attack):N0}";
-        if (_detailDefText != null) _detailDefText.text = $"{result.Total(StatType.Defense) * 100f:F0}%";
-        if (_detailSpdText != null) _detailSpdText.text = $"{result.Total(StatType.MoveSpeed):F1}";
-
-        FillDetailSkills(job, entry);
-
-        int shards = CalcShards(entry);
-        if (_passShardText != null) _passShardText.text = $"{shards} 조각";
-
-        UnitPortraitHelper.Render(entry.UnitName, job, entry.Grade,
-            _detailPortraitBridge, _detailPortraitBg, _detailPortraitImg, ref _detailTexture);
-    }
-
-    void FillDetailSkills(UnitJob job, UnitEntry entry)
-    {
-        var activeDb  = ActiveSkillDatabase.Current;
-        var passiveDb = PassiveSkillDatabase.Current;
-
-        if (_detailActiveSkillText != null && activeDb != null)
-        {
-            var activeId   = ActiveSkillRoller.Roll(entry.UnitName, job, activeDb);
-            var activeData = activeDb.Get(activeId);
-            _detailActiveSkillText.text = activeData != null ? activeData.SkillName : "-";
-        }
-
-        var (s0, s1, s2) = PassiveSkillRoller.Roll(entry.UnitName);
-        int slotCount    = PassiveSkillRoller.GetActiveSlotCount(entry.Grade);
-        PassiveSkillType[] passives  = { s0, s1, s2 };
-        var                passTexts = new[] { _detailPassive0Text, _detailPassive1Text, _detailPassive2Text };
-
-        for (int i = 0; i < passTexts.Length; i++)
-        {
-            if (passTexts[i] == null) continue;
-            if (i < slotCount && passiveDb != null)
-            {
-                var pd = passiveDb.Get(passives[i]);
-                passTexts[i].gameObject.SetActive(true);
-                passTexts[i].text = pd != null ? pd.SkillName : "-";
-            }
-            else
-            {
-                passTexts[i].gameObject.SetActive(false);
-            }
-        }
-    }
-
-    // ── SlotFullView ──────────────────────────────────────────
-
-    void BuildFullList()
-    {
-        ClearFullRows();
-        if (_fullList == null || _fullRowTemplate == null) return;
+        if (_slotCards == null) return;
 
         var unitData   = UserDataManager.Instance?.Get<UnitData>();
         var deployData = UserDataManager.Instance?.Get<DeploymentData>();
-        if (unitData == null) return;
 
+        int deployedCount = 0;
         for (int i = 0; i < 5; i++)
+            if (!string.IsNullOrEmpty(deployData?.GetUnitAt(i))) deployedCount++;
+        bool canFire = deployedCount > 1;
+
+        for (int i = 0; i < _slotCards.Length; i++)
         {
-            string name = deployData?.GetUnitAt(i) ?? "";
-            if (string.IsNullOrEmpty(name)) continue;
-            var entry = unitData.GetUnit(name);
-            if (entry == null) continue;
+            if (_slotCards[i] == null) continue;
 
-            var row = Instantiate(_fullRowTemplate, _fullList);
-            row.SetActive(true);
+            string name  = deployData?.GetUnitAt(i) ?? "";
+            var    entry = !string.IsNullOrEmpty(name) ? unitData?.GetUnit(name) : null;
 
-            var nameT = row.transform.Find("NameText")?.GetComponent<TextMeshProUGUI>();
-            var jobT  = row.transform.Find("JobText") ?.GetComponent<TextMeshProUGUI>();
-            var fireB = row.transform.Find("FireBtn") ?.GetComponent<Button>();
-
-            UnitJob job = UnitJobRoller.GetJob(entry.UnitName);
-            if (nameT != null) nameT.text = entry.UnitName;
-            if (jobT  != null) jobT.text  = JobStyle.GetLabel(job);
-
-            var gradeBar = row.transform.Find("GradeBar")?.GetComponent<Image>();
-            if (gradeBar != null) gradeBar.color = GradeStyle.GetColor(entry.Grade);
-
-            if (fireB != null)
+            if (entry != null)
             {
-                var captured = entry;
-                fireB.onClick.RemoveAllListeners();
-                fireB.onClick.AddListener(() => FireMercenary(captured));
+                UnitEntry capturedEntry = entry;
+                _slotCards[i].ShowOccupied(capturedEntry, () => FireMercenary(capturedEntry), canFire);
             }
-
-            _fullRows.Add(row);
+            else
+            {
+                _slotCards[i].ShowEmpty();
+            }
         }
     }
+
+    // ── 후보 선택 + 하일라이트 ───────────────────────────────
+
+    void SelectCandidate(UnitEntry entry, int cardIdx)
+    {
+        _selected = entry;
+
+        for (int i = 0; i < _candidateCards.Length; i++)
+            _candidateCards[i]?.SetHighlighted(i == cardIdx);
+
+        RefreshHireBar();
+
+        var pm = PopupManager.Instance;
+        var detail = (pm != null && pm.IsOpen(PopupType.HeroDetail))
+            ? pm.Get<HeroDetailPopup>(PopupType.HeroDetail)
+            : pm?.Open<HeroDetailPopup>(PopupType.HeroDetail, onClose: OnHeroDetailClosed);
+
+        detail?.SetupPreview(entry);
+    }
+
+    void OnHeroDetailClosed()
+    {
+        _selected = null;
+        ClearHighlights();
+        RefreshHireBar();
+    }
+
+    void ClearHighlights()
+    {
+        if (_candidateCards == null) return;
+        foreach (var card in _candidateCards)
+            card?.SetHighlighted(false);
+    }
+
+    void RefreshHireBar()
+    {
+        bool has     = _selected != null;
+        bool hasSlot = GetFirstEmptySlot() >= 0;
+        _hireBtn?.gameObject.SetActive(has && hasSlot);
+        _passBtn?.gameObject.SetActive(true);
+    }
+
+    // ── 해고 ─────────────────────────────────────────────────
 
     void FireMercenary(UnitEntry entry)
     {
         var unitData   = UserDataManager.Instance?.Get<UnitData>();
         var deployData = UserDataManager.Instance?.Get<DeploymentData>();
-        var itemData   = UserDataManager.Instance?.Get<ItemData>();
 
-        int shards = CalcShards(entry);
-        itemData?.Add(eItem.SoldierShard, shards);
         deployData?.Undeploy(entry.UnitName);
         unitData?.RemoveUnit(entry.UnitName);
-        UserDataManager.Instance?.RequestSave();
 
         _selected = null;
-        GenerateCandidates();
+        ClearHighlights();
         RefreshView();
     }
 
-    // ── 고용 / 포기 ───────────────────────────────────────────
+    // ── 고용 / 분해 ───────────────────────────────────────────
 
     void OnHire()
     {
         if (_selected == null) return;
 
-        int emptySlot = GetFirstEmptySlot();
-        if (emptySlot < 0) return;
+        int slot = _targetSlot >= 0 ? _targetSlot : GetFirstEmptySlot();
+        if (slot < 0) return;
 
         var unitData   = UserDataManager.Instance?.Get<UnitData>();
         var deployData = UserDataManager.Instance?.Get<DeploymentData>();
-
         unitData?.AddUnit(_selected);
-        deployData?.Deploy(_selected.UnitName, emptySlot);
-        UserDataManager.Instance?.RequestSave();
+        deployData?.Deploy(_selected.UnitName, slot);
+
+        var pm = PopupManager.Instance;
+        if (pm != null && pm.IsOpen(PopupType.HeroDetail))
+            pm.Get<HeroDetailPopup>(PopupType.HeroDetail)?.Close();
 
         Close();
     }
 
-    void OnPass()
+    void OnDecompose()
     {
-        _selected = null;
-        RefreshView();
+        var itemData = UserDataManager.Instance?.Get<ItemData>();
+        itemData?.Add(eItem.SoldierShard, _totalCandidateShards);
+
+        var pm = PopupManager.Instance;
+        if (pm != null && pm.IsOpen(PopupType.HeroDetail))
+            pm.Get<HeroDetailPopup>(PopupType.HeroDetail)?.Close();
+
+        Close();
     }
 
     // ── 유틸 ─────────────────────────────────────────────────
@@ -320,12 +281,5 @@ public class MercenaryShopPopup : PopupBase
     {
         int[] bases = { 5, 10, 20, 35, 60 };
         return bases[Mathf.Clamp((int)e.Grade, 0, bases.Length - 1)] + e.Level / 5;
-    }
-
-    void ClearFullRows()
-    {
-        foreach (var r in _fullRows)
-            if (r != null) Destroy(r);
-        _fullRows.Clear();
     }
 }

@@ -144,6 +144,9 @@ public class PopupManager : Singleton<PopupManager>
         _openByType[type] = popup;
         _stack.Add(popup);
 
+        // 항상 최상위 sibling으로 이동 (pool 재사용 시 blocker보다 아래에 위치하던 버그 방지)
+        popup.transform.SetAsLastSibling();
+
         // 블로커를 가장 아래 팝업 바로 아래에 배치
         UpdateBlocker();
 

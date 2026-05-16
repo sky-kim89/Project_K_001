@@ -73,10 +73,25 @@ public class RelicData : ScriptableObject
         if (EffectType == RelicEffectType.System)
             return BuildSystemDesc(level);
 
+        string target = GetTargetLabel();
         string s = BuildStatLine(Stat1, Value1PerLevel, level);
         if (HasStat2) s += $"\n{BuildStatLine(Stat2, Value2PerLevel, level)}";
-        return s;
+        return $"[{target}]\n{s}";
     }
+
+    public string GetTargetLabel() => Target switch
+    {
+        AbilityTarget.All              => "전체",
+        AbilityTarget.Job_Knight       => "기사",
+        AbilityTarget.Job_Archer       => "궁수",
+        AbilityTarget.Job_Mage         => "마법사",
+        AbilityTarget.Job_ShieldBearer => "방패병",
+        AbilityTarget.Range_Melee      => "근거리",
+        AbilityTarget.Range_Ranged     => "원거리",
+        AbilityTarget.Unit_General     => "장군",
+        AbilityTarget.Unit_Soldier     => "병사",
+        _                              => "전체",
+    };
 
     string BuildStatLine(StatType stat, float valuePerLevel, int level)
     {

@@ -103,12 +103,9 @@ namespace BattleGame.Units
             // MaxHp 스탯 = 즉시 체력 회복 특수 처리
             if (equip.TriggerStat == StatType.MaxHp)
             {
-                if (!em.HasComponent<HealthComponent>(ctx.GeneralEntity)) return;
-                if (!em.HasComponent<StatComponent>(ctx.GeneralEntity)) return;
-                float maxHp  = em.GetComponentData<StatComponent>(ctx.GeneralEntity).Final[StatType.MaxHp];
-                var   health = em.GetComponentData<HealthComponent>(ctx.GeneralEntity);
-                health.CurrentHp = Mathf.Min(health.CurrentHp + value, maxHp);
-                em.SetComponentData(ctx.GeneralEntity, health);
+                if (!em.HasBuffer<HealEventBufferElement>(ctx.GeneralEntity)) return;
+                em.GetBuffer<HealEventBufferElement>(ctx.GeneralEntity).Add(
+                    new HealEventBufferElement { Amount = value, SourceEntity = ctx.GeneralEntity });
                 return;
             }
 

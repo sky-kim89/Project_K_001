@@ -238,6 +238,11 @@ UI=0, Unit=1, Effect=2, Projectile=3
 
 ## 코딩 규칙
 
+> **⚠ 절대 규칙 — 방어적 null 체크 금지**
+> `?.`, `if (x == null) return`, `?? default` 로 로직을 조용히 스킵하지 말 것.
+> null이면 예외가 터져야 버그를 즉시 발견할 수 있다.
+> 예외: Inspector 에서 선택적으로 연결하는 UI 컴포넌트 (`_button?.onClick` 등).
+
 - **ECS Component 구조체**: `I ComponentData` 또는 `IBufferElementData`
 - **Baker 클래스**: Authoring 파일 하단에 인라인으로 작성
 - **스킬 추가 순서**: ① `ActiveSkillId` enum 추가 → ② `Active*.cs` 생성 → ③ SO 생성 → ④ DB 등록

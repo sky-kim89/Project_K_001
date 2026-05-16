@@ -47,17 +47,13 @@ public class ActiveTargetHeal : ActiveSkillData
         query.Dispose();
 
         // ── 집중 치유 ──────────────────────────────────────────
-        if (!em.HasComponent<HealthComponent>(lowestEntity)) return;
         if (!em.HasComponent<StatComponent>(lowestEntity))   return;
+        if (!em.HasBuffer<HealEventBufferElement>(lowestEntity)) return;
 
-        var health = em.GetComponentData<HealthComponent>(lowestEntity);
-        var stat   = em.GetComponentData<StatComponent>(lowestEntity);
-
-        float maxHp  = stat.Final[StatType.MaxHp];
+        float maxHp  = em.GetComponentData<StatComponent>(lowestEntity).Final[StatType.MaxHp];
         float amount = maxHp * EffectValue;
-
-        health.CurrentHp = UnityEngine.Mathf.Min(health.CurrentHp + amount, maxHp);
-        em.SetComponentData(lowestEntity, health);
+        em.GetBuffer<HealEventBufferElement>(lowestEntity).Add(
+            new HealEventBufferElement { Amount = amount, SourceEntity = ctx.CasterEntity });
 
         // 피대상 이펙트 (치유 대상 위치)
         if (em.HasComponent<Unity.Transforms.LocalTransform>(lowestEntity))

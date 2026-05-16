@@ -79,6 +79,29 @@ public class EquipmentData : ScriptableObject
         StatType.SoldierCount => $"{Mathf.RoundToInt(val)}명",
         _                     => $"{val:N0}",
     };
+
+    // "공격 시 30% 확률: 체력 +피해량의 10%"  or  "피격 시 40% 확률: 공격 +250 (2초)"
+    public static string FormatTriggerLine(EquipmentData equip, string triggerLabel, string statLabel)
+    {
+        string chance = $"{equip.TriggerChance * 100f:F0}%";
+        string value;
+        if (equip.TriggerIsPercent)
+        {
+            string baseLabel = equip.TriggerPercentBase switch
+            {
+                EquipTriggerPercentBase.OfDamage => "피해량",
+                EquipTriggerPercentBase.OfMaxHp  => "최대 체력",
+                _                                => "",
+            };
+            value = $"+{baseLabel}의 {equip.TriggerValue * 100f:F0}%";
+        }
+        else
+        {
+            value = $"+{FormatStat(equip.TriggerStat, equip.TriggerValue)}";
+        }
+        string duration = equip.TriggerDuration > 0f ? $" ({equip.TriggerDuration:F0}초)" : "";
+        return $"{triggerLabel} {chance} 확률: {statLabel} {value}{duration}";
+    }
 }
 
 // ── 트리거 종류 ───────────────────────────────────────────────

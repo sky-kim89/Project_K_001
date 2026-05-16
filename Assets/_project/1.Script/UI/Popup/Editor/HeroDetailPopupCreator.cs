@@ -14,28 +14,27 @@ using UnityEngine.UI;
 //  생성 에셋:
 //    Assets/_project/2.Prefabs/UI/HeroDetailPopup.prefab
 //
-//  레이아웃 (HeroPanel LeftPanel 동일 구조):
-//    GradeBorder (6px 좌측 등급 컬러 바)
-//    PortraitSection  (PortraitH px)  — 초상화 + 이름·레벨·직업·등급
-//    DeploySlotRow    (DeployRowH px) — 배치 슬롯 5개
-//    TabBar           (TabBarH px)    — [스탯] [장비] [스킬]
-//    TabContentArea   (나머지)        — StatPanel / EquipPanel / SkillPanel
-//    Footer           (FooterH px)    — 해고 버튼 + 닫기 버튼
+//  레이아웃 (1000px):
+//    GradeBorder      (6px 좌측 등급 컬러 바)
+//    CloseButton      (52px 우측 상단 오버레이 X 버튼)
+//    PortraitSection  (PortraitH=280px)  — 초상화·이름·레벨·직업 (텍스트 BG 오버레이)
+//    GrowthRow        (GrowthRowH=112px) — EXP바 + 레벨업·용병 버튼
+//    TabBar           (TabBarH=60px)     — [스탯] [장비] [스킬]
+//    TabContentArea   (나머지 548px)     — StatPanel / EquipPanel / SkillPanel
 // ============================================================
 
 public static class HeroDetailPopupCreator
 {
     const string PrefabPath = "Assets/_project/2.Prefabs/UI/HeroDetailPopup.prefab";
 
-    const float PopupW    = 576f;
-    const float PopupH    = 940f;
-    const float PortraitH = 240f;
-    const float DeployRowH = 52f;
-    const float TabBarH   = 44f;
-    const float FooterH   = 90f;
+    const float PopupW        = 576f;
+    const float PopupH        = 1000f;
+    const float PortraitH     = 280f;
+    const float GrowthRowH    = 122f;  // 버튼 높이 +10 반영
+    const float GrowthTabGap  = 4f;    // GrowthRow ~ TabBar 사이 간격
+    const float TabBarH       = 60f;
 
-    // ── 색상 (HeroPanelCreator 와 동일) ───────────────────────
-    static readonly Color BgColor           = new Color(0.05f, 0.05f, 0.10f, 1f);
+    // ── 색상 ──────────────────────────────────────────────────
     static readonly Color SectionColor      = new Color(0.09f, 0.09f, 0.16f, 1f);
     static readonly Color TabBarColor       = new Color(0.10f, 0.12f, 0.22f, 1f);
     static readonly Color DividerColor      = new Color(0.18f, 0.18f, 0.26f, 1f);
@@ -45,11 +44,9 @@ public static class HeroDetailPopupCreator
     static readonly Color TabInactiveColor  = new Color(0.72f, 0.72f, 0.78f, 1f);
     static readonly Color LevelUpBtnColor   = new Color(0.16f, 0.32f, 0.58f, 1f);
     static readonly Color SoldierUpBtnColor = new Color(0.14f, 0.32f, 0.20f, 1f);
-    static readonly Color DeploySlotEmpty   = new Color(0.20f, 0.20f, 0.23f, 1f);
-    static readonly Color FireBtnColor      = new Color(0.48f, 0.10f, 0.10f, 1f);
-    static readonly Color CloseBtnColor     = new Color(0.18f, 0.18f, 0.26f, 1f);
+    static readonly Color GrowthBgColor     = new Color(0.07f, 0.08f, 0.14f, 1f);
 
-    // 폰트 크기 — UIScale 기준 (HeroPanelCreator 와 동일)
+    // 폰트 크기
     static readonly int FntHero = (int)UIScale.FontLg;  // 54
     static readonly int FntMain = (int)UIScale.FontMd;  // 40
     static readonly int FntSub  = (int)UIScale.FontSm;  // 30
@@ -106,16 +103,37 @@ public static class HeroDetailPopupCreator
         SetObj(so, "_gradeBorder", gradeBorder);
 
         BuildPortraitSection(root, so);
-        BuildDeploySlotRow(root, so);
+        var growthRowGo = BuildGrowthRow(root, so);
+        SetObj(so, "_growthRow", growthRowGo);
         BuildTabSection(root, so);
-        BuildFooter(root, so);
+
+        // X 닫기 버튼 (우측 상단 오버레이)
+        var xBtnGo = CreatePanel(root, "CloseButton", new Color(0.22f, 0.12f, 0.22f, 0.88f));
+        {
+            var rt = xBtnGo.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(1, 1);
+            rt.anchorMax = new Vector2(1, 1);
+            rt.pivot     = new Vector2(1, 1);
+            rt.offsetMin = new Vector2(-52f, -52f);
+            rt.offsetMax = new Vector2(0f, 0f);
+        }
+        var xBtn = xBtnGo.AddComponent<Button>();
+        xBtn.targetGraphic = xBtnGo.GetComponent<Image>();
+        SetObj(so, "_closeBtn", xBtn);
+
+        var xLbl = CreateTMP(xBtnGo, "Label", "✕", FntMain, FontStyles.Bold);
+        xLbl.rectTransform.anchorMin = Vector2.zero;
+        xLbl.rectTransform.anchorMax = Vector2.one;
+        xLbl.alignment = TextAlignmentOptions.Center;
+        xLbl.color     = new Color(0.90f, 0.80f, 0.80f);
 
         so.ApplyModifiedProperties();
         return root;
     }
 
     // ============================================================
-    //  초상화 섹션 (상단 PortraitH px) — HeroPanelCreator 동일
+    //  초상화 섹션 (상단 PortraitH px)
+    //  이름·레벨·직업 텍스트를 PortraitBg 하단에 오버레이
     // ============================================================
 
     static void BuildPortraitSection(GameObject root, SerializedObject so)
@@ -129,66 +147,76 @@ public static class HeroDetailPopupCreator
             rt.offsetMax = new Vector2(0, 0);
         }
 
-        // 직업 배경색
+        // 초상화 배경 — 섹션 전체 커버
         var portraitBg = CreateImage(section, "PortraitBg", new Color(0.16f, 0.27f, 0.56f));
         {
             var rt = portraitBg.rectTransform;
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
-            rt.offsetMin = new Vector2(8, 44);
+            rt.offsetMin = new Vector2(8, 2);
             rt.offsetMax = new Vector2(-8, -8);
         }
         SetObj(so, "_portraitBg", portraitBg);
 
-        // 초상화 이미지
+        // 초상화 이미지 — 위쪽으로 치우치게 배치
         var portraitImg = CreateImage(section, "PortraitImage", Color.clear);
         {
             var rt = portraitImg.rectTransform;
             rt.anchorMin        = new Vector2(0.5f, 0.5f);
             rt.anchorMax        = new Vector2(0.5f, 0.5f);
             rt.pivot            = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = new Vector2(0, 16f);
-            rt.sizeDelta        = new Vector2(150, 150);
+            rt.anchoredPosition = new Vector2(0, 48f);
+            rt.sizeDelta        = new Vector2(165, 165);
         }
         portraitImg.preserveAspect = true;
         SetObj(so, "_portraitImage", portraitImg);
 
-        // 이름
+        // 텍스트 가독성 오버레이 (BG 하단 반투명 검정)
+        var textOverlay = CreateImage(section, "TextOverlay", new Color(0f, 0f, 0f, 0.52f));
+        {
+            var rt = textOverlay.rectTransform;
+            rt.anchorMin = new Vector2(0, 0);
+            rt.anchorMax = new Vector2(1, 0);
+            rt.offsetMin = new Vector2(8, 2);
+            rt.offsetMax = new Vector2(-8, 102);
+        }
+
+        // 이름 (BG 하단 오버레이 — 위쪽)
         var nameText = CreateTMP(section, "NameText", "영웅 이름", FntHero, FontStyles.Bold);
         {
             var rt = nameText.rectTransform;
             rt.anchorMin = new Vector2(0, 0);
             rt.anchorMax = new Vector2(1, 0);
-            rt.offsetMin = new Vector2(12, 22);
-            rt.offsetMax = new Vector2(-12, 50);
+            rt.offsetMin = new Vector2(14, 56);
+            rt.offsetMax = new Vector2(-14, 96);
         }
         nameText.alignment = TextAlignmentOptions.Left;
         SetObj(so, "_nameText", nameText);
 
-        // 레벨 (하단 왼쪽)
+        // 레벨 (BG 하단 오버레이 — 아래 왼쪽)
         var levelText = CreateTMP(section, "LevelText", "Lv.1", FntSub, FontStyles.Normal);
         {
             var rt = levelText.rectTransform;
             rt.anchorMin = new Vector2(0, 0);
             rt.anchorMax = new Vector2(0.5f, 0);
-            rt.offsetMin = new Vector2(12, 2);
-            rt.offsetMax = new Vector2(0, 22);
+            rt.offsetMin = new Vector2(14, 12);
+            rt.offsetMax = new Vector2(0, 48);
         }
         levelText.alignment = TextAlignmentOptions.Left;
-        levelText.color     = LabelColor;
+        levelText.color     = new Color(0.85f, 0.85f, 0.92f);
         SetObj(so, "_levelText", levelText);
 
-        // 직업 (하단 오른쪽)
+        // 직업 (BG 하단 오버레이 — 아래 오른쪽)
         var jobText = CreateTMP(section, "JobText", "기사", FntSub, FontStyles.Normal);
         {
             var rt = jobText.rectTransform;
             rt.anchorMin = new Vector2(0.5f, 0);
             rt.anchorMax = new Vector2(1,    0);
-            rt.offsetMin = new Vector2(0, 2);
-            rt.offsetMax = new Vector2(-12, 22);
+            rt.offsetMin = new Vector2(0, 12);
+            rt.offsetMax = new Vector2(-14, 48);
         }
         jobText.alignment = TextAlignmentOptions.Right;
-        jobText.color     = LabelColor;
+        jobText.color     = Color.white;   // BG 색상과 구분되도록 흰색
         SetObj(so, "_jobText", jobText);
 
         // 등급 배지
@@ -198,7 +226,7 @@ public static class HeroDetailPopupCreator
             rt.anchorMin = new Vector2(1, 1);
             rt.anchorMax = new Vector2(1, 1);
             rt.pivot     = new Vector2(1, 1);
-            rt.offsetMin = new Vector2(-90, -38);
+            rt.offsetMin = new Vector2(-90, -42);
             rt.offsetMax = new Vector2(-8,  -8);
         }
         SetObj(so, "_gradeBadge", gradeBadge);
@@ -210,7 +238,7 @@ public static class HeroDetailPopupCreator
             rt.anchorMin = new Vector2(1, 1);
             rt.anchorMax = new Vector2(1, 1);
             rt.pivot     = new Vector2(1, 1);
-            rt.offsetMin = new Vector2(-90, -38);
+            rt.offsetMin = new Vector2(-90, -42);
             rt.offsetMax = new Vector2(-8,  -8);
         }
         SetObj(so, "_gradeText", gradeText);
@@ -231,255 +259,47 @@ public static class HeroDetailPopupCreator
     }
 
     // ============================================================
-    //  배치 슬롯 행 (DeployRowH px) — HeroPanelCreator 동일
+    //  성장 행 (PortraitH ~ PortraitH+GrowthRowH)
+    //  EXP바 + 레벨업 버튼 + 용병 버튼
     // ============================================================
 
-    static void BuildDeploySlotRow(GameObject root, SerializedObject so)
+    static GameObject BuildGrowthRow(GameObject root, SerializedObject so)
     {
-        var row = CreatePanel(root, "DeploySlotRow", new Color(0.07f, 0.08f, 0.14f));
+        const float BtnH   = 58f;   // 48 → 58 (+10)
+        const float BtnPad = 8f;
+
+        var row = CreatePanel(root, "GrowthRow", GrowthBgColor);
         {
             var rt = row.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0, 1);
             rt.anchorMax = new Vector2(1, 1);
-            rt.offsetMin = new Vector2(0, -(PortraitH + DeployRowH));
+            rt.offsetMin = new Vector2(0, -(PortraitH + GrowthRowH));
             rt.offsetMax = new Vector2(0, -PortraitH);
         }
 
-        // 레이블
-        var label = CreateTMP(row, "DeployLabel", "출전 위치", FntSub, FontStyles.Normal);
+        // 상단 구분선
+        var topDiv = CreateImage(row, "TopDivider", DividerColor);
         {
-            var rt = label.rectTransform;
-            rt.anchorMin = new Vector2(0, 1);
-            rt.anchorMax = new Vector2(0, 1);
-            rt.pivot     = new Vector2(0, 1);
-            rt.offsetMin = new Vector2(10, -DeployRowH);
-            rt.offsetMax = new Vector2(130, 0);
-        }
-        label.alignment = TextAlignmentOptions.Left;
-        label.color     = LabelColor;
-
-        // 슬롯 5개
-        const float slotPad = 6f;
-        float slotsX  = 134f;
-        float slotsW  = PopupW - slotsX - 8f;
-        float slotW   = (slotsW - slotPad * 4f) / 5f;
-        float slotH   = DeployRowH - 10f;
-
-        var slotBtns = new Button[5];
-        var slotBgs  = new Image[5];
-        var slotNums = new TextMeshProUGUI[5];
-
-        for (int i = 0; i < 5; i++)
-        {
-            float sx = slotsX + i * (slotW + slotPad);
-            var slotGo  = new GameObject($"DeploySlot{i}", typeof(RectTransform), typeof(Image));
-            slotGo.transform.SetParent(row.transform, false);
-            var slotImg = slotGo.GetComponent<Image>();
-            slotImg.color = DeploySlotEmpty;
-            {
-                var rt = slotGo.GetComponent<RectTransform>();
-                rt.anchorMin = new Vector2(0, 0.5f);
-                rt.anchorMax = new Vector2(0, 0.5f);
-                rt.pivot     = new Vector2(0, 0.5f);
-                rt.offsetMin = new Vector2(sx, -slotH * 0.5f);
-                rt.offsetMax = new Vector2(sx + slotW, slotH * 0.5f);
-            }
-            var numTmp = CreateTMP(slotGo, "Num", (i + 1).ToString(), FntSub, FontStyles.Bold);
-            {
-                var rt = numTmp.rectTransform;
-                rt.anchorMin = Vector2.zero;
-                rt.anchorMax = Vector2.one;
-                rt.offsetMin = Vector2.zero;
-                rt.offsetMax = Vector2.zero;
-            }
-            numTmp.alignment = TextAlignmentOptions.Center;
-
-            var btn = slotGo.AddComponent<Button>();
-            btn.targetGraphic = slotImg;
-            slotBtns[i] = btn;
-            slotBgs[i]  = slotImg;
-            slotNums[i] = numTmp;
-        }
-
-        var rowUI = row.AddComponent<DeploySlotRowUI>();
-        var rso   = new SerializedObject(rowUI);
-        SetObjArray(rso, "_slotButtons",  System.Array.ConvertAll(slotBtns, b => (Object)b));
-        SetObjArray(rso, "_slotBgs",      System.Array.ConvertAll(slotBgs,  b => (Object)b));
-        SetObjArray(rso, "_slotNumTexts", System.Array.ConvertAll(slotNums, t => (Object)t));
-        rso.ApplyModifiedProperties();
-
-        SetObj(so, "_deploySlotRow", rowUI);
-    }
-
-    // ============================================================
-    //  탭 섹션 (TabBar + TabContentArea) — HeroPanelCreator 동일
-    // ============================================================
-
-    static void BuildTabSection(GameObject root, SerializedObject so)
-    {
-        float tabTop = PortraitH + DeployRowH;
-
-        // 탭 바
-        var tabBar = CreatePanel(root, "TabBar", TabBarColor);
-        {
-            var rt = tabBar.GetComponent<RectTransform>();
+            var rt = topDiv.rectTransform;
             rt.anchorMin = new Vector2(0, 1);
             rt.anchorMax = new Vector2(1, 1);
-            rt.offsetMin = new Vector2(0, -(tabTop + TabBarH));
-            rt.offsetMax = new Vector2(0, -tabTop);
+            rt.offsetMin = new Vector2(0, -1);
+            rt.offsetMax = new Vector2(0,  0);
         }
 
-        string[] tabLabels  = { "스탯", "장비", "스킬" };
-        var tabButtons = new Button[3];
-        for (int i = 0; i < 3; i++)
-            tabButtons[i] = BuildTabButton(tabBar, tabLabels[i], i, i == 0);
-
-        // 탭 콘텐츠 영역 (TabBar 아래 ~ Footer 위)
-        var contentArea = CreatePanel(root, "TabContentArea", SectionColor);
+        // 하단 구분선
+        var botDiv = CreateImage(row, "BotDivider", DividerColor);
         {
-            var rt = contentArea.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(0, 0);
-            rt.anchorMax = new Vector2(1, 1);
-            rt.offsetMin = new Vector2(0, FooterH);
-            rt.offsetMax = new Vector2(0, -(tabTop + TabBarH));
-        }
-
-        var statPanel  = BuildStatPanel (contentArea, so);
-        var equipPanel = BuildEquipPanel(contentArea, so);
-        var skillPanel = BuildSkillPanel(contentArea, so);
-
-        equipPanel.SetActive(false);
-        skillPanel.SetActive(false);
-
-        SetObjArray(so, "_tabButtons", new Object[] { tabButtons[0], tabButtons[1], tabButtons[2] });
-        SetObjArray(so, "_tabPanels",  new Object[] { statPanel, equipPanel, skillPanel });
-    }
-
-    // ── 탭 버튼 ────────────────────────────────────────────────
-
-    static Button BuildTabButton(GameObject tabBar, string label, int index, bool isActive)
-    {
-        float step = 1f / 3f;
-        var go = new GameObject($"Tab_{label}", typeof(RectTransform), typeof(Image));
-        go.transform.SetParent(tabBar.transform, false);
-        go.GetComponent<Image>().color = Color.clear;
-
-        var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = new Vector2(step * index,       0);
-        rt.anchorMax = new Vector2(step * (index + 1), 1);
-        rt.offsetMin = Vector2.zero;
-        rt.offsetMax = Vector2.zero;
-
-        var tmp = CreateTMP(go, "Label", label, FntMain,
-            isActive ? FontStyles.Bold : FontStyles.Normal);
-        {
-            var trt = tmp.rectTransform;
-            trt.anchorMin = Vector2.zero;
-            trt.anchorMax = Vector2.one;
-            trt.offsetMin = new Vector2(0, 3);
-            trt.offsetMax = Vector2.zero;
-        }
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.color     = isActive ? TabActiveColor : TabInactiveColor;
-
-        {
-            var bar = CreateImage(go, "ActiveBar", TabActiveColor);
-            var brt = bar.rectTransform;
-            brt.anchorMin = new Vector2(0.1f, 0);
-            brt.anchorMax = new Vector2(0.9f, 0);
-            brt.offsetMin = new Vector2(0, 0);
-            brt.offsetMax = new Vector2(0, 3);
-            if (!isActive) bar.gameObject.SetActive(false);
-        }
-
-        var btn = go.AddComponent<Button>();
-        btn.targetGraphic = go.GetComponent<Image>();
-        return btn;
-    }
-
-    // ============================================================
-    //  StatPanel — HeroPanelCreator 동일
-    // ============================================================
-
-    static GameObject BuildStatPanel(GameObject contentArea, SerializedObject so)
-    {
-        const float BtnH     = 42f;
-        const float BtnPad   = 7f;
-        const float ExpBarH  = 8f;
-        const float ExpTextH = 22f;
-        const float ExpGap   = 4f;
-
-        float expBarBottom = BtnPad + BtnH + BtnPad;
-        float expBarTop    = expBarBottom + ExpBarH;
-        float expTxtBottom = expBarTop + ExpGap;
-        float expTxtTop    = expTxtBottom + ExpTextH;
-        float listBottom   = expTxtTop + BtnPad;
-
-        var panel = CreatePanel(contentArea, "StatPanel", SectionColor);
-        Stretch(panel);
-
-        // 스탯 행 컨테이너
-        var listContainer = new GameObject("StatListContainer", typeof(RectTransform));
-        listContainer.transform.SetParent(panel.transform, false);
-        {
-            var rt = listContainer.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(0, 0);
-            rt.anchorMax = new Vector2(1, 1);
-            rt.offsetMin = new Vector2(0, listBottom);
-            rt.offsetMax = new Vector2(0, 0);
-        }
-        var vlg = listContainer.AddComponent<VerticalLayoutGroup>();
-        vlg.childForceExpandWidth  = true;
-        vlg.childForceExpandHeight = false;
-        vlg.childControlWidth      = true;
-        vlg.childAlignment         = TextAnchor.UpperLeft;
-        vlg.padding                = new RectOffset(0, 0, 2, 2);
-        vlg.spacing                = 0;
-
-        SetObj(so, "_hpText",           BuildStatRow(listContainer, "HP",   "체력"));
-        SetObj(so, "_atkText",          BuildStatRow(listContainer, "ATK",  "공격"));
-        SetObj(so, "_defText",          BuildStatRow(listContainer, "DEF",  "방어율"));
-        SetObj(so, "_spdText",          BuildStatRow(listContainer, "SPD",  "이속"));
-        SetObj(so, "_atkSpdText",       BuildStatRow(listContainer, "ASPD", "공속"));
-        SetObj(so, "_rangeText",        BuildStatRow(listContainer, "RNG",  "사거리"));
-        SetObj(so, "_soldierCountText", BuildStatRow(listContainer, "SOLD", "용병수"));
-        SetObj(so, "_cmdPwrText",       BuildStatRow(listContainer, "CMD",  "지휘력"));
-        SetObj(so, "_statListContainer", listContainer.transform);
-
-        // EXP 텍스트
-        var expText = CreateTMP(panel, "ExpText", "0 / 100 EXP", FntSub, FontStyles.Normal);
-        {
-            var rt = expText.rectTransform;
+            var rt = botDiv.rectTransform;
             rt.anchorMin = new Vector2(0, 0);
             rt.anchorMax = new Vector2(1, 0);
-            rt.offsetMin = new Vector2(BtnPad, expTxtBottom);
-            rt.offsetMax = new Vector2(-BtnPad, expTxtTop);
+            rt.offsetMin = new Vector2(0, 0);
+            rt.offsetMax = new Vector2(0, 1);
         }
-        expText.alignment = TextAlignmentOptions.Center;
-        expText.color     = LabelColor;
-        SetObj(so, "_expText", expText);
 
-        // EXP 바 배경
-        var expBarBg = CreatePanel(panel, "ExpBarBg", new Color(0.08f, 0.08f, 0.14f));
-        {
-            var rt = expBarBg.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(0, 0);
-            rt.anchorMax = new Vector2(1, 0);
-            rt.offsetMin = new Vector2(BtnPad, expBarBottom);
-            rt.offsetMax = new Vector2(-BtnPad, expBarTop);
-        }
-        var expFill = CreatePanel(expBarBg, "ExpBarFill", new Color(0.25f, 0.65f, 1.00f));
-        {
-            var rt = expFill.GetComponent<RectTransform>();
-            rt.anchorMin = Vector2.zero;
-            rt.anchorMax = new Vector2(0f, 1f);
-            rt.offsetMin = Vector2.zero;
-            rt.offsetMax = Vector2.zero;
-        }
-        SetObj(so, "_expBarFill", expFill.GetComponent<Image>());
-
-        // 레벨업 버튼 (왼쪽 절반)
-        var lvBtnGo = CreatePanel(panel, "LevelUpButton", LevelUpBtnColor);
+        // ── 레벨업 버튼 (왼쪽 절반) ──
+        // 위치: 하단에서 8~56px (BtnPad ~ BtnPad+BtnH)
+        var lvBtnGo = CreatePanel(row, "LevelUpButton", LevelUpBtnColor);
         {
             var rt = lvBtnGo.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0,    0);
@@ -521,8 +341,8 @@ public static class HeroDetailPopupCreator
         lvCostText.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1f;
         SetObj(so, "_levelUpCostText", lvCostText);
 
-        // 용병 수 증가 버튼 (오른쪽 절반)
-        var soldBtnGo = CreatePanel(panel, "SoldierUpButton", SoldierUpBtnColor);
+        // ── 용병 수 증가 버튼 (오른쪽 절반) ──
+        var soldBtnGo = CreatePanel(row, "SoldierUpButton", SoldierUpBtnColor);
         {
             var rt = soldBtnGo.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0.5f, 0);
@@ -564,19 +384,181 @@ public static class HeroDetailPopupCreator
         soldCostText.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1f;
         SetObj(so, "_soldierUpCostText", soldCostText);
 
+        // ── EXP 바 (버튼 바로 위) ──
+        // BtnPad(8) + BtnH(58) + gap(8) = 74, height=10 → 74~84
+        var expBarBg = CreatePanel(row, "ExpBarBg", new Color(0.08f, 0.08f, 0.14f));
+        {
+            var rt = expBarBg.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0, 0);
+            rt.anchorMax = new Vector2(1, 0);
+            rt.offsetMin = new Vector2(BtnPad, 74f);
+            rt.offsetMax = new Vector2(-BtnPad, 84f);
+        }
+        var expFill = CreatePanel(expBarBg, "ExpBarFill", new Color(0.25f, 0.65f, 1.00f));
+        {
+            var rt = expFill.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = new Vector2(0f, 1f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+        }
+        SetObj(so, "_expBarFill", expFill.GetComponent<Image>());
+
+        // ── EXP 텍스트 (EXP 바 위) ──
+        // expBarTop(84) + gap(4) = 88, height=26 → 88~114
+        var expText = CreateTMP(row, "ExpText", "0 / 100 EXP", FntSub, FontStyles.Normal);
+        {
+            var rt = expText.rectTransform;
+            rt.anchorMin = new Vector2(0, 0);
+            rt.anchorMax = new Vector2(1, 0);
+            rt.offsetMin = new Vector2(BtnPad, 88f);
+            rt.offsetMax = new Vector2(-BtnPad, 114f);
+        }
+        expText.alignment = TextAlignmentOptions.Center;
+        expText.color     = LabelColor;
+        SetObj(so, "_expText", expText);
+
+        return row;
+    }
+
+    // ============================================================
+    //  탭 섹션 (TabBar + TabContentArea)
+    // ============================================================
+
+    static void BuildTabSection(GameObject root, SerializedObject so)
+    {
+        float tabTop = PortraitH + GrowthRowH + GrowthTabGap;  // 280 + 122 + 4 = 406
+
+        // 탭 바
+        var tabBar = CreatePanel(root, "TabBar", TabBarColor);
+        {
+            var rt = tabBar.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0, 1);
+            rt.anchorMax = new Vector2(1, 1);
+            rt.offsetMin = new Vector2(0, -(tabTop + TabBarH));
+            rt.offsetMax = new Vector2(0, -tabTop);
+        }
+
+        string[] tabLabels = { "스탯", "장비", "스킬" };
+        var tabButtons = new Button[3];
+        for (int i = 0; i < 3; i++)
+            tabButtons[i] = BuildTabButton(tabBar, tabLabels[i], i, i == 0);
+
+        // 탭 콘텐츠 영역 (TabBar 아래 ~ 하단)
+        var contentArea = CreatePanel(root, "TabContentArea", SectionColor);
+        {
+            var rt = contentArea.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0, 0);
+            rt.anchorMax = new Vector2(1, 1);
+            rt.offsetMin = new Vector2(0, 0);
+            rt.offsetMax = new Vector2(0, -(tabTop + TabBarH));
+        }
+
+        var statPanel  = BuildStatPanel (contentArea, so);
+        var equipPanel = BuildEquipPanel(contentArea, so);
+        var skillPanel = BuildSkillPanel(contentArea, so);
+
+        equipPanel.SetActive(false);
+        skillPanel.SetActive(false);
+
+        SetObjArray(so, "_tabButtons", new Object[] { tabButtons[0], tabButtons[1], tabButtons[2] });
+        SetObjArray(so, "_tabPanels",  new Object[] { statPanel, equipPanel, skillPanel });
+    }
+
+    // ── 탭 버튼 (FontLg) ───────────────────────────────────────
+
+    static Button BuildTabButton(GameObject tabBar, string label, int index, bool isActive)
+    {
+        float step = 1f / 3f;
+        var go = new GameObject($"Tab_{label}", typeof(RectTransform), typeof(Image));
+        go.transform.SetParent(tabBar.transform, false);
+        go.GetComponent<Image>().color = Color.clear;
+
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(step * index,       0);
+        rt.anchorMax = new Vector2(step * (index + 1), 1);
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+
+        // 탭 텍스트 — FontLg(54) 사용
+        var tmp = CreateTMP(go, "Label", label, FntHero,
+            isActive ? FontStyles.Bold : FontStyles.Normal);
+        {
+            var trt = tmp.rectTransform;
+            trt.anchorMin = Vector2.zero;
+            trt.anchorMax = Vector2.one;
+            trt.offsetMin = new Vector2(0, 4);
+            trt.offsetMax = Vector2.zero;
+        }
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.color     = isActive ? TabActiveColor : TabInactiveColor;
+
+        {
+            var bar = CreateImage(go, "ActiveBar", TabActiveColor);
+            var brt = bar.rectTransform;
+            brt.anchorMin = new Vector2(0.1f, 0);
+            brt.anchorMax = new Vector2(0.9f, 0);
+            brt.offsetMin = new Vector2(0, 0);
+            brt.offsetMax = new Vector2(0, 4);
+            if (!isActive) bar.gameObject.SetActive(false);
+        }
+
+        var btn = go.AddComponent<Button>();
+        btn.targetGraphic = go.GetComponent<Image>();
+        return btn;
+    }
+
+    // ============================================================
+    //  StatPanel — 스탯 목록만 (성장 버튼은 GrowthRow로 이동)
+    // ============================================================
+
+    static GameObject BuildStatPanel(GameObject contentArea, SerializedObject so)
+    {
+        var panel = CreatePanel(contentArea, "StatPanel", SectionColor);
+        Stretch(panel);
+
+        // 스탯 행 컨테이너 — 패널 전체 채움
+        var listContainer = new GameObject("StatListContainer", typeof(RectTransform));
+        listContainer.transform.SetParent(panel.transform, false);
+        {
+            var rt = listContainer.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+        }
+        var vlg = listContainer.AddComponent<VerticalLayoutGroup>();
+        vlg.childForceExpandWidth  = true;
+        vlg.childForceExpandHeight = false;
+        vlg.childControlWidth      = true;
+        vlg.childAlignment         = TextAnchor.UpperLeft;
+        vlg.padding                = new RectOffset(0, 0, 4, 4);
+        vlg.spacing                = 0;
+
+        SetObj(so, "_hpText",           ColorStat(BuildStatRow(listContainer, "HP",   "체력"),    StatColors.Hp));
+        SetObj(so, "_atkText",          ColorStat(BuildStatRow(listContainer, "ATK",  "공격"),    StatColors.Atk));
+        SetObj(so, "_defText",          ColorStat(BuildStatRow(listContainer, "DEF",  "방어율"),  StatColors.Def));
+        SetObj(so, "_spdText",          BuildStatRow(listContainer, "SPD",  "이속"));
+        SetObj(so, "_atkSpdText",       BuildStatRow(listContainer, "ASPD", "공속"));
+        SetObj(so, "_rangeText",        BuildStatRow(listContainer, "RNG",  "사거리"));
+        SetObj(so, "_soldierCountText", ColorStat(BuildStatRow(listContainer, "SOLD", "용병수"), StatColors.Soldier));
+        SetObj(so, "_cmdPwrText",       BuildStatRow(listContainer, "CMD",  "지휘력"));
+        SetObj(so, "_statListContainer", listContainer.transform);
+
         return panel;
     }
 
+    // 스탯 행 — height 64px
     static TextMeshProUGUI BuildStatRow(GameObject parent, string id, string label)
     {
         var row = new GameObject($"Stat_{id}", typeof(RectTransform), typeof(Image));
         row.transform.SetParent(parent.transform, false);
         row.GetComponent<Image>().color = Color.clear;
-        row.GetComponent<RectTransform>().sizeDelta = new Vector2(PopupW, 52f);
+        row.GetComponent<RectTransform>().sizeDelta = new Vector2(PopupW, 64f);
 
         var le = row.AddComponent<LayoutElement>();
-        le.preferredHeight = 52f;
-        le.minHeight       = 44f;
+        le.preferredHeight = 64f;
+        le.minHeight       = 56f;
 
         var btn = row.AddComponent<Button>();
         btn.targetGraphic = row.GetComponent<Image>();
@@ -618,7 +600,7 @@ public static class HeroDetailPopupCreator
     }
 
     // ============================================================
-    //  EquipPanel — HeroPanelCreator 동일
+    //  EquipPanel
     // ============================================================
 
     static GameObject BuildEquipPanel(GameObject contentArea, SerializedObject so)
@@ -627,7 +609,7 @@ public static class HeroDetailPopupCreator
         Stretch(panel);
 
         var (btn0, name0, bar0, icon0, stat0, lock0, enh0, enhCost0, enhIcon0) =
-            BuildEquipSlot(panel, "EquipSlot0", 10f, 150f);
+            BuildEquipSlot(panel, "EquipSlot0", 10f, 165f);
         SetObj(so, "_equip0Btn",             btn0);
         SetObj(so, "_equip0NameText",        name0);
         SetObj(so, "_equip0GradeBar",        bar0);
@@ -639,7 +621,7 @@ public static class HeroDetailPopupCreator
         SetObj(so, "_equip0EnhanceCostIcon", enhIcon0);
 
         var (btn1, name1, bar1, icon1, stat1, lock1, enh1, enhCost1, enhIcon1) =
-            BuildEquipSlot(panel, "EquipSlot1", 172f, 150f);
+            BuildEquipSlot(panel, "EquipSlot1", 187f, 165f);
         SetObj(so, "_equip1Btn",             btn1);
         SetObj(so, "_equip1NameText",        name1);
         SetObj(so, "_equip1GradeBar",        bar1);
@@ -681,7 +663,7 @@ public static class HeroDetailPopupCreator
         const float EnhBtnW = 148f;
         const float EnhBtnH = 40f;
 
-        float iconSize = Mathf.Min(slotH - 14f, 86f);
+        float iconSize = Mathf.Min(slotH - 14f, 106f);
         var iconBg = CreateImage(slotBg, "IconBg", new Color(0.10f, 0.10f, 0.18f));
         {
             var rt = iconBg.rectTransform;
@@ -790,18 +772,19 @@ public static class HeroDetailPopupCreator
     }
 
     // ============================================================
-    //  SkillPanel — HeroPanelCreator 동일
+    //  SkillPanel
     // ============================================================
 
     static GameObject BuildSkillPanel(GameObject contentArea, SerializedObject so)
     {
-        const float abTop = 8f;
-        const float abH   = 172f;
+        const float abTop  = 12f;
+        const float iconSz = 88f;
+        const float abH    = iconSz + 24f;   // 아이콘 크기 기반
 
         var panel = CreatePanel(contentArea, "SkillPanel", SectionColor);
         Stretch(panel);
 
-        // 액티브 스킬 박스
+        // ── 액티브 스킬 영역 (라벨 없음, 아이콘 + 이름 + 설명) ──
         var activeBg = CreateImage(panel, "ActiveBg", new Color(0.10f, 0.11f, 0.20f));
         {
             var rt = activeBg.rectTransform;
@@ -811,46 +794,49 @@ public static class HeroDetailPopupCreator
             rt.offsetMax = new Vector2(-8, -abTop);
         }
 
-        var activeLabel = CreateTMP(panel, "ActiveLabel", "액티브", FntSub, FontStyles.Normal);
+        // 좌측 강조 바
+        var activeAccent = CreateImage(panel, "ActiveAccentBar", new Color(0.45f, 0.65f, 1.00f));
         {
-            var rt = activeLabel.rectTransform;
+            var rt = activeAccent.rectTransform;
             rt.anchorMin = new Vector2(0, 1);
-            rt.anchorMax = new Vector2(1, 1);
-            rt.offsetMin = new Vector2(16, -(abTop + 28));
-            rt.offsetMax = new Vector2(-16, -(abTop + 8));
+            rt.anchorMax = new Vector2(0, 1);
+            rt.offsetMin = new Vector2(8, -(abTop + abH));
+            rt.offsetMax = new Vector2(12, -abTop);
         }
-        activeLabel.alignment = TextAlignmentOptions.Left;
-        activeLabel.color     = LabelColor;
 
+        // 아이콘 배경
         var iconBg = CreateImage(panel, "ActiveSkillIconBg", new Color(0.07f, 0.08f, 0.15f));
         {
             var rt = iconBg.rectTransform;
             rt.anchorMin = new Vector2(0, 1);
             rt.anchorMax = new Vector2(0, 1);
-            rt.offsetMin = new Vector2(16, -(abTop + 114));
-            rt.offsetMax = new Vector2(96,  -(abTop + 34));
+            rt.offsetMin = new Vector2(18,         -(abTop + iconSz + 8f));
+            rt.offsetMax = new Vector2(18 + iconSz, -abTop - 8f);
         }
 
         var iconImg = CreateImage(panel, "ActiveSkillIcon", new Color(0.28f, 0.32f, 0.52f));
         {
+            float pad = 4f;
             var rt = iconImg.rectTransform;
             rt.anchorMin = new Vector2(0, 1);
             rt.anchorMax = new Vector2(0, 1);
-            rt.offsetMin = new Vector2(20, -(abTop + 110));
-            rt.offsetMax = new Vector2(92,  -(abTop + 38));
+            rt.offsetMin = new Vector2(18 + pad,         -(abTop + iconSz + 8f - pad));
+            rt.offsetMax = new Vector2(18 + iconSz - pad, -abTop - 8f - pad);
         }
         iconImg.preserveAspect = true;
         SetObj(so, "_activeSkillIcon", iconImg);
 
+        float textLeft = 18f + iconSz + 12f;
         var skillText = CreateTMP(panel, "ActiveSkillText", "—", FntMain, FontStyles.Bold);
         {
             var rt = skillText.rectTransform;
             rt.anchorMin = new Vector2(0, 1);
             rt.anchorMax = new Vector2(1, 1);
-            rt.offsetMin = new Vector2(104, -(abTop + 70));
-            rt.offsetMax = new Vector2(-16, -(abTop + 34));
+            rt.offsetMin = new Vector2(textLeft, -(abTop + 54f));
+            rt.offsetMax = new Vector2(-16, -(abTop + 12f));
         }
         skillText.alignment = TextAlignmentOptions.Left;
+        skillText.color     = new Color(1.00f, 0.95f, 0.75f);
         SetObj(so, "_activeSkillText", skillText);
 
         var descText = CreateTMP(panel, "ActiveSkillDescText", "", FntSub, FontStyles.Normal);
@@ -858,33 +844,28 @@ public static class HeroDetailPopupCreator
             var rt = descText.rectTransform;
             rt.anchorMin = new Vector2(0, 1);
             rt.anchorMax = new Vector2(1, 1);
-            rt.offsetMin = new Vector2(16, -(abTop + abH - 6));
-            rt.offsetMax = new Vector2(-16, -(abTop + 120));
+            rt.offsetMin = new Vector2(textLeft, -(abTop + abH - 6f));
+            rt.offsetMax = new Vector2(-16, -(abTop + 58f));
         }
         descText.alignment        = TextAlignmentOptions.TopLeft;
         descText.color            = LabelColor;
         descText.textWrappingMode = TextWrappingModes.Normal;
         SetObj(so, "_activeSkillDescText", descText);
 
-        // 패시브 섹션
-        const float gap1    = 28f;
-        const float pLblH   = 22f;
-        const float gap2    = 6f;
-        const float pBoxGap = 10f;
-
-        float pSecY  = abTop + abH + gap1;
-        float pFirst = pSecY + pLblH + gap2;
-
-        var passiveLabel = CreateTMP(panel, "PassiveLabel", "패시브", FntSub, FontStyles.Normal);
+        // ── 구분선 ──────────────────────────────────────────────
+        const float divY   = abTop + abH + 10f;
+        var divider = CreateImage(panel, "SkillDivider", new Color(0.25f, 0.25f, 0.35f));
         {
-            var rt = passiveLabel.rectTransform;
+            var rt = divider.rectTransform;
             rt.anchorMin = new Vector2(0, 1);
             rt.anchorMax = new Vector2(1, 1);
-            rt.offsetMin = new Vector2(16, -(pSecY + pLblH));
-            rt.offsetMax = new Vector2(-16, -pSecY);
+            rt.offsetMin = new Vector2(8,  -(divY + 2f));
+            rt.offsetMax = new Vector2(-8, -divY);
         }
-        passiveLabel.alignment = TextAlignmentOptions.Left;
-        passiveLabel.color     = LabelColor;
+
+        // ── 패시브 섹션 (라벨 없음, 바로 박스 나열) ──────────────
+        const float pBoxGap = 10f;
+        float pFirst = divY + 14f;
 
         var passiveCont = new GameObject("PassiveContainer", typeof(RectTransform));
         passiveCont.transform.SetParent(panel.transform, false);
@@ -924,40 +905,63 @@ public static class HeroDetailPopupCreator
     static (TextMeshProUGUI name, TextMeshProUGUI desc) BuildPassiveBox(
         GameObject container, string id)
     {
+        // 박스 루트 (HLG: 좌측 강조 바 + 내용)
         var box = new GameObject($"{id}Box", typeof(RectTransform), typeof(Image));
         box.transform.SetParent(container.transform, false);
         box.GetComponent<Image>().color = new Color(0.10f, 0.11f, 0.20f);
-
-        var vlg = box.AddComponent<VerticalLayoutGroup>();
-        vlg.padding              = new RectOffset(12, 12, 8, 10);
-        vlg.spacing              = 4f;
-        vlg.childForceExpandWidth  = true;
-        vlg.childForceExpandHeight = false;
-        vlg.childControlWidth      = true;
-        vlg.childControlHeight     = true;
-        vlg.childAlignment         = TextAnchor.UpperLeft;
+        var boxHlg = box.AddComponent<HorizontalLayoutGroup>();
+        boxHlg.padding              = new RectOffset(0, 12, 10, 12);
+        boxHlg.spacing              = 10f;
+        boxHlg.childForceExpandWidth  = false;
+        boxHlg.childForceExpandHeight = false;
+        boxHlg.childControlWidth      = true;
+        boxHlg.childControlHeight     = true;
+        boxHlg.childAlignment         = TextAnchor.UpperLeft;
         box.AddComponent<ContentSizeFitter>().verticalFit =
             ContentSizeFitter.FitMode.PreferredSize;
 
+        // 좌측 강조 바
+        var accentBar = new GameObject("AccentBar", typeof(RectTransform), typeof(Image));
+        accentBar.transform.SetParent(box.transform, false);
+        accentBar.GetComponent<Image>().color = new Color(0.55f, 0.40f, 0.85f);
+        var abLe = accentBar.AddComponent<LayoutElement>();
+        abLe.minWidth       = 4f;
+        abLe.preferredWidth = 4f;
+        abLe.flexibleHeight = 1f;
+
+        // 텍스트 컨테이너 (VLG)
+        var textCont = new GameObject("TextCont", typeof(RectTransform));
+        textCont.transform.SetParent(box.transform, false);
+        var tcLe = textCont.AddComponent<LayoutElement>();
+        tcLe.flexibleWidth = 1f;
+        var tcVlg = textCont.AddComponent<VerticalLayoutGroup>();
+        tcVlg.spacing              = 4f;
+        tcVlg.childForceExpandWidth  = true;
+        tcVlg.childForceExpandHeight = false;
+        tcVlg.childControlWidth      = true;
+        tcVlg.childControlHeight     = true;
+        textCont.AddComponent<ContentSizeFitter>().verticalFit =
+            ContentSizeFitter.FitMode.PreferredSize;
+
         var nameGo = new GameObject($"{id}Name", typeof(RectTransform), typeof(TextMeshProUGUI));
-        nameGo.transform.SetParent(box.transform, false);
+        nameGo.transform.SetParent(textCont.transform, false);
         var nameTmp = nameGo.GetComponent<TextMeshProUGUI>();
         nameTmp.text             = "—";
-        nameTmp.fontSize         = FntSub;
+        nameTmp.fontSize         = FntMain;
         nameTmp.fontStyle        = FontStyles.Bold;
         nameTmp.alignment        = TextAlignmentOptions.Left;
-        nameTmp.color            = Color.white;
+        nameTmp.color            = new Color(0.90f, 0.85f, 1.00f);
         nameTmp.textWrappingMode = TextWrappingModes.NoWrap;
-        nameGo.AddComponent<LayoutElement>().preferredHeight = FntSub + 8f;
+        nameGo.AddComponent<LayoutElement>().preferredHeight = FntMain + 8f;
 
         var descGo = new GameObject($"{id}Desc", typeof(RectTransform), typeof(TextMeshProUGUI));
-        descGo.transform.SetParent(box.transform, false);
+        descGo.transform.SetParent(textCont.transform, false);
         var descTmp = descGo.GetComponent<TextMeshProUGUI>();
         descTmp.text             = "";
         descTmp.fontSize         = FntSub;
         descTmp.fontStyle        = FontStyles.Normal;
         descTmp.alignment        = TextAlignmentOptions.TopLeft;
-        descTmp.color            = LabelColor;
+        descTmp.color            = new Color(0.65f, 0.63f, 0.80f);
         descTmp.textWrappingMode = TextWrappingModes.Normal;
         descTmp.overflowMode     = TextOverflowModes.Overflow;
         descGo.AddComponent<ContentSizeFitter>().verticalFit =
@@ -966,93 +970,14 @@ public static class HeroDetailPopupCreator
         return (nameTmp, descTmp);
     }
 
-    // ============================================================
-    //  Footer: 해고 버튼 + 닫기 버튼
-    // ============================================================
-
-    static void BuildFooter(GameObject root, SerializedObject so)
+    static TextMeshProUGUI ColorStat(TextMeshProUGUI tmp, Color color)
     {
-        const float CloseBtnW = 110f;
-        const float BtnPad    = 8f;
-
-        var footer = CreatePanel(root, "Footer", new Color(0.04f, 0.04f, 0.08f, 1f));
-        {
-            var rt = footer.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(0, 0);
-            rt.anchorMax = new Vector2(1, 0);
-            rt.offsetMin = new Vector2(0, 0);
-            rt.offsetMax = new Vector2(0, FooterH);
-        }
-
-        // 상단 구분선
-        var divider = CreateImage(footer, "TopDivider", DividerColor);
-        {
-            var rt = divider.rectTransform;
-            rt.anchorMin = new Vector2(0, 1);
-            rt.anchorMax = new Vector2(1, 1);
-            rt.offsetMin = new Vector2(0, -1);
-            rt.offsetMax = new Vector2(0,  0);
-        }
-
-        // 닫기 버튼 (오른쪽)
-        var closeBtnGo = CreatePanel(footer, "CloseButton", CloseBtnColor);
-        {
-            var rt = closeBtnGo.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(1, 0);
-            rt.anchorMax = new Vector2(1, 1);
-            rt.pivot     = new Vector2(1, 0.5f);
-            rt.offsetMin = new Vector2(-(CloseBtnW + BtnPad), BtnPad);
-            rt.offsetMax = new Vector2(-BtnPad, -BtnPad);
-        }
-        var closeBtn = closeBtnGo.AddComponent<Button>();
-        closeBtn.targetGraphic = closeBtnGo.GetComponent<Image>();
-        SetObj(so, "_closeBtn", closeBtn);
-
-        var closeLbl = CreateTMP(closeBtnGo, "Label", "닫기", FntMain, FontStyles.Normal);
-        closeLbl.rectTransform.anchorMin = Vector2.zero;
-        closeLbl.rectTransform.anchorMax = Vector2.one;
-        closeLbl.alignment = TextAlignmentOptions.Center;
-
-        // 해고 버튼 (나머지 전체)
-        var fireBtnGo = CreatePanel(footer, "FireButton", FireBtnColor);
-        {
-            var rt = fireBtnGo.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(0, 0);
-            rt.anchorMax = new Vector2(1, 1);
-            rt.offsetMin = new Vector2(BtnPad, BtnPad);
-            rt.offsetMax = new Vector2(-(CloseBtnW + BtnPad * 2f), -BtnPad);
-        }
-        var fireBtn = fireBtnGo.AddComponent<Button>();
-        fireBtn.targetGraphic = fireBtnGo.GetComponent<Image>();
-        SetObj(so, "_fireBtn", fireBtn);
-
-        // 해고 텍스트 (왼쪽)
-        var fireLbl = CreateTMP(fireBtnGo, "Label", "해고", FntMain, FontStyles.Bold);
-        {
-            var rt = fireLbl.rectTransform;
-            rt.anchorMin = new Vector2(0, 0);
-            rt.anchorMax = new Vector2(0.45f, 1);
-            rt.offsetMin = new Vector2(12, 0);
-            rt.offsetMax = Vector2.zero;
-        }
-        fireLbl.alignment = TextAlignmentOptions.Right;
-
-        // 획득 조각 수 텍스트 (오른쪽)
-        var shardText = CreateTMP(fireBtnGo, "ShardText", "0 조각", FntSub, FontStyles.Normal);
-        {
-            var rt = shardText.rectTransform;
-            rt.anchorMin = new Vector2(0.47f, 0);
-            rt.anchorMax = new Vector2(1, 1);
-            rt.offsetMin = new Vector2(0, 0);
-            rt.offsetMax = new Vector2(-8, 0);
-        }
-        shardText.alignment = TextAlignmentOptions.Left;
-        shardText.color     = new Color(0.85f, 0.65f, 0.65f);
-        SetObj(so, "_fireShardText", shardText);
+        tmp.color = color;
+        return tmp;
     }
 
     // ============================================================
-    //  UI 헬퍼 (HeroPanelCreator 복사)
+    //  UI 헬퍼
     // ============================================================
 
     static GameObject CreatePanel(GameObject parent, string name, Color color)

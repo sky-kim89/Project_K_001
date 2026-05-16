@@ -75,6 +75,7 @@ public class HeavyStrikeRunner : MonoBehaviour
                 Damage         = damage,
                 HitDirection   = hitDir * knockbackMult,
                 AttackerEntity = casterEntity,
+                IsSkillHit     = true,
             });
         }
 

@@ -18,6 +18,7 @@ public class HeroStatResult
     public Dictionary<StatType, float> EquipBonuses    = new();
     public Dictionary<StatType, float> PassiveBonuses  = new();
     public Dictionary<StatType, float> AbilityBonuses  = new();
+    public Dictionary<StatType, float> RelicBonuses    = new();
 
     public float Total(StatType stat)
     {
@@ -25,12 +26,14 @@ public class HeroStatResult
         float e = EquipBonuses.TryGetValue(stat,   out var ev) ? ev : 0f;
         float p = PassiveBonuses.TryGetValue(stat,  out var pv) ? pv : 0f;
         float a = AbilityBonuses.TryGetValue(stat,  out var av) ? av : 0f;
-        return b + e + p + a;
+        float r = RelicBonuses.TryGetValue(stat,    out var rv) ? rv : 0f;
+        return b + e + p + a + r;
     }
 
     public float GetEquip(StatType stat)   => EquipBonuses.TryGetValue(stat,  out var v) ? v : 0f;
     public float GetPassive(StatType stat) => PassiveBonuses.TryGetValue(stat, out var v) ? v : 0f;
     public float GetAbility(StatType stat) => AbilityBonuses.TryGetValue(stat, out var v) ? v : 0f;
+    public float GetRelic(StatType stat)   => RelicBonuses.TryGetValue(stat,   out var v) ? v : 0f;
 }
 
 public static class HeroStatResolver
@@ -110,14 +113,47 @@ public static class HeroStatResolver
             }
 
             // 이 시점 result.Total() = base + passive + equip (어빌리티 미포함) → % 기준 동일
+            // 절대값 스탯(CDR·CritChance·Defense)은 % of base 가 아닌 직접 가산
             foreach (var kvp in ratios)
             {
-                float delta = result.Total(kvp.Key) * kvp.Value;
+                float delta = AbilityApplier.IsAbsoluteStat(kvp.Key)
+                    ? kvp.Value
+                    : result.Total(kvp.Key) * kvp.Value;
                 if (UnityEngine.Mathf.Abs(delta) > 0.001f)
                     result.AbilityBonuses[kvp.Key] = delta;
             }
         }
 
+        // 5. 유물 보너스 (어빌리티까지 합산된 스탯 기준 % 증가 — RelicApplier와 동일 방식)
+        var relicInventory = UserDataManager.Instance?.Get<RelicInventoryData>();
+        var relicDb        = RelicDatabase.Current;
+        if (relicInventory != null && relicDb != null)
+        {
+            UnitJob relicJob = UnitJobRoller.GetJob(entry.UnitName);
+            foreach (var (id, level) in relicInventory.OwnedRelics)
+            {
+                if (level <= 0) continue;
+                var data = relicDb.Get(id);
+                if (data == null || data.EffectType != RelicEffectType.Stat) continue;
+                if (data.Target == AbilityTarget.Unit_Soldier) continue;
+                if (!AbilityApplier.MatchesGeneralTarget(data.Target, relicJob)) continue;
+
+                AccumulateRelicStat(result, data.Stat1, data.Value1PerLevel, level, data.IsAbsoluteValue);
+                if (data.HasStat2)
+                    AccumulateRelicStat(result, data.Stat2, data.Value2PerLevel, level, data.IsAbsoluteValue);
+            }
+        }
+
         return result;
+    }
+
+    // % 유물은 현재 Total(base+passive+equip+ability+이전 유물)에 대해 계산 — RelicApplier.ApplyStatLine과 동일 순서
+    static void AccumulateRelicStat(HeroStatResult result, StatType type, float valuePerLevel, int level, bool isAbsolute)
+    {
+        float delta = isAbsolute
+            ? valuePerLevel * level
+            : result.Total(type) * valuePerLevel * level;
+        if (UnityEngine.Mathf.Abs(delta) < 0.001f) return;
+        result.RelicBonuses[type] = result.RelicBonuses.TryGetValue(type, out var cur) ? cur + delta : delta;
     }
 }

@@ -185,6 +185,8 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
         // 버퍼 클리어
         em.GetBuffer<HitEventBufferElement>(entity).Clear();
         em.GetBuffer<StatusEffectBufferElement>(entity).Clear();
+        em.GetBuffer<DamageResultElement>(entity).Clear();
+        em.GetBuffer<HealEventBufferElement>(entity).Clear();
 
         // 파생 클래스 전용 컴포넌트 리셋
         OnEntityReset(em, entity);
@@ -273,6 +275,8 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
         // ── 동적 버퍼 ─────────────────────────────────────────
         em.AddBuffer<HitEventBufferElement>(entity);
         em.AddBuffer<StatusEffectBufferElement>(entity);
+        em.AddBuffer<DamageResultElement>(entity);
+        em.AddBuffer<HealEventBufferElement>(entity);
 
         // ── 풀 반납 링크 (managed component) ──────────────────
         // UnitDeathDespawnSystem 이 DeadTag 감지 후 이 컴포넌트로 풀 반납

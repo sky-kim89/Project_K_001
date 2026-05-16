@@ -22,13 +22,12 @@ public class PassiveQuickRecovery : PassiveSkillData
     public override void OnTrigger(PassiveTriggerContext ctx)
     {
         var em = ctx.EntityManager;
-        if (!em.HasComponent<HealthComponent>(ctx.GeneralEntity)) return;
-        if (!em.HasComponent<StatComponent>(ctx.GeneralEntity)) return;
+        if (!em.HasComponent<StatComponent>(ctx.GeneralEntity))        return;
+        if (!em.HasBuffer<HealEventBufferElement>(ctx.GeneralEntity))  return;
 
-        float maxHp  = em.GetComponentData<StatComponent>(ctx.GeneralEntity).Final[StatType.MaxHp];
-        float heal   = maxHp * HealRatio;
-        var   health = em.GetComponentData<HealthComponent>(ctx.GeneralEntity);
-        health.CurrentHp = Mathf.Min(health.CurrentHp + heal, maxHp);
-        em.SetComponentData(ctx.GeneralEntity, health);
+        float maxHp = em.GetComponentData<StatComponent>(ctx.GeneralEntity).Final[StatType.MaxHp];
+        float heal  = maxHp * HealRatio;
+        em.GetBuffer<HealEventBufferElement>(ctx.GeneralEntity).Add(
+            new HealEventBufferElement { Amount = heal, SourceEntity = ctx.GeneralEntity });
     }
 }

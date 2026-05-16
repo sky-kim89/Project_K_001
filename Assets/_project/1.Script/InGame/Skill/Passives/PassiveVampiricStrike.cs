@@ -23,13 +23,10 @@ public class PassiveVampiricStrike : PassiveSkillData
     {
         if (ctx.DamageDealt <= 0f) return;
         var em = ctx.EntityManager;
-        if (!em.HasComponent<HealthComponent>(ctx.GeneralEntity)) return;
-        if (!em.HasComponent<StatComponent>(ctx.GeneralEntity)) return;
+        if (!em.HasBuffer<HealEventBufferElement>(ctx.GeneralEntity)) return;
 
-        float heal   = ctx.DamageDealt * VampireRatio;
-        float maxHp  = em.GetComponentData<StatComponent>(ctx.GeneralEntity).Final[StatType.MaxHp];
-        var   health = em.GetComponentData<HealthComponent>(ctx.GeneralEntity);
-        health.CurrentHp = Mathf.Min(health.CurrentHp + heal, maxHp);
-        em.SetComponentData(ctx.GeneralEntity, health);
+        float heal = ctx.DamageDealt * VampireRatio;
+        em.GetBuffer<HealEventBufferElement>(ctx.GeneralEntity).Add(
+            new HealEventBufferElement { Amount = heal, SourceEntity = ctx.GeneralEntity });
     }
 }

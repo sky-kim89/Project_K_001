@@ -30,6 +30,9 @@ public class RelicPanelUI : MonoBehaviour
     [SerializeField] Button          _reincarnateBtn;
     [SerializeField] TextMeshProUGUI _reincLabel;
 
+    [Header("뒤로가기")]
+    [SerializeField] Button _backBtn;
+
     // ── 캐시 ──────────────────────────────────────────────────
     RelicInventoryData _inventory;
     ReincarnationData  _reincData;
@@ -50,6 +53,14 @@ public class RelicPanelUI : MonoBehaviour
             _reincarnateBtn.onClick.RemoveAllListeners();
             _reincarnateBtn.onClick.AddListener(OnReincarnate);
         }
+
+        if (_backBtn != null)
+        {
+            _backBtn.onClick.RemoveAllListeners();
+            _backBtn.onClick.AddListener(() =>
+                GetComponentInParent<LobbyNavUI>()?.Switch(2));
+        }
+
         Refresh();
     }
 
@@ -253,6 +264,7 @@ public class RelicPanelUI : MonoBehaviour
         if (!ReincarnationData.CanReincarnate(cleared)) return;
 
         UserDataManager.Instance?.Reincarnate();
+        LobbyManager.Instance?.ResetToFirstStage();
         Refresh();
     }
 }

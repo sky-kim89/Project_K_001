@@ -21,6 +21,7 @@ namespace BattleGame.Projectiles
     public struct ProjectileComponent : IComponentData
     {
         public Entity   TargetEntity;
+        public Entity   AttackerEntity;  // 발사한 유닛 (통계 귀속용)
         public float3   TargetPos;    // 타겟 마지막 위치 캐시 (사망 후 고정)
         public float    Damage;
         public float    Speed;

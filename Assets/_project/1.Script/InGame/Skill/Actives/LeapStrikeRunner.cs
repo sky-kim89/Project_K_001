@@ -103,6 +103,7 @@ public class LeapStrikeRunner : MonoBehaviour
                 Damage         = damage,
                 HitDirection   = knockDir * knockbackMult,
                 AttackerEntity = casterEntity,
+                IsSkillHit     = true,
             });
         }
 

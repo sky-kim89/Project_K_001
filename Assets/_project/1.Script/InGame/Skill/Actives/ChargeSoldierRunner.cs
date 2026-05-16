@@ -88,6 +88,7 @@ public class ChargeSoldierRunner : MonoBehaviour
                 Damage         = damage,
                 HitDirection   = knockDir * knockbackMult,
                 AttackerEntity = soldierEntity,
+                IsSkillHit     = true,
             });
         }
 

@@ -86,6 +86,7 @@ public class ActiveShockwave : ActiveSkillData
                 Damage         = damage,
                 HitDirection   = toDir * KnockbackMult,
                 AttackerEntity = ctx.CasterEntity,
+                IsSkillHit     = true,
             });
         }
 

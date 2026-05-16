@@ -25,7 +25,7 @@ public class ActiveHealAura : ActiveSkillData
             SkillEffectHelper.SpawnCaster(CasterEffectKey, ctx.CasterTransform.position, EffectDespawnDelay);
 
         // 시전자 치유
-        HealUnit(em, ctx.CasterEntity);
+        HealUnit(em, ctx.CasterEntity, ctx.CasterEntity);
 
         // 소속 병사 전체 치유
         var query    = em.CreateEntityQuery(new EntityQueryDesc
@@ -38,7 +38,7 @@ public class ActiveHealAura : ActiveSkillData
 
         for (int i = 0; i < entities.Length; i++)
             if (soldiers[i].GeneralEntity == ctx.CasterEntity)
-                HealUnit(em, entities[i]);
+                HealUnit(em, entities[i], ctx.CasterEntity);
 
         entities.Dispose();
         soldiers.Dispose();
@@ -47,18 +47,14 @@ public class ActiveHealAura : ActiveSkillData
 
     // ── 즉시 치유 ──────────────────────────────────────────────
 
-    void HealUnit(EntityManager em, Entity entity)
+    void HealUnit(EntityManager em, Entity entity, Entity source)
     {
-        if (!em.HasComponent<HealthComponent>(entity)) return;
-        if (!em.HasComponent<StatComponent>(entity))  return;
+        if (!em.HasComponent<StatComponent>(entity))              return;
+        if (!em.HasBuffer<HealEventBufferElement>(entity))        return;
 
-        var health = em.GetComponentData<HealthComponent>(entity);
-        var stat   = em.GetComponentData<StatComponent>(entity);
-
-        float maxHp  = stat.Final[StatType.MaxHp];
+        float maxHp  = em.GetComponentData<StatComponent>(entity).Final[StatType.MaxHp];
         float amount = maxHp * EffectValue;
-
-        health.CurrentHp = UnityEngine.Mathf.Min(health.CurrentHp + amount, maxHp);
-        em.SetComponentData(entity, health);
+        em.GetBuffer<HealEventBufferElement>(entity).Add(
+            new HealEventBufferElement { Amount = amount, SourceEntity = source });
     }
 }

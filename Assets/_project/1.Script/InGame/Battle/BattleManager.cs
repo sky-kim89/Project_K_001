@@ -79,6 +79,7 @@ public class BattleManager : Singleton<BattleManager>
         _wave1AlliesSpawned  = false;
         _enemyKillCount      = 0;
         _mode.Initialize(_context, AllySpawner, EnemySpawner);
+        BattleStatsTracker.Instance?.Reset();
 
         StartCoroutine(StartBattleRoutine());
     }
@@ -170,6 +171,7 @@ public class BattleManager : Singleton<BattleManager>
             {
                 _mode.ApplyStageClearReward();
                 _context.State = BattleState.BattleVictory;
+                LogBattleStats("승리");
                 _mode.OnBattleVictory();
                 OnVictory?.Invoke();
                 yield break;
@@ -239,9 +241,40 @@ public class BattleManager : Singleton<BattleManager>
             Debug.Log($"[BattleManager] 패배 — 웨이브 {_context.CurrentWave}/{_context.TotalWaves}" +
                       $"  아군 생존: {_context.AliveAllyCount}" +
                       $"  적군 잔존: {_context.AliveEnemyCount}");
+            LogBattleStats("패배");
             _mode.OnBattleDefeat();
             OnDefeat?.Invoke();
         }
+    }
+
+    // ── 전투 통계 로그 ────────────────────────────────────────
+
+    static void LogBattleStats(string result)
+    {
+        var tracker = BattleStatsTracker.Instance;
+        if (tracker == null) return;
+
+        var entries = tracker.GetAllEntries();
+        if (entries == null || entries.Count == 0) return;
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"[BattleStats] ===== 전투 결과 [{result}] =====");
+
+        foreach (var e in entries)
+        {
+            sb.AppendLine($"  ▶ {e.GeneralName}");
+            sb.AppendLine($"    딜량   총:{e.TotalDamageDealt:F0}" +
+                          $"  장군:{e.GeneralDamageDealt:F0}" +
+                          $"  병사:{e.SoldierDamageDealt:F0}" +
+                          $"  스킬:{e.SkillDamageDealt:F0}");
+            sb.AppendLine($"    피해량 장군:{e.DamageTaken:F0}" +
+                          $"  병사:{e.SoldierDamageTaken:F0}" +
+                          $"  방어감소:{e.DamageAbsorbed:F0}");
+            sb.AppendLine($"    처치:{e.KillCount}  힐(가한):{e.HealingDone:F0}  힐(받은):{e.HealingReceived:F0}");
+        }
+
+        sb.Append("=========================================");
+        Debug.Log(sb.ToString());
     }
 
     // ── 유닛 전체 정리 ────────────────────────────────────────

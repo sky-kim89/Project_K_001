@@ -89,13 +89,35 @@ public static class RelicPanelCreator
         var rt = panel.GetComponent<RectTransform>();
         rt.anchorMin = Vector2.zero;
         rt.anchorMax = Vector2.one;
-        rt.offsetMin = new Vector2(0, 110f);
+        rt.offsetMin = Vector2.zero;
         rt.offsetMax = new Vector2(0, 0);
         panel.AddComponent<Image>().color = PanelBg;
 
         // ── HeaderBar ─────────────────────────────────────────
         var header = MakePanel(panel, "HeaderBar", HeaderBg);
         TopFull(header.GetComponent<RectTransform>(), 0, HeaderH, 0, 0);
+
+        // 뒤로가기 버튼 (좌측 고정)
+        var backBtn   = new GameObject("BackBtn", typeof(RectTransform), typeof(Image), typeof(Button));
+        backBtn.transform.SetParent(header.transform, false);
+        backBtn.GetComponent<Image>().color = new Color(0.15f, 0.15f, 0.22f, 0.9f);
+        var backBtnRt = backBtn.GetComponent<RectTransform>();
+        backBtnRt.anchorMin        = new Vector2(0f, 0.5f);
+        backBtnRt.anchorMax        = new Vector2(0f, 0.5f);
+        backBtnRt.pivot            = new Vector2(0f, 0.5f);
+        backBtnRt.anchoredPosition = new Vector2(16f, 0f);
+        backBtnRt.sizeDelta        = new Vector2(130f, 64f);
+        var backLGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+        backLGo.transform.SetParent(backBtn.transform, false);
+        var backLRt = backLGo.GetComponent<RectTransform>();
+        backLRt.anchorMin = Vector2.zero;
+        backLRt.anchorMax = Vector2.one;
+        backLRt.offsetMin = backLRt.offsetMax = Vector2.zero;
+        var backTmp = backLGo.GetComponent<TextMeshProUGUI>();
+        backTmp.text      = "< 뒤로";
+        backTmp.fontSize  = UIScale.FontMd;
+        backTmp.alignment = TextAlignmentOptions.Center;
+        backTmp.color     = Color.white;
 
         var titleTmp = MakeTMP(header, "TitleText", "유물", UIScale.FontLg, FontStyles.Bold);
         SetRect(titleTmp.rectTransform, new Vector2(-160f, 0f), new Vector2(260f, 70f));
@@ -182,6 +204,7 @@ public static class RelicPanelCreator
         SetObj(so, "_cardTemplate",   cardTemplate);
         SetObj(so, "_reincarnateBtn", reincBtn.GetComponent<Button>());
         SetObj(so, "_reincLabel",     reincLabelTmp);
+        SetObj(so, "_backBtn",        backBtn.GetComponent<Button>());
         so.ApplyModifiedProperties();
 
         return panel;

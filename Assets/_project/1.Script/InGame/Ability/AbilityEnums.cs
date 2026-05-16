@@ -41,8 +41,8 @@ public enum AbilityId
     // ── 특수 (Special, 301~304) ─────────────────────────────
     // Special 등급은 트리거 기반 — AbilityData 서브클래스로 구현
     C01 = 301, // 흡혈 강습     — OnAttack:       공격 시 피해의 15% 즉시 체력 회복
-    C02 = 302, // 철갑 반응     — OnHit:          피격 시 방어율 +15% 5초 버프
-    C03 = 303, // 처치 연쇄     — OnEnemyKill:    처치 시 공격력 +20% 5초 버프
+    C02 = 302, // 철갑 반응     — OnHit:          피격마다 방어율 +1% 영구 누적 (최대 95%)
+    C03 = 303, // 처치 연쇄     — OnEnemyKill:    처치 시 공격력 +2% 영구 누적
     C04 = 304, // 희생의 힘     — OnSoldierDeath: 병사 사망 시 장군 공격력·체력 대폭 강화(1회)
 }
 
@@ -55,13 +55,13 @@ public enum AbilityGrade
 
 public enum AbilityTarget
 {
-    All              = 0,
-    Job_Knight       = 1,
-    Job_Archer       = 2,
-    Job_Mage         = 3,
-    Job_ShieldBearer = 4,
-    Range_Melee      = 5,   // Knight + ShieldBearer
-    Range_Ranged     = 6,   // Archer + Mage
-    Unit_General     = 7,   // 장군 스텟 전용
-    Unit_Soldier     = 8,   // 병사 스텟 전용
+    [UnityEngine.InspectorName("전체")]               All              = 0,
+    [UnityEngine.InspectorName("직업 — 기사")]        Job_Knight       = 1,
+    [UnityEngine.InspectorName("직업 — 궁수")]        Job_Archer       = 2,
+    [UnityEngine.InspectorName("직업 — 마법사")]      Job_Mage         = 3,
+    [UnityEngine.InspectorName("직업 — 방패병")]      Job_ShieldBearer = 4,
+    [UnityEngine.InspectorName("범위 — 근거리 (기사+방패)")]  Range_Melee      = 5,
+    [UnityEngine.InspectorName("범위 — 원거리 (궁수+마법사)")] Range_Ranged     = 6,
+    [UnityEngine.InspectorName("유닛 — 장군")]        Unit_General     = 7,
+    [UnityEngine.InspectorName("유닛 — 병사")]        Unit_Soldier     = 8,
 }

@@ -69,8 +69,14 @@ public class ActiveSummonElite : ActiveSkillData
             SkillEffectHelper.SpawnBase(BaseEffectKey, spawnPos, EffectDespawnDelay);
 
             if (go.TryGetComponent<SoldierRuntimeBridge>(out var bridge))
+            {
                 bridge.Initialize(ElitePoolKey, generalStat, StatRatio, ctx.CasterEntity,
                     generalJob, "Elite", UnitGrade.Rare);
+
+                // 소환 유닛 마킹 — 딜을 SkillDamageDealt 로 귀속
+                if (go.TryGetComponent<EntityLink>(out var link) && link.Entity != Entity.Null)
+                    em.AddComponent<SummonedTag>(link.Entity);
+            }
         }
     }
 }

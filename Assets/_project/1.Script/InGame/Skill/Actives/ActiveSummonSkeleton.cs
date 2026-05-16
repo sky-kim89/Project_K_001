@@ -94,8 +94,14 @@ public class ActiveSummonSkeleton : ActiveSkillData
             BattleManager.Instance?.OnUnitSpawned(TeamType.Ally);
 
             if (go.TryGetComponent<SoldierRuntimeBridge>(out var bridge))
+            {
                 bridge.Initialize(SkeletonPoolKey, generalStat, StatRatio, ctx.CasterEntity,
                     generalJob, "Skeleton", UnitGrade.Normal);
+
+                // 소환 유닛 마킹 — 딜을 SkillDamageDealt 로 귀속
+                if (go.TryGetComponent<EntityLink>(out var link) && link.Entity != Entity.Null)
+                    em.AddComponent<SummonedTag>(link.Entity);
+            }
         }
     }
 }

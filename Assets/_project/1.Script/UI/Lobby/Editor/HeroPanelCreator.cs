@@ -2327,6 +2327,7 @@ public static class HeroPanelCreator
             rt.offsetMax = new Vector2(0,   -82);
         }
         hpText.alignment = TextAlignmentOptions.MidlineRight;
+        hpText.color     = StatColors.Hp;
 
         var atkLbl = CreateTMP(card, "AtkLabel", "공격", FntSub, FontStyles.Normal);
         {
@@ -2348,6 +2349,7 @@ public static class HeroPanelCreator
             rt.offsetMax = new Vector2(-6,   -82);
         }
         atkText.alignment = TextAlignmentOptions.MidlineRight;
+        atkText.color     = StatColors.Atk;
 
         // ── 스탯 행 2: 방어율 / 용병수 (상단 기준) ───────────
         var defLbl = CreateTMP(card, "DefLabel", "방어", FntSub, FontStyles.Normal);
@@ -2370,6 +2372,7 @@ public static class HeroPanelCreator
             rt.offsetMax = new Vector2(0,  -114);
         }
         defText.alignment = TextAlignmentOptions.MidlineRight;
+        defText.color     = StatColors.Def;
 
         var soldLbl = CreateTMP(card, "SoldierLabel", "용병", FntSub, FontStyles.Normal);
         {
@@ -2391,6 +2394,7 @@ public static class HeroPanelCreator
             rt.offsetMax = new Vector2(-6,  -114);
         }
         soldText.alignment = TextAlignmentOptions.MidlineRight;
+        soldText.color     = StatColors.Soldier;
 
         // ── 배치 배지 (초상화 우상단 — 번호만 표시, 33×33) ──────
         const float bdgSz = 33f;

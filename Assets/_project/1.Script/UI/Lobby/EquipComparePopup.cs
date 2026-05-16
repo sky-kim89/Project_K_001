@@ -150,7 +150,9 @@ public class EquipComparePopup : PopupBase
                 sb.AppendLine(EquipmentData.FormatStat(e.Stat, val));
             }
             if (equip.TriggerType != EquipmentTrigger.None)
-                sb.AppendLine($"{loc.Get(equip.TriggerType.ToString())}: {loc.Get(equip.TriggerStat.ToString())}");
+                sb.AppendLine(EquipmentData.FormatTriggerLine(equip,
+                    loc.Get(equip.TriggerType.ToString()),
+                    loc.Get(equip.TriggerStat.ToString())));
             statText.text = sb.ToString().TrimEnd();
         }
     }

@@ -68,6 +68,7 @@ public class ActiveVolleyFire : ActiveSkillData
             Damage         = damage,
             HitDirection   = float3.zero,   // 일반 공격 수준 넉백 없음
             AttackerEntity = attacker,
+            IsSkillHit     = true,
         });
 
         // 쿨다운 리셋 — 스킬 직후 바로 또 공격 가능

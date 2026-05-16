@@ -296,7 +296,7 @@ namespace BattleGame.Projectiles
                 {
                     Damage         = proj.Damage,
                     HitDirection   = hitDir,
-                    AttackerEntity = Entity.Null,
+                    AttackerEntity = proj.AttackerEntity,
                 });
             }
 

@@ -77,14 +77,21 @@ public abstract class PopupBase : MonoBehaviour
 
     /// <summary>
     /// 팝업을 닫는다.
-    /// onComplete : 닫기 애니메이션 완료 후 호출.
+    /// onComplete : 닫기 완료 후 추가로 호출할 콜백 (SetOnClose 콜백과 합산).
     /// PopupManager 에 등록된 팝업이면 자동으로 목록에서 제거된다.
     /// </summary>
     public void Close(Action onComplete = null)
     {
         if (!IsOpen) return;
-        _onClose = onComplete;
+        if (onComplete != null) _onClose += onComplete;
         StartCoroutine(CloseRoutine());
+    }
+
+    /// <summary>팝업이 완전히 닫힌 후 호출될 콜백을 추가한다. 언제든 호출 가능.</summary>
+    public PopupBase SetOnClose(Action onClose)
+    {
+        _onClose += onClose;
+        return this;
     }
 
     // ── PopupManager 전용 ─────────────────────────────────────────

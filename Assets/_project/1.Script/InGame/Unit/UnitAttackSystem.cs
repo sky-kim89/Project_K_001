@@ -165,6 +165,7 @@ namespace BattleGame.Units
         const float ProjectileSpeed = 10f;
 
         public void Execute(
+            Entity                                 entity,
             ref AttackComponent                    attack,
             ref UnitStateComponent                 unitState,
             ref DynamicBuffer<ProjectileLaunchRequest> launchBuffer,
@@ -196,12 +197,13 @@ namespace BattleGame.Units
 
             launchBuffer.Add(new ProjectileLaunchRequest
             {
-                TargetEntity = attack.TargetEntity,
-                AttackerPos  = transform.Position,
-                TargetPos    = targetPos,
-                Damage       = finalDamage,
-                Speed        = ProjectileSpeed,
-                Team         = identity.Team,
+                TargetEntity   = attack.TargetEntity,
+                AttackerEntity = entity,
+                AttackerPos    = transform.Position,
+                TargetPos      = targetPos,
+                Damage         = finalDamage,
+                Speed          = ProjectileSpeed,
+                Team           = identity.Team,
             });
         }
 

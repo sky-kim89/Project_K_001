@@ -7,8 +7,7 @@ using UnityEngine.UI;
 // ============================================================
 //  HeroDetailPopup.cs
 //  배치된 장수 상세 정보 팝업.
-//  LeftPanel 과 동일한 구조 (초상화 + 배치슬롯 + 탭[스탯/장비/스킬])
-//  + 하단 해고 버튼.
+//  구조: 초상화 + 탭[스탯/장비/스킬] + 우측 상단 X 닫기 버튼
 //
 //  Inspector 연결 (HeroDetailPopupCreator 자동 와이어):
 //    _gradeBorder      : 좌측 등급 컬러 바 Image
@@ -20,7 +19,6 @@ using UnityEngine.UI;
 //    _jobText          : 직업 TMP
 //    _gradeBadge       : 등급 배지 Image
 //    _gradeText        : 등급 TMP
-//    _deploySlotRow    : DeploySlotRowUI
 //    _tabButtons       : Button[3] — 스탯/장비/스킬
 //    _tabPanels        : GameObject[3] — StatPanel/EquipPanel/SkillPanel
 //    [스탯] _hpText / _atkText / _defText / _spdText / _atkSpdText
@@ -31,7 +29,7 @@ using UnityEngine.UI;
 //           EnhanceBtn/EnhanceCostText/EnhanceCostIcon (×2슬롯)
 //    [스킬] _activeSkillIcon / _activeSkillText / _activeSkillDescText
 //           _passive0Text~_passive2Text / _passive0DescText~_passive2DescText
-//    _fireBtn / _fireShardText / _closeBtn
+//    _closeBtn
 // ============================================================
 
 public class HeroDetailPopup : PopupBase
@@ -50,9 +48,6 @@ public class HeroDetailPopup : PopupBase
     [SerializeField] TextMeshProUGUI _jobText;
     [SerializeField] Image           _gradeBadge;
     [SerializeField] TextMeshProUGUI _gradeText;
-
-    [Header("배치 슬롯")]
-    [SerializeField] DeploySlotRowUI _deploySlotRow;
 
     [Header("탭")]
     [SerializeField] Button[]     _tabButtons;
@@ -111,15 +106,14 @@ public class HeroDetailPopup : PopupBase
     [SerializeField] TextMeshProUGUI _passive1DescText;
     [SerializeField] TextMeshProUGUI _passive2DescText;
 
-    [Header("해고")]
-    [SerializeField] Button          _fireBtn;
-    [SerializeField] TextMeshProUGUI _fireShardText;
-
     [Header("닫기")]
     [SerializeField] Button _closeBtn;
 
     [Header("스탯 분해")]
     [SerializeField] Transform _statListContainer;
+
+    [Header("프리뷰 모드 (성장행 컨테이너)")]
+    [SerializeField] GameObject _growthRow;
 
     UnitEntry _entry;
     int       _slotIndex;
@@ -143,7 +137,30 @@ public class HeroDetailPopup : PopupBase
         _entry             = entry;
         _slotIndex         = slotIndex;
         _expandedStatIndex = -1;
+
+        // 보유 영웅 모드 — SetupPreview에서 숨겼을 수 있으므로 복원
+        _growthRow?.SetActive(true);
+        _levelText?.gameObject.SetActive(true);
+        if (_tabButtons != null && _tabButtons.Length > 1)
+            _tabButtons[1]?.gameObject.SetActive(true);
+
         RefreshUI();
+    }
+
+    // 용병 상점에서 호출 — EXP/레벨업/장비 탭 숨김
+    public void SetupPreview(UnitEntry entry)
+    {
+        Setup(entry, -1);
+
+        _growthRow?.SetActive(false);
+        _levelText?.gameObject.SetActive(false);
+
+        if (_tabButtons != null && _tabButtons.Length > 1)
+            _tabButtons[1]?.gameObject.SetActive(false);
+        if (_tabPanels != null && _tabPanels.Length > 1)
+            _tabPanels[1]?.SetActive(false);
+
+        SwitchTab(0);
     }
 
     // ── 생명주기 ──────────────────────────────────────────────
@@ -152,7 +169,6 @@ public class HeroDetailPopup : PopupBase
     {
         base.Awake();
         _closeBtn?.onClick.AddListener(OnCloseClick);
-        _fireBtn ?.onClick.AddListener(OnFire);
 
         if (_tabButtons != null)
             for (int i = 0; i < _tabButtons.Length; i++)
@@ -227,7 +243,7 @@ public class HeroDetailPopup : PopupBase
 
         if (_gradeBorder != null) _gradeBorder.color = gc;
         if (_gradeBadge  != null) _gradeBadge.color  = gc;
-        if (_gradeText   != null) { _gradeText.text  = GradeStyle.GetLabel(_entry.Grade); _gradeText.color = gc; }
+        if (_gradeText   != null) { _gradeText.text  = GradeStyle.GetLabel(_entry.Grade); _gradeText.color = Color.white; }
         if (_nameText    != null) _nameText.text  = _entry.UnitName;
         if (_levelText   != null) _levelText.text = $"Lv.{_entry.Level}";
         if (_jobText     != null) _jobText.text   = JobStyle.GetLabel(job);
@@ -239,9 +255,6 @@ public class HeroDetailPopup : PopupBase
         RefreshLevelUpDisplay();
         RefreshExpDisplay();
         RefreshSoldierUpDisplay();
-
-        int shards = CalcShards(_entry);
-        if (_fireShardText != null) _fireShardText.text = $"{shards} 조각";
 
         UnitPortraitHelper.Render(_entry.UnitName, job, _entry.Grade,
             _portraitBridge, _portraitBg, _portraitImage, ref _portraitTexture);
@@ -442,7 +455,9 @@ public class HeroDetailPopup : PopupBase
                 sb.AppendLine(EquipmentData.FormatStat(e.Stat, val));
             }
             if (equip.TriggerType != EquipmentTrigger.None)
-                sb.AppendLine($"{loc.Get(equip.TriggerType.ToString())}: {loc.Get(equip.TriggerStat.ToString())}");
+                sb.AppendLine(EquipmentData.FormatTriggerLine(equip,
+                    loc.Get(equip.TriggerType.ToString()),
+                    loc.Get(equip.TriggerStat.ToString())));
             statText.text = sb.ToString().TrimEnd();
         }
 
@@ -482,31 +497,6 @@ public class HeroDetailPopup : PopupBase
         if (_expBarFill != null)
             _expBarFill.rectTransform.anchorMax = new Vector2(
                 expNeeded > 0 ? Mathf.Clamp01((float)_entry.Exp / expNeeded) : 0f, 1f);
-    }
-
-    // ── 해고 ─────────────────────────────────────────────────
-
-    void OnFire()
-    {
-        if (_entry == null) return;
-
-        var unitData   = UserDataManager.Instance?.Get<UnitData>();
-        var deployData = UserDataManager.Instance?.Get<DeploymentData>();
-        var itemData   = UserDataManager.Instance?.Get<ItemData>();
-
-        int shards = CalcShards(_entry);
-        itemData?.Add(eItem.SoldierShard, shards);
-        deployData?.Undeploy(_entry.UnitName);
-        unitData?.RemoveUnit(_entry.UnitName);
-        UserDataManager.Instance?.RequestSave();
-
-        Close();
-    }
-
-    static int CalcShards(UnitEntry e)
-    {
-        int[] bases = { 5, 10, 20, 35, 60 };
-        return bases[Mathf.Clamp((int)e.Grade, 0, bases.Length - 1)] + e.Level / 5;
     }
 
     // ── 닫기 ─────────────────────────────────────────────────
@@ -596,15 +586,16 @@ public class HeroDetailPopup : PopupBase
         float equipVal   = _statResult?.GetEquip(row.Type)   ?? 0f;
         float passiveVal = _statResult?.GetPassive(row.Type) ?? 0f;
         float abilityVal = _statResult?.GetAbility(row.Type) ?? 0f;
-        float total      = baseVal + equipVal + passiveVal + abilityVal;
+        float relicVal   = _statResult?.GetRelic(row.Type)   ?? 0f;
+        float total      = baseVal + equipVal + passiveVal + abilityVal + relicVal;
         bool  expanded   = index == _expandedStatIndex;
-        bool  hasBonus   = equipVal != 0f || passiveVal != 0f || abilityVal != 0f;
+        bool  hasBonus   = equipVal != 0f || passiveVal != 0f || abilityVal != 0f || relicVal != 0f;
 
         if (expanded && hasBonus)
         {
             row.ValueTmp.overflowMode     = TextOverflowModes.Overflow;
             row.ValueTmp.textWrappingMode = TextWrappingModes.NoWrap;
-            row.ValueTmp.text = StatDisplayHelper.BuildBreakdown(row.Type, baseVal, equipVal, passiveVal, abilityVal);
+            row.ValueTmp.text = StatDisplayHelper.BuildBreakdown(row.Type, baseVal, equipVal, passiveVal, abilityVal, relicVal);
             if (row.LayoutEl != null) row.LayoutEl.preferredHeight = 52f;
         }
         else
