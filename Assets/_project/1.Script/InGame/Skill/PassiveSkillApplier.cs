@@ -44,7 +44,7 @@ public static class PassiveSkillApplier
     {
         if (stat == null || activePassives == null || db == null) return;
 
-        // SoldierEmpower 계열 패시브는 현재 병사 수가 필요하므로 먼저 읽음
+        // SoldierEmpower 계열 패시브는 병사 수에 비례하므로 먼저 읽음
         float soldierCountSnapshot = stat.Get(StatType.SoldierCount);
 
         foreach (var passiveType in activePassives)
@@ -52,9 +52,15 @@ public static class PassiveSkillApplier
             var data = db.Get(passiveType);
             if (data == null) continue;
 
+            // 병사 수만큼 배율을 쌓는 패시브 여부
+            bool scaleWithSoldiers = passiveType == PassiveSkillType.SoldierEmpowerGeneral
+                                  || passiveType == PassiveSkillType.UnityStrength;
+
 #if UNITY_EDITOR
             var sbPassive = new System.Text.StringBuilder();
             sbPassive.AppendLine($"[Passive] 스폰 적용 ▶ {data.SkillName} ({data.Type})");
+            if (scaleWithSoldiers)
+                sbPassive.AppendLine($"  soldierCount = {soldierCountSnapshot}");
 #endif
 
             foreach (var mod in data.StatModifiers)
@@ -62,10 +68,12 @@ public static class PassiveSkillApplier
                 if (mod.Target != ApplyTarget.General) continue;
 
                 float currentValue = stat.Get(mod.Stat);
-                float delta        = mod.IsPercent ? currentValue * mod.Delta : mod.Delta;
+                // SoldierEmpower 계열: 병사 1명당 mod.Delta% → soldierCount 배 적용
+                float soldierMult  = (mod.IsPercent && scaleWithSoldiers) ? soldierCountSnapshot : 1f;
+                float delta        = mod.IsPercent ? currentValue * mod.Delta * soldierMult : mod.Delta;
 
 #if UNITY_EDITOR
-                sbPassive.AppendLine($"  {mod.Stat,-14} {currentValue:F1} → {currentValue + delta:F1}  ({(mod.IsPercent ? $"{mod.Delta * 100f:+0.#;-0.#}%" : $"{delta:+0.#;-0.#}")})");
+                sbPassive.AppendLine($"  {mod.Stat,-14} {currentValue:F1} → {currentValue + delta:F1}  ({(mod.IsPercent ? $"{mod.Delta * 100f:+0.#;-0.#}% × {soldierMult}" : $"{delta:+0.#;-0.#}")})");
 #endif
 
                 stat.Add(mod.Stat, delta, "passive");

@@ -123,7 +123,7 @@ namespace BattleGame.Units
             float moveSpeed= stat.Final[StatType.MoveSpeed];
             float attack   = stat.Final[StatType.Attack];
 
-            stat.Final[StatType.Defense]     = math.clamp(defense,    0f, DefenseMax);
+            stat.Final[StatType.Defense]     = math.max(defense, 0f); // 소프트캡은 UnitHitSystem에서 적용, 하한만 보정
             stat.Final[StatType.AttackSpeed] = math.max(atkSpeed,     0.1f);
             stat.Final[StatType.MoveSpeed]   = math.max(moveSpeed,    0.1f);
             stat.Final[StatType.Attack]      = math.max(attack,       0f);

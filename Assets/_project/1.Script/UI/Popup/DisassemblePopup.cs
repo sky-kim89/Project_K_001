@@ -5,37 +5,40 @@ using UnityEngine.UI;
 
 // ============================================================
 //  DisassemblePopup.cs
-//  장수·장비 분해 팝업.
+//  장비 분해 팝업.
 //
-//  장수 분해 → 용병조각(SoldierShard) 획득
-//    보상: 등급 기준 + 레벨 소량 반영
-//    Normal=5 / Uncommon=10 / Rare=20 / Unique=35 / Epic=60  +  Level/5
-//
-//  장비 분해 → 장비강화석(EquipUpgradeStone) 획득
-//    보상: itemLevel + enhanceLevel
-//
-//  행 오브젝트는 프리팹 내 비활성 템플릿을 Instantiate 해서 사용.
+//  오른쪽 그리드 → 보유 장비 114×114 아이콘 셀로 표시
+//  왼쪽 InfoPanel → 선택 장비 상세 + 분해 확인 버튼 (보상 아이콘 포함)
+//  BulkHeader     → 등급별 Toggle 체크박스 + 일괄 분해 버튼
 // ============================================================
 
 public class DisassemblePopup : PopupBase
 {
-    [Header("탭")]
-    [SerializeField] Button[]     _tabBtns;
-    [SerializeField] GameObject[] _tabPanels;
-
-    [Header("목록 컨테이너")]
-    [SerializeField] Transform _heroContent;
-    [SerializeField] Transform _equipContent;
-
     [Header("닫기")]
     [SerializeField] Button _closeBtn;
 
-    [Header("행 템플릿 (비활성 자식 오브젝트)")]
-    [SerializeField] GameObject _heroRowTemplate;
-    [SerializeField] GameObject _equipRowTemplate;
+    [Header("아이콘 그리드")]
+    [SerializeField] Transform  _gridContent;
+    [SerializeField] GameObject _iconCellTemplate;
 
-    readonly List<GameObject> _heroRows  = new();
-    readonly List<GameObject> _equipRows = new();
+    [Header("일괄 분해")]
+    [SerializeField] Toggle[] _gradeToggles;       // 0=Normal … 4=Epic
+    [SerializeField] Button   _bulkDisassembleBtn;
+
+    [Header("선택 정보 패널")]
+    [SerializeField] Image           _selectedIcon;
+    [SerializeField] Image           _selectedGradeBorder;
+    [SerializeField] TextMeshProUGUI _selectedNameText;
+    [SerializeField] TextMeshProUGUI _selectedGradeText;
+    [SerializeField] TextMeshProUGUI _selectedStatsText;
+    [SerializeField] Image           _rewardIcon;
+    [SerializeField] TextMeshProUGUI _rewardText;
+    [SerializeField] Button          _disassembleBtn;
+
+    readonly List<GameObject> _cells        = new();
+    readonly List<string>     _cellEquipIds = new();
+    readonly HashSet<string>  _bulkSelected = new();
+    string _selectedEquipId;
 
     // ── 라이프사이클 ──────────────────────────────────────────
 
@@ -43,179 +46,276 @@ public class DisassemblePopup : PopupBase
     {
         base.Awake();
         _closeBtn?.onClick.AddListener(() => Close());
-        if (_tabBtns != null)
-            for (int i = 0; i < _tabBtns.Length; i++)
-            { int idx = i; _tabBtns[i]?.onClick.AddListener(() => SwitchTab(idx)); }
+        _disassembleBtn?.onClick.AddListener(() => ConfirmDisassemble());
+        _bulkDisassembleBtn?.onClick.AddListener(() => BulkDisassemble());
+
+        if (_gradeToggles != null)
+            for (int i = 0; i < _gradeToggles.Length; i++)
+            {
+                int captured = i;
+                _gradeToggles[i]?.onValueChanged.AddListener(v => OnGradeToggleChanged(captured, v));
+            }
     }
 
     protected override void OnAfterOpen()
     {
-        BuildHeroList();
-        BuildEquipList();
-        SwitchTab(0);
+        if (_gradeToggles != null)
+            foreach (var t in _gradeToggles)
+                if (t != null) t.isOn = false;
+        _bulkSelected.Clear();
+        BuildGrid();
+        ClearSelection();
     }
 
     protected override void OnAfterClose()
     {
-        ClearRows(_heroRows);
-        ClearRows(_equipRows);
+        ClearCells();
+        _bulkSelected.Clear();
+        _selectedEquipId = null;
     }
 
-    // ── 탭 ───────────────────────────────────────────────────
+    // ── 그리드 구성 ───────────────────────────────────────────
 
-    void SwitchTab(int idx)
+    void BuildGrid()
     {
-        if (_tabPanels != null)
-            for (int i = 0; i < _tabPanels.Length; i++)
-                _tabPanels[i]?.SetActive(i == idx);
-
-        if (_tabBtns != null)
-            for (int i = 0; i < _tabBtns.Length; i++)
-            {
-                var tmp = _tabBtns[i]?.GetComponentInChildren<TextMeshProUGUI>();
-                if (tmp == null) continue;
-                tmp.color = (i == idx)
-                    ? new Color(0.40f, 0.72f, 1.00f)
-                    : new Color(0.55f, 0.55f, 0.60f);
-            }
-    }
-
-    // ── 장수 목록 ─────────────────────────────────────────────
-
-    void BuildHeroList()
-    {
-        if (_heroContent == null || _heroRowTemplate == null) return;
-        ClearRows(_heroRows);
-
-        var units = UserDataManager.Instance?.Get<UnitData>()?.Units;
-        if (units == null) return;
-
-        var deployData = UserDataManager.Instance?.Get<DeploymentData>();
-        var rowBgA = new Color(0.10f, 0.10f, 0.18f);
-        var rowBgB = new Color(0.12f, 0.12f, 0.20f);
-        int rowIdx = 0;
-
-        for (int i = 0; i < units.Count; i++)
-        {
-            if (deployData != null && deployData.GetSlotOf(units[i].UnitName) >= 0) continue;
-
-            var row = Instantiate(_heroRowTemplate, _heroContent);
-            row.SetActive(true);
-            FillHeroRow(row, units[i], rowIdx % 2 == 0 ? rowBgA : rowBgB);
-            _heroRows.Add(row);
-            rowIdx++;
-        }
-    }
-
-    void FillHeroRow(GameObject row, UnitEntry entry, Color bgColor)
-    {
-        row.GetComponent<Image>().color = bgColor;
-        row.transform.Find("GradeBar").GetComponent<Image>().color = GradeStyle.GetColor(entry.Grade);
-
-        row.GetComponent<DisHeroRowUI>()?.Fill(entry);
-
-        var btn = row.transform.Find("DisBtn").GetComponent<Button>();
-        btn.onClick.RemoveAllListeners();
-        var captured = entry;
-        btn.onClick.AddListener(() => DisassembleHero(captured));
-    }
-
-    // ── 장비 목록 (인벤토리 기반) ─────────────────────────────
-
-    void BuildEquipList()
-    {
-        if (_equipContent == null || _equipRowTemplate == null) return;
-        ClearRows(_equipRows);
+        ClearCells();
 
         var inv    = UserDataManager.Instance?.Get<EquipInventoryData>();
         var equipDb = EquipmentDatabase.Current;
         if (inv == null || equipDb == null) return;
-
-        var rowBgA = new Color(0.10f, 0.10f, 0.18f);
-        var rowBgB = new Color(0.12f, 0.12f, 0.20f);
-        int rowIdx = 0;
 
         foreach (var id in inv.OwnedIds)
         {
             var equip = equipDb.Get(id);
             if (equip == null) continue;
 
-            var row = Instantiate(_equipRowTemplate, _equipContent);
-            row.SetActive(true);
-            FillEquipRow(row, equip, rowIdx % 2 == 0 ? rowBgA : rowBgB);
-            _equipRows.Add(row);
-            rowIdx++;
+            var cell = Instantiate(_iconCellTemplate, _gridContent);
+            cell.SetActive(true);
+            FillCell(cell, equip);
+            _cells.Add(cell);
+            _cellEquipIds.Add(id);
+        }
+        RefreshCellHighlights();
+    }
+
+    void FillCell(GameObject cell, EquipmentData equip)
+    {
+        var border = cell.transform.Find("GradeBorder")?.GetComponent<Image>();
+        if (border != null) border.color = GradeStyle.GetColor(equip.Grade);
+
+        var icon = cell.transform.Find("IconImage")?.GetComponent<Image>();
+        if (icon != null)
+        {
+            icon.sprite = equip.Icon;
+            icon.color  = equip.Icon != null ? Color.white : GradeStyle.GetColor(equip.Grade) * 0.6f;
+        }
+
+        var btn = cell.GetComponent<Button>();
+        if (btn != null)
+        {
+            btn.onClick.RemoveAllListeners();
+            string capturedId = equip.EquipmentId;
+            btn.onClick.AddListener(() => SelectEquip(capturedId));
         }
     }
 
-    void FillEquipRow(GameObject row, EquipmentData equip, Color bgColor)
+    // ── 단일 선택 ─────────────────────────────────────────────
+
+    void SelectEquip(string equipId)
     {
-        row.GetComponent<Image>().color = bgColor;
-        row.transform.Find("GradeBar").GetComponent<Image>().color = GradeStyle.GetColor(equip.Grade);
+        _selectedEquipId = equipId;
 
-        row.GetComponent<DisEquipRowUI>()?.Fill(equip);
+        var equip = EquipmentDatabase.Current?.Get(equipId);
+        if (equip == null) { ClearSelection(); return; }
 
-        var btn = row.transform.Find("DisBtn").GetComponent<Button>();
-        btn.onClick.RemoveAllListeners();
-        string capturedId = equip.EquipmentId;
-        btn.onClick.AddListener(() => DisassembleEquip(capturedId));
+        if (_selectedIcon != null)
+        {
+            _selectedIcon.sprite = equip.Icon;
+            _selectedIcon.color  = equip.Icon != null ? Color.white : GradeStyle.GetColor(equip.Grade) * 0.6f;
+        }
+        if (_selectedGradeBorder != null)
+            _selectedGradeBorder.color = GradeStyle.GetColor(equip.Grade);
+
+        if (_selectedNameText != null) _selectedNameText.text = equip.EquipmentName;
+        if (_selectedGradeText != null)
+        {
+            _selectedGradeText.text  = GradeStyle.GetLabel(equip.Grade);
+            _selectedGradeText.color = GradeStyle.GetColor(equip.Grade);
+        }
+
+        if (_selectedStatsText != null)
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (var entry in equip.StatEntries)
+            {
+                float  val  = equip.GetStatValue(entry, 0);
+                string name = GetStatLabel(entry.Stat);
+                sb.AppendLine($"{name}  +{EquipmentData.FormatStat(entry.Stat, val)}");
+            }
+            _selectedStatsText.text = sb.ToString().TrimEnd();
+        }
+
+        if (_rewardText != null) _rewardText.text = $"+{equip.ItemLevel}";
+        if (_disassembleBtn != null) _disassembleBtn.interactable = true;
+
+        RefreshCellHighlights();
+    }
+
+    void ClearSelection()
+    {
+        _selectedEquipId = null;
+        if (_selectedNameText    != null) _selectedNameText.text    = "장비를 선택하세요";
+        if (_selectedGradeText   != null) _selectedGradeText.text   = "";
+        if (_selectedStatsText   != null) _selectedStatsText.text   = "";
+        if (_rewardText          != null) _rewardText.text          = "";
+        if (_selectedIcon        != null) { _selectedIcon.sprite = null; _selectedIcon.color = new Color(0.2f, 0.2f, 0.3f); }
+        if (_selectedGradeBorder != null) _selectedGradeBorder.color = new Color(0.25f, 0.25f, 0.35f);
+        if (_disassembleBtn      != null) _disassembleBtn.interactable = false;
+        RefreshCellHighlights();
+    }
+
+    // ── 일괄 선택 ─────────────────────────────────────────────
+
+    void OnGradeToggleChanged(int gradeIdx, bool isOn)
+    {
+        var grade   = (UnitGrade)gradeIdx;
+        var inv     = UserDataManager.Instance?.Get<EquipInventoryData>();
+        var equipDb = EquipmentDatabase.Current;
+        if (inv == null || equipDb == null) return;
+
+        foreach (var id in inv.OwnedIds)
+        {
+            var equip = equipDb.Get(id);
+            if (equip == null || equip.Grade != grade) continue;
+            if (isOn) _bulkSelected.Add(id);
+            else      _bulkSelected.Remove(id);
+        }
+        RefreshCellHighlights();
+        RefreshBulkBtn();
+    }
+
+    void RefreshBulkBtn()
+    {
+        if (_bulkDisassembleBtn != null)
+            _bulkDisassembleBtn.interactable = _bulkSelected.Count > 0;
+    }
+
+    // ── 셀 하이라이트 ─────────────────────────────────────────
+
+    void RefreshCellHighlights()
+    {
+        for (int i = 0; i < _cells.Count; i++)
+        {
+            if (i >= _cellEquipIds.Count) break;
+            string id       = _cellEquipIds[i];
+            bool   isSingle = id == _selectedEquipId;
+            bool   isBulk   = _bulkSelected.Contains(id);
+
+            // 셀 배경 (아이콘 뒤 — 단일 선택 시 약한 파란 틴트)
+            var bg = _cells[i].GetComponent<Image>();
+            if (bg != null)
+                bg.color = isSingle
+                    ? new Color(0.14f, 0.18f, 0.28f)
+                    : new Color(0.12f, 0.12f, 0.20f);
+
+            // GradeBorder: 아이콘보다 먼저 렌더 → 아이콘을 가리지 않음
+            // 선택 시 해당 색상으로 덮어쓰고, 해제 시 등급 색상 복원
+            var border = _cells[i].transform.Find("GradeBorder")?.GetComponent<Image>();
+            if (border != null)
+            {
+                if (isBulk)
+                    border.color = new Color(1.00f, 0.85f, 0.20f);   // 황금
+                else if (isSingle)
+                    border.color = new Color(0.60f, 0.85f, 1.00f);   // 밝은 청백
+                else
+                {
+                    var equip = EquipmentDatabase.Current?.Get(id);
+                    border.color = equip != null
+                        ? GradeStyle.GetColor(equip.Grade)
+                        : new Color(0.28f, 0.28f, 0.45f);
+                }
+            }
+
+            // SelectionOutline: full-stretch 오버레이가 아이콘을 가리므로 항상 비활성
+            _cells[i].transform.Find("SelectionOutline")?.gameObject.SetActive(false);
+        }
     }
 
     // ── 분해 로직 ─────────────────────────────────────────────
 
-    void DisassembleHero(UnitEntry entry)
+    void ConfirmDisassemble()
     {
-        var unitData = UserDataManager.Instance?.Get<UnitData>();
-        var itemData = UserDataManager.Instance?.Get<ItemData>();
-        if (unitData == null || itemData == null) return;
+        if (string.IsNullOrEmpty(_selectedEquipId)) return;
 
-        if (unitData.Units.Count <= 1)
-        {
-            Debug.Log("[DisassemblePopup] 마지막 장수는 분해할 수 없습니다.");
-            return;
-        }
-
-        int shards = GetHeroShards(entry);
-        unitData.RemoveUnit(entry.UnitName);
-        itemData.Add(eItem.SoldierShard, shards);
-        UserDataManager.Instance.RequestSave();
-
-        BuildHeroList();
-    }
-
-    void DisassembleEquip(string equipId)
-    {
         var invData  = UserDataManager.Instance?.Get<EquipInventoryData>();
         var itemData = UserDataManager.Instance?.Get<ItemData>();
         if (invData == null || itemData == null) return;
 
-        var equip = EquipmentDatabase.Current?.Get(equipId);
+        var equip = EquipmentDatabase.Current?.Get(_selectedEquipId);
         if (equip == null) return;
 
-        int stones = equip.ItemLevel;
-        invData.Remove(equipId);
-        itemData.Add(eItem.EquipUpgradeStone, stones);
+        itemData.Add(eItem.EquipUpgradeStone, equip.ItemLevel);
+        invData.Remove(_selectedEquipId);
         UserDataManager.Instance.RequestSave();
 
-        BuildEquipList();
+        _bulkSelected.Remove(_selectedEquipId);
+        _selectedEquipId = null;
+        BuildGrid();
+        ClearSelection();
     }
 
-    // ── 보상 공식 ─────────────────────────────────────────────
-
-    static int GetHeroShards(UnitEntry e)
+    void BulkDisassemble()
     {
-        int[] bases = { 5, 10, 20, 35, 60 };
-        int gradeIdx = Mathf.Clamp((int)e.Grade, 0, bases.Length - 1);
-        return bases[gradeIdx] + e.Level / 5;
-    }
+        if (_bulkSelected.Count == 0) return;
 
+        var invData  = UserDataManager.Instance?.Get<EquipInventoryData>();
+        var itemData = UserDataManager.Instance?.Get<ItemData>();
+        var equipDb  = EquipmentDatabase.Current;
+        if (invData == null || itemData == null || equipDb == null) return;
+
+        int totalStones = 0;
+        foreach (var id in _bulkSelected)
+        {
+            var equip = equipDb.Get(id);
+            if (equip == null) continue;
+            totalStones += equip.ItemLevel;
+            invData.Remove(id);
+        }
+        itemData.Add(eItem.EquipUpgradeStone, totalStones);
+        UserDataManager.Instance.RequestSave();
+
+        if (_gradeToggles != null)
+            foreach (var t in _gradeToggles)
+                if (t != null) t.isOn = false;
+        _bulkSelected.Clear();
+        _selectedEquipId = null;
+        BuildGrid();
+        ClearSelection();
+    }
 
     // ── 유틸 ─────────────────────────────────────────────────
 
-    static void ClearRows(List<GameObject> rows)
+    void ClearCells()
     {
-        foreach (var r in rows)
-            if (r != null) Destroy(r);
-        rows.Clear();
+        foreach (var c in _cells)
+            if (c != null) Destroy(c);
+        _cells.Clear();
+        _cellEquipIds.Clear();
     }
+
+    static string GetStatLabel(StatType stat) => stat switch
+    {
+        StatType.MaxHp               => "체력",
+        StatType.Defense             => "방어율",
+        StatType.Attack              => "공격력",
+        StatType.AttackRange         => "사거리",
+        StatType.AttackSpeed         => "공격속도",
+        StatType.MoveSpeed           => "이동속도",
+        StatType.CritChance          => "치명타 확률",
+        StatType.CritDamage          => "치명타 배율",
+        StatType.SoldierCount        => "병사 수",
+        StatType.CommandPower        => "지휘력",
+        StatType.SkillCooldownReduce => "쿨다운 감소",
+        _                            => stat.ToString(),
+    };
 }

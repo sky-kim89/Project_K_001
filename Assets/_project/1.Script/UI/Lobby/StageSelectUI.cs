@@ -33,6 +33,7 @@ public class StageSelectUI : MonoBehaviour
     [SerializeField] Button          _hireBtn;
     [SerializeField] TextMeshProUGUI _hireCostText;
     [SerializeField] Button          _relicBtn;
+    [SerializeField] Button          _disassembleBtn;
     [SerializeField] Button          _battleStartBtn;
 
     // ── 생명주기 ──────────────────────────────────────────────
@@ -64,6 +65,10 @@ public class StageSelectUI : MonoBehaviour
         _relicBtn?.onClick.AddListener(() =>
             GetComponentInParent<LobbyNavUI>()?.Switch(3));
 
+        _disassembleBtn?.onClick.RemoveAllListeners();
+        _disassembleBtn?.onClick.AddListener(() =>
+            PopupManager.Instance?.Open<DisassemblePopup>(PopupType.Disassemble));
+
         _battleStartBtn?.onClick.RemoveAllListeners();
         _battleStartBtn?.onClick.AddListener(() => LobbyManager.Instance?.StartBattle());
     }
@@ -84,11 +89,12 @@ public class StageSelectUI : MonoBehaviour
         var progress = UserDataManager.Instance?.Get<StageProgressData>();
         int cleared  = progress?.ClearedNormalStages ?? 0;
         int current  = cleared + 1;
+        int maxStage = StageConfig.Current.NormalStageCount;
 
         if (_stageText    != null) _stageText.text    = $"스테이지 {current} 도전";
         if (_progressText != null) _progressText.text = cleared > 0
-            ? $"{cleared} 스테이지 클리어"
-            : "첫 번째 스테이지";
+            ? $"{cleared} / {maxStage} 스테이지 클리어"
+            : $"0 / {maxStage} 스테이지";
     }
 
     void RefreshSlots()
@@ -109,11 +115,14 @@ public class StageSelectUI : MonoBehaviour
     {
         if (_hireBtn == null) return;
 
-        // 5개 슬롯 모두 채워졌을 때만 활성화 (빈 슬롯이 있으면 슬롯 자체가 고용 버튼)
-        bool allFull   = AreAllSlotsFull();
-        int  cost      = GameplayConfig.Current?.HireMercenaryCost ?? 500;
-        int  gold      = UserDataManager.Instance?.Get<ItemData>()?.Get(eItem.Gold) ?? 0;
-        bool canUse    = allFull && gold >= cost;
+        // 빈 슬롯이 있으면 슬롯 자체가 고용 버튼 — 모두 찼을 때만 HireBtn 표시
+        bool allFull = AreAllSlotsFull();
+        _hireBtn.gameObject.SetActive(allFull);
+        if (!allFull) return;
+
+        int  cost   = GameplayConfig.Current.HireMercenaryCost;
+        int  gold   = UserDataManager.Instance.Get<ItemData>().Get(eItem.Gold);
+        bool canUse = gold >= cost;
 
         _hireBtn.interactable = canUse;
         if (_hireCostText != null)
@@ -134,7 +143,7 @@ public class StageSelectUI : MonoBehaviour
     // targetSlot: 클릭한 빈 슬롯 인덱스(-1이면 HireBtn에서 열림 = SlotFullView 경유)
     void OpenMercenaryShop(int targetSlot = -1)
     {
-        int cost = GameplayConfig.Current?.HireMercenaryCost ?? 500;
+        int cost = GameplayConfig.Current.HireMercenaryCost;
         int gold = UserDataManager.Instance?.Get<ItemData>()?.Get(eItem.Gold) ?? 0;
         if (gold < cost)
         {

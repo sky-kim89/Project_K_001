@@ -42,17 +42,17 @@ public class ObjectPool : MonoBehaviour
             return null;
         }
 
-        GameObject obj;
-        if (pool.Count > 0)
+        // 파괴된 GO 건너뜀 (씬 리로드·직접 Destroy 호출 시 stale 참조 발생)
+        GameObject obj = null;
+        while (pool.Count > 0)
         {
-            int last = pool.Count - 1;
-            obj = pool[last];
+            int last      = pool.Count - 1;
+            var candidate = pool[last];
             pool.RemoveAt(last);
+            if (candidate != null) { obj = candidate; break; }
         }
-        else
-        {
+        if (obj == null)
             obj = CreateInstance(name);
-        }
 
         obj.transform.SetPositionAndRotation(position, rotation);
         obj.SetActive(true);

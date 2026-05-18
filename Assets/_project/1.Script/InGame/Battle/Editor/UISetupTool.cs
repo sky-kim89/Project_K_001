@@ -81,7 +81,7 @@ public static class UISetupTool
         // │  HpBarBg  : x=88 y=76 w=228 h=26                       │
         // │  SolBarBg : x=88 y=106 w=228 h=26                      │
         // │  SkillSlot: x=4  y=136 w=80  h=62                      │
-        // │  BuffSlot : x=88+(i*32) y=140 w=28 h=28  (4개)         │
+        // │  BuffSlot : 2행×7열=14개, 28×28, step 32               │
         // └─────────────────────────────────────────────────────────┘
         const float PW      = 320f;
         const float PH      = 210f;
@@ -184,13 +184,50 @@ public static class UISetupTool
         Stretch(readyGlow);
         readyGlow.SetActive(false);
 
-        // ── Buff Slots (4개, 28×28) ───────────────────────────
-        var buffSlots = new Image[4];
-        for (int i = 0; i < 4; i++)
+        // ── Buff Slots (14개, 28×28, 2행×7열) ────────────────
+        // Row 1: y = skillY+4, Row 2: y = skillY+4+32
+        // x = TextX + (col * 32), col = i % 7
+        const int   BuffCount  = 14;
+        const int   BuffCols   = 7;
+        const float BuffSlotSz = 28f;
+        const float BuffStep   = 32f;
+
+        var buffSlots      = new Image[BuffCount];
+        var buffStackTexts = new TextMeshProUGUI[BuffCount];
+
+        for (int i = 0; i < BuffCount; i++)
         {
-            buffSlots[i] = MakeImg(root, $"BuffSlot{i}", new Color(0.5f, 0.5f, 0.8f, 0.8f));
-            SetTL(buffSlots[i].gameObject, TextX + i * 32, skillY + 4, 28, 28);
-            buffSlots[i].gameObject.SetActive(false);
+            int   col  = i % BuffCols;
+            int   row  = i / BuffCols;
+            float bx   = TextX + col * BuffStep;
+            float by   = skillY + 4 + row * BuffStep;
+
+            // 슬롯 컨테이너 (색상 없음 — 아이콘 스프라이트만 표시)
+            var slotGo = MakeRect(root, $"BuffSlot{i}");
+            SetTL(slotGo, bx, by, BuffSlotSz, BuffSlotSz);
+
+            // 아이콘 이미지 (Color.white — 스프라이트 원본 색 그대로)
+            buffSlots[i] = slotGo.AddComponent<Image>();
+            buffSlots[i].color          = Color.white;
+            buffSlots[i].preserveAspect = true;
+
+            // 스택 카운트 텍스트 (우하단, 기본 비활성)
+            var stackTxt = MakeTMP(slotGo, "StackCount", "2", 12, FontStyle.Bold);
+            stackTxt.color     = Color.yellow;
+            stackTxt.alignment = TextAlignmentOptions.BottomRight;
+            stackTxt.outlineWidth = 0.3f;
+            stackTxt.outlineColor = Color.black;
+            {
+                var srt = stackTxt.GetComponent<RectTransform>();
+                srt.anchorMin        = Vector2.zero;
+                srt.anchorMax        = Vector2.one;
+                srt.offsetMin        = Vector2.zero;
+                srt.offsetMax        = Vector2.zero;
+            }
+            stackTxt.gameObject.SetActive(false);
+            buffStackTexts[i] = stackTxt;
+
+            slotGo.SetActive(false);
         }
 
         // ── SerializedField 연결 ──────────────────────────────
@@ -204,10 +241,17 @@ public static class UISetupTool
         pso.FindProperty("_soldierFill").objectReferenceValue  = soldierFill;
         pso.FindProperty("_soldierText").objectReferenceValue  = soldierText;
         pso.FindProperty("_skillSlot").objectReferenceValue    = skillSlot;
+
         var buffArr = pso.FindProperty("_buffSlots");
-        buffArr.arraySize = 4;
-        for (int i = 0; i < 4; i++)
+        buffArr.arraySize = BuffCount;
+        for (int i = 0; i < BuffCount; i++)
             buffArr.GetArrayElementAtIndex(i).objectReferenceValue = buffSlots[i];
+
+        var stackArr = pso.FindProperty("_buffStackTexts");
+        stackArr.arraySize = BuffCount;
+        for (int i = 0; i < BuffCount; i++)
+            stackArr.GetArrayElementAtIndex(i).objectReferenceValue = buffStackTexts[i];
+
         pso.ApplyModifiedPropertiesWithoutUndo();
 
         var sso = new SerializedObject(skillSlot);
@@ -229,26 +273,34 @@ public static class UISetupTool
 
     static GameObject CreateLoadingPopupPrefab()
     {
-        // 블로커(PopupManager 가 생성)가 배경을 가리므로
-        // 팝업 자체는 텍스트만 있는 중앙 패널
+        // 전체 화면을 덮는 풀스크린 팝업
         var root = new GameObject("LoadingPopup");
-        SetupPopupRoot(root, 600f, 200f);
+        var rt   = root.AddComponent<RectTransform>();
+        rt.anchorMin        = Vector2.zero;
+        rt.anchorMax        = Vector2.one;
+        rt.offsetMin        = Vector2.zero;
+        rt.offsetMax        = Vector2.zero;
+        root.AddComponent<CanvasGroup>();
         var popup = root.AddComponent<LoadingPopup>();
 
-        // 제목
+        // ── 배경 (전체 화면 덮기) ─────────────────────────────
+        var bg = MakeImg(root, "Bg", new Color(0.04f, 0.04f, 0.08f, 0.97f));
+        Stretch(bg.gameObject);
+
+        // ── 제목 (화면 중앙) ──────────────────────────────────
         var title = MakeTMP(root, "TitleText", "배틀 준비 중", 36, FontStyle.Bold);
         SetRT(title.gameObject,
-            new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(0f, -40f), new Vector2(0f, 50f));
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(0f, 30f), new Vector2(400f, 50f));
 
-        // 상태 (점 애니메이션)
+        // ── 상태 (점 애니메이션) ──────────────────────────────
         var status = MakeTMP(root, "StatusText", "장군 소환 중...", 20, FontStyle.Normal);
         status.color = new Color(0.75f, 0.75f, 0.75f);
         SetRT(status.gameObject,
-            new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(0f, -100f), new Vector2(0f, 32f));
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(0f, -20f), new Vector2(400f, 32f));
 
-        // 필드 연결
+        // ── 필드 연결 ──────────────────────────────────────────
         var so = new SerializedObject(popup);
         so.FindProperty("_popupType").intValue              = (int)PopupType.Loading;
         so.FindProperty("_titleText").objectReferenceValue  = title;

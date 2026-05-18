@@ -34,15 +34,17 @@ namespace BattleGame.Units
         {
             var ecb = new Unity.Collections.NativeList<Entity>(Unity.Collections.Allocator.Temp);
 
-            foreach (var (skill, attack, entity)
+            foreach (var (skill, attack, unitState, entity)
                      in SystemAPI.Query<
                             RefRO<GeneralActiveSkillComponent>,
-                            RefRO<AttackComponent>>()
+                            RefRO<AttackComponent>,
+                            RefRO<UnitStateComponent>>()
                         .WithNone<DeadTag, UseActiveSkillTag>()
                         .WithEntityAccess())
             {
-                if (!skill.ValueRO.IsReady)  continue;  // 쿨다운 미완료
-                if (!attack.ValueRO.HasTarget) continue; // 타겟 없음
+                if (!skill.ValueRO.IsReady)  continue;           // 쿨다운 미완료
+                if (!attack.ValueRO.HasTarget) continue;          // 타겟 없음
+                if (unitState.ValueRO.Current == UnitState.Hit) continue; // 속박/스턴 중
 
                 ecb.Add(entity);
             }

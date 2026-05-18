@@ -50,11 +50,13 @@ public class PassiveBloodPact : PassiveSkillData
         // 새 Attack 버프 추가
         buffers.Add(new StatusEffectBufferElement
         {
-            Stat      = StatType.Attack,
-            Delta     = stat.Base[StatType.Attack] * bonusRatio,
-            Mode      = EffectMode.Add,
-            Duration  = BloodPactMarker,
-            Remaining = -1f,
+            Stat       = StatType.Attack,
+            Delta      = stat.Base[StatType.Attack] * bonusRatio,
+            Mode       = EffectMode.Add,
+            Duration   = BloodPactMarker,
+            Remaining  = -1f,
+            SourceType = BuffSourceType.Passive,
+            SourceId   = (int)Type,
         });
     }
 

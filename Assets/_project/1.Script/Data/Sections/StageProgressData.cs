@@ -23,7 +23,7 @@ public class StageProgressData : ISaveSection
 
     public int  ClearedNormalStages => _raw.ClearedNormal;
     public int  ClearedEliteStages  => _raw.ClearedElite;
-    public bool IsEliteUnlocked     => _raw.ClearedNormal >= 5;
+    public bool IsEliteUnlocked     => _raw.ClearedNormal >= (StageConfig.Current?.EliteUnlockStage ?? 5);
 
     // ── 내부 직렬화 데이터 ───────────────────────────────────
 

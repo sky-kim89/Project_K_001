@@ -263,7 +263,7 @@ public class HeroPanelUI : MonoBehaviour
 
         // 스킬
         var activeDb  = _activeSkillDatabase != null ? _activeSkillDatabase : ActiveSkillDatabase.Current;
-        var rolledId  = ActiveSkillRoller.Roll(entry.UnitName, job, activeDb);
+        var rolledId  = ActiveSkillRoller.Roll(entry.UnitName, job, activeDb, entry.Grade);
         var skillData = activeDb?.Get(rolledId);
         _activeSkillText.text = LocalizationManager.Instance.Get(rolledId.ToString());
         if (_activeSkillDescText != null)

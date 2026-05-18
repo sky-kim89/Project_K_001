@@ -37,7 +37,15 @@ public abstract class BattleModeBase
 
         Context.TotalWaves  = GetTotalWaves();
         Context.CurrentWave = 0;
+
+        EnemySpawner.SpawnDelayMultiplier = GetSpawnDelayMultiplier();
     }
+
+    /// <summary>
+    /// 스폰 딜레이 배율. 1.0 = 원본 딜레이 그대로, 값이 작을수록 스폰이 빨라진다.
+    /// 파생 클래스에서 스테이지·난이도에 따라 오버라이드한다.
+    /// </summary>
+    protected virtual float GetSpawnDelayMultiplier() => 1.0f;
 
     // ── 파생 클래스에서 구현해야 하는 메서드 ─────────────────
 

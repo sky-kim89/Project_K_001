@@ -29,112 +29,150 @@ public static class PopupPrefabCreator
     }
 
     // ── ExpRow 프리팹 ─────────────────────────────────────────
+    // 한 줄 HLG 레이아웃:
+    //   [Portrait 56px] [Name 80px] [StatBar flex] [TotalText 80px]
+    //   [ExpText 70px] [LevelText 52px] [LevelUpText 70px]
 
     [MenuItem("Tools/Project K/Popup/Create ExpRow Prefab")]
     static void CreateExpRowPrefab()
     {
         const float rowH       = 80f;
-        const float portraitSz = 66f;
-        const float padLeft    = 8f;
+        const float portraitSz = 64f;
 
         var root = new GameObject("ExpRow", typeof(RectTransform));
-        root.AddComponent<ExpRowUI>();
-        var rootRt = root.GetComponent<RectTransform>();
-        rootRt.sizeDelta = new Vector2(840f, rowH);
+        var rowComp = root.AddComponent<ExpRowUI>();
+        root.GetComponent<RectTransform>().sizeDelta = new Vector2(860f, rowH);
+        root.AddComponent<Image>().color = new Color(0.11f, 0.12f, 0.19f, 0.90f);
 
-        // 배경
-        var bg = new GameObject("Bg", typeof(RectTransform), typeof(Image));
-        bg.transform.SetParent(root.transform, false);
-        var bgRt = bg.GetComponent<RectTransform>();
-        bgRt.anchorMin = Vector2.zero; bgRt.anchorMax = Vector2.one;
-        bgRt.offsetMin = Vector2.zero; bgRt.offsetMax = Vector2.zero;
-        bg.GetComponent<Image>().color = new Color(0.12f, 0.14f, 0.20f, 0.90f);
+        var hlg = root.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing              = 4f;
+        hlg.padding              = new RectOffset(6, 6, 4, 4);
+        hlg.childAlignment       = TextAnchor.MiddleLeft;
+        hlg.childControlHeight   = true;
+        hlg.childControlWidth    = false;
+        hlg.childForceExpandWidth  = false;
+        hlg.childForceExpandHeight = true;
 
-        // 초상화 배경
+        // ── 초상화 영역 ─────────────────────────────────────────
         var portBg = new GameObject("PortraitBg", typeof(RectTransform), typeof(Image));
         portBg.transform.SetParent(root.transform, false);
-        var portBgRt = portBg.GetComponent<RectTransform>();
-        portBgRt.anchorMin        = new Vector2(0f, 0.5f);
-        portBgRt.anchorMax        = new Vector2(0f, 0.5f);
-        portBgRt.pivot            = new Vector2(0f, 0.5f);
-        portBgRt.anchoredPosition = new Vector2(padLeft, 0f);
-        portBgRt.sizeDelta        = new Vector2(portraitSz, portraitSz);
-        portBg.GetComponent<Image>().color = new Color(0.50f, 0.14f, 0.14f);
+        portBg.GetComponent<Image>().color = new Color(0.20f, 0.22f, 0.35f, 1f);
+        AddLE(portBg, portraitSz, portraitSz);
+        portBg.GetComponent<RectTransform>().sizeDelta = new Vector2(portraitSz, portraitSz);
 
-        // 초상화 이미지
         var portImg = new GameObject("PortraitImage", typeof(RectTransform), typeof(Image));
-        portImg.transform.SetParent(root.transform, false);
-        var portImgRt = portImg.GetComponent<RectTransform>();
-        portImgRt.anchorMin        = new Vector2(0f, 0.5f);
-        portImgRt.anchorMax        = new Vector2(0f, 0.5f);
-        portImgRt.pivot            = new Vector2(0f, 0.5f);
-        portImgRt.anchoredPosition = new Vector2(padLeft, 0f);
-        portImgRt.sizeDelta        = new Vector2(portraitSz, portraitSz);
+        portImg.transform.SetParent(portBg.transform, false);
         portImg.GetComponent<Image>().color = Color.white;
+        StretchRT(portImg);
 
-        // 초상화 브릿지 (숨김 GO — CharacterBuilder 붙임)
         var bridgeGo = new GameObject("PortraitBridge", typeof(RectTransform));
-        bridgeGo.transform.SetParent(root.transform, false);
+        bridgeGo.transform.SetParent(portBg.transform, false);
         bridgeGo.SetActive(false);
         bridgeGo.AddComponent<UnitAppearanceBridge>();
         bridgeGo.AddComponent<Assets.PixelFantasy.PixelHeroes.Common.Scripts.CharacterScripts.CharacterBuilder>();
 
-        // 이름
-        float textX = padLeft + portraitSz + 12f;
-        var nameText = AddTMP(root, "NameText", "영웅 이름", UIScale.FontMd, FontStyles.Bold);
-        var nameRt   = nameText.rectTransform;
-        nameRt.anchorMin        = new Vector2(0f, 0.5f);
-        nameRt.anchorMax        = new Vector2(0f, 0.5f);
-        nameRt.pivot            = new Vector2(0f, 0.5f);
-        nameRt.anchoredPosition = new Vector2(textX, 14f);
-        nameRt.sizeDelta        = new Vector2(260f, 40f);
-        nameText.alignment      = TextAlignmentOptions.Left;
+        // ── 이름 + 레벨 (VLG 묶음) ───────────────────────────────
+        var nameGroup = new GameObject("NameGroup", typeof(RectTransform));
+        nameGroup.transform.SetParent(root.transform, false);
+        nameGroup.GetComponent<RectTransform>().sizeDelta = new Vector2(100f, rowH);
+        AddLE(nameGroup, 100f, 80f);
 
-        // 레벨
-        var levelText = AddTMP(root, "LevelText", "Lv.1", UIScale.FontSm, FontStyles.Normal);
-        var levelRt   = levelText.rectTransform;
-        levelRt.anchorMin        = new Vector2(0f, 0.5f);
-        levelRt.anchorMax        = new Vector2(0f, 0.5f);
-        levelRt.pivot            = new Vector2(0f, 0.5f);
-        levelRt.anchoredPosition = new Vector2(textX, -16f);
-        levelRt.sizeDelta        = new Vector2(160f, 36f);
-        levelText.alignment      = TextAlignmentOptions.Left;
-        levelText.color          = new Color(0.75f, 0.75f, 0.75f);
+        var ngVlg = nameGroup.AddComponent<VerticalLayoutGroup>();
+        ngVlg.spacing              = 2f;
+        ngVlg.childAlignment       = TextAnchor.MiddleLeft;
+        ngVlg.childControlWidth    = true;
+        ngVlg.childControlHeight   = false;
+        ngVlg.childForceExpandWidth  = true;
+        ngVlg.childForceExpandHeight = false;
 
-        // EXP 텍스트
-        var expText = AddTMP(root, "ExpText", "+0 EXP", UIScale.FontMd, FontStyles.Normal);
-        var expRt   = expText.rectTransform;
-        expRt.anchorMin        = new Vector2(1f, 0.5f);
-        expRt.anchorMax        = new Vector2(1f, 0.5f);
-        expRt.pivot            = new Vector2(1f, 0.5f);
-        expRt.anchoredPosition = new Vector2(-180f, 4f);
-        expRt.sizeDelta        = new Vector2(240f, 44f);
-        expText.alignment      = TextAlignmentOptions.Right;
-        expText.color          = new Color(0.60f, 0.90f, 0.60f);
+        var nameText = AddTMP(nameGroup, "NameText", "영웅 이름", UIScale.FontMd, FontStyles.Bold);
+        nameText.alignment    = TextAlignmentOptions.MidlineLeft;
+        nameText.overflowMode = TextOverflowModes.Ellipsis;
+        nameText.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, UIScale.FontMd + 6f);
 
-        // 레벨업 텍스트
-        var lvupText = AddTMP(root, "LevelUpText", "▲ 레벨업!", UIScale.FontMd, FontStyles.Bold);
-        var lvupRt   = lvupText.rectTransform;
-        lvupRt.anchorMin        = new Vector2(1f, 0.5f);
-        lvupRt.anchorMax        = new Vector2(1f, 0.5f);
-        lvupRt.pivot            = new Vector2(1f, 0.5f);
-        lvupRt.anchoredPosition = new Vector2(-8f, 4f);
-        lvupRt.sizeDelta        = new Vector2(160f, 44f);
-        lvupText.alignment      = TextAlignmentOptions.Right;
-        lvupText.color          = new Color(1.00f, 0.85f, 0.15f);
+        var levelText = AddTMP(nameGroup, "LevelText", "Lv.1", UIScale.FontSm, FontStyles.Normal);
+        levelText.alignment = TextAlignmentOptions.MidlineLeft;
+        levelText.color     = new Color(0.60f, 0.62f, 0.75f);
+        levelText.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, UIScale.FontSm + 4f);
+
+        // ── StatBar (가변 너비 — 나머지 공간 채움) ──────────────
+        var barGo = new GameObject("StatBar", typeof(RectTransform), typeof(Image));
+        barGo.transform.SetParent(root.transform, false);
+        barGo.GetComponent<Image>().color = new Color(0.18f, 0.20f, 0.32f, 1f);
+        barGo.GetComponent<RectTransform>().sizeDelta = new Vector2(200f, 22f);
+        var barLE = barGo.AddComponent<LayoutElement>();
+        barLE.flexibleWidth = 1f;
+        barLE.minWidth      = 80f;
+
+        var statBarComp = barGo.AddComponent<StatBarUI>();
+        var segs = new Image[3];
+        for (int i = 0; i < 3; i++)
+        {
+            var seg = new GameObject($"Seg{i}", typeof(RectTransform), typeof(Image));
+            seg.transform.SetParent(barGo.transform, false);
+            var segRt = seg.GetComponent<RectTransform>();
+            segRt.anchorMin = new Vector2(0f, 0f); segRt.anchorMax = new Vector2(0f, 1f);
+            segRt.offsetMin = Vector2.zero;         segRt.offsetMax = Vector2.zero;
+            segs[i] = seg.GetComponent<Image>();
+            segs[i].color = Color.clear;
+            seg.SetActive(false);
+        }
+        var sbSo = new SerializedObject(statBarComp);
+        sbSo.FindProperty("_barBg").objectReferenceValue = barGo.GetComponent<RectTransform>();
+        var segsProp = sbSo.FindProperty("_segments");
+        segsProp.arraySize = 3;
+        for (int i = 0; i < 3; i++)
+            segsProp.GetArrayElementAtIndex(i).objectReferenceValue = segs[i];
+        sbSo.ApplyModifiedProperties();
+
+        // ── TotalText (80px 고정) ─────────────────────────────────
+        var totalText = AddTMP(root, "TotalText", "", UIScale.FontSm, FontStyles.Normal);
+        totalText.alignment = TextAlignmentOptions.MidlineLeft;
+        totalText.color     = new Color(0.75f, 0.80f, 1.00f, 1f);
+        AddLE(totalText.gameObject, 80f, 50f);
+
+        // ── EXP 텍스트 (70px 고정) ────────────────────────────────
+        var expText = AddTMP(root, "ExpText", "+0 EXP", UIScale.FontSm, FontStyles.Normal);
+        expText.alignment = TextAlignmentOptions.MidlineLeft;
+        expText.color     = new Color(0.60f, 0.90f, 0.60f);
+        AddLE(expText.gameObject, 70f, 50f);
+
+        // ── 레벨업 텍스트 (70px, 기본 비활성) ─────────────────────
+        var lvupText = AddTMP(root, "LevelUpText", "▲UP!", UIScale.FontSm, FontStyles.Bold);
+        lvupText.alignment = TextAlignmentOptions.MidlineLeft;
+        lvupText.color     = new Color(1.00f, 0.85f, 0.15f);
+        AddLE(lvupText.gameObject, 70f, 50f);
         lvupText.gameObject.SetActive(false);
 
-        var so = new SerializedObject(root.GetComponent<ExpRowUI>());
-        SetObj(so, "_portraitBg",     portBg .GetComponent<Image>());
+        // ── 필드 연결 ─────────────────────────────────────────────
+        var so = new SerializedObject(rowComp);
+        SetObj(so, "_portraitBg",     portBg.GetComponent<Image>());
         SetObj(so, "_portraitImage",  portImg.GetComponent<Image>());
         SetObj(so, "_portraitBridge", bridgeGo.GetComponent<UnitAppearanceBridge>());
         SetObj(so, "_nameText",       nameText);
         SetObj(so, "_levelText",      levelText);
         SetObj(so, "_expText",        expText);
         SetObj(so, "_levelUpText",    lvupText);
+        SetObj(so, "_statBar",        statBarComp);
+        SetObj(so, "_totalText",      totalText);
         so.ApplyModifiedProperties();
 
         Save(root, "ExpRow");
+    }
+
+    static void AddLE(GameObject go, float preferred, float min)
+    {
+        var le = go.AddComponent<LayoutElement>();
+        le.preferredWidth = preferred;
+        le.minWidth       = min;
+        le.flexibleWidth  = 0f;
+    }
+
+    static void StretchRT(GameObject go)
+    {
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
     }
 
     // ── BattleResultPopup ─────────────────────────────────────
@@ -147,7 +185,7 @@ public static class PopupPrefabCreator
             CreateExpRowPrefab();
 
         // 레이아웃 (위 → 아래):
-        //   승리! / 서브 / 스탯 → 보상 카드(스크롤) → 힌트 → EXP 행 목록 → 확인 버튼
+        //   승리! / 서브 / 스탯 → 보상 카드(스크롤) → 힌트 → 구분선 → 탭바 → EXP 행 목록 → 확인 버튼
         var root  = CreateRoot<BattleResultPopup>("BattleResultPopup", 900, 1100);
         var popup = root.GetComponent<BattleResultPopup>();
 
@@ -166,7 +204,7 @@ public static class PopupPrefabCreator
             typeof(RectTransform), typeof(Image), typeof(ScrollRect));
         rewardScroll.transform.SetParent(root.transform, false);
         rewardScroll.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0f);
-        SetRect(rewardScroll.GetComponent<RectTransform>(), new Vector2(0f, 210f), new Vector2(860f, 150f));
+        SetRect(rewardScroll.GetComponent<RectTransform>(), new Vector2(0f, 250f), new Vector2(860f, 150f));
 
         var rewardVp = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(Mask));
         rewardVp.transform.SetParent(rewardScroll.transform, false);
@@ -204,23 +242,67 @@ public static class PopupPrefabCreator
         // 힌트 텍스트
         var hintText = AddTMP(root, "HintText", "카드를 탭하면 개봉합니다", UIScale.FontSm, FontStyles.Italic);
         hintText.color = new Color(0.70f, 0.70f, 0.50f);
-        SetRect(hintText.rectTransform, new Vector2(0, 118f), new Vector2(800f, 44f));
+        SetRect(hintText.rectTransform, new Vector2(0, 158f), new Vector2(800f, 44f));
         hintText.gameObject.SetActive(false);
 
         // ── 구분선 ──────────────────────────────────────────────
         var divider = new GameObject("Divider", typeof(RectTransform), typeof(Image));
         divider.transform.SetParent(root.transform, false);
         divider.GetComponent<Image>().color = new Color(0.30f, 0.30f, 0.35f, 0.80f);
-        SetRect(divider.GetComponent<RectTransform>(), new Vector2(0f, 82f), new Vector2(840f, 2f));
+        SetRect(divider.GetComponent<RectTransform>(), new Vector2(0f, 122f), new Vector2(840f, 2f));
 
-        // ── EXP 행 목록 (신규 — 승리 시 영웅별 경험치 표시) ──────────
+        // ── 탭 바 (딜 / 탱 / 힐) ──────────────────────────────────
+        var tabBar = new GameObject("TabBar", typeof(RectTransform));
+        tabBar.transform.SetParent(root.transform, false);
+        SetRect(tabBar.GetComponent<RectTransform>(), new Vector2(0f, 91f), new Vector2(840f, 36f));
+
+        var tabHlg = tabBar.AddComponent<HorizontalLayoutGroup>();
+        tabHlg.spacing              = 6f;
+        tabHlg.childAlignment       = TextAnchor.MiddleCenter;
+        tabHlg.childControlWidth    = true;
+        tabHlg.childControlHeight   = true;
+        tabHlg.childForceExpandWidth  = true;
+        tabHlg.childForceExpandHeight = true;
+
+        string[] tabLabels   = { "딜", "탱", "힐" };
+        var tabButtons   = new Button[3];
+        var tabButtonBgs = new Image[3];
+
+        for (int i = 0; i < 3; i++)
+        {
+            var tabBtnGo = new GameObject($"TabBtn{i}", typeof(RectTransform), typeof(Image), typeof(Button));
+            tabBtnGo.transform.SetParent(tabBar.transform, false);
+            var tabImg = tabBtnGo.GetComponent<Image>();
+            tabImg.color = i == 0
+                ? new Color(0.25f, 0.45f, 0.85f)
+                : new Color(0.15f, 0.18f, 0.28f);
+
+            var tabLabelGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+            tabLabelGo.transform.SetParent(tabBtnGo.transform, false);
+            var tabLabelRt = tabLabelGo.GetComponent<RectTransform>();
+            tabLabelRt.anchorMin = Vector2.zero;
+            tabLabelRt.anchorMax = Vector2.one;
+            tabLabelRt.offsetMin = Vector2.zero;
+            tabLabelRt.offsetMax = Vector2.zero;
+            var tabTmp = tabLabelGo.GetComponent<TextMeshProUGUI>();
+            tabTmp.text      = tabLabels[i];
+            tabTmp.fontSize  = UIScale.FontSm;
+            tabTmp.fontStyle = FontStyles.Bold;
+            tabTmp.alignment = TextAlignmentOptions.Center;
+            tabTmp.color     = Color.white;
+
+            tabButtons[i]   = tabBtnGo.GetComponent<Button>();
+            tabButtonBgs[i] = tabImg;
+        }
+
+        // ── EXP 행 목록 (승리 시 영웅별 경험치 + 전투 통계 표시) ──────
         var expArea = new GameObject("ExpArea", typeof(RectTransform));
         expArea.transform.SetParent(root.transform, false);
         var expAreaRt = expArea.GetComponent<RectTransform>();
         expAreaRt.anchorMin        = new Vector2(0f, 1f);
         expAreaRt.anchorMax        = new Vector2(1f, 1f);
         expAreaRt.pivot            = new Vector2(0.5f, 1f);
-        expAreaRt.anchoredPosition = new Vector2(0f, -490f);  // 팝업 상단 기준 -490
+        expAreaRt.anchoredPosition = new Vector2(0f, -488f);
         expAreaRt.sizeDelta        = new Vector2(0f, 440f);
         var expVlg = expArea.AddComponent<VerticalLayoutGroup>();
         expVlg.spacing              = 6f;
@@ -253,6 +335,23 @@ public static class PopupPrefabCreator
             SetObj(so, "_rewardCardPrefab", rewardCardPrefab.GetComponent<RewardCardUI>());
         if (expRowPrefab != null)
             SetObj(so, "_expRowPrefab",   expRowPrefab.GetComponent<ExpRowUI>());
+
+        var tabButtonsProp = so.FindProperty("_tabButtons");
+        if (tabButtonsProp != null)
+        {
+            tabButtonsProp.arraySize = 3;
+            for (int i = 0; i < 3; i++)
+                tabButtonsProp.GetArrayElementAtIndex(i).objectReferenceValue = tabButtons[i];
+        }
+
+        var tabButtonBgsProp = so.FindProperty("_tabButtonBgs");
+        if (tabButtonBgsProp != null)
+        {
+            tabButtonBgsProp.arraySize = 3;
+            for (int i = 0; i < 3; i++)
+                tabButtonBgsProp.GetArrayElementAtIndex(i).objectReferenceValue = tabButtonBgs[i];
+        }
+
         so.ApplyModifiedProperties();
 
         Save(root, "BattleResultPopup");

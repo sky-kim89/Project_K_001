@@ -11,9 +11,10 @@ using UnityEngine;
 
 public static class IconGenerator
 {
-    const string CLASS_PATH   = "Assets/_project/3.Textures/Icons/Classes";
-    const string SKILL_PATH   = "Assets/_project/3.Textures/Icons/Skills";
-    const string ABILITY_PATH = "Assets/_project/3.Textures/Icons/Abilities";
+    const string CLASS_PATH    = "Assets/_project/3.Textures/Icons/Classes";
+    const string SKILL_PATH    = "Assets/_project/3.Textures/Icons/Skills";
+    const string ABILITY_PATH  = "Assets/_project/3.Textures/Icons/Abilities";
+    const string LOBBY_BTN_PATH = "Assets/_project/3.Textures/Icons/LobbyBtns";
 
     // ── 컬러 팔레트 ───────────────────────────────────────────
     static readonly Color32 Knight_BgDark  = Hex("1A0606"); static readonly Color32 Knight_BgMid   = Hex("4A1010");
@@ -1276,6 +1277,106 @@ public static class IconGenerator
         byte g = Convert.ToByte(h.Substring(2, 2), 16);
         byte b = Convert.ToByte(h.Substring(4, 2), 16);
         return new Color32(r, g, b, 255);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  로비 버튼 아이콘
+    // ═══════════════════════════════════════════════════════
+
+    [MenuItem("Tools/Project K/에셋/Generate Lobby Button Icons")]
+    public static void GenerateLobbyButtonIcons()
+    {
+        EnsureDir(LOBBY_BTN_PATH);
+
+        Save(64, 64, LOBBY_BTN_PATH + "/btn_disassemble.png", DrawBtnDisassemble);
+        Save(64, 64, LOBBY_BTN_PATH + "/btn_ability.png",     DrawBtnAbility);
+        Save(64, 64, LOBBY_BTN_PATH + "/btn_relic.png",       DrawBtnRelic);
+
+        AssetDatabase.Refresh();
+        ApplySpriteImportSettings(LOBBY_BTN_PATH, 64);
+        AssetDatabase.SaveAssets();
+        Debug.Log("[IconGenerator] 로비 버튼 아이콘 3장 생성 완료.");
+    }
+
+    // 장비 분해 버튼 아이콘 — 망치 + 검 교차 (파괴 느낌)
+    static void DrawBtnDisassemble(P p)
+    {
+        p.BgGradient(Hex("120A04"), Hex("3A1A08"));
+        p.RoundedBorder(10, 2, Hex("BB6622"));
+
+        // 검 (왼쪽 대각선)
+        var bladeCol  = Hex("CCCCCC");
+        var bladeEdge = Hex("888888");
+        FillRRectRotated(p, 28, 36, 32, 4, -40, bladeCol, bladeEdge);
+        // 검 가드
+        FillRRectRotated(p, 24, 32, 10, 3,  50, Hex("D4A840"), Hex("8B6820"));
+
+        // 망치 머리 (오른쪽 상단)
+        p.FillRRect(36, 8, 18, 12, 3, Hex("888888"));
+        p.FillRect(36, 8, 18, 5, Hex("AAAAAA"));
+        // 망치 자루
+        FillRRectRotated(p, 40, 36, 22, 4, 40, Hex("7A4020"), Hex("5A2A10"));
+
+        // 파편 파티클
+        p.FillCircle(18, 44, 2, Hex("FFAA44"));
+        p.FillCircle(14, 38, 2, new Color32(255, 170, 68, 180));
+        p.FillCircle(50, 20, 2, Hex("FFAA44"));
+        p.FillCircle(46, 14, 2, new Color32(255, 170, 68, 180));
+    }
+
+    // 어빌리티 목록 버튼 아이콘 — 빛나는 책 + 스탯 기호
+    static void DrawBtnAbility(P p)
+    {
+        p.BgGradient(Hex("04080E"), Hex("101840"));
+        p.RoundedBorder(10, 2, Hex("4466CC"));
+
+        // 책 표지
+        p.FillRRect(14, 12, 28, 36, 3, Hex("1A2A5A"));
+        p.FillRect(14, 12, 28, 4, Hex("2A3A7A"));
+        p.DrawLine(14, 12, 14, 48, Hex("4466AA"), 2);
+        // 페이지 라인
+        p.DrawLine(20, 22, 36, 22, Hex("4466CC"), 1);
+        p.DrawLine(20, 29, 36, 29, Hex("4466CC"), 1);
+        p.DrawLine(20, 36, 33, 36, Hex("4466CC"), 1);
+
+        // 빛 효과 (우상단)
+        p.FillCircleAlpha(46, 18, 10, new Color32(100, 160, 255, 40));
+        p.FillCircle(46, 18, 5, Hex("88BBFF"));
+        p.FillCircle(46, 18, 3, Hex("CCDDFF"));
+        // 방사선
+        p.DrawLine(46, 8, 46, 13, Hex("88BBFF"), 1);
+        p.DrawLine(46, 23, 46, 28, Hex("88BBFF"), 1);
+        p.DrawLine(36, 18, 41, 18, Hex("88BBFF"), 1);
+        p.DrawLine(51, 18, 56, 18, Hex("88BBFF"), 1);
+    }
+
+    // 유물 버튼 아이콘 — 보라 보석 + 빛줄기
+    static void DrawBtnRelic(P p)
+    {
+        p.BgGradient(Hex("0A0418"), Hex("220A44"));
+        p.RoundedBorder(10, 2, Hex("9944CC"));
+
+        // 보석 (다이아몬드 형)
+        int cx = 32, cy = 32;
+        // 상단 삼각
+        p.FillTri(cx, cy - 14, cx - 12, cy, cx + 12, cy, Hex("CC66FF"));
+        p.FillTri(cx, cy - 14, cx - 10, cy - 2, cx + 10, cy - 2, Hex("DD99FF"));
+        // 하단 삼각
+        p.FillTri(cx, cy + 16, cx - 12, cy, cx + 12, cy, Hex("8822AA"));
+        // 하이라이트
+        p.FillTri(cx - 2, cy - 12, cx - 10, cy - 1, cx, cy - 3, new Color32(255, 255, 255, 80));
+
+        // 빛줄기 방사
+        var rayCol = new Color32(200, 100, 255, 60);
+        p.DrawLine(cx, cy - 22, cx, cy - 16, Hex("CC66FF"), 1);
+        p.DrawLine(cx + 16, cy - 16, cx + 13, cy - 12, Hex("CC66FF"), 1);
+        p.DrawLine(cx - 16, cy - 16, cx - 13, cy - 12, Hex("CC66FF"), 1);
+
+        // 파티클
+        p.FillCircle(16, 18, 2, new Color32(200, 100, 255, 180));
+        p.FillCircle(48, 16, 2, new Color32(200, 100, 255, 160));
+        p.FillCircle(50, 46, 2, new Color32(200, 100, 255, 140));
+        p.FillCircle(14, 44, 2, new Color32(200, 100, 255, 150));
     }
 
     static void Save(int w, int h, string assetPath, Action<P> draw)

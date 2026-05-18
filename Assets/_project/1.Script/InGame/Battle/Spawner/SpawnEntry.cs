@@ -46,6 +46,9 @@ public class SpawnEntry
     [Tooltip("스테이지 진행도 기반 스텟 배율. HP·공격력에 곱해진다 (1.0 = 기준값).")]
     public float StatMultiplier = 1f;
 
+    /// <summary>스텟 범위 편향 (0=최솟값 균등, 1=항상 최댓값). NormalMode 가 런타임에 주입.</summary>
+    [System.NonSerialized] public float StageBias = 0f;
+
     /// <summary>PoolController 에 전달할 풀 키. UnitType 에서 자동 파생.</summary>
     public string PoolKey => UnitType.ToString();
 }

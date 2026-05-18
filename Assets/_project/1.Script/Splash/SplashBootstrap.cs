@@ -201,7 +201,7 @@ public class SplashBootstrap : MonoBehaviour
         Random.InitState(System.DateTime.Now.Millisecond);
 
 #if UNITY_ANDROID || UNITY_IOS
-        Screen.orientation = ScreenOrientation.Portrait;
+        Screen.orientation = ScreenOrientation.LandscapeLeft;
 #endif
 
         Debug.Log($"[Splash] 앱 설정 완료 — FPS:{_targetFps} vSync:{!_disableVSync}");

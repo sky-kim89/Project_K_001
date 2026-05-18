@@ -12,13 +12,22 @@ using System;
 //    - 직접 아이템 (골드·전투석 등): InGameManager 에서 지급 완료 → 카드는 표시만
 //    - 박스 아이템 (장비 박스 등): "?" 카드로 표시, 탭하면 개봉
 //
+//  통계 탭:
+//    - 딜 탭: 장군/병사/스킬 피해 세그먼트 바 + 총 피해량
+//    - 탱 탭: 받은 피해 / 감소 피해 세그먼트 바 + 받은 피해량
+//    - 힐 탭: 가한 힐 바 + 힐량
+//
+//  한 줄 ExpRow 레이아웃:
+//    [Portrait] [Name] [StatBar] [TotalText] [+EXP] [Lv.X] [▲UP!]
+//
 //  Hierarchy (위 → 아래):
 //    BattleResultPopup
 //      ├── ResultText / SubText / StatsText
 //      ├── RewardArea   (HorizontalLayoutGroup — 클리어 보상 아이콘)
 //      ├── HintText     (박스 안내)
 //      ├── Divider
-//      ├── ExpArea      (VerticalLayoutGroup — 영웅별 EXP 행)
+//      ├── TabBar       (딜 / 탱 / 힐 버튼)
+//      ├── ExpArea      (VerticalLayoutGroup — 영웅별 통계 행)
 //      └── ConfirmButton
 // ============================================================
 
@@ -36,27 +45,99 @@ public class BattleResultPopup : PopupBase
     [SerializeField] ExpRowUI        _expRowPrefab;
     [SerializeField] Button          _confirmButton;
 
-    readonly List<RewardCardUI> _cards = new();
+    [Header("통계 탭")]
+    [SerializeField] Button[] _tabButtons;    // 0=딜, 1=탱, 2=힐
+    [SerializeField] Image[]  _tabButtonBgs;  // 탭 버튼 배경 이미지 (활성/비활성 색 전환)
+
+    readonly List<RewardCardUI> _cards   = new();
+    readonly List<ExpRowUI>     _expRows = new();
     int    _unopenedBoxes;
     Action _onConfirmed;
+
+    CombatStatTab _currentTab = CombatStatTab.Damage;
+    BattleContext _context;
+
+    static readonly Color TabActiveColor   = new Color(0.25f, 0.45f, 0.85f);
+    static readonly Color TabInactiveColor = new Color(0.15f, 0.18f, 0.28f);
 
     // ── PopupBase 훅 ────────────────────────────────────────
 
     protected override void OnBeforeOpen()
     {
+        _confirmButton?.onClick.RemoveAllListeners();
         _confirmButton?.onClick.AddListener(OnConfirm);
+
+        if (_tabButtons != null)
+        {
+            for (int i = 0; i < _tabButtons.Length; i++)
+            {
+                if (_tabButtons[i] == null) continue;
+                _tabButtons[i].onClick.RemoveAllListeners();
+                int captured = i;
+                _tabButtons[i].onClick.AddListener(() => OnTabClicked((CombatStatTab)captured));
+            }
+        }
     }
 
     // ── 공개 API ─────────────────────────────────────────────
 
-    /// <param name="onConfirmed">확인 버튼 눌러 팝업이 닫힌 뒤 호출. null이면 기본 동작(로비 복귀).</param>
     public void Setup(bool isVictory, BattleContext context, int killCount, Action onConfirmed = null)
     {
         _onConfirmed = onConfirmed;
+        _context     = context;
+        _currentTab  = CombatStatTab.Damage;
+
         SetHeader(isVictory);
         SetStats(isVictory, context, killCount);
         BuildExpRows(context);
         BuildRewardCards(isVictory, context);
+        RefreshTabHighlight();
+    }
+
+    // ── 탭 전환 ──────────────────────────────────────────────
+
+    void OnTabClicked(CombatStatTab tab)
+    {
+        if (_currentTab == tab) return;
+        _currentTab = tab;
+        RefreshTabHighlight();
+        RefreshAllRowBars();
+    }
+
+    void RefreshTabHighlight()
+    {
+        if (_tabButtonBgs == null) return;
+        for (int i = 0; i < _tabButtonBgs.Length; i++)
+        {
+            if (_tabButtonBgs[i] == null) continue;
+            _tabButtonBgs[i].color = (int)_currentTab == i ? TabActiveColor : TabInactiveColor;
+        }
+    }
+
+    void RefreshAllRowBars()
+    {
+        float maxValue = CalcMaxValue(_currentTab);
+        foreach (var row in _expRows)
+            if (row != null) row.RefreshTab(_currentTab, maxValue);
+    }
+
+    float CalcMaxValue(CombatStatTab tab)
+    {
+        if (_context?.CombatStats == null || _context.CombatStats.Count == 0) return 1f;
+
+        float max = 0f;
+        foreach (var s in _context.CombatStats)
+        {
+            float v = tab switch
+            {
+                CombatStatTab.Damage => s.TotalDamageDealt,
+                CombatStatTab.Tank   => s.DamageTaken + s.SoldierDamageTaken + s.DamageAbsorbed,
+                CombatStatTab.Heal   => s.HealingDone,
+                _                   => 0f,
+            };
+            if (v > max) max = v;
+        }
+        return max > 0f ? max : 1f;
     }
 
     // ── 내부 ─────────────────────────────────────────────────
@@ -82,15 +163,28 @@ public class BattleResultPopup : PopupBase
 
     void BuildExpRows(BattleContext context)
     {
+        foreach (var row in _expRows)
+            if (row != null) Destroy(row.gameObject);
+        _expRows.Clear();
+
         if (_expArea == null || _expRowPrefab == null || context == null) return;
 
-        foreach (Transform child in _expArea)
-            Destroy(child.gameObject);
+        float maxValue = CalcMaxValue(_currentTab);
 
         foreach (var gain in context.ExpGains)
         {
             var row = Instantiate(_expRowPrefab, _expArea);
             row.Setup(gain);
+
+            // 이름으로 통계 매칭
+            var stats = context.CombatStats.Find(s => s.GeneralName == gain.UnitName);
+            if (stats != null)
+            {
+                row.SetStats(stats);
+                row.RefreshTab(_currentTab, maxValue);
+            }
+
+            _expRows.Add(row);
         }
     }
 
@@ -120,7 +214,6 @@ public class BattleResultPopup : PopupBase
             }
             else
             {
-                // 비박스 보상은 InGameManager 에서 이미 지급됨 — 표시만
                 var icon = SpriteManager.Instance?.GetItem(reward.Item.IconKey());
                 card.SetupFixed(icon, GetItemColor(reward.Item),
                                 reward.Item.DisplayName(),

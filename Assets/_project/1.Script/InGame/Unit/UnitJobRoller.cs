@@ -67,7 +67,7 @@ public static class UnitJobRoller
         // ── 배율 적용 ─────────────────────────────────────────
         stat.Set(StatType.MaxHp,        hp           * totalMult);
         stat.Set(StatType.Attack,       attack       * totalMult);
-        stat.Set(StatType.Defense,      Mathf.Min(defense * totalMult, defMax));
+        stat.Set(StatType.Defense,      defense * totalMult); // 소프트캡은 UnitHitSystem에서 처리
         stat.Set(StatType.AttackRange,  attackRange);   // 배율 미적용
         stat.Set(StatType.AttackSpeed,  attackSpeed);
         stat.Set(StatType.MoveSpeed,    moveSpeed);
@@ -91,11 +91,11 @@ public static class UnitJobRoller
 
     /// <summary>
     /// unitName 시드에서 태생 등급을 결정적으로 반환.
-    /// 같은 이름은 항상 같은 등급 — 직업 시드와 독립된 별도 해시 사용.
+    /// 같은 이름은 항상 같은 등급 — 직업 시드(FNV-1a)와 독립된 djb2 해시 사용.
     /// </summary>
     public static UnitGrade GetBirthGrade(string unitName)
     {
-        uint seed = ComputeSeed(unitName) ^ 0x9E3779B9u;
+        uint seed = ComputeGradeSeed(unitName);
         var  rng  = new Unity.Mathematics.Random(seed);
         float r   = rng.NextFloat();
 
@@ -123,6 +123,15 @@ public static class UnitJobRoller
             hash ^= (byte)c;
             hash *= 16777619u;
         }
+        return hash == 0u ? 1u : hash;
+    }
+
+    /// <summary>djb2 해시 — FNV-1a(직업 시드)와 완전히 독립된 등급 시드 생성.</summary>
+    static uint ComputeGradeSeed(string name)
+    {
+        uint hash = 5381u;
+        foreach (char c in name)
+            hash = hash * 33u ^ (byte)c;
         return hash == 0u ? 1u : hash;
     }
 

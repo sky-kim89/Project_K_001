@@ -49,10 +49,16 @@ public class ActiveShockwave : ActiveSkillData
         float  halfConeRad = math.radians(ConeAngleDegrees * 0.5f);
         float  damage      = ctx.CasterStat.Final[StatType.Attack] * EffectValue;
 
-        // 사용자 이펙트 (충격파 발사 연출)
+        // 부채꼴 방향에 맞춰 이펙트 회전 (Circle arc 의 0° = local +X 기준 → arc 중앙이 forward 를 향하도록 보정)
+        float fwdAngle = math.degrees(math.atan2(forward.y, forward.x));
+        float halfArc  = ConeAngleDegrees * 0.5f;
+        var   fxRot    = UnityEngine.Quaternion.Euler(0f, 0f, fwdAngle - halfArc);
+        float fxScale  = (radius / 3f);   // 프리팹 기준 반경 3
+
+        // 사용자 이펙트 (충격파 발사 연출 — 방향·크기 연동)
         SkillEffectHelper.SpawnCaster(CasterEffectKey,
             new UnityEngine.Vector3(casterPos.x, casterPos.y, casterPos.z),
-            EffectDespawnDelay);
+            EffectDespawnDelay, fxRot, fxScale);
 
         var query = em.CreateEntityQuery(new EntityQueryDesc
         {

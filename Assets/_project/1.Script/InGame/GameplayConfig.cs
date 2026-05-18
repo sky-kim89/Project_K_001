@@ -73,10 +73,26 @@ public class GameplayConfig : ScriptableObject
     // ■ 전투 공통
     // ──────────────────────────────────────────────────────────
 
+    [Header("스테이지 설정")]
+    [Tooltip("게임 최대 스테이지 수. StageConfig.NormalStageCount 를 읽는다 — StageConfig 가 없으면 30.")]
+    public int MaxStage => StageConfig.Current != null ? StageConfig.Current.NormalStageCount : 30;
+
     [Header("전투 공통")]
-    [Tooltip("방어율 최대 상한 (0~1). 스텟 재계산 후 이 값으로 클램프됩니다.")]
+    [Tooltip("방어율 소프트캡 임계값 (0~1). 이 값 초과분은 DefenseOverflowRate 로 성장.")]
     [Range(0f, 1f)]
     public float DefenseMax = 0.95f;
+
+    [Tooltip("소프트캡 초과분에 곱하는 성장 계수. 0.1 = 1/10 성장.")]
+    [Range(0.001f, 1f)]
+    public float DefenseOverflowRate = 0.1f;
+
+    [Tooltip("스킬 쿨다운 감소율 상한 (0~1). 이 값을 초과하는 쿨감은 무시된다.")]
+    [Range(0f, 1f)]
+    public float CooldownReduceMax = 0.9f;
+
+    [Tooltip("방어율 실효 최대치 (0~1). 소프트캡 공식 적용 후 이 값으로 상한 클램프.")]
+    [Range(0f, 1f)]
+    public float DefenseEffectiveCap = 0.999f;
 
     // ──────────────────────────────────────────────────────────
     // ■ 스텟 성장 배율

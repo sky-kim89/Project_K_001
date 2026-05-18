@@ -19,9 +19,6 @@ public class ActiveLeapStrike : ActiveSkillData
     [Tooltip("도약 속도 (유닛/초)")]
     public float LeapSpeed = 18f;
 
-    [Tooltip("복귀 속도 (유닛/초)")]
-    public float ReturnSpeed = 10f;
-
     [Tooltip("넉백 배율")]
     public float KnockbackMult = 4f;
 
@@ -56,7 +53,6 @@ public class ActiveLeapStrike : ActiveSkillData
             damageMultiplier : DamageMultiplier * EffectValue,
             aoeRadius        : EffectRadius > 0f ? EffectRadius : 2f,
             leapSpeed        : LeapSpeed,
-            returnSpeed      : ReturnSpeed,
             knockbackMult    : KnockbackMult,
             fx               : new SkillEffectConfig
             {

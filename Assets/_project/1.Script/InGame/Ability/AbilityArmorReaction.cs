@@ -42,11 +42,13 @@ public class AbilityArmorReaction : AbilityData
         // 최초 피격 — 신규 항목 추가 (Duration -1 = 전투 종료까지 유지)
         buf.Add(new StatusEffectBufferElement
         {
-            Stat      = StatType.Defense,
-            Delta     = DefenseBuff,
-            Mode      = EffectMode.Add,
-            Duration  = -1f,
-            Remaining = float.MaxValue,
+            Stat       = StatType.Defense,
+            Delta      = DefenseBuff,
+            Mode       = EffectMode.Add,
+            Duration   = -1f,
+            Remaining  = float.MaxValue,
+            SourceType = BuffSourceType.Ability,
+            SourceId   = (int)Id,
         });
     }
 }

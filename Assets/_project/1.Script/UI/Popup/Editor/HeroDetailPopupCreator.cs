@@ -29,7 +29,7 @@ public static class HeroDetailPopupCreator
 
     const float PopupW        = 576f;
     const float PopupH        = 1000f;
-    const float PortraitH     = 280f;
+    const float PortraitH     = 200f;
     const float GrowthRowH    = 122f;  // 버튼 높이 +10 반영
     const float GrowthTabGap  = 4f;    // GrowthRow ~ TabBar 사이 간격
     const float TabBarH       = 60f;
@@ -91,7 +91,12 @@ public static class HeroDetailPopupCreator
         var typeProp = so.FindProperty("_popupType");
         if (typeProp != null) typeProp.intValue = (int)PopupType.HeroDetail;
 
-        // 좌측 등급 컬러 바
+        BuildPortraitSection(root, so);
+        var growthRowGo = BuildGrowthRow(root, so);
+        SetObj(so, "_growthRow", growthRowGo);
+        BuildTabSection(root, so);
+
+        // 좌측 등급 컬러 바 — PortraitSection 위에 렌더링되도록 형제 중 마지막에 생성
         var gradeBorder = CreateImage(root, "GradeBorder", DividerColor);
         {
             var rt = gradeBorder.rectTransform;
@@ -101,11 +106,6 @@ public static class HeroDetailPopupCreator
             rt.offsetMax = new Vector2(6, 0);
         }
         SetObj(so, "_gradeBorder", gradeBorder);
-
-        BuildPortraitSection(root, so);
-        var growthRowGo = BuildGrowthRow(root, so);
-        SetObj(so, "_growthRow", growthRowGo);
-        BuildTabSection(root, so);
 
         // X 닫기 버튼 (우측 상단 오버레이)
         var xBtnGo = CreatePanel(root, "CloseButton", new Color(0.22f, 0.12f, 0.22f, 0.88f));
@@ -165,21 +165,11 @@ public static class HeroDetailPopupCreator
             rt.anchorMin        = new Vector2(0.5f, 0.5f);
             rt.anchorMax        = new Vector2(0.5f, 0.5f);
             rt.pivot            = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = new Vector2(0, 48f);
+            rt.anchoredPosition = new Vector2(0, 0f);
             rt.sizeDelta        = new Vector2(165, 165);
         }
         portraitImg.preserveAspect = true;
         SetObj(so, "_portraitImage", portraitImg);
-
-        // 텍스트 가독성 오버레이 (BG 하단 반투명 검정)
-        var textOverlay = CreateImage(section, "TextOverlay", new Color(0f, 0f, 0f, 0.52f));
-        {
-            var rt = textOverlay.rectTransform;
-            rt.anchorMin = new Vector2(0, 0);
-            rt.anchorMax = new Vector2(1, 0);
-            rt.offsetMin = new Vector2(8, 2);
-            rt.offsetMax = new Vector2(-8, 102);
-        }
 
         // 이름 (BG 하단 오버레이 — 위쪽)
         var nameText = CreateTMP(section, "NameText", "영웅 이름", FntHero, FontStyles.Bold);
@@ -543,6 +533,7 @@ public static class HeroDetailPopupCreator
         SetObj(so, "_rangeText",        BuildStatRow(listContainer, "RNG",  "사거리"));
         SetObj(so, "_soldierCountText", ColorStat(BuildStatRow(listContainer, "SOLD", "용병수"), StatColors.Soldier));
         SetObj(so, "_cmdPwrText",       BuildStatRow(listContainer, "CMD",  "지휘력"));
+        SetObj(so, "_cooldownText",     BuildStatRow(listContainer, "CD",   "스킬쿨타임"));
         SetObj(so, "_statListContainer", listContainer.transform);
 
         return panel;
@@ -575,7 +566,7 @@ public static class HeroDetailPopupCreator
         lbl.alignment        = TextAlignmentOptions.Left;
         lbl.color            = LabelColor;
         lbl.textWrappingMode = TextWrappingModes.NoWrap;
-        lbl.overflowMode     = TextOverflowModes.Ellipsis;
+        lbl.overflowMode     = TextOverflowModes.Overflow;
         var lblLE = lbl.gameObject.AddComponent<LayoutElement>();
         lblLE.preferredWidth = 90f;
         lblLE.flexibleWidth  = 0f;

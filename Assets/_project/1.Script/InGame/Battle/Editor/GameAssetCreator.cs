@@ -211,8 +211,9 @@ public static class GameAssetCreator
             "희생 의식",
             "병사 5명 희생 → 장군 공격력·체력 +20%.",
             PassiveTrigger.None,
-            Mod(StatType.Attack, 0.20f, true, Target.General),
-            Mod(StatType.MaxHp,  0.20f, true, Target.General));
+            Mod(StatType.SoldierCount, -5f,   false, Target.General),  // 비용: 시작 병사 -5명
+            Mod(StatType.Attack,       0.20f, true,  Target.General),
+            Mod(StatType.MaxHp,        0.20f, true,  Target.General));
 
         // ── ⑤ 조건부 ─────────────────────────────────────────
 

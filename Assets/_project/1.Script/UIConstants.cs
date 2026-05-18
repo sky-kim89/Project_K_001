@@ -84,19 +84,32 @@ public static class StatBonusColors
 // 스탯 타입에 따른 총합·델타 문자열 생성, 합산 과정 Rich Text 생성.
 public static class StatDisplayHelper
 {
-    // 방어율: 1% 미만이면 소수점 1자리, 이상이면 정수
-    static string FormatPct(float v01)
-        => Mathf.Abs(v01 * 100f) < 1f ? $"{v01 * 100f:F1}%" : $"{Mathf.RoundToInt(v01 * 100f)}%";
+    /// <summary>
+    /// 원시 방어율(raw, 0~∞)에 소프트캡 공식 적용 후 퍼센트 값을 반환.
+    /// 소프트캡 임계값·성장 계수·실효 상한은 GameplayConfig 에서 읽는다.
+    /// </summary>
+    public static float EffectiveDefensePct(float raw)
+    {
+        var   cfg      = GameplayConfig.Current;
+        float softCap  = cfg.DefenseMax;
+        float rate     = cfg.DefenseOverflowRate;
+        float cap      = cfg.DefenseEffectiveCap;
+        float effective = raw <= softCap ? raw : softCap + (raw - softCap) * rate;
+        return Mathf.Min(effective, cap) * 100f;
+    }
 
     /// <summary>스탯 총합 표시 문자열 (HUD·StatPanel 기본값 표시용)</summary>
     public static string FormatTotal(StatType stat, float value) => stat switch
     {
-        StatType.Defense      => FormatPct(value),
+        StatType.Defense      => $"{EffectiveDefensePct(value):F1}%",
         StatType.AttackSpeed  => $"{value:F2}/초",
         StatType.MoveSpeed    => $"{value:F1}",
         StatType.AttackRange  => $"{value:F1}",
-        StatType.SoldierCount => $"{Mathf.RoundToInt(value)}명",
-        _                     => $"{value:N0}",
+        StatType.SoldierCount          => $"{Mathf.RoundToInt(value)}명",
+        StatType.CritChance            => $"{value * 100f:F1}%",
+        StatType.CritDamage            => $"×{value:F2}",
+        StatType.SkillCooldownReduce   => $"{value * 100f:F1}%",
+        _                              => $"{value:N0}",
     };
 
     /// <summary>스탯 델타 문자열 (합산 상세 각 항목용, withSign = true 이면 +부호 포함)</summary>
@@ -105,12 +118,15 @@ public static class StatDisplayHelper
         string sign = (withSign && value >= 0f) ? "+" : "";
         return stat switch
         {
-            StatType.Defense      => $"{sign}{FormatPct(value)}",
+            StatType.Defense      => $"{sign}{value * 100f:F1}%",  // 델타는 원시값 그대로 F1
             StatType.AttackSpeed  => $"{sign}{value:F2}",
             StatType.MoveSpeed    => $"{sign}{value:F1}",
             StatType.AttackRange  => $"{sign}{value:F1}",
-            StatType.SoldierCount => $"{sign}{Mathf.RoundToInt(value)}명",
-            _                     => $"{sign}{value:N0}",
+            StatType.SoldierCount          => $"{sign}{Mathf.RoundToInt(value)}명",
+            StatType.CritChance            => $"{sign}{value * 100f:F1}%",
+            StatType.CritDamage            => $"{sign}{value:F2}",
+            StatType.SkillCooldownReduce   => $"{sign}{value * 100f:F1}%",
+            _                              => $"{sign}{value:N0}",
         };
     }
 

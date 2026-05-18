@@ -119,8 +119,9 @@ namespace BattleGame.Units
 
                 // UnitAnimationSync 가 있으면 사망 연출(날아가기 + 대기) 후 자체 디스폰.
                 // 없으면 즉시 디스폰.
+                // activeInHierarchy 체크: SacrificeSoldier 등에서 이미 비활성화된 GO 방어
                 var animSync = obj.GetComponent<UnitAnimationSync>();
-                if (animSync != null)
+                if (animSync != null && obj.activeInHierarchy)
                     animSync.TriggerDeath();
                 else
                     PoolController.Instance?.Despawn(obj);

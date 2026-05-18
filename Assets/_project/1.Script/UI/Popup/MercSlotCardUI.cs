@@ -47,8 +47,7 @@ public class MercSlotCardUI : MonoBehaviour
         var stat = HeroStatResolver.Resolve(entry);
         if (_hpText      != null) _hpText.text      = $"{stat.Total(StatType.MaxHp):N0}";
         if (_atkText     != null) _atkText.text     = $"{stat.Total(StatType.Attack):N0}";
-        float defPct = stat.Total(StatType.Defense) * 100f;
-        if (_defText     != null) _defText.text     = $"{(defPct < 1f ? $"{defPct:F1}" : $"{Mathf.RoundToInt(defPct)}")}%";
+        if (_defText     != null) _defText.text     = $"{StatDisplayHelper.EffectiveDefensePct(stat.Total(StatType.Defense)):F1}%";
         if (_soldierText != null) _soldierText.text = $"{Mathf.RoundToInt(stat.Total(StatType.SoldierCount))}명";
 
         UnitPortraitHelper.Render(entry.UnitName, job, entry.Grade,

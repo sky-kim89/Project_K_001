@@ -32,8 +32,8 @@ public class ReincarnationData : ISaveSection
     public int ReincarnationPoints { get; private set; }
     public int UsedRefreshCount    { get; private set; }
 
-    // 환생 가능 최소 스테이지
-    public const int ReincarnateMinStage = 5;
+    // 환생 가능 최소 스테이지 — StageConfig 에서 읽어 단일 진실 소스 유지
+    public static int ReincarnateMinStage => StageConfig.Current?.ReincarnateMinStage ?? 5;
 
     // ── 환생 포인트 공식 ──────────────────────────────────────
 

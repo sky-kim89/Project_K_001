@@ -31,14 +31,13 @@ public class LeapStrikeRunner : MonoBehaviour
         float           damageMultiplier,
         float           aoeRadius,
         float           leapSpeed,
-        float           returnSpeed,
         float           knockbackMult,
         SkillEffectConfig fx)
     {
         if (_current != null) StopCoroutine(_current);
         _current = StartCoroutine(Sequence(
             casterTransform, targetPos, casterEntity, casterStat, em,
-            casterTeam, damageMultiplier, aoeRadius, leapSpeed, returnSpeed, knockbackMult, fx));
+            casterTeam, damageMultiplier, aoeRadius, leapSpeed, knockbackMult, fx));
     }
 
     IEnumerator Sequence(
@@ -51,11 +50,20 @@ public class LeapStrikeRunner : MonoBehaviour
         float           damageMultiplier,
         float           aoeRadius,
         float           leapSpeed,
-        float           returnSpeed,
         float           knockbackMult,
         SkillEffectConfig fx)
     {
-        Vector3 originPos = casterTransform.position;
+        EntityLink entityLink = casterTransform.GetComponent<EntityLink>();
+
+        // ECS→Transform 동기화 중단 + ECS 이동 동결 (도약 중 ECS가 위치를 덮어쓰지 않도록)
+        if (entityLink != null) entityLink.SyncPosition = false;
+        em.CompleteAllTrackedJobs();
+        if (em.HasComponent<MovementComponent>(casterEntity))
+        {
+            var mv = em.GetComponentData<MovementComponent>(casterEntity);
+            mv.MoveDelay = 999f;
+            em.SetComponentData(casterEntity, mv);
+        }
 
         // ── ① 도약 시작 이펙트 ────────────────────────────────
         SkillEffectHelper.SpawnBase(fx.BaseEffectKey, casterTransform.position, fx.DespawnDelay);
@@ -65,7 +73,8 @@ public class LeapStrikeRunner : MonoBehaviour
 
         // ── ③ 착지 이펙트 + AoE 타격 ─────────────────────────
         Vector3 landPos3D = casterTransform.position;
-        SkillEffectHelper.SpawnCaster(fx.CasterEffectKey, landPos3D, fx.DespawnDelay);
+        float fxScale = aoeRadius / 2f;  // FX_Leap_Land 프리팹 기준 반경 2
+        SkillEffectHelper.SpawnCaster(fx.CasterEffectKey, landPos3D, fx.DespawnDelay, scale: fxScale);
 
         em.CompleteAllTrackedJobs();
         float3 landPos = new float3(landPos3D.x, landPos3D.y, 0f);
@@ -90,7 +99,6 @@ public class LeapStrikeRunner : MonoBehaviour
 
             if (!em.HasBuffer<HitEventBufferElement>(entities[i])) continue;
 
-            // 피격 적마다 이펙트
             SkillEffectHelper.SpawnTarget(fx.TargetEffectKey,
                 new Vector3(transforms[i].Position.x, transforms[i].Position.y, transforms[i].Position.z),
                 fx.DespawnDelay);
@@ -111,8 +119,21 @@ public class LeapStrikeRunner : MonoBehaviour
         transforms.Dispose();
         query.Dispose();
 
-        // ── ④ 복귀 ────────────────────────────────────────────
-        yield return MoveToward(casterTransform, originPos, returnSpeed, stopDistance: 0.1f);
+        // ── ④ 착지 위치에서 ECS 동기화 후 이동 재개 ─────────
+        em.CompleteAllTrackedJobs();
+        if (em.Exists(casterEntity) && em.HasComponent<LocalTransform>(casterEntity))
+        {
+            var lt = em.GetComponentData<LocalTransform>(casterEntity);
+            lt.Position = new Unity.Mathematics.float3(landPos3D.x, landPos3D.y, landPos3D.z);
+            em.SetComponentData(casterEntity, lt);
+        }
+        if (em.HasComponent<MovementComponent>(casterEntity))
+        {
+            var mv = em.GetComponentData<MovementComponent>(casterEntity);
+            mv.MoveDelay = 0f;
+            em.SetComponentData(casterEntity, mv);
+        }
+        if (entityLink != null) entityLink.SyncPosition = true;
 
         _current = null;
     }

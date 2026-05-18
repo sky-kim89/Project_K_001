@@ -36,10 +36,23 @@ namespace BattleGame.Units
             _bossLookup.Update(ref state);
             _eliteLookup.Update(ref state);
 
+            var cfg = GameplayConfig.Current;
+            float softCap      = cfg.DefenseMax;
+            float overflowRate = cfg.DefenseOverflowRate;
+            float effectiveCap = cfg.DefenseEffectiveCap;
+
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb          = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
-            new ProcessHitEventsJob { Ecb = ecb, BossLookup = _bossLookup, EliteLookup = _eliteLookup }.ScheduleParallel();
+            new ProcessHitEventsJob
+            {
+                Ecb            = ecb,
+                BossLookup     = _bossLookup,
+                EliteLookup    = _eliteLookup,
+                DefenseSoftCap = softCap,
+                DefenseOverflowRate = overflowRate,
+                DefenseEffectiveCap = effectiveCap,
+            }.ScheduleParallel();
         }
     }
 
@@ -54,6 +67,9 @@ namespace BattleGame.Units
         public EntityCommandBuffer.ParallelWriter Ecb;
         [ReadOnly] public ComponentLookup<BossComponent>  BossLookup;
         [ReadOnly] public ComponentLookup<EliteComponent> EliteLookup;
+        public float DefenseSoftCap;
+        public float DefenseOverflowRate;
+        public float DefenseEffectiveCap;
 
         public void Execute(
             [ChunkIndexInQuery] int                    chunkIndex,
@@ -67,11 +83,17 @@ namespace BattleGame.Units
         {
             if (hitBuffer.Length == 0) return;
 
-            float  totalDamage    = 0f;
-            float3 totalKnockback = float3.zero;
-            float  maxStun        = 0f;
+            float  totalDamage      = 0f;
+            float3 totalKnockback   = float3.zero;
+            float  maxStun          = 0f;
+            float  maxNormalKbMag   = 0f;   // 일반 공격: 프레임 내 최대 단일 타격 넉백
+            float3 maxNormalKbVec   = float3.zero;
 
-            float defense = math.min(stat.Final[StatType.Defense], 0.99f); // 99% 상한
+            float rawDef    = stat.Final[StatType.Defense];
+            float eff       = rawDef <= DefenseSoftCap
+                ? rawDef
+                : DefenseSoftCap + (rawDef - DefenseSoftCap) * DefenseOverflowRate;
+            float defense   = math.min(eff, DefenseEffectiveCap);
 
             for (int i = 0; i < hitBuffer.Length; i++)
             {
@@ -84,8 +106,21 @@ namespace BattleGame.Units
                 float absorbed     = rawDamage - actualDamage;
                 totalDamage       += actualDamage;
 
-                float knockbackMag = math.min(actualDamage * 0.05f, 6f);
-                totalKnockback    += hit.HitDirection * knockbackMag;
+                if (hit.IsSkillHit)
+                {
+                    // 스킬 직접 넉백 — HitDirection에 이미 힘이 담겨 있으므로 그대로 누적
+                    totalKnockback += hit.HitDirection;
+                }
+                else
+                {
+                    // 일반 공격 — 수백 마리 누적 방지: 프레임 내 최대 단일 타격만 적용
+                    float kbMag = math.min(actualDamage * 0.05f, 6f);
+                    if (kbMag > maxNormalKbMag)
+                    {
+                        maxNormalKbMag = kbMag;
+                        maxNormalKbVec = hit.HitDirection * kbMag;
+                    }
+                }
 
                 float stunTime = CalculateStunDuration(actualDamage);
                 maxStun        = math.max(maxStun, stunTime);
@@ -101,6 +136,7 @@ namespace BattleGame.Units
                 });
             }
 
+            totalKnockback   += maxNormalKbVec;
             health.CurrentHp -= totalDamage;
             hitBuffer.Clear();
 
@@ -144,11 +180,14 @@ namespace BattleGame.Units
                 totalKnockback = math.normalize(totalKnockback) * MaxKnockbackMag;
 
             hitReaction.KnockbackVelocity = totalKnockback;
-            hitReaction.StunDuration      = maxStun;
-            hitReaction.StunTimer         = maxStun;
-            hitReaction.IsStunned         = maxStun > 0f;
 
-            if (hitReaction.IsStunned)
+            // 이미 더 긴 스턴(속박 등)이 걸려 있으면 짧은 히트 경직으로 덮어쓰지 않는다.
+            // KnockbackJob 이 타이머를 소진했을 때만 IsStunned 를 해제한다.
+            hitReaction.StunDuration = math.max(hitReaction.StunDuration, maxStun);
+            hitReaction.StunTimer    = math.max(hitReaction.StunTimer,    maxStun);
+            hitReaction.IsStunned    = hitReaction.IsStunned || maxStun > 0f;
+
+            if (maxStun > 0f)
                 ChangeState(ref unitState, UnitState.Hit);
         }
 

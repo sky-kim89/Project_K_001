@@ -100,7 +100,7 @@ namespace BattleGame.Units
             boss.ChargePatternTimer -= dt;
             if (boss.ChargePatternTimer > 0f) return;
 
-            // 가장 가까운 적팀 유닛 탐색 (pre-collected 배열 사용)
+            // 가장 가까운 적 탐색 — 위치가 아닌 방향 산출에만 사용
             float3 closestPos    = float3.zero;
             float  closestDistSq = float.MaxValue;
             bool   found         = false;
@@ -120,8 +120,11 @@ namespace BattleGame.Units
 
             if (!found) { boss.ChargePatternTimer = 2f; return; }
 
+            // 적 방향으로 직선 돌진 — 적 위치가 아닌 그 방향으로 50유닛 앞 지점을 목표로
+            float3 dir = math.normalizesafe(closestPos - position, new float3(-1f, 0f, 0f));
+
             boss.IsCharging   = true;
-            boss.ChargeTarget = closestPos;
+            boss.ChargeTarget = position + dir * 50f;
             boss.ChargeTimer  = boss.ChargeDuration;
         }
     }

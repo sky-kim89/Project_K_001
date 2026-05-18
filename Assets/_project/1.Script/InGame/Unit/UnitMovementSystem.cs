@@ -33,6 +33,7 @@ namespace BattleGame.Units
     }
 
     [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateAfter(typeof(UnitTargetSearchSystem))]
     [UpdateBefore(typeof(UnitAttackSystem))]
     public partial struct UnitMovementSystem : ISystem
     {

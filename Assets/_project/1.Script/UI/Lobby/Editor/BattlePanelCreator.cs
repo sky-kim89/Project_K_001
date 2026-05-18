@@ -40,7 +40,8 @@ public static class BattlePanelCreator
     static readonly Color BattleBtnC   = new Color(0.11f, 0.72f, 0.58f, 1f);
     static readonly Color AbilityBtnC  = new Color(0.18f, 0.25f, 0.45f, 1f);
     static readonly Color HireBtnC     = new Color(0.45f, 0.25f, 0.18f, 1f);
-    static readonly Color RelicBtnC    = new Color(0.35f, 0.18f, 0.50f, 1f);
+    static readonly Color RelicBtnC       = new Color(0.35f, 0.18f, 0.50f, 1f);
+    static readonly Color DisassembleBtnC = new Color(0.30f, 0.16f, 0.08f, 1f);
     static readonly Color MutedText    = new Color(0.55f, 0.55f, 0.60f);
 
     [MenuItem("Tools/Project K/로비 UI/Create BattlePanel Prefab")]
@@ -123,20 +124,29 @@ public static class BattlePanelCreator
             new Vector2(0, 150), new Vector2(1000, 56));
         progressText.color = MutedText;
 
-        // 어빌리티·유물 버튼 (중간 — NavBar 제거 후 중앙보다 살짝 아래)
-        var abilityBtn = CreateButton(actionArea, "AbilityListBtn", "어빌리티 목록", AbilityBtnC, UIScale.FontMd);
-        SetRect(abilityBtn.GetComponent<RectTransform>(),
-            new Vector2(-220, -20), new Vector2(380, UIScale.BtnSm));
+        // 세 개 정사각형 아이콘 버튼 — 우측 세로 배치
+        const float IBtn = 170f;
+        const float IGap =  20f;
+        // 중앙 기준 y 오프셋: 위(어빌리티) → 중(유물) → 아래(장비 분해)
+        float iBtnStep = IBtn + IGap;
 
-        var relicBtn = CreateButton(actionArea, "RelicBtn", "유물", RelicBtnC, UIScale.FontMd);
-        SetRect(relicBtn.GetComponent<RectTransform>(),
-            new Vector2( 220, -20), new Vector2(380, UIScale.BtnSm));
+        var abilityBtn = CreateIconButton(actionArea, "AbilityListBtn", "어빌리티", AbilityBtnC,
+            "Assets/_project/3.Textures/Icons/LobbyBtns/btn_ability.png");
+        SetRightColRect(abilityBtn.GetComponent<RectTransform>(),  iBtnStep, IBtn);
+
+        var relicBtn = CreateIconButton(actionArea, "RelicBtn", "유물", RelicBtnC,
+            "Assets/_project/3.Textures/Icons/LobbyBtns/btn_relic.png");
+        SetRightColRect(relicBtn.GetComponent<RectTransform>(), 0f, IBtn);
+
+        var disassembleBtn = CreateIconButton(actionArea, "DisassembleBtn", "장비 분해", DisassembleBtnC,
+            "Assets/_project/3.Textures/Icons/LobbyBtns/btn_disassemble.png");
+        SetRightColRect(disassembleBtn.GetComponent<RectTransform>(), -iBtnStep, IBtn);
 
         // 전투 시작 버튼 (하단 — NavBar 제거로 80px 여유, 하단 마진 120px)
         var battleBtn   = CreateButton(actionArea, "BattleStartBtn", "전투 시작", BattleBtnC, UIScale.FontLg);
         var battleBtnRt = battleBtn.GetComponent<RectTransform>();
-        battleBtnRt.anchorMin        = new Vector2(0.08f, 0f);
-        battleBtnRt.anchorMax        = new Vector2(0.92f, 0f);
+        battleBtnRt.anchorMin        = new Vector2(0.17f, 0f);
+        battleBtnRt.anchorMax        = new Vector2(0.83f, 0f);
         battleBtnRt.anchoredPosition = new Vector2(0, UIScale.BtnLg / 2f + 120f);
         battleBtnRt.sizeDelta        = new Vector2(0, UIScale.BtnLg);
         battleBtn.GetComponentInChildren<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
@@ -149,8 +159,9 @@ public static class BattlePanelCreator
         hireBtnRt.anchorMin        = new Vector2(0f, 1f);
         hireBtnRt.anchorMax        = new Vector2(0f, 1f);
         hireBtnRt.pivot            = new Vector2(0f, 1f);
-        hireBtnRt.anchoredPosition = new Vector2(0f, HireBtnH);
-        hireBtnRt.sizeDelta        = new Vector2(DeployW, HireBtnH);
+        hireBtnRt.anchoredPosition = new Vector2(20f, 100f);
+        hireBtnRt.sizeDelta        = new Vector2(380f, HireBtnH);
+        hireBtn.SetActive(false);
 
         // 내용 행 (HLG — 이름 + 골드 아이콘 + 비용)
         var hireRow = new GameObject("ContentRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
@@ -216,7 +227,8 @@ public static class BattlePanelCreator
         SetObj(so, "_abilityListBtn", abilityBtn.GetComponent<Button>());
         SetObj(so, "_hireBtn",        hireBtn.GetComponent<Button>());
         SetObj(so, "_hireCostText",   hireCostTmp);
-        SetObj(so, "_relicBtn",       relicBtn.GetComponent<Button>());
+        SetObj(so, "_relicBtn",        relicBtn.GetComponent<Button>());
+        SetObj(so, "_disassembleBtn", disassembleBtn.GetComponent<Button>());
         SetObj(so, "_battleStartBtn", battleBtn.GetComponent<Button>());
         so.ApplyModifiedProperties();
 
@@ -232,7 +244,7 @@ public static class BattlePanelCreator
     {
         var go   = MakeGo($"Slot_{index}", parent);
         var goRt = go.GetComponent<RectTransform>();
-        goRt.sizeDelta = new Vector2(360f, 160f);   // 에디터 기본값 명시 (VLG가 런타임에 재계산)
+        goRt.sizeDelta = new Vector2(380f, 180f);   // 에디터 기본값 명시 (VLG가 런타임에 재계산)
 
         var le = go.AddComponent<LayoutElement>();
         le.minHeight       = 110f;
@@ -379,6 +391,57 @@ public static class BattlePanelCreator
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color     = Color.white;
         return tmp;
+    }
+
+    static GameObject CreateIconButton(GameObject parent, string name, string label,
+        Color bgColor, string iconAssetPath)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
+        go.transform.SetParent(parent.transform, false);
+        go.GetComponent<Image>().color = bgColor;
+
+        ColorBlock cb = go.GetComponent<Button>().colors;
+        cb.highlightedColor = Color.Lerp(bgColor, Color.white, 0.25f);
+        cb.pressedColor     = Color.Lerp(bgColor, Color.black, 0.25f);
+        go.GetComponent<Button>().colors = cb;
+
+        // 아이콘 이미지 (위쪽 70%)
+        var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(Image));
+        iconGo.transform.SetParent(go.transform, false);
+        var iconRt = iconGo.GetComponent<RectTransform>();
+        iconRt.anchorMin = new Vector2(0.12f, 0.28f);
+        iconRt.anchorMax = new Vector2(0.88f, 0.94f);
+        iconRt.offsetMin = iconRt.offsetMax = Vector2.zero;
+        var iconImg = iconGo.GetComponent<Image>();
+        iconImg.preserveAspect = true;
+        iconImg.raycastTarget  = false;
+        var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(iconAssetPath);
+        if (sprite != null) iconImg.sprite = sprite;
+
+        // 라벨 텍스트 (아래쪽 28%)
+        var lGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+        lGo.transform.SetParent(go.transform, false);
+        var lRt = lGo.GetComponent<RectTransform>();
+        lRt.anchorMin = new Vector2(0, 0);
+        lRt.anchorMax = new Vector2(1, 0.30f);
+        lRt.offsetMin = lRt.offsetMax = Vector2.zero;
+        var tmp = lGo.GetComponent<TextMeshProUGUI>();
+        tmp.text          = label;
+        tmp.fontSize      = UIScale.FontSm;
+        tmp.alignment     = TextAlignmentOptions.Center;
+        tmp.color         = Color.white;
+        tmp.raycastTarget = false;
+        return go;
+    }
+
+    // 우측 세로 배치 — 오른쪽 가장자리 기준, yOffset=0 이 ActionArea 수직 중앙
+    static void SetRightColRect(RectTransform rt, float yOffset, float size)
+    {
+        rt.anchorMin        = new Vector2(1f, 0.5f);
+        rt.anchorMax        = new Vector2(1f, 0.5f);
+        rt.pivot            = new Vector2(1f, 0.5f);
+        rt.anchoredPosition = new Vector2(-16f, yOffset);
+        rt.sizeDelta        = new Vector2(size, size);
     }
 
     static GameObject CreateButton(GameObject parent, string name, string label,

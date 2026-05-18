@@ -33,6 +33,9 @@ public class BattleContext
     }
     public System.Collections.Generic.List<UnitExpGain> ExpGains { get; } = new();
 
+    // ── 전투 통계 스냅샷 (결과 팝업 통계 탭용) ───────────────
+    public System.Collections.Generic.List<GeneralStatEntry> CombatStats { get; } = new();
+
     // ── 편의 프로퍼티 ─────────────────────────────────────────
     public bool IsLastWave      => CurrentWave >= TotalWaves;
     public bool IsEnemyClear    => AliveEnemyCount <= 0;

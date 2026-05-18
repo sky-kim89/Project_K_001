@@ -46,7 +46,7 @@ public abstract class ActiveSkillZoneBase : ActiveSkillData
             Radius             = EffectRadius   > 0f ? EffectRadius   : DefaultRadius,
             Duration           = EffectDuration > 0f ? EffectDuration : DefaultDuration,
             TickInterval       = TickInterval,
-            DamagePerTick      = EffectValue,
+            DamagePerTick      = ctx.CasterStat.Final[StatType.Attack] * EffectValue,
             CasterTeam         = identity.Team,
             CasterEntity       = ctx.CasterEntity,
             BaseEffectKey      = BaseEffectKey,

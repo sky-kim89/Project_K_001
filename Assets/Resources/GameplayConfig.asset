@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 781a1aa43228e6b4b88f15e9a27a44ea, type: 3}
   m_Name: GameplayConfig
   m_EditorClassIdentifier: 
+  HireMercenaryCost: 500
   EnablePassiveLog: 1
   EnableActiveLog: 1
   EpicSlots: 3
@@ -19,14 +20,17 @@ MonoBehaviour:
   RareSlots: 2
   UncommonSlots: 1
   NormalSlots: 1
-  DefenseMax: 0.95
+  DefenseMax: 0.9
+  DefenseOverflowRate: 0.1
+  CooldownReduceMax: 0.9
+  DefenseEffectiveCap: 0.999
   ExpPerLevel: 100
   LevelMultPerLevel: 0.01
-  GradeMultPerTier: 0.1
-  GradeChanceEpic: 0.03
-  GradeChanceUnique: 0.07
-  GradeChanceRare: 0.15
-  GradeChanceUncommon: 0.25
+  GradeMultPerTier: 0.15
+  GradeChanceEpic: 0.05
+  GradeChanceUnique: 0.1
+  GradeChanceRare: 0.2
+  GradeChanceUncommon: 0.3
   EnemyRange:
     Hp:
       Min: 100
@@ -57,7 +61,7 @@ MonoBehaviour:
       Max: 150
     Defense:
       Min: 0.1
-      Max: 0.3
+      Max: 0.55
     AttackRange:
       Min: 1.5
       Max: 3
@@ -77,8 +81,8 @@ MonoBehaviour:
       Min: 150
       Max: 400
     Defense:
-      Min: 0.2
-      Max: 0.45
+      Min: 0.25
+      Max: 0.85
     AttackRange:
       Min: 2
       Max: 4

@@ -77,6 +77,10 @@ public class PassiveSkillData : ScriptableObject
     // ■ 특수 플래그
     // ─────────────────────────────────────────────────────────
 
+    [Header("아이콘")]
+    [Tooltip("버프 슬롯에 표시할 아이콘. 미설정 시 버프 슬롯에 표시되지 않음.")]
+    public Sprite Icon;
+
     [Header("특수 플래그")]
     [Tooltip("TitanGeneral: 제너럴 크기 배율 추가값 (0 = 변화 없음)")]
     public float GeneralScaleBonusAdd = 0f;

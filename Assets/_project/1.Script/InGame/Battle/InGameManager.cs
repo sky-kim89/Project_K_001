@@ -116,6 +116,15 @@ public class InGameManager : MonoBehaviour
             UserDataManager.Instance.RequestSave();
         }
 
+        // 전투 통계 스냅샷
+        if (context != null)
+        {
+            var tracker = BattleStatsTracker.Instance;
+            if (tracker != null)
+                foreach (var entry in tracker.GetAllEntries())
+                    context.CombatStats.Add(entry);
+        }
+
         if (PopupManager.Instance == null) return;
         var popup = PopupManager.Instance.Open<BattleResultPopup>(PopupType.BattleResult);
         popup?.Setup(true, context, BattleManager.Instance?.EnemyKillCount ?? 0,
@@ -162,14 +171,18 @@ public class InGameManager : MonoBehaviour
         progress?.RecordClear(stage.Mode, stage.StageNumber);
     }
 
-    /// <summary>전투 패배 → 결과 팝업 오픈.</summary>
+    /// <summary>전투 패배 → 유닛 즉시 디스폰 후 결과 팝업 오픈.</summary>
     void HandleDefeat()
     {
+        // context/killCount 를 먼저 캡처 — DespawnAllUnits() 가 _context 를 null 로 초기화하기 때문
+        var context   = BattleManager.Instance?.Context;
+        int killCount = BattleManager.Instance?.EnemyKillCount ?? 0;
+
+        BattleManager.Instance?.DespawnAllUnits();
+
         if (PopupManager.Instance == null) return;
         var popup = PopupManager.Instance.Open<BattleResultPopup>(PopupType.BattleResult);
-        popup?.Setup(false,
-            BattleManager.Instance?.Context,
-            BattleManager.Instance?.EnemyKillCount ?? 0);
+        popup?.Setup(false, context, killCount);
     }
 
     // ── 배틀 시작 ────────────────────────────────────────────

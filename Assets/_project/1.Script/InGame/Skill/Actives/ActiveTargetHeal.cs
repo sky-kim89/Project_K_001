@@ -1,12 +1,11 @@
 using Unity.Entities;
-using Unity.Mathematics;
 using Unity.Collections;
 using BattleGame.Units;
 
 // ============================================================
 //  ActiveTargetHeal.cs — 집중 치유 (공통)
 //
-//  소속 유닛(시전자 + 병사) 중 현재 체력 비율이 가장 낮은 유닛 하나를 집중 치유한다.
+//  아군 장군 중 현재 체력 비율이 가장 낮은 장군 1명을 집중 치유한다.
 //  회복량 = 대상 MaxHp × EffectValue (비율).
 // ============================================================
 
@@ -18,44 +17,46 @@ public class ActiveTargetHeal : ActiveSkillData
         var em = ctx.EntityManager;
         em.CompleteAllTrackedJobs();
 
-        // ── 가장 체력 비율이 낮은 유닛 탐색 ──────────────────────
-        Entity lowestEntity   = ctx.CasterEntity;
-        float  lowestHpRatio  = GetHpRatio(em, ctx.CasterEntity);
+        // ── 아군 장군 중 체력 비율 가장 낮은 1명 탐색 ──────────
+        Entity lowestEntity  = Entity.Null;
+        float  lowestHpRatio = float.MaxValue;
 
-        var query    = em.CreateEntityQuery(new EntityQueryDesc
+        var query = em.CreateEntityQuery(new EntityQueryDesc
         {
-            All  = new ComponentType[] { ComponentType.ReadOnly<SoldierComponent>() },
+            All  = new ComponentType[] { ComponentType.ReadOnly<GeneralComponent>(),
+                                         ComponentType.ReadOnly<UnitIdentityComponent>() },
             None = new ComponentType[] { typeof(DeadTag) },
         });
-        NativeArray<Entity>           entities = query.ToEntityArray(Allocator.Temp);
-        NativeArray<SoldierComponent> soldiers = query.ToComponentDataArray<SoldierComponent>(Allocator.Temp);
+        NativeArray<Entity>              entities = query.ToEntityArray(Allocator.Temp);
+        NativeArray<UnitIdentityComponent> ids    = query.ToComponentDataArray<UnitIdentityComponent>(Allocator.Temp);
 
         for (int i = 0; i < entities.Length; i++)
         {
-            if (soldiers[i].GeneralEntity != ctx.CasterEntity) continue;
+            if (ids[i].Team != TeamType.Ally) continue;
 
             float ratio = GetHpRatio(em, entities[i]);
             if (ratio < lowestHpRatio)
             {
-                lowestHpRatio  = ratio;
-                lowestEntity   = entities[i];
+                lowestHpRatio = ratio;
+                lowestEntity  = entities[i];
             }
         }
 
         entities.Dispose();
-        soldiers.Dispose();
+        ids.Dispose();
         query.Dispose();
 
+        if (lowestEntity == Entity.Null) return;
+
         // ── 집중 치유 ──────────────────────────────────────────
-        if (!em.HasComponent<StatComponent>(lowestEntity))   return;
-        if (!em.HasBuffer<HealEventBufferElement>(lowestEntity)) return;
+        if (!em.HasComponent<StatComponent>(lowestEntity))        return;
+        if (!em.HasBuffer<HealEventBufferElement>(lowestEntity))  return;
 
         float maxHp  = em.GetComponentData<StatComponent>(lowestEntity).Final[StatType.MaxHp];
         float amount = maxHp * EffectValue;
         em.GetBuffer<HealEventBufferElement>(lowestEntity).Add(
             new HealEventBufferElement { Amount = amount, SourceEntity = ctx.CasterEntity });
 
-        // 피대상 이펙트 (치유 대상 위치)
         if (em.HasComponent<Unity.Transforms.LocalTransform>(lowestEntity))
         {
             var tf = em.GetComponentData<Unity.Transforms.LocalTransform>(lowestEntity);
@@ -64,8 +65,6 @@ public class ActiveTargetHeal : ActiveSkillData
                 EffectDespawnDelay);
         }
     }
-
-    // ── 내부 ─────────────────────────────────────────────────
 
     static float GetHpRatio(EntityManager em, Entity entity)
     {

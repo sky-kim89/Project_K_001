@@ -78,7 +78,7 @@ public class EnemySpawner : MonoBehaviour
                 {
                     if (unit.TryGetComponent<EnemyRuntimeBridge>(out var bridge))
                         bridge.Initialize(entry.Name, entry.UnitType, entry.EnemyRace,
-                                          entry.Level, entry.StatMultiplier);
+                                          entry.Level, entry.StatMultiplier, entry.StageBias);
                     PoolController.Instance.Despawn(unit);
                 }
 
@@ -92,7 +92,6 @@ public class EnemySpawner : MonoBehaviour
     IEnumerator SpawnRoutine(List<SpawnEntry> entries)
     {
         IsSpawning = true;
-        float spawnX = GetSpawnX();
 
         foreach (SpawnEntry entry in entries)
         {
@@ -101,7 +100,9 @@ public class EnemySpawner : MonoBehaviour
 
             for (int i = 0; i < entry.Count; i++)
             {
-                float spawnY  = Random.Range(YMin, YMax);
+                // 매 스폰마다 현재 카메라 위치 기준으로 실시간 계산
+                float spawnX   = GetSpawnX();
+                float spawnY   = GetSpawnY();
                 var   spawnPos = new Vector3(spawnX, spawnY, 0f);
 
                 // 풀에서 꺼내기 — UnitType 으로 풀 키 자동 결정
@@ -117,11 +118,16 @@ public class EnemySpawner : MonoBehaviour
                     // Name 시드 + 레벨 + 스테이지 배율로 스텟 초기화
                     if (unit.TryGetComponent<EnemyRuntimeBridge>(out var bridge))
                         bridge.Initialize(entry.Name, entry.UnitType, entry.EnemyRace,
-                                          entry.Level, entry.StatMultiplier);
+                                          entry.Level, entry.StatMultiplier, entry.StageBias);
                 }
 
-                if (i < entry.Count - 1 && entry.DelayBetween > 0f)
-                    yield return new WaitForSeconds(entry.DelayBetween * SpawnDelayMultiplier);
+                if (i < entry.Count - 1)
+                {
+                    if (entry.DelayBetween > 0f)
+                        yield return new WaitForSeconds(entry.DelayBetween * SpawnDelayMultiplier);
+                    else
+                        yield return null; // DelayBetween 없어도 프레임 분산
+                }
             }
         }
 
@@ -139,18 +145,28 @@ public class EnemySpawner : MonoBehaviour
         return rightEdge.x + OffscreenMargin;
     }
 
+    // YMin / YMax 는 카메라 중앙 Y 기준 오프셋
+    float GetSpawnY()
+    {
+        if (_cam == null) _cam = Camera.main;
+        float centerY = _cam != null ? _cam.transform.position.y : 0f;
+        return centerY + Random.Range(YMin, YMax);
+    }
+
     // ── 에디터 기즈모 ────────────────────────────────────────
     void OnDrawGizmosSelected()
     {
+        Camera cam = Camera.main;
         float x = SpawnX != 0f ? SpawnX
-            : (Camera.main != null
-                ? Camera.main.ViewportToWorldPoint(
-                    new Vector3(1f, 0.5f, Camera.main.nearClipPlane)).x + OffscreenMargin
+            : (cam != null
+                ? cam.ViewportToWorldPoint(
+                    new Vector3(1f, 0.5f, cam.nearClipPlane)).x + OffscreenMargin
                 : 12f);
+        float cy = cam != null ? cam.transform.position.y : 0f;
 
         Gizmos.color = Color.red;
-        Gizmos.DrawLine(new Vector3(x, YMin, 0f), new Vector3(x, YMax, 0f));
-        Gizmos.DrawWireSphere(new Vector3(x, YMin, 0f), 0.2f);
-        Gizmos.DrawWireSphere(new Vector3(x, YMax, 0f), 0.2f);
+        Gizmos.DrawLine(new Vector3(x, cy + YMin, 0f), new Vector3(x, cy + YMax, 0f));
+        Gizmos.DrawWireSphere(new Vector3(x, cy + YMin, 0f), 0.2f);
+        Gizmos.DrawWireSphere(new Vector3(x, cy + YMax, 0f), 0.2f);
     }
 }

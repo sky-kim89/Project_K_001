@@ -4,19 +4,7 @@ using UnityEditor;
 using UnityEngine;
 
 // ============================================================
-//  EffectPrefabGenerator.cs
-//  Unity 메뉴 BattleGame > Generate Effect Prefabs 실행 시
-//  22개 액티브 스킬 이펙트 프리팹을 자동 생성한다.
-//
-//  저장 경로: Assets/_project/2.Prefabs/Effect/
-//  파티클 머티리얼: EffectTextureGenerator 가 생성한 MAT_FX_* 사용
-//
-//  ■ 사용법
-//    1. BattleGame → Generate Effect Textures & Materials  ← 반드시 먼저
-//    2. BattleGame → Generate Effect Prefabs
-//    3. Console 에 "✓ 22 effect prefabs generated." 확인
-//    4. PoolController → Effect Pool 에 생성된 프리팹 등록
-//    5. 각 ActiveSkillData SO 에 FX_ 키 입력
+//  EffectPrefabGenerator.cs  —  1부: FX #01~#11 구현 / #12~#22 스텁
 // ============================================================
 
 public static class EffectPrefabGenerator
@@ -24,1637 +12,1675 @@ public static class EffectPrefabGenerator
     const string kSavePath = "Assets/_project/2.Prefabs/Effect";
     const string kMatPath  = "Assets/_project/4.Materials/FX";
 
-    // 이펙트 키 → [루트 머티리얼, 자식1 머티리얼, ...] 매핑
-    // GetComponentsInChildren 순서(루트 → 자식 DFS)와 일치
-    static readonly Dictionary<string, string[]> kEffectMaterials =
-        new Dictionary<string, string[]>
+    static readonly Dictionary<string, string[]> kEffectMaterials = new()
     {
-        { "FX_Slash_Impact",     new[] { "MAT_FX_Slash_Add",    "MAT_FX_Soft_Add"                       } },
-        { "FX_Leap_Land",        new[] { "MAT_FX_Ring_Add",      "MAT_FX_Smoke_Alpha"                    } },
-        { "FX_Dust_Dash",        new[] { "MAT_FX_Smoke_Alpha"                                            } },
-        { "FX_Shockwave",        new[] { "MAT_FX_Spark_Add",     "MAT_FX_Spark_Add"                      } },
-        { "FX_Meteor_Warning",   new[] { "MAT_FX_Flame_Add"                                              } },
-        { "FX_Meteor_Explosion", new[] { "MAT_FX_Flame_Add",     "MAT_FX_Smoke_Alpha",  "MAT_FX_Ring_Add" } },
-        { "FX_Arrow_Volley",     new[] { "MAT_FX_Spark_Add"                                              } },
-        { "FX_Arrow_Rain_Zone",  new[] { "MAT_FX_Arrow_Add",     "MAT_FX_Star_Add",     "MAT_FX_Soft_Add" } },
-        { "FX_Charge_Impact",    new[] { "MAT_FX_Star_Add"                              } },
-        { "FX_Explosion",        new[] { "MAT_FX_Flame_Add",     "MAT_FX_Spark_Add"     } },
-        { "FX_Summon_Circle",    new[] { "MAT_FX_Rune_Add",      "MAT_FX_Soft_Add"      } },
-        { "FX_Sacrifice",        new[] { "MAT_FX_Soft_Add"                              } },
-        { "FX_Absorb",           new[] { "MAT_FX_Soft_Add"                              } },
-        { "FX_Battle_Cry",       new[] { "MAT_FX_Star_Add"                              } },
-        { "FX_Berserk",          new[] { "MAT_FX_Flame_Add",    "MAT_FX_Line_Add"                       } },
-        { "FX_Shield_Up",        new[] { "MAT_FX_Diamond_Add"                                            } },
-        { "FX_Speed_Up",         new[] { "MAT_FX_Spark_Add"                                              } },
-        { "FX_Heal_Aura",        new[] { "MAT_FX_Soft_Add"                                               } },
-        { "FX_Heal_Target",      new[] { "MAT_FX_Cross_Add"                                              } },
-        { "FX_Bind",             new[] { "MAT_FX_Ring_Add"                                               } },
-        { "FX_Poison_Zone",      new[] { "MAT_FX_Smoke_Alpha",  "MAT_FX_Ring_Add"                        } },
-        { "FX_Blizzard",         new[] { "MAT_FX_Snowflake_Add", "MAT_FX_Smoke_Alpha"   } },
+        { "FX_Slash_Impact",     new[] { "MAT_FX_Slash_Add",    "MAT_FX_Spark_Add",     "MAT_FX_Soft_Add"      } },
+        { "FX_Leap_Land",        new[] { "MAT_FX_Ring_Add",     "MAT_FX_Smoke_Alpha",   "MAT_FX_Soft_Add"      } },
+        { "FX_Dust_Dash",        new[] { "MAT_FX_Smoke_Alpha"                                                   } },
+        { "FX_Shockwave",        new[] { "MAT_FX_Spark_Add",    "MAT_FX_Lightning_Add", "MAT_FX_Ring_Add"      } },
+        { "FX_Meteor_Warning",   new[] { "MAT_FX_Flame_Add",    "MAT_FX_Ring_Add"                              } },
+        { "FX_Meteor_Explosion", new[] { "MAT_FX_Flame_Add",    "MAT_FX_Smoke_Alpha",   "MAT_FX_Ring_Add",    "MAT_FX_Shard_Add"   } },
+        { "FX_Arrow_Volley",     new[] { "MAT_FX_Arrow_Add",    "MAT_FX_Spark_Add"                             } },
+        { "FX_Arrow_Rain_Zone",  new[] { "MAT_FX_Arrow_Add",    "MAT_FX_Star_Add",      "MAT_FX_Soft_Add"      } },
+        { "FX_Charge_Impact",    new[] { "MAT_FX_Star_Add",     "MAT_FX_Ring_Add",      "MAT_FX_Spark_Add"     } },
+        { "FX_Explosion",        new[] { "MAT_FX_Flame_Add",    "MAT_FX_Shard_Add",     "MAT_FX_Smoke_Alpha",  "MAT_FX_Ring_Add"   } },
+        { "FX_Summon_Circle",    new[] { "MAT_FX_Rune_Add",     "MAT_FX_Wisp_Add",      "MAT_FX_Soft_Add"      } },
+        { "FX_Sacrifice",        new[] { "MAT_FX_Wisp_Add",     "MAT_FX_Soft_Add",      "MAT_FX_Smoke_Alpha"   } },
+        { "FX_Absorb",           new[] { "MAT_FX_Soft_Add",     "MAT_FX_Ring_Add",      "MAT_FX_Spark_Add"     } },
+        { "FX_Battle_Cry",       new[] { "MAT_FX_Star_Add",     "MAT_FX_Ring_Add",      "MAT_FX_Spark_Add"     } },
+        { "FX_Berserk",          new[] { "MAT_FX_Flame_Add",    "MAT_FX_Line_Add",      "MAT_FX_Lightning_Add" } },
+        { "FX_Shield_Up",        new[] { "MAT_FX_Diamond_Add",  "MAT_FX_Crystal_Add",   "MAT_FX_Soft_Add"      } },
+        { "FX_Speed_Up",         new[] { "MAT_FX_Spark_Add",    "MAT_FX_Wisp_Add",      "MAT_FX_Ring_Add"      } },
+        { "FX_Heal_Aura",        new[] { "MAT_FX_Petal_Add",    "MAT_FX_Soft_Add",      "MAT_FX_Ring_Add"      } },
+        { "FX_Heal_Target",      new[] { "MAT_FX_Cross_Add",    "MAT_FX_Wisp_Add",      "MAT_FX_Soft_Add"      } },
+        { "FX_Bind",             new[] { "MAT_FX_Spiral_Add",   "MAT_FX_Ring_Add",      "MAT_FX_Smoke_Alpha"   } },
+        { "FX_Poison_Zone",      new[] { "MAT_FX_Smoke_Alpha",  "MAT_FX_Poison_Alpha",  "MAT_FX_Ring_Add"      } },
+        { "FX_Blizzard",         new[] { "MAT_FX_Snowflake_Add","MAT_FX_Crystal_Add",   "MAT_FX_Smoke_Alpha"   } },
     };
-
-    // ── 공개 진입점 ─────────────────────────────────────────
 
     [MenuItem("BattleGame/Generate Effect Prefabs")]
     public static void GenerateAll()
     {
-        Directory.CreateDirectory(Path.Combine(Application.dataPath,
-            "_project/2.Prefabs/Effect"));
+        Directory.CreateDirectory(Path.Combine(Application.dataPath, "_project/2.Prefabs/Effect"));
         AssetDatabase.Refresh();
 
-        int count = 0;
-        count += Save("FX_Slash_Impact",      BuildSlashImpact());
-        count += Save("FX_Leap_Land",          BuildLeapLand());
-        count += Save("FX_Dust_Dash",          BuildDustDash());
-        count += Save("FX_Shockwave",          BuildShockwave());
-        count += Save("FX_Meteor_Warning",     BuildMeteorWarning());
-        count += Save("FX_Meteor_Explosion",   BuildMeteorExplosion());
-        count += Save("FX_Arrow_Volley",       BuildArrowVolley());
-        count += Save("FX_Arrow_Rain_Zone",    BuildArrowRainZone());
-        count += Save("FX_Charge_Impact",      BuildChargeImpact());
-        count += Save("FX_Explosion",          BuildExplosion());
-        count += Save("FX_Summon_Circle",      BuildSummonCircle());
-        count += Save("FX_Sacrifice",          BuildSacrifice());
-        count += Save("FX_Absorb",             BuildAbsorb());
-        count += Save("FX_Battle_Cry",         BuildBattleCry());
-        count += Save("FX_Berserk",            BuildBerserk());
-        count += Save("FX_Shield_Up",          BuildShieldUp());
-        count += Save("FX_Speed_Up",           BuildSpeedUp());
-        count += Save("FX_Heal_Aura",          BuildHealAura());
-        count += Save("FX_Heal_Target",        BuildHealTarget());
-        count += Save("FX_Bind",               BuildBind());
-        count += Save("FX_Poison_Zone",        BuildPoisonZone());
-        count += Save("FX_Blizzard",           BuildBlizzard());
+        int n = 0;
+        n += Save("FX_Slash_Impact",    BuildSlashImpact());
+        n += Save("FX_Leap_Land",       BuildLeapLand());
+        n += Save("FX_Dust_Dash",       BuildDustDash());
+        n += Save("FX_Shockwave",       BuildShockwave());
+        n += Save("FX_Meteor_Warning",  BuildMeteorWarning());
+        n += Save("FX_Meteor_Explosion",BuildMeteorExplosion());
+        n += Save("FX_Arrow_Volley",    BuildArrowVolley());
+        n += Save("FX_Arrow_Rain_Zone", BuildArrowRainZone());
+        n += Save("FX_Charge_Impact",   BuildChargeImpact());
+        n += Save("FX_Explosion",       BuildExplosion());
+        n += Save("FX_Summon_Circle",   BuildSummonCircle());
+        n += Save("FX_Sacrifice",       BuildSacrifice());
+        n += Save("FX_Absorb",          BuildAbsorb());
+        n += Save("FX_Battle_Cry",      BuildBattleCry());
+        n += Save("FX_Berserk",         BuildBerserk());
+        n += Save("FX_Shield_Up",       BuildShieldUp());
+        n += Save("FX_Speed_Up",        BuildSpeedUp());
+        n += Save("FX_Heal_Aura",       BuildHealAura());
+        n += Save("FX_Heal_Target",     BuildHealTarget());
+        n += Save("FX_Bind",            BuildBind());
+        n += Save("FX_Poison_Zone",     BuildPoisonZone());
+        n += Save("FX_Blizzard",        BuildBlizzard());
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log($"[EffectPrefabGenerator] ✓ {count} effect prefabs generated → {kSavePath}");
+        Debug.Log($"[EffectPrefabGenerator] ✓ {n} effect prefabs generated → {kSavePath}");
     }
 
-    // ── 저장 헬퍼 ───────────────────────────────────────────
+    // ── 헬퍼 ────────────────────────────────────────────────
 
-    static int Save(string fxKey, GameObject go)
+    static int Save(string key, GameObject go)
     {
-        go.name = fxKey;
-        string path = $"{kSavePath}/{fxKey}.prefab";
-
-        // 이펙트에 맞는 머티리얼 적용 (텍스처 생성 후 실행 필요)
-        if (kEffectMaterials.TryGetValue(fxKey, out var matNames))
-            ApplyMaterials(go, matNames);
-
-        PrefabUtility.SaveAsPrefabAsset(go, path);
+        go.name = key;
+        if (kEffectMaterials.TryGetValue(key, out var mats)) ApplyMaterials(go, mats);
+        PrefabUtility.SaveAsPrefabAsset(go, $"{kSavePath}/{key}.prefab");
         Object.DestroyImmediate(go);
         return 1;
     }
 
-    // 루트 GO 의 ParticleSystemRenderer 를 DFS 순서로 순회하며 머티리얼 할당
-    static void ApplyMaterials(GameObject root, string[] matNames)
+    static void ApplyMaterials(GameObject root, string[] mats)
     {
-        var renderers = root.GetComponentsInChildren<ParticleSystemRenderer>(true);
-        for (int i = 0; i < Mathf.Min(renderers.Length, matNames.Length); i++)
+        var rs = root.GetComponentsInChildren<ParticleSystemRenderer>(true);
+        for (int i = 0; i < Mathf.Min(rs.Length, mats.Length); i++)
         {
-            string p   = $"{kMatPath}/{matNames[i]}.mat";
-            var    mat = AssetDatabase.LoadAssetAtPath<Material>(p);
-            if (mat != null)
-                renderers[i].material = mat;
-            else
-                Debug.LogWarning(
-                    $"[EffectPrefabGenerator] 머티리얼 없음: {p}\n" +
-                    "→ 먼저 'BattleGame/Generate Effect Textures & Materials' 를 실행하세요.");
+            var mat = AssetDatabase.LoadAssetAtPath<Material>($"{kMatPath}/{mats[i]}.mat");
+            if (mat != null) rs[i].material = mat;
+            else Debug.LogWarning($"[EffectPrefabGenerator] 머티리얼 없음: {mats[i]}");
         }
     }
 
-    // ── 공통 헬퍼 ───────────────────────────────────────────
+    static GameObject NewGO() => new GameObject("FX");
 
-    static GameObject NewGO(string name = "FX")
-    {
-        var go = new GameObject(name);
-        return go;
-    }
-
-    /// <summary>GO에 ParticleSystem을 추가하고 기본 Renderer 설정 후 반환한다.</summary>
     static ParticleSystem AddPS(GameObject go)
     {
         var ps = go.AddComponent<ParticleSystem>();
         var rd = go.GetComponent<ParticleSystemRenderer>();
-        rd.renderMode       = ParticleSystemRenderMode.Billboard;
-        rd.sortingLayerName = "Effect";          // 없으면 Default 로 fallback
-        rd.sortingOrder     = 5;
-
-        // 빌트인 Default-Particle 머티리얼 할당 (없으면 핑크색으로 표시됨)
-        var mat = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Particle.mat");
-        if (mat != null) rd.material = mat;
-
+        rd.renderMode = ParticleSystemRenderMode.Billboard;
+        rd.sortingLayerName = "Effect";
+        rd.sortingOrder = 5;
+        var def = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Particle.mat");
+        if (def != null) rd.material = def;
         return ps;
     }
 
     static Color32 C(byte r, byte g, byte b, byte a = 255) => new Color32(r, g, b, a);
 
-    // ─────────────────────────────────────────────────────────────────
-    // ① FX_Slash_Impact  — 칼날 충격 섬광
-    //    HeavyStrike Caster/Target · LeapStrike Target
-    // ─────────────────────────────────────────────────────────────────
+    static AnimationCurve AC3(float v0, float t1, float v1, float v2) =>
+        new AnimationCurve(new Keyframe(0f, v0), new Keyframe(t1, v1), new Keyframe(1f, v2));
+
+    static Gradient MakeGrad(
+        (float t, Color c)[] cols, (float t, float a)[] alps)
+    {
+        var g = new Gradient();
+        var ck = new GradientColorKey[cols.Length];
+        var ak = new GradientAlphaKey[alps.Length];
+        for (int i = 0; i < cols.Length; i++) ck[i] = new GradientColorKey(cols[i].c, cols[i].t);
+        for (int i = 0; i < alps.Length; i++) ak[i] = new GradientAlphaKey(alps[i].a, alps[i].t);
+        g.SetKeys(ck, ak);
+        return g;
+    }
+
+    // ── #01  FX_Slash_Impact ─────────────────────────────────
+    // Root:Slash_Add  c1:Spark_Add  c2:Soft_Add
     static GameObject BuildSlashImpact()
     {
         var go = NewGO();
-        var ps = AddPS(go);
 
-        var main        = ps.main;
-        main.duration           = 0.3f;
-        main.loop               = false;
-        main.startLifetime      = new ParticleSystem.MinMaxCurve(0.15f, 0.3f);
-        main.startSpeed         = new ParticleSystem.MinMaxCurve(4f, 11f);
-        main.startSize          = new ParticleSystem.MinMaxCurve(0.38f, 0.90f);   // +30%
-        main.startColor         = new ParticleSystem.MinMaxGradient(C(255,255,220), C(255,100,20));
-        main.startRotation      = new ParticleSystem.MinMaxCurve(-60f * Mathf.Deg2Rad, 60f * Mathf.Deg2Rad);
-        main.gravityModifier    = 0f;
-        main.simulationSpace    = ParticleSystemSimulationSpace.World;
-        main.maxParticles       = 26;
-
-        var em          = ps.emission;
-        em.rateOverTime = 0f;
-        em.SetBursts(new[] { new ParticleSystem.Burst(0f, 15) });
-
-        var sh          = ps.shape;
-        sh.enabled      = true;
-        sh.shapeType    = ParticleSystemShapeType.Cone;
-        sh.angle        = 40f;
-        sh.radius       = 0.05f;
-
-        var col         = ps.colorOverLifetime;
-        col.enabled     = true;
-        var grad        = new Gradient();
-        grad.SetKeys(
-            new[] { new GradientColorKey(Color.white,           0f),
-                    new GradientColorKey(new Color(1f,0.6f,0f), 0.4f),
-                    new GradientColorKey(new Color(1f,0.1f,0f), 1f) },
-            new[] { new GradientAlphaKey(1f, 0f),
-                    new GradientAlphaKey(0.9f, 0.4f),
-                    new GradientAlphaKey(0f, 1f) });
-        col.color       = new ParticleSystem.MinMaxGradient(grad);
-
-        var sz          = ps.sizeOverLifetime;
-        sz.enabled      = true;
-        sz.size         = new ParticleSystem.MinMaxCurve(1f,
-            new AnimationCurve(new Keyframe(0f,1f), new Keyframe(0.4f,1.3f), new Keyframe(1f,0f)));
-
-        // Layer 2: 흰 코어 플래시 — 순간적인 강렬한 백색 점멸
-        var coreGO = new GameObject("CoreFlash");
-        coreGO.transform.SetParent(go.transform, false);
-        var psCore = AddPS(coreGO);
+        // Root — 칼날 파편 (주황→적)
         {
-            var m = psCore.main;
-            m.duration        = 0.12f;
-            m.loop            = false;
-            m.startLifetime   = new ParticleSystem.MinMaxCurve(0.08f, 0.14f);
-            m.startSpeed      = new ParticleSystem.MinMaxCurve(0f, 1.5f);
-            m.startSize       = new ParticleSystem.MinMaxCurve(0.7f, 1.4f);
-            m.startColor      = new ParticleSystem.MinMaxGradient(C(255,255,255), C(255,230,160));
-            m.gravityModifier = 0f;
-            m.simulationSpace = ParticleSystemSimulationSpace.World;
-            m.maxParticles    = 4;
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.3f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.15f, 0.3f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(6f, 18f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.4f, 1.1f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,255,210), C(255,100,15));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(-0.8f, 0.8f);
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 28;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 18) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Cone; sh.angle = 38f; sh.radius = 0.05f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.35f, new Color(1f,0.55f,0f)), (1f, new Color(1f,0.08f,0f)) },
+                new[] { (0f, 1f), (0.4f, 0.85f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.5f, 0.2f, 1.4f, 0f));
+        }
 
-            var e = psCore.emission;
-            e.rateOverTime = 0f;
-            e.SetBursts(new[] { new ParticleSystem.Burst(0f, 3) });
+        // c1 — 금속 스파크 (흰→금)
+        var c1 = new GameObject("Sparks"); c1.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 0.25f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.08f, 0.22f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(8f, 24f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.03f, 0.11f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,255,255), C(255,220,70));
+            m.gravityModifier = 0.5f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 42;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.02f, 30) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Cone; sh.angle = 55f; sh.radius = 0.05f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, new Color(1f,0.8f,0.1f)) },
+                new[] { (0f, 1f), (1f, 0f) }));
+        }
 
-            var s = psCore.shape;
-            s.enabled   = true;
-            s.shapeType = ParticleSystemShapeType.Sphere;
-            s.radius    = 0.05f;
-
-            var c = psCore.colorOverLifetime;
-            c.enabled   = true;
-            var gCore   = new Gradient();
-            gCore.SetKeys(
-                new[] { new GradientColorKey(Color.white,             0f),
-                        new GradientColorKey(new Color(1f,0.9f,0.5f), 1f) },
-                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0f, 1f) });
-            c.color = new ParticleSystem.MinMaxGradient(gCore);
+        // c2 — 백색 코어 플래시 (Soft_Add)
+        var c2 = new GameObject("Flash"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 0.08f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.06f, 0.12f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0f, 0.5f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(1.2f, 2.6f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,255,255), C(255,240,170));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 3;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 2) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.05f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, Color.white) },
+                new[] { (0f, 1f), (1f, 0f) }));
         }
 
         return go;
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // ② FX_Leap_Land  — 착지 충격파 (LeapStrike Caster)
-    //    슬래시 효과 통합 포함
-    // ─────────────────────────────────────────────────────────────────
+    // ── #02  FX_Leap_Land ────────────────────────────────────
+    // Root:Ring_Add  c1:Smoke_Alpha  c2:Soft_Add
     static GameObject BuildLeapLand()
     {
         var go = NewGO();
 
-        // Layer 1: 방사형 충격파 링
-        var ps1 = AddPS(go);
+        // Root — 방사 링 (청백)
         {
-            var main     = ps1.main;
-            main.duration        = 0.5f;
-            main.loop            = false;
-            main.startLifetime   = new ParticleSystem.MinMaxCurve(0.3f, 0.5f);
-            main.startSpeed      = new ParticleSystem.MinMaxCurve(6f, 15f);
-            main.startSize       = new ParticleSystem.MinMaxCurve(0.25f, 0.63f);  // +25%
-            main.startColor      = new ParticleSystem.MinMaxGradient(C(210,235,255), C(80,170,255));
-            main.gravityModifier = 0f;
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles    = 38;
-
-            var em       = ps1.emission;
-            em.rateOverTime = 0f;
-            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 30) });
-
-            var sh       = ps1.shape;
-            sh.enabled   = true;
-            sh.shapeType = ParticleSystemShapeType.Circle;
-            sh.radius    = 0.1f;
-
-            var col      = ps1.colorOverLifetime;
-            col.enabled  = true;
-            var g        = new Gradient();
-            g.SetKeys(
-                new[] { new GradientColorKey(Color.white,              0f),
-                        new GradientColorKey(new Color(0.3f,0.7f,1f),  0.5f),
-                        new GradientColorKey(new Color(0.1f,0.4f,1f),  1f) },
-                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.8f, 0.4f),
-                        new GradientAlphaKey(0f, 1f) });
-            col.color    = new ParticleSystem.MinMaxGradient(g);
-
-            var sz       = ps1.sizeOverLifetime;
-            sz.enabled   = true;
-            sz.size      = new ParticleSystem.MinMaxCurve(1f,
-                new AnimationCurve(new Keyframe(0f,0.5f), new Keyframe(0.3f,1.2f), new Keyframe(1f,0f)));
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.4f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.28f, 0.5f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(7f, 20f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.28f, 0.75f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(220,240,255), C(55,155,255));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 50;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 38) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 0.1f; sh.radiusThickness = 0f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.5f, new Color(0.3f,0.7f,1f)), (1f, new Color(0.1f,0.35f,1f)) },
+                new[] { (0f, 1f), (0.5f, 0.7f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.3f, 0.25f, 1.35f, 0f));
         }
 
-        // Layer 2: 먼지/흙 파편
-        var child2 = new GameObject("Dust");
-        child2.transform.SetParent(go.transform, false);
-        var ps2 = AddPS(child2);
+        // c1 — 지면 먼지 (Smoke_Alpha)
+        var c1 = new GameObject("Dust"); c1.transform.SetParent(go.transform, false);
         {
-            var main     = ps2.main;
-            main.duration        = 0.5f;
-            main.loop            = false;
-            main.startLifetime   = new ParticleSystem.MinMaxCurve(0.4f, 0.7f);
-            main.startSpeed      = new ParticleSystem.MinMaxCurve(2f, 6f);
-            main.startSize       = new ParticleSystem.MinMaxCurve(0.13f, 0.38f);  // +25%
-            main.startColor      = new ParticleSystem.MinMaxGradient(C(200,175,130), C(240,215,165));
-            main.gravityModifier = 0.5f;
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles    = 20;
-
-            var em       = ps2.emission;
-            em.rateOverTime = 0f;
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.4f, 0.8f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(1.5f, 5f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.3f, 0.85f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(200,175,130), C(245,220,165));
+            m.gravityModifier = 0.2f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 22;
+            var em = ps.emission; em.rateOverTime = 0f;
             em.SetBursts(new[] { new ParticleSystem.Burst(0f, 16) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 0.4f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.8f,0.7f,0.5f)), (1f, new Color(0.5f,0.44f,0.32f)) },
+                new[] { (0f, 0.7f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0f, 0.3f, 1.5f, 0.3f));
+        }
 
-            var sh       = ps2.shape;
-            sh.enabled   = true;
-            sh.shapeType = ParticleSystemShapeType.Circle;
-            sh.radius    = 0.3f;
-
-            var col      = ps2.colorOverLifetime;
-            col.enabled  = true;
-            var g        = new Gradient();
-            g.SetKeys(
-                new[] { new GradientColorKey(new Color(0.8f,0.7f,0.5f), 0f),
-                        new GradientColorKey(new Color(0.6f,0.5f,0.3f), 1f) },
-                new[] { new GradientAlphaKey(0.9f, 0f), new GradientAlphaKey(0f, 1f) });
-            col.color    = new ParticleSystem.MinMaxGradient(g);
+        // c2 — 착지 섬광 (Soft_Add)
+        var c2 = new GameObject("Flash"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 0.1f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.07f, 0.14f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0f, 1f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(1.5f, 3.2f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,255,255), C(200,230,255));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 3;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 2) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.1f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, Color.white) },
+                new[] { (0f, 0.9f), (1f, 0f) }));
         }
 
         return go;
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // ③ FX_Dust_Dash  — 돌진·도약 출발 먼지
-    //    HeavyStrike/LeapStrike/ChargeSoldier Base
-    // ─────────────────────────────────────────────────────────────────
+    // ── #03  FX_Dust_Dash ────────────────────────────────────
+    // Root:Smoke_Alpha
     static GameObject BuildDustDash()
     {
         var go = NewGO();
         var ps = AddPS(go);
-
-        var main        = ps.main;
-        main.duration           = 0.4f;
-        main.loop               = false;
-        main.startLifetime      = new ParticleSystem.MinMaxCurve(0.3f, 0.5f);
-        main.startSpeed         = new ParticleSystem.MinMaxCurve(1f, 4f);
-        main.startSize          = new ParticleSystem.MinMaxCurve(0.19f, 0.44f);  // +25%
-        main.startColor         = new ParticleSystem.MinMaxGradient(C(220,200,155), C(255,235,185));
-        main.gravityModifier    = 0.3f;
-        main.simulationSpace    = ParticleSystemSimulationSpace.World;
-        main.maxParticles       = 25;
-
-        var em          = ps.emission;
-        em.rateOverTime = 0f;
-        em.SetBursts(new[] { new ParticleSystem.Burst(0f, 18) });
-
-        var sh          = ps.shape;
-        sh.enabled      = true;
-        sh.shapeType    = ParticleSystemShapeType.Cone;
-        sh.angle        = 70f;
-        sh.radius       = 0.2f;
-
-        var col         = ps.colorOverLifetime;
-        col.enabled     = true;
-        var g           = new Gradient();
-        g.SetKeys(
-            new[] { new GradientColorKey(new Color(0.9f,0.85f,0.7f), 0f),
-                    new GradientColorKey(new Color(0.7f,0.65f,0.5f), 1f) },
-            new[] { new GradientAlphaKey(0.8f, 0f), new GradientAlphaKey(0f, 1f) });
-        col.color       = new ParticleSystem.MinMaxGradient(g);
-
-        var sz          = ps.sizeOverLifetime;
-        sz.enabled      = true;
-        sz.size         = new ParticleSystem.MinMaxCurve(1f,
-            new AnimationCurve(new Keyframe(0f, 0.5f), new Keyframe(0.3f, 1f), new Keyframe(1f, 0.2f)));
-
+        var m = ps.main;
+        m.duration = 0.4f; m.loop = false;
+        m.startLifetime  = new ParticleSystem.MinMaxCurve(0.3f, 0.6f);
+        m.startSpeed     = new ParticleSystem.MinMaxCurve(2f, 7f);
+        m.startSize      = new ParticleSystem.MinMaxCurve(0.28f, 0.7f);
+        m.startColor     = new ParticleSystem.MinMaxGradient(C(215,195,148), C(255,235,182));
+        m.gravityModifier = 0.25f;
+        m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 30;
+        var em = ps.emission; em.rateOverTime = 0f;
+        em.SetBursts(new[] { new ParticleSystem.Burst(0f, 22) });
+        var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Cone; sh.angle = 65f; sh.radius = 0.25f;
+        var col = ps.colorOverLifetime; col.enabled = true;
+        col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+            new[] { (0f, new Color(0.9f,0.85f,0.68f)), (1f, new Color(0.62f,0.58f,0.42f)) },
+            new[] { (0f, 0.75f), (1f, 0f) }));
+        var sz = ps.sizeOverLifetime; sz.enabled = true;
+        sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.4f, 0.3f, 1.2f, 0.2f));
         return go;
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // ④ FX_Shockwave  — 전방 부채꼴 충격파
-    //    Shockwave Caster
-    // ─────────────────────────────────────────────────────────────────
+    // ── #04  FX_Shockwave ────────────────────────────────────
+    // Root:Spark_Add  c1:Lightning_Add  c2:Ring_Add
+    // 모든 emitter 가 Circle arc(부채꼴) 형태 → ActiveShockwave 가 GO rotation 으로 방향 제어.
+    // 프리팹 기준 arc = 120°, 반경 = 3 (SkillEffectHelper scale 로 조정).
     static GameObject BuildShockwave()
     {
         var go = NewGO();
-        var ps = AddPS(go);
 
-        var main        = ps.main;
-        main.duration           = 0.5f;
-        main.loop               = false;
-        main.startLifetime      = new ParticleSystem.MinMaxCurve(0.3f, 0.6f);
-        main.startSpeed         = new ParticleSystem.MinMaxCurve(7f, 17f);
-        main.startSize          = new ParticleSystem.MinMaxCurve(0.25f, 0.63f);  // +25%
-        main.startColor         = new ParticleSystem.MinMaxGradient(C(210,245,255), C(50,170,255));
-        main.gravityModifier    = 0f;
-        main.simulationSpace    = ParticleSystemSimulationSpace.World;
-        main.maxParticles       = 50;
-
-        var em          = ps.emission;
-        em.rateOverTime = 0f;
-        em.SetBursts(new[] { new ParticleSystem.Burst(0f, 38) });
-
-        var sh          = ps.shape;
-        sh.enabled      = true;
-        sh.shapeType    = ParticleSystemShapeType.Cone;
-        sh.angle        = 45f;
-        sh.radius       = 0.1f;
-
-        var col         = ps.colorOverLifetime;
-        col.enabled     = true;
-        var g           = new Gradient();
-        g.SetKeys(
-            new[] { new GradientColorKey(Color.white,             0f),
-                    new GradientColorKey(new Color(0.2f,0.65f,1f),0.4f),
-                    new GradientColorKey(new Color(0f,0.3f,1f),   1f) },
-            new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.7f, 0.4f), new GradientAlphaKey(0f, 1f) });
-        col.color       = new ParticleSystem.MinMaxGradient(g);
-
-        var sz          = ps.sizeOverLifetime;
-        sz.enabled      = true;
-        sz.size         = new ParticleSystem.MinMaxCurve(1f,
-            new AnimationCurve(new Keyframe(0f,0.4f), new Keyframe(0.5f,1f), new Keyframe(1f,0f)));
-
-        // Layer 2: 크랙 스파크 — 충격파 끝자락에 흩어지는 전기 파편
-        var crackGO = new GameObject("CrackSparks");
-        crackGO.transform.SetParent(go.transform, false);
-        var psCrack = AddPS(crackGO);
+        // Root — 전방 부채꼴 에너지 입자 (Spark_Add) — Circle arc 120°
         {
-            var m = psCrack.main;
-            m.duration        = 0.4f;
-            m.loop            = false;
-            m.startLifetime   = new ParticleSystem.MinMaxCurve(0.1f, 0.3f);
-            m.startSpeed      = new ParticleSystem.MinMaxCurve(10f, 22f);
-            m.startSize       = new ParticleSystem.MinMaxCurve(0.06f, 0.16f);
-            m.startColor      = new ParticleSystem.MinMaxGradient(C(255,255,255), C(150,220,255));
-            m.gravityModifier = 0f;
-            m.simulationSpace = ParticleSystemSimulationSpace.World;
-            m.maxParticles    = 30;
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.7f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.25f, 0.60f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(5f, 16f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.2f, 0.65f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(220,250,255), C(28,175,255));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 80;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 60) });
+            // Circle arc: XY 평면에서 전방 120° 부채꼴로 방출
+            var sh = ps.shape; sh.enabled = true;
+            sh.shapeType = ParticleSystemShapeType.Circle;
+            sh.radius = 0.2f; sh.radiusThickness = 1f;
+            sh.arc = 120f; sh.arcMode = ParticleSystemShapeMultiModeValue.Random;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.4f, new Color(0.2f,0.7f,1f)), (1f, new Color(0f,0.28f,1f)) },
+                new[] { (0f, 1f), (0.4f, 0.7f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.4f, 0.5f, 1.15f, 0.05f));
+        }
 
-            var e = psCrack.emission;
-            e.rateOverTime = 0f;
-            e.SetBursts(new[] { new ParticleSystem.Burst(0.05f, 20) });
+        // c1 — 번개 파편 (Lightning_Add) — 좁은 90° 집중
+        var c1 = new GameObject("Lightning"); c1.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.1f, 0.28f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(10f, 28f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.15f, 0.5f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,255,255), C(140,225,255));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 30;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.04f, 22) });
+            var sh = ps.shape; sh.enabled = true;
+            sh.shapeType = ParticleSystemShapeType.Circle;
+            sh.radius = 0.3f; sh.radiusThickness = 1f;
+            sh.arc = 90f; sh.arcMode = ParticleSystemShapeMultiModeValue.Random;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.5f, new Color(0.4f,0.8f,1f)), (1f, new Color(0.1f,0.3f,1f)) },
+                new[] { (0f, 1f), (0.4f, 0.6f), (1f, 0f) }));
+        }
 
-            var s = psCrack.shape;
-            s.enabled   = true;
-            s.shapeType = ParticleSystemShapeType.Cone;
-            s.angle     = 50f;
-            s.radius    = 0.5f;
-
-            var c = psCrack.colorOverLifetime;
-            c.enabled = true;
-            var gCrack = new Gradient();
-            gCrack.SetKeys(
-                new[] { new GradientColorKey(Color.white,              0f),
-                        new GradientColorKey(new Color(0.3f,0.7f,1f),  0.5f),
-                        new GradientColorKey(new Color(0f,0.2f,0.8f),  1f) },
-                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.7f, 0.4f), new GradientAlphaKey(0f, 1f) });
-            c.color = new ParticleSystem.MinMaxGradient(gCrack);
+        // c2 — 퍼져나가는 충격파 (Ring_Add) — 넓은 140° 부채꼴 파형
+        var c2 = new GameObject("Ring"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 0.65f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.28f, 0.55f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(7f, 18f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.2f, 0.55f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(200,240,255), C(75,195,255));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 60;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.03f, 48) });
+            var sh = ps.shape; sh.enabled = true;
+            sh.shapeType = ParticleSystemShapeType.Circle;
+            sh.radius = 0.35f; sh.radiusThickness = 1f;
+            sh.arc = 140f; sh.arcMode = ParticleSystemShapeMultiModeValue.Random;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.5f, new Color(0.3f,0.7f,1f)), (1f, new Color(0f,0.2f,0.8f)) },
+                new[] { (0f, 0.9f), (0.5f, 0.5f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.3f, 0.5f, 1.4f, 0.1f));
         }
 
         return go;
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // ⑤ FX_Meteor_Warning  — 착탄 경고 마커
-    //    Meteor Base  (EffectDespawnDelay = delay + 여유)
-    // ─────────────────────────────────────────────────────────────────
+    // ── #05  FX_Meteor_Warning ───────────────────────────────
+    // Root:Flame_Add(loop)  c1:Ring_Add(loop)
     static GameObject BuildMeteorWarning()
     {
         var go = NewGO();
-        var ps = AddPS(go);
 
-        var main        = ps.main;
-        main.duration           = 3f;      // SO의 EffectDespawnDelay 로 실제 despawn 제어
-        main.loop               = true;
-        main.startLifetime      = new ParticleSystem.MinMaxCurve(0.5f, 1f);
-        main.startSpeed         = new ParticleSystem.MinMaxCurve(0f, 0.5f);
-        main.startSize          = new ParticleSystem.MinMaxCurve(0.13f, 0.38f);  // +25%
-        main.startColor         = new ParticleSystem.MinMaxGradient(C(255,60,10), C(255,210,30));
-        main.gravityModifier    = 0f;
-        main.simulationSpace    = ParticleSystemSimulationSpace.World;
-        main.maxParticles       = 75;
+        // Root — 불꽃 원형 경고 (loop)
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 2f; m.loop = true;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.5f, 1.2f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0.2f, 1.5f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.2f, 0.7f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,200,28), C(255,45,8));
+            m.gravityModifier = -0.1f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 80;
+            var em = ps.emission; em.rateOverTime = 35f;
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 1.4f; sh.radiusThickness = 0.06f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(1f,0.85f,0.18f)), (0.5f, new Color(1f,0.22f,0f)), (1f, new Color(0.4f,0f,0f)) },
+                new[] { (0f, 1f), (0.5f, 0.8f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0f, 0.4f, 1.3f, 0.2f));
+        }
 
-        var em          = ps.emission;
-        em.rateOverTime = 25f;
-
-        var sh          = ps.shape;
-        sh.enabled      = true;
-        sh.shapeType    = ParticleSystemShapeType.Circle;
-        sh.radius       = 1.5f;
-        sh.radiusThickness = 0.1f;         // 원 테두리에만 스폰
-
-        var col         = ps.colorOverLifetime;
-        col.enabled     = true;
-        var g           = new Gradient();
-        g.SetKeys(
-            new[] { new GradientColorKey(new Color(1f,0.8f,0.1f), 0f),
-                    new GradientColorKey(new Color(1f,0.2f,0f),  0.6f),
-                    new GradientColorKey(new Color(0.4f,0f,0f),  1f) },
-            new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.7f, 0.5f), new GradientAlphaKey(0f, 1f) });
-        col.color       = new ParticleSystem.MinMaxGradient(g);
+        // c1 — 맥박 링 (Ring_Add, loop)
+        var c1 = new GameObject("PulseRing"); c1.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 1f; m.loop = true;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.4f, 0.8f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(3f, 9f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.1f, 0.35f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,170,0), C(255,70,0));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 60;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 40), new ParticleSystem.Burst(0.5f, 40) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 0.1f; sh.radiusThickness = 0f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.4f, new Color(1f,0.4f,0f)), (1f, new Color(1f,0f,0f)) },
+                new[] { (0f, 0.8f), (0.5f, 0.4f), (1f, 0f) }));
+        }
 
         return go;
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // ⑥ FX_Meteor_Explosion  — 메테오 착탄 폭발
-    //    Meteor Target
-    // ─────────────────────────────────────────────────────────────────
+    // ── #06  FX_Meteor_Explosion ─────────────────────────────
+    // Root:Flame_Add  c1:Smoke_Alpha  c2:Ring_Add  c3:Shard_Add
     static GameObject BuildMeteorExplosion()
     {
         var go = NewGO();
 
-        // Layer 1: 핵심 폭발
-        var ps1 = AddPS(go);
+        // Root — 거대 화염 (Flame_Add)
         {
-            var main     = ps1.main;
-            main.duration        = 0.6f;
-            main.loop            = false;
-            main.startLifetime   = new ParticleSystem.MinMaxCurve(0.5f, 1.0f);
-            main.startSpeed      = new ParticleSystem.MinMaxCurve(5f, 16f);
-            main.startSize       = new ParticleSystem.MinMaxCurve(0.4f, 1.2f);
-            main.startColor      = new ParticleSystem.MinMaxGradient(C(255,220,80), C(255,80,20));
-            main.gravityModifier = -0.2f;
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles    = 60;
-
-            var em       = ps1.emission;
-            em.rateOverTime = 0f;
-            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 40) });
-
-            var sh       = ps1.shape;
-            sh.enabled   = true;
-            sh.shapeType = ParticleSystemShapeType.Sphere;
-            sh.radius    = 0.2f;
-
-            var col      = ps1.colorOverLifetime;
-            col.enabled  = true;
-            var g        = new Gradient();
-            g.SetKeys(
-                new[] { new GradientColorKey(new Color(1f,0.95f,0.5f), 0f),
-                        new GradientColorKey(new Color(1f,0.4f,0f),   0.4f),
-                        new GradientColorKey(new Color(0.3f,0.1f,0f), 1f) },
-                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.8f, 0.4f), new GradientAlphaKey(0f, 1f) });
-            col.color    = new ParticleSystem.MinMaxGradient(g);
-
-            var sz       = ps1.sizeOverLifetime;
-            sz.enabled   = true;
-            sz.size      = new ParticleSystem.MinMaxCurve(1f,
-                new AnimationCurve(new Keyframe(0f,0.3f), new Keyframe(0.2f,1.2f), new Keyframe(1f,0f)));
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.6f, 1.4f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(6f, 22f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(1.2f, 3.8f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,240,95), C(255,65,8));
+            m.gravityModifier = -0.3f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 70;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 55) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.3f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.3f, new Color(1f,0.5f,0f)), (1f, new Color(0.22f,0.04f,0f)) },
+                new[] { (0f, 1f), (0.35f, 0.85f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.1f, 0.2f, 1.55f, 0.1f));
         }
 
-        // Layer 2: 연기
-        var child2 = new GameObject("Smoke");
-        child2.transform.SetParent(go.transform, false);
-        var ps2 = AddPS(child2);
+        // c1 — 검은 연기 (Smoke_Alpha)
+        var c1 = new GameObject("Smoke"); c1.transform.SetParent(go.transform, false);
         {
-            var main     = ps2.main;
-            main.duration        = 0.6f;
-            main.loop            = false;
-            main.startLifetime   = new ParticleSystem.MinMaxCurve(0.8f, 1.5f);
-            main.startSpeed      = new ParticleSystem.MinMaxCurve(1f, 4f);
-            main.startSize       = new ParticleSystem.MinMaxCurve(0.6f, 1.8f);   // +20%
-            main.startColor      = new ParticleSystem.MinMaxGradient(C(90,78,65,200), C(55,50,43,180));
-            main.gravityModifier = -0.5f;
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles    = 24;
-
-            var em       = ps2.emission;
-            em.rateOverTime = 0f;
-            em.SetBursts(new[] { new ParticleSystem.Burst(0.05f, 16) });
-
-            var sh       = ps2.shape;
-            sh.enabled   = true;
-            sh.shapeType = ParticleSystemShapeType.Sphere;
-            sh.radius    = 0.5f;
-
-            var col      = ps2.colorOverLifetime;
-            col.enabled  = true;
-            var g        = new Gradient();
-            g.SetKeys(
-                new[] { new GradientColorKey(new Color(0.45f,0.38f,0.3f), 0f),
-                        new GradientColorKey(new Color(0.2f,0.17f,0.13f), 1f) },
-                new[] { new GradientAlphaKey(0.85f, 0f), new GradientAlphaKey(0f, 1f) });
-            col.color    = new ParticleSystem.MinMaxGradient(g);
-
-            var sz       = ps2.sizeOverLifetime;
-            sz.enabled   = true;
-            sz.size      = new ParticleSystem.MinMaxCurve(1f,
-                new AnimationCurve(new Keyframe(0f,0.5f), new Keyframe(0.5f,1.5f), new Keyframe(1f,2f)));
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 0.6f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.8f, 1.8f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(2f, 7f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(1f, 2.8f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(55,38,28), C(115,85,55));
+            m.gravityModifier = -0.15f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 25;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.1f, 18) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.5f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.28f,0.19f,0.13f)), (1f, new Color(0.13f,0.09f,0.06f)) },
+                new[] { (0f, 0.8f), (0.4f, 0.5f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.2f, 0.4f, 1.5f, 0.4f));
         }
 
-        // Layer 3: 충격파 링 — 착탄 순간 방사형으로 퍼지는 링
-        var child3 = new GameObject("ShockRing");
-        child3.transform.SetParent(go.transform, false);
-        var ps3 = AddPS(child3);
+        // c2 — 바닥 충격 링 (Ring_Add)
+        var c2 = new GameObject("ShockRing"); c2.transform.SetParent(go.transform, false);
         {
-            var m = ps3.main;
-            m.duration        = 0.3f;
-            m.loop            = false;
-            m.startLifetime   = new ParticleSystem.MinMaxCurve(0.2f, 0.35f);
-            m.startSpeed      = new ParticleSystem.MinMaxCurve(8f, 18f);
-            m.startSize       = new ParticleSystem.MinMaxCurve(0.3f, 0.7f);
-            m.startColor      = new ParticleSystem.MinMaxGradient(C(255,200,80), C(255,120,20));
-            m.gravityModifier = 0f;
-            m.simulationSpace = ParticleSystemSimulationSpace.World;
-            m.maxParticles    = 30;
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 0.4f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.28f, 0.5f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(12f, 32f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.28f, 0.8f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,220,95), C(255,90,0));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 60;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 52) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 0.2f; sh.radiusThickness = 0f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.4f, new Color(1f,0.5f,0f)), (1f, new Color(0.5f,0.08f,0f)) },
+                new[] { (0f, 1f), (0.4f, 0.6f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.1f, 0.3f, 1.45f, 0f));
+        }
 
-            var e = ps3.emission;
-            e.rateOverTime = 0f;
-            e.SetBursts(new[] { new ParticleSystem.Burst(0f, 24) });
-
-            var s = ps3.shape;
-            s.enabled          = true;
-            s.shapeType        = ParticleSystemShapeType.Circle;
-            s.radius           = 0.1f;
-            s.radiusThickness  = 0f;   // 링 외곽에서만 스폰
-
-            var c = ps3.colorOverLifetime;
-            c.enabled = true;
-            var gRing = new Gradient();
-            gRing.SetKeys(
-                new[] { new GradientColorKey(new Color(1f,0.9f,0.5f), 0f),
-                        new GradientColorKey(new Color(1f,0.5f,0f),   0.4f),
-                        new GradientColorKey(new Color(0.6f,0.1f,0f), 1f) },
-                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.6f, 0.5f), new GradientAlphaKey(0f, 1f) });
-            c.color = new ParticleSystem.MinMaxGradient(gRing);
-
-            var sz = ps3.sizeOverLifetime;
-            sz.enabled = true;
-            sz.size    = new ParticleSystem.MinMaxCurve(1f,
-                new AnimationCurve(new Keyframe(0f,0.3f), new Keyframe(0.3f,1.2f), new Keyframe(1f,0f)));
+        // c3 — 불꽃 파편 (Shard_Add)
+        var c3 = new GameObject("Debris"); c3.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c3);
+            var m = ps.main;
+            m.duration = 0.4f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.3f, 0.8f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(6f, 20f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.1f, 0.42f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,175,55), C(175,55,8));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
+            m.gravityModifier = 1.1f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 35;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 26) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.3f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(1f,0.68f,0.2f)), (1f, new Color(0.45f,0.08f,0f)) },
+                new[] { (0f, 1f), (0.5f, 0.7f), (1f, 0f) }));
         }
 
         return go;
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // ⑦ FX_Arrow_Volley  — 일제 사격 발사
-    //    VolleyFire Caster
-    // ─────────────────────────────────────────────────────────────────
+    // ── #07  FX_Arrow_Volley ─────────────────────────────────
+    // Root:Arrow_Add  c1:Spark_Add
     static GameObject BuildArrowVolley()
     {
         var go = NewGO();
-        var ps = AddPS(go);
 
-        var main        = ps.main;
-        main.duration           = 0.3f;
-        main.loop               = false;
-        main.startLifetime      = new ParticleSystem.MinMaxCurve(0.2f, 0.4f);
-        main.startSpeed         = new ParticleSystem.MinMaxCurve(10f, 22f);
-        main.startSize          = new ParticleSystem.MinMaxCurve(0.13f, 0.32f);  // +28%
-        main.startColor         = new ParticleSystem.MinMaxGradient(C(255,245,180), C(255,190,30));
-        main.gravityModifier    = 0f;
-        main.simulationSpace    = ParticleSystemSimulationSpace.World;
-        main.maxParticles       = 26;
+        // Root — 화살 궤적 (황금)
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.4f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.15f, 0.3f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(10f, 26f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.28f, 0.7f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,220,75), C(195,135,18));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(-0.2f, 0.2f);
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 30;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 20) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Cone; sh.angle = 18f; sh.radius = 0.3f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(1f,0.95f,0.58f)), (0.5f, new Color(1f,0.68f,0.1f)), (1f, new Color(0.68f,0.28f,0f)) },
+                new[] { (0f, 0.9f), (0.5f, 0.7f), (1f, 0f) }));
+        }
 
-        var em          = ps.emission;
-        em.rateOverTime = 0f;
-        em.SetBursts(new[] { new ParticleSystem.Burst(0f, 15) });
-
-        var sh          = ps.shape;
-        sh.enabled      = true;
-        sh.shapeType    = ParticleSystemShapeType.Cone;
-        sh.angle        = 25f;
-        sh.radius       = 0.05f;
-
-        var col         = ps.colorOverLifetime;
-        col.enabled     = true;
-        var g           = new Gradient();
-        g.SetKeys(
-            new[] { new GradientColorKey(Color.white,              0f),
-                    new GradientColorKey(new Color(1f,0.85f,0.2f), 0.3f),
-                    new GradientColorKey(new Color(1f,0.55f,0f),   1f) },
-            new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 0.7f), new GradientAlphaKey(0f, 1f) });
-        col.color       = new ParticleSystem.MinMaxGradient(g);
+        // c1 — 충격 스파크 (Spark_Add)
+        var c1 = new GameObject("ImpactSparks"); c1.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 0.25f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.07f, 0.2f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(5f, 16f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.03f, 0.12f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,255,200), C(255,195,45));
+            m.gravityModifier = 0.5f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 40;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.05f, 30) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.9f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, new Color(1f,0.75f,0.1f)) },
+                new[] { (0f, 1f), (1f, 0f) }));
+        }
 
         return go;
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // ⑧ FX_Arrow_Rain_Zone  — 화살비 낙하 영역  (3레이어)
-    //    ArrowRain Base  (지속 재생)
-    //    Layer 1 (root)  : Stretch 렌더 — 낙하하는 화살 실루엣
-    //    Layer 2 Impact  : 지면 착탄 스파크 버스트
-    //    Layer 3 AoeGlow : 영역 표시 글로우
-    // ─────────────────────────────────────────────────────────────────
+    // ── #08  FX_Arrow_Rain_Zone ──────────────────────────────
+    // Root:Arrow_Add(loop)  c1:Star_Add(loop)  c2:Soft_Add(loop)
     static GameObject BuildArrowRainZone()
     {
         var go = NewGO();
 
-        // ── Layer 1: 낙하 화살 (Stretch renderMode로 화살 실루엣 구현)
-        var ps1 = AddPS(go);
+        // Root — 낙하 화살 (loop)
         {
-            var rd = go.GetComponent<ParticleSystemRenderer>();
-            rd.renderMode       = ParticleSystemRenderMode.Stretch;
-            rd.velocityScale    = 0.12f;   // 속도에 비례한 늘임 정도
-            rd.lengthScale      = 1.8f;    // 추가 길이 배율
-            rd.sortingLayerName = "Effect";
-            rd.sortingOrder     = 5;
-
-            var m = ps1.main;
-            m.duration        = 5f;
-            m.loop            = true;
-            m.startLifetime   = new ParticleSystem.MinMaxCurve(0.35f, 0.6f);
-            m.startSpeed      = new ParticleSystem.MinMaxCurve(10f, 16f);
-            m.startSize       = new ParticleSystem.MinMaxCurve(0.10f, 0.22f);
-            m.startColor      = new ParticleSystem.MinMaxGradient(C(230,200,100), C(180,145,60));
-            m.gravityModifier = 2.0f;
-            m.startRotation   = new ParticleSystem.MinMaxCurve(170f * Mathf.Deg2Rad, 190f * Mathf.Deg2Rad);
-            m.simulationSpace = ParticleSystemSimulationSpace.World;
-            m.maxParticles    = 100;
-
-            var e = ps1.emission;
-            e.rateOverTime = 35f;
-
-            var s = ps1.shape;
-            s.enabled   = true;
-            s.shapeType = ParticleSystemShapeType.Circle;
-            s.radius    = 2f;
-
-            // 위에서 아래로 낙하하도록 시작 위치를 위로 오프셋
-            go.transform.localPosition = new Vector3(0f, 3.5f, 0f);
-
-            var col = ps1.colorOverLifetime;
-            col.enabled = true;
-            var g1 = new Gradient();
-            g1.SetKeys(
-                new[] { new GradientColorKey(new Color(1f,0.92f,0.5f), 0f),
-                        new GradientColorKey(new Color(0.75f,0.58f,0.2f), 0.7f),
-                        new GradientColorKey(new Color(0.5f,0.35f,0.1f), 1f) },
-                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 0.75f), new GradientAlphaKey(0f, 1f) });
-            col.color = new ParticleSystem.MinMaxGradient(g1);
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 3f; m.loop = true;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.5f, 1.1f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(8f, 20f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.28f, 0.7f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,215,75), C(200,128,18));
+            m.gravityModifier = 1.5f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 60;
+            var em = ps.emission; em.rateOverTime = 25f;
+            var sh = ps.shape; sh.enabled = true;
+            sh.shapeType = ParticleSystemShapeType.Rectangle; sh.scale = new Vector3(3f, 3f, 0f);
+            sh.position  = new Vector3(0f, 4f, 0f);
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(1f,0.9f,0.5f)), (1f, new Color(0.8f,0.5f,0.1f)) },
+                new[] { (0f, 0.9f), (0.7f, 0.6f), (1f, 0f) }));
         }
 
-        // ── Layer 2: 착탄 스파크 — 화살이 지면에 꽂히는 임팩트 이펙트
-        var impactGO = new GameObject("Impact");
-        impactGO.transform.SetParent(go.transform, false);
-        impactGO.transform.localPosition = new Vector3(0f, -3.5f, 0f);  // 지면 높이
-        var ps2 = AddPS(impactGO);
+        // c1 — 지면 충격 별 (Star_Add, loop)
+        var c1 = new GameObject("GroundStars"); c1.transform.SetParent(go.transform, false);
         {
-            var m = ps2.main;
-            m.duration        = 5f;
-            m.loop            = true;
-            m.startLifetime   = new ParticleSystem.MinMaxCurve(0.1f, 0.25f);
-            m.startSpeed      = new ParticleSystem.MinMaxCurve(2f, 6f);
-            m.startSize       = new ParticleSystem.MinMaxCurve(0.05f, 0.14f);
-            m.startColor      = new ParticleSystem.MinMaxGradient(C(255,245,180), C(255,180,50));
-            m.gravityModifier = 0.8f;
-            m.simulationSpace = ParticleSystemSimulationSpace.World;
-            m.maxParticles    = 80;
-
-            var e = ps2.emission;
-            e.rateOverTime = 25f;
-
-            var s = ps2.shape;
-            s.enabled   = true;
-            s.shapeType = ParticleSystemShapeType.Circle;
-            s.radius    = 2f;
-
-            var col = ps2.colorOverLifetime;
-            col.enabled = true;
-            var g2 = new Gradient();
-            g2.SetKeys(
-                new[] { new GradientColorKey(Color.white,             0f),
-                        new GradientColorKey(new Color(1f,0.7f,0.1f), 0.4f),
-                        new GradientColorKey(new Color(0.6f,0.3f,0f), 1f) },
-                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.8f, 0.3f), new GradientAlphaKey(0f, 1f) });
-            col.color = new ParticleSystem.MinMaxGradient(g2);
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 3f; m.loop = true;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.18f, 0.38f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(2f, 6f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.14f, 0.42f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,240,148), C(255,175,28));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 50;
+            var em = ps.emission; em.rateOverTime = 20f;
+            var sh = ps.shape; sh.enabled = true;
+            sh.shapeType = ParticleSystemShapeType.Rectangle; sh.scale = new Vector3(3f, 3f, 0f);
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.5f, new Color(1f,0.75f,0.1f)), (1f, new Color(1f,0.38f,0f)) },
+                new[] { (0f, 1f), (0.5f, 0.5f), (1f, 0f) }));
         }
 
-        // ── Layer 3: AoeGlow — 영역을 표시하는 지면 글로우
-        var glowGO = new GameObject("AoeGlow");
-        glowGO.transform.SetParent(go.transform, false);
-        glowGO.transform.localPosition = new Vector3(0f, -3.5f, 0f);
-        var ps3 = AddPS(glowGO);
+        // c2 — 황금 글로우 (Soft_Add, loop)
+        var c2 = new GameObject("GoldGlow"); c2.transform.SetParent(go.transform, false);
         {
-            var m = ps3.main;
-            m.duration        = 5f;
-            m.loop            = true;
-            m.startLifetime   = new ParticleSystem.MinMaxCurve(0.6f, 1.2f);
-            m.startSpeed      = new ParticleSystem.MinMaxCurve(0f, 0.3f);
-            m.startSize       = new ParticleSystem.MinMaxCurve(0.4f, 0.9f);
-            m.startColor      = new ParticleSystem.MinMaxGradient(
-                new Color(1f, 0.85f, 0.2f, 0.4f),
-                new Color(1f, 0.6f, 0.1f, 0.25f));
-            m.gravityModifier = 0f;
-            m.simulationSpace = ParticleSystemSimulationSpace.World;
-            m.maxParticles    = 40;
-
-            var e = ps3.emission;
-            e.rateOverTime = 12f;
-
-            var s = ps3.shape;
-            s.enabled   = true;
-            s.shapeType = ParticleSystemShapeType.Circle;
-            s.radius    = 2f;
-
-            var col = ps3.colorOverLifetime;
-            col.enabled = true;
-            var g3 = new Gradient();
-            g3.SetKeys(
-                new[] { new GradientColorKey(new Color(1f,0.9f,0.4f), 0f),
-                        new GradientColorKey(new Color(1f,0.65f,0.1f),0.5f),
-                        new GradientColorKey(new Color(0.8f,0.4f,0f), 1f) },
-                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.5f, 0.2f),
-                        new GradientAlphaKey(0.35f, 0.7f), new GradientAlphaKey(0f, 1f) });
-            col.color = new ParticleSystem.MinMaxGradient(g3);
-
-            var sz = ps3.sizeOverLifetime;
-            sz.enabled = true;
-            sz.size    = new ParticleSystem.MinMaxCurve(1f,
-                new AnimationCurve(new Keyframe(0f,0.3f), new Keyframe(0.4f,1f), new Keyframe(1f,1.3f)));
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 3f; m.loop = true;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.5f, 1.2f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0f, 0.5f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.5f, 1.6f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,220,95,175), C(255,145,28,115));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 18;
+            var em = ps.emission; em.rateOverTime = 8f;
+            var sh = ps.shape; sh.enabled = true;
+            sh.shapeType = ParticleSystemShapeType.Rectangle; sh.scale = new Vector3(3f, 3f, 0f);
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(1f,0.85f,0.28f)), (1f, new Color(1f,0.58f,0.1f)) },
+                new[] { (0f, 0.5f), (1f, 0f) }));
         }
 
         return go;
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // ⑨ FX_Charge_Impact  — 병사 충돌 임팩트
-    //    ChargeSoldier Target
-    // ─────────────────────────────────────────────────────────────────
+    // ── #09  FX_Charge_Impact ────────────────────────────────
+    // Root:Star_Add  c1:Ring_Add  c2:Spark_Add
     static GameObject BuildChargeImpact()
     {
         var go = NewGO();
-        var ps = AddPS(go);
 
-        var main        = ps.main;
-        main.duration           = 0.4f;
-        main.loop               = false;
-        main.startLifetime      = new ParticleSystem.MinMaxCurve(0.2f, 0.4f);
-        main.startSpeed         = new ParticleSystem.MinMaxCurve(5f, 13f);
-        main.startSize          = new ParticleSystem.MinMaxCurve(0.19f, 0.50f);  // +25%
-        main.startColor         = new ParticleSystem.MinMaxGradient(C(255,215,120), C(255,140,20));
-        main.gravityModifier    = 0.2f;
-        main.simulationSpace    = ParticleSystemSimulationSpace.World;
-        main.maxParticles       = 32;
+        // Root — 별 폭발 (황금백)
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.4f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.2f, 0.45f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(5f, 16f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.4f, 1.3f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,255,215), C(255,195,55));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 20;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 14) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.1f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.4f, new Color(1f,0.85f,0.2f)), (1f, new Color(0.6f,0.28f,0f)) },
+                new[] { (0f, 1f), (0.4f, 0.8f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.1f, 0.15f, 1.4f, 0f));
+        }
 
-        var em          = ps.emission;
-        em.rateOverTime = 0f;
-        em.SetBursts(new[] { new ParticleSystem.Burst(0f, 22) });
+        // c1 — 충격 링 (Ring_Add)
+        var c1 = new GameObject("Ring"); c1.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 0.4f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.2f, 0.35f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(9f, 22f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.18f, 0.52f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,240,175), C(200,148,45));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 52;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 44) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 0.1f; sh.radiusThickness = 0f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.4f, new Color(1f,0.75f,0.15f)), (1f, new Color(0.6f,0.24f,0f)) },
+                new[] { (0f, 0.9f), (0.5f, 0.5f), (1f, 0f) }));
+        }
 
-        var sh          = ps.shape;
-        sh.enabled      = true;
-        sh.shapeType    = ParticleSystemShapeType.Cone;
-        sh.angle        = 55f;
-        sh.radius       = 0.15f;
-
-        var col         = ps.colorOverLifetime;
-        col.enabled     = true;
-        var g           = new Gradient();
-        g.SetKeys(
-            new[] { new GradientColorKey(Color.white,             0f),
-                    new GradientColorKey(new Color(1f,0.7f,0.2f), 0.4f),
-                    new GradientColorKey(new Color(0.8f,0.4f,0f), 1f) },
-            new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.7f, 0.5f), new GradientAlphaKey(0f, 1f) });
-        col.color       = new ParticleSystem.MinMaxGradient(g);
-
-        var sz          = ps.sizeOverLifetime;
-        sz.enabled      = true;
-        sz.size         = new ParticleSystem.MinMaxCurve(1f,
-            new AnimationCurve(new Keyframe(0f, 0.4f), new Keyframe(0.3f, 1.1f), new Keyframe(1f, 0f)));
+        // c2 — 산란 스파크 (Spark_Add)
+        var c2 = new GameObject("Sparks"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 0.3f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.1f, 0.3f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(6f, 20f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.03f, 0.12f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,255,195), C(255,188,38));
+            m.gravityModifier = 0.6f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 45;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.02f, 34) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.2f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, new Color(1f,0.7f,0.1f)) },
+                new[] { (0f, 1f), (1f, 0f) }));
+        }
 
         return go;
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // ⑩ FX_Explosion  — 자폭 착탄 폭발
-    //    SuicideSoldier Target
-    // ─────────────────────────────────────────────────────────────────
+    // ── #10  FX_Explosion ────────────────────────────────────
+    // Root:Flame_Add  c1:Shard_Add  c2:Smoke_Alpha  c3:Ring_Add
     static GameObject BuildExplosion()
     {
         var go = NewGO();
 
-        // Layer 1: 주 폭발
-        var ps1 = AddPS(go);
+        // Root — 화염 폭발
         {
-            var main     = ps1.main;
-            main.duration        = 0.5f;
-            main.loop            = false;
-            main.startLifetime   = new ParticleSystem.MinMaxCurve(0.4f, 0.9f);
-            main.startSpeed      = new ParticleSystem.MinMaxCurve(5f, 17f);
-            main.startSize       = new ParticleSystem.MinMaxCurve(0.38f, 1.25f);  // +25%
-            main.startColor      = new ParticleSystem.MinMaxGradient(C(255,240,80), C(255,60,5));
-            main.gravityModifier = -0.1f;
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles    = 62;
-
-            var em       = ps1.emission;
-            em.rateOverTime = 0f;
-            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 44) });
-
-            var sh       = ps1.shape;
-            sh.enabled   = true;
-            sh.shapeType = ParticleSystemShapeType.Sphere;
-            sh.radius    = 0.15f;
-
-            var col      = ps1.colorOverLifetime;
-            col.enabled  = true;
-            var g        = new Gradient();
-            g.SetKeys(
-                new[] { new GradientColorKey(new Color(1f,0.95f,0.5f), 0f),
-                        new GradientColorKey(new Color(1f,0.25f,0f),   0.3f),
-                        new GradientColorKey(new Color(0.15f,0.05f,0f),1f) },
-                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.9f, 0.3f), new GradientAlphaKey(0f, 1f) });
-            col.color    = new ParticleSystem.MinMaxGradient(g);
-
-            var sz       = ps1.sizeOverLifetime;
-            sz.enabled   = true;
-            sz.size      = new ParticleSystem.MinMaxCurve(1f,
-                new AnimationCurve(new Keyframe(0f,0.2f), new Keyframe(0.15f,1.3f), new Keyframe(1f,0f)));
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.5f, 1.2f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(5f, 18f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.8f, 2.6f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,228,88), C(255,55,8));
+            m.gravityModifier = -0.2f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 55;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 42) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.2f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.3f, new Color(1f,0.44f,0f)), (1f, new Color(0.2f,0.04f,0f)) },
+                new[] { (0f, 1f), (0.35f, 0.8f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.1f, 0.2f, 1.45f, 0.1f));
         }
 
-        // Layer 2: 불꽃 파편
-        var child2 = new GameObject("Sparks");
-        child2.transform.SetParent(go.transform, false);
-        var ps2 = AddPS(child2);
+        // c1 — 파편 (Shard_Add)
+        var c1 = new GameObject("Debris"); c1.transform.SetParent(go.transform, false);
         {
-            var main     = ps2.main;
-            main.duration        = 0.5f;
-            main.loop            = false;
-            main.startLifetime   = new ParticleSystem.MinMaxCurve(0.5f, 1.2f);
-            main.startSpeed      = new ParticleSystem.MinMaxCurve(7f, 22f);
-            main.startSize       = new ParticleSystem.MinMaxCurve(0.06f, 0.19f);  // +25%
-            main.startColor      = new ParticleSystem.MinMaxGradient(C(255,255,180), C(255,110,0));
-            main.gravityModifier = 1f;
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles    = 40;
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 0.4f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.28f, 0.7f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(5f, 18f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.1f, 0.42f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,158,38), C(158,48,8));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
+            m.gravityModifier = 1.2f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 30;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 22) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.25f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(1f,0.58f,0.14f)), (1f, new Color(0.42f,0.09f,0f)) },
+                new[] { (0f, 1f), (0.5f, 0.7f), (1f, 0f) }));
+        }
 
-            var em       = ps2.emission;
-            em.rateOverTime = 0f;
-            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 30) });
+        // c2 — 검은 연기 (Smoke_Alpha)
+        var c2 = new GameObject("Smoke"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.6f, 1.3f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(1.5f, 5f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.7f, 2.1f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(48,33,22), C(98,68,42));
+            m.gravityModifier = -0.1f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 20;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.1f, 14) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.4f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.24f,0.17f,0.11f)), (1f, new Color(0.11f,0.07f,0.04f)) },
+                new[] { (0f, 0.75f), (0.4f, 0.42f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.2f, 0.4f, 1.5f, 0.4f));
+        }
 
-            var sh       = ps2.shape;
-            sh.enabled   = true;
-            sh.shapeType = ParticleSystemShapeType.Sphere;
-            sh.radius    = 0.1f;
-
-            var col      = ps2.colorOverLifetime;
-            col.enabled  = true;
-            var g        = new Gradient();
-            g.SetKeys(
-                new[] { new GradientColorKey(Color.white,          0f),
-                        new GradientColorKey(new Color(1f,0.5f,0f),0.5f),
-                        new GradientColorKey(new Color(0.5f,0.1f,0f),1f) },
-                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.8f, 0.5f), new GradientAlphaKey(0f, 1f) });
-            col.color    = new ParticleSystem.MinMaxGradient(g);
+        // c3 — 폭발 링 (Ring_Add)
+        var c3 = new GameObject("ExpRing"); c3.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c3);
+            var m = ps.main;
+            m.duration = 0.3f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.2f, 0.35f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(10f, 25f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.18f, 0.6f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,198,55), C(255,75,8));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 55;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 48) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 0.15f; sh.radiusThickness = 0f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.4f, new Color(1f,0.44f,0f)), (1f, new Color(0.4f,0.04f,0f)) },
+                new[] { (0f, 1f), (0.45f, 0.55f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.1f, 0.3f, 1.42f, 0f));
         }
 
         return go;
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // ⑪ FX_Summon_Circle  — 소환진 마법진
-    //    SummonSkeleton/SummonElite Base
-    // ─────────────────────────────────────────────────────────────────
+    // ── #11  FX_Summon_Circle ────────────────────────────────
+    // Root:Rune_Add  c1:Wisp_Add  c2:Soft_Add  (단발 0.5초)
     static GameObject BuildSummonCircle()
     {
         var go = NewGO();
 
-        // Layer 1: 링 파티클
-        var ps1 = AddPS(go);
+        // Root — 룬 원진 폭발 (자주색, 단발)
         {
-            var main     = ps1.main;
-            main.duration        = 1.0f;
-            main.loop            = false;
-            main.startLifetime   = new ParticleSystem.MinMaxCurve(0.6f, 1.0f);
-            main.startSpeed      = new ParticleSystem.MinMaxCurve(0f, 1.5f);
-            main.startSize       = new ParticleSystem.MinMaxCurve(0.13f, 0.32f);  // +28%
-            main.startColor      = new ParticleSystem.MinMaxGradient(C(200,120,255), C(110,50,255));
-            main.gravityModifier = -0.5f;
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles    = 52;
-
-            var em       = ps1.emission;
-            em.rateOverTime = 0f;
-            em.SetBursts(new[] {
-                new ParticleSystem.Burst(0f,   26),
-                new ParticleSystem.Burst(0.3f, 18),
-            });
-
-            var sh       = ps1.shape;
-            sh.enabled   = true;
-            sh.shapeType = ParticleSystemShapeType.Circle;
-            sh.radius    = 0.8f;
-            sh.radiusThickness = 0.15f;
-
-            var col      = ps1.colorOverLifetime;
-            col.enabled  = true;
-            var g        = new Gradient();
-            g.SetKeys(
-                new[] { new GradientColorKey(Color.white,              0f),
-                        new GradientColorKey(new Color(0.9f,0.3f,1f),  0.3f),
-                        new GradientColorKey(new Color(0.3f,0f,0.9f),  1f) },
-                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.7f, 0.5f), new GradientAlphaKey(0f, 1f) });
-            col.color    = new ParticleSystem.MinMaxGradient(g);
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.3f, 0.5f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(2f, 6f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.3f, 0.85f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(200,98,255), C(115,38,255));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 40;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 28) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 1.2f; sh.radiusThickness = 0.08f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.9f,0.58f,1f)), (0.5f, new Color(0.58f,0.2f,1f)), (1f, new Color(0.28f,0f,0.58f)) },
+                new[] { (0f, 1f), (0.5f, 0.7f), (1f, 0f) }));
         }
 
-        // Layer 2: 중앙에서 위로 솟아오르는 마나 파편
-        var child2 = new GameObject("Rise");
-        child2.transform.SetParent(go.transform, false);
-        var ps2 = AddPS(child2);
+        // c1 — 위습 분출 (Wisp_Add, 단발)
+        var c1 = new GameObject("Wisps"); c1.transform.SetParent(go.transform, false);
         {
-            var main     = ps2.main;
-            main.duration        = 1.0f;
-            main.loop            = false;
-            main.startLifetime   = new ParticleSystem.MinMaxCurve(0.8f, 1.2f);
-            main.startSpeed      = new ParticleSystem.MinMaxCurve(2f, 6f);
-            main.startSize       = new ParticleSystem.MinMaxCurve(0.10f, 0.26f);  // +28%
-            main.startColor      = new ParticleSystem.MinMaxGradient(C(245,190,255), C(195,60,255));
-            main.gravityModifier = -1.5f;
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles    = 25;
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 0.4f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.3f, 0.5f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(3f, 7f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.14f, 0.45f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(218,155,255), C(175,75,255));
+            m.gravityModifier = -0.3f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 30;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 20) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 1.0f; sh.radiusThickness = 1f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(1f,0.78f,1f)), (0.5f, new Color(0.7f,0.28f,1f)), (1f, new Color(0.3f,0f,0.5f)) },
+                new[] { (0f, 0.9f), (0.5f, 0.6f), (1f, 0f) }));
+        }
 
-            var em       = ps2.emission;
-            em.rateOverTime = 0f;
-            em.SetBursts(new[] { new ParticleSystem.Burst(0.1f, 20) });
-
-            var sh       = ps2.shape;
-            sh.enabled   = true;
-            sh.shapeType = ParticleSystemShapeType.Circle;
-            sh.radius    = 0.6f;
-
-            var col      = ps2.colorOverLifetime;
-            col.enabled  = true;
-            var g        = new Gradient();
-            g.SetKeys(
-                new[] { new GradientColorKey(Color.white,               0f),
-                        new GradientColorKey(new Color(0.9f,0.6f,1f),   0.4f),
-                        new GradientColorKey(new Color(0.5f,0.1f,0.9f), 1f) },
-                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.5f, 0.7f), new GradientAlphaKey(0f, 1f) });
-            col.color    = new ParticleSystem.MinMaxGradient(g);
+        // c2 — 보라빛 플래시 (Soft_Add, 단발)
+        var c2 = new GameObject("PurpleGlow"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 0.25f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.2f, 0.4f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0f, 0.5f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(1.2f, 2.8f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(175,75,255,200), C(95,18,195,140));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 4;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 3) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.3f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.78f,0.38f,1f)), (1f, new Color(0.38f,0.08f,0.78f)) },
+                new[] { (0f, 0.8f), (1f, 0f) }));
         }
 
         return go;
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // ⑫ FX_Sacrifice  — 희생 병사 사망
-    //    SacrificeSoldier Target
-    // ─────────────────────────────────────────────────────────────────
+    // ── #12  FX_Sacrifice ────────────────────────────────────
+    // Root:Wisp_Add  c1:Soft_Add  c2:Smoke_Alpha
     static GameObject BuildSacrifice()
     {
         var go = NewGO();
-        var ps = AddPS(go);
 
-        var main        = ps.main;
-        main.duration           = 0.5f;
-        main.loop               = false;
-        main.startLifetime      = new ParticleSystem.MinMaxCurve(0.4f, 0.8f);
-        main.startSpeed         = new ParticleSystem.MinMaxCurve(3f, 9f);
-        main.startSize          = new ParticleSystem.MinMaxCurve(0.19f, 0.50f);  // +25%
-        main.startColor         = new ParticleSystem.MinMaxGradient(C(255,40,40), C(160,5,5));
-        main.gravityModifier    = -0.3f;
-        main.simulationSpace    = ParticleSystemSimulationSpace.World;
-        main.maxParticles       = 38;
+        // Root — 영혼 위습 상승 (흰→금, 위로)
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.8f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.5f, 1.1f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(2f, 5f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.18f, 0.55f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,255,220), C(255,215,80));
+            m.gravityModifier = -0.5f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 35;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 25) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.5f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.4f, new Color(1f,0.9f,0.5f)), (1f, new Color(1f,0.7f,0.1f)) },
+                new[] { (0f, 1f), (0.5f, 0.8f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.3f, 0.4f, 1.2f, 0.1f));
+        }
 
-        var em          = ps.emission;
-        em.rateOverTime = 0f;
-        em.SetBursts(new[] { new ParticleSystem.Burst(0f, 28) });
+        // c1 — 황금 글로우 (Soft_Add)
+        var c1 = new GameObject("GoldGlow"); c1.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 0.6f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.4f, 0.9f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0f, 0.8f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.8f, 2.2f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,240,140,200), C(255,185,40,140));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 8;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 6) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.3f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(1f,0.95f,0.55f)), (1f, new Color(1f,0.65f,0.1f)) },
+                new[] { (0f, 0.7f), (1f, 0f) }));
+        }
 
-        var sh          = ps.shape;
-        sh.enabled      = true;
-        sh.shapeType    = ParticleSystemShapeType.Sphere;
-        sh.radius       = 0.2f;
-
-        var col         = ps.colorOverLifetime;
-        col.enabled     = true;
-        var g           = new Gradient();
-        g.SetKeys(
-            new[] { new GradientColorKey(new Color(1f,0.85f,0.85f), 0f),
-                    new GradientColorKey(new Color(1f,0.05f,0.05f), 0.25f),
-                    new GradientColorKey(new Color(0.4f,0f,0f),     1f) },
-            new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.7f, 0.4f), new GradientAlphaKey(0f, 1f) });
-        col.color       = new ParticleSystem.MinMaxGradient(g);
-
-        var sz          = ps.sizeOverLifetime;
-        sz.enabled      = true;
-        sz.size         = new ParticleSystem.MinMaxCurve(1f,
-            new AnimationCurve(new Keyframe(0f,0.5f), new Keyframe(0.2f,1.2f), new Keyframe(1f,0f)));
+        // c2 — 소멸 연기 (Smoke_Alpha)
+        var c2 = new GameObject("Dissolve"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 0.6f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.4f, 0.8f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0.5f, 2f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.3f, 0.8f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(180,155,100), C(130,108,65));
+            m.gravityModifier = -0.08f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 15;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.1f, 10) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.4f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.72f,0.62f,0.4f)), (1f, new Color(0.38f,0.32f,0.2f)) },
+                new[] { (0f, 0.55f), (1f, 0f) }));
+        }
 
         return go;
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // ⑬ FX_Absorb  — 시전자 공격력 흡수
-    //    SacrificeSoldier Caster
-    // ─────────────────────────────────────────────────────────────────
+    // ── #13  FX_Absorb ───────────────────────────────────────
+    // Root:Soft_Add  c1:Ring_Add  c2:Spark_Add
     static GameObject BuildAbsorb()
     {
         var go = NewGO();
-        var ps = AddPS(go);
 
-        var main        = ps.main;
-        main.duration           = 0.8f;
-        main.loop               = false;
-        main.startLifetime      = new ParticleSystem.MinMaxCurve(0.5f, 0.9f);
-        main.startSpeed         = new ParticleSystem.MinMaxCurve(-6f, -2f);   // 음수 = 안쪽으로 수렴
-        main.startSize          = new ParticleSystem.MinMaxCurve(0.13f, 0.38f);  // +25%
-        main.startColor         = new ParticleSystem.MinMaxGradient(C(255,215,40), C(255,130,10));
-        main.gravityModifier    = 0f;
-        main.simulationSpace    = ParticleSystemSimulationSpace.World;
-        main.maxParticles       = 44;
+        // Root — 흡수 글로우 (청록, 내향)
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.6f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.3f, 0.7f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0f, 2f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.5f, 1.6f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(80,255,210,200), C(30,195,255,150));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 15;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 10) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.8f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.3f,1f,0.82f)), (0.5f, new Color(0.12f,0.76f,1f)), (1f, new Color(0.05f,0.4f,0.8f)) },
+                new[] { (0f, 0.8f), (0.5f, 0.5f), (1f, 0f) }));
+        }
 
-        var em          = ps.emission;
-        em.rateOverTime = 0f;
-        em.SetBursts(new[] { new ParticleSystem.Burst(0f, 32) });
+        // c1 — 수축 링 (Ring_Add)
+        var c1 = new GameObject("ContrRing"); c1.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.3f, 0.5f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(5f, 14f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.12f, 0.38f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(100,255,220), C(40,200,255));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 50;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 40) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 1.2f; sh.radiusThickness = 0f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.4f, new Color(0.2f,0.9f,1f)), (1f, new Color(0f,0.4f,0.9f)) },
+                new[] { (0f, 0.9f), (0.5f, 0.5f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0f, 0.5f, 0.8f, 0f));
+        }
 
-        var sh          = ps.shape;
-        sh.enabled      = true;
-        sh.shapeType    = ParticleSystemShapeType.Sphere;
-        sh.radius       = 1.5f;
-
-        var col         = ps.colorOverLifetime;
-        col.enabled     = true;
-        var g           = new Gradient();
-        g.SetKeys(
-            new[] { new GradientColorKey(new Color(1f,0.95f,0.2f), 0f),
-                    new GradientColorKey(new Color(1f,0.55f,0f),   0.5f),
-                    new GradientColorKey(Color.white,              1f) },
-            new[] { new GradientAlphaKey(0.7f, 0f), new GradientAlphaKey(1f, 0.65f), new GradientAlphaKey(0f, 1f) });
-        col.color       = new ParticleSystem.MinMaxGradient(g);
-
-        var sz          = ps.sizeOverLifetime;
-        sz.enabled      = true;
-        sz.size         = new ParticleSystem.MinMaxCurve(1f,
-            new AnimationCurve(new Keyframe(0f,1f), new Keyframe(0.8f,0.4f), new Keyframe(1f,0f)));
+        // c2 — 에너지 스파크 (Spark_Add)
+        var c2 = new GameObject("EnergySparks"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 0.4f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.1f, 0.28f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(4f, 12f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.04f, 0.12f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(180,255,235), C(55,215,255));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 35;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.05f, 26) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.9f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, new Color(0.2f,0.85f,1f)) },
+                new[] { (0f, 1f), (1f, 0f) }));
+        }
 
         return go;
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // ⑭ FX_Battle_Cry  — 전투 함성 오라
-    //    BattleCry Caster
-    // ─────────────────────────────────────────────────────────────────
+    // ── #14  FX_Battle_Cry ───────────────────────────────────
+    // Root:Star_Add  c1:Ring_Add  c2:Spark_Add
     static GameObject BuildBattleCry()
     {
         var go = NewGO();
-        var ps = AddPS(go);
 
-        var main        = ps.main;
-        main.duration           = 0.8f;
-        main.loop               = false;
-        main.startLifetime      = new ParticleSystem.MinMaxCurve(0.5f, 1.0f);
-        main.startSpeed         = new ParticleSystem.MinMaxCurve(4f, 11f);
-        main.startSize          = new ParticleSystem.MinMaxCurve(0.19f, 0.50f);  // +25%
-        main.startColor         = new ParticleSystem.MinMaxGradient(C(255,235,60), C(255,130,5));
-        main.gravityModifier    = 0f;
-        main.simulationSpace    = ParticleSystemSimulationSpace.World;
-        main.maxParticles       = 64;
+        // Root — 황금 별 폭발
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.3f, 0.7f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(4f, 14f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.35f, 1.1f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,245,140), C(255,175,18));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
+            m.gravityModifier = -0.1f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 30;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 22) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.2f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.35f, new Color(1f,0.88f,0.2f)), (1f, new Color(1f,0.5f,0f)) },
+                new[] { (0f, 1f), (0.4f, 0.85f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.2f, 0.25f, 1.3f, 0f));
+        }
 
-        var em          = ps.emission;
-        em.rateOverTime = 0f;
-        em.SetBursts(new[] {
-            new ParticleSystem.Burst(0f,   38),
-            new ParticleSystem.Burst(0.15f,25),
-        });
+        // c1 — 확장 링 (Ring_Add)
+        var c1 = new GameObject("Ring"); c1.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.25f, 0.45f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(8f, 22f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.15f, 0.45f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,235,100), C(255,155,20));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 55;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.02f, 46) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 0.1f; sh.radiusThickness = 0f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.4f, new Color(1f,0.8f,0.15f)), (1f, new Color(1f,0.42f,0f)) },
+                new[] { (0f, 0.9f), (0.5f, 0.5f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.1f, 0.35f, 1.4f, 0f));
+        }
 
-        var sh          = ps.shape;
-        sh.enabled      = true;
-        sh.shapeType    = ParticleSystemShapeType.Circle;
-        sh.radius       = 0.2f;
-
-        var col         = ps.colorOverLifetime;
-        col.enabled     = true;
-        var g           = new Gradient();
-        g.SetKeys(
-            new[] { new GradientColorKey(Color.white,              0f),
-                    new GradientColorKey(new Color(1f,0.85f,0.1f), 0.25f),
-                    new GradientColorKey(new Color(1f,0.45f,0f),   1f) },
-            new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.8f, 0.4f), new GradientAlphaKey(0f, 1f) });
-        col.color       = new ParticleSystem.MinMaxGradient(g);
-
-        var sz          = ps.sizeOverLifetime;
-        sz.enabled      = true;
-        sz.size         = new ParticleSystem.MinMaxCurve(1f,
-            new AnimationCurve(new Keyframe(0f,0.3f), new Keyframe(0.4f,1.1f), new Keyframe(1f,0f)));
+        // c2 — 금빛 스파크 (Spark_Add)
+        var c2 = new GameObject("GoldSparks"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 0.4f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.12f, 0.35f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(5f, 16f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.04f, 0.13f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,255,180), C(255,195,35));
+            m.gravityModifier = 0.4f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 45;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.03f, 35) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.3f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, new Color(1f,0.72f,0.08f)) },
+                new[] { (0f, 1f), (1f, 0f) }));
+        }
 
         return go;
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // ⑮ FX_Berserk  — 분노 오라 (Berserker Caster)
-    //    Layer 1 (root)   : 불꽃 파티클 오라
-    //    Layer 2 EnergyLine: 붉은 에너지 섬광 라인
-    // ─────────────────────────────────────────────────────────────────
+    // ── #15  FX_Berserk ──────────────────────────────────────
+    // Root:Flame_Add  c1:Line_Add  c2:Lightning_Add
     static GameObject BuildBerserk()
     {
         var go = NewGO();
-        var ps = AddPS(go);
 
-        var main        = ps.main;
-        main.duration           = 1.5f;
-        main.loop               = true;
-        main.startLifetime      = new ParticleSystem.MinMaxCurve(0.4f, 0.8f);
-        main.startSpeed         = new ParticleSystem.MinMaxCurve(1.5f, 4f);
-        main.startSize          = new ParticleSystem.MinMaxCurve(0.13f, 0.32f);  // +28%
-        main.startColor         = new ParticleSystem.MinMaxGradient(C(255,30,10), C(220,10,0));
-        main.gravityModifier    = -0.3f;
-        main.simulationSpace    = ParticleSystemSimulationSpace.World;
-        main.maxParticles       = 52;
-
-        var em          = ps.emission;
-        em.rateOverTime = 26f;
-
-        var sh          = ps.shape;
-        sh.enabled      = true;
-        sh.shapeType    = ParticleSystemShapeType.Circle;
-        sh.radius       = 0.4f;
-
-        var col         = ps.colorOverLifetime;
-        col.enabled     = true;
-        var g           = new Gradient();
-        g.SetKeys(
-            new[] { new GradientColorKey(new Color(1f,0.9f,0.1f), 0f),
-                    new GradientColorKey(new Color(1f,0.15f,0f),  0.35f),
-                    new GradientColorKey(new Color(0.6f,0f,0f),   1f) },
-            new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.7f, 0.5f), new GradientAlphaKey(0f, 1f) });
-        col.color       = new ParticleSystem.MinMaxGradient(g);
-
-        // Layer 2: 붉은 에너지 라인 — 짧은 섬광이 사방으로 번쩍임
-        var lineGO = new GameObject("EnergyLines");
-        lineGO.transform.SetParent(go.transform, false);
-        var psLine = AddPS(lineGO);
+        // Root — 진홍 화염 (상승)
         {
-            var m = psLine.main;
-            m.duration        = 1.5f;
-            m.loop            = true;
-            m.startLifetime   = new ParticleSystem.MinMaxCurve(0.08f, 0.2f);
-            m.startSpeed      = new ParticleSystem.MinMaxCurve(2f, 6f);
-            m.startSize       = new ParticleSystem.MinMaxCurve(0.15f, 0.45f);
-            m.startColor      = new ParticleSystem.MinMaxGradient(C(255,200,180), C(255,40,10));
-            m.startRotation   = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
-            m.gravityModifier = 0f;
-            m.simulationSpace = ParticleSystemSimulationSpace.World;
-            m.maxParticles    = 25;
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.8f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.4f, 0.9f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(2f, 7f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.4f, 1.2f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,60,20), C(200,10,10));
+            m.gravityModifier = -0.4f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 45;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 35) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Cone; sh.angle = 22f; sh.radius = 0.3f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(1f,0.9f,0.3f)), (0.3f, new Color(1f,0.2f,0.02f)), (1f, new Color(0.35f,0f,0f)) },
+                new[] { (0f, 1f), (0.4f, 0.8f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.3f, 0.35f, 1.3f, 0.05f));
+        }
 
-            var e = psLine.emission;
-            e.rateOverTime = 18f;
+        // c1 — 에너지 슬래시 선 (Line_Add)
+        var c1 = new GameObject("EnergyLines"); c1.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 0.4f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.12f, 0.28f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(8f, 20f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.15f, 0.55f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,120,50), C(255,30,10));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(-1.2f, 1.2f);
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 20;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 14) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Cone; sh.angle = 45f; sh.radius = 0.15f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.3f, new Color(1f,0.38f,0.05f)), (1f, new Color(0.6f,0f,0f)) },
+                new[] { (0f, 1f), (0.4f, 0.7f), (1f, 0f) }));
+        }
 
-            var s = psLine.shape;
-            s.enabled   = true;
-            s.shapeType = ParticleSystemShapeType.Circle;
-            s.radius    = 0.35f;
-
-            var c = psLine.colorOverLifetime;
-            c.enabled = true;
-            var gLine = new Gradient();
-            gLine.SetKeys(
-                new[] { new GradientColorKey(Color.white,           0f),
-                        new GradientColorKey(new Color(1f,0.3f,0f), 0.3f),
-                        new GradientColorKey(new Color(0.7f,0f,0f), 1f) },
-                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.8f, 0.3f), new GradientAlphaKey(0f, 1f) });
-            c.color = new ParticleSystem.MinMaxGradient(gLine);
+        // c2 — 붉은 번개 (Lightning_Add)
+        var c2 = new GameObject("RedLightning"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.06f, 0.18f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(10f, 28f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.12f, 0.48f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,180,140), C(255,30,20));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 22;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.05f, 15) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.4f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(1f,0.8f,0.7f)), (0.5f, new Color(1f,0.15f,0.05f)), (1f, new Color(0.4f,0f,0f)) },
+                new[] { (0f, 1f), (0.4f, 0.6f), (1f, 0f) }));
         }
 
         return go;
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // ⑯ FX_Shield_Up  — 방어막 생성 (IronShield Caster)
-    // ─────────────────────────────────────────────────────────────────
+    // ── #16  FX_Shield_Up ────────────────────────────────────
+    // Root:Diamond_Add  c1:Crystal_Add  c2:Soft_Add
     static GameObject BuildShieldUp()
     {
         var go = NewGO();
-        var ps = AddPS(go);
 
-        var main        = ps.main;
-        main.duration           = 1.2f;
-        main.loop               = true;
-        main.startLifetime      = new ParticleSystem.MinMaxCurve(0.6f, 1.0f);
-        main.startSpeed         = new ParticleSystem.MinMaxCurve(0.5f, 2.5f);
-        main.startSize          = new ParticleSystem.MinMaxCurve(0.13f, 0.38f);  // +25%
-        main.startColor         = new ParticleSystem.MinMaxGradient(C(160,215,255), C(40,140,255));
-        main.gravityModifier    = 0f;
-        main.simulationSpace    = ParticleSystemSimulationSpace.World;
-        main.maxParticles       = 52;
-
-        var em          = ps.emission;
-        em.rateOverTime = 24f;
-
-        var sh          = ps.shape;
-        sh.enabled      = true;
-        sh.shapeType    = ParticleSystemShapeType.Circle;
-        sh.radius       = 0.6f;
-        sh.radiusThickness = 0.3f;
-
-        var col         = ps.colorOverLifetime;
-        col.enabled     = true;
-        var g           = new Gradient();
-        g.SetKeys(
-            new[] { new GradientColorKey(Color.white,              0f),
-                    new GradientColorKey(new Color(0.4f,0.75f,1f), 0.35f),
-                    new GradientColorKey(new Color(0.15f,0.4f,1f), 1f) },
-            new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.75f, 0.4f), new GradientAlphaKey(0f, 1f) });
-        col.color       = new ParticleSystem.MinMaxGradient(g);
-
-        var sz          = ps.sizeOverLifetime;
-        sz.enabled      = true;
-        sz.size         = new ParticleSystem.MinMaxCurve(1f,
-            new AnimationCurve(new Keyframe(0f,0.3f), new Keyframe(0.4f,1f), new Keyframe(1f,0.5f)));
-
-        return go;
-    }
-
-    // ─────────────────────────────────────────────────────────────────
-    // ⑰ FX_Speed_Up  — 속도 오라 / 바람 잔상 (SwiftStrike Caster)
-    // ─────────────────────────────────────────────────────────────────
-    static GameObject BuildSpeedUp()
-    {
-        var go = NewGO();
-        var ps = AddPS(go);
-
-        var main        = ps.main;
-        main.duration           = 1.0f;
-        main.loop               = true;
-        main.startLifetime      = new ParticleSystem.MinMaxCurve(0.2f, 0.5f);
-        main.startSpeed         = new ParticleSystem.MinMaxCurve(4f, 10f);
-        main.startSize          = new ParticleSystem.MinMaxCurve(0.06f, 0.25f);  // +25%
-        main.startColor         = new ParticleSystem.MinMaxGradient(C(120,255,200), C(20,200,255));
-        main.gravityModifier    = 0f;
-        main.simulationSpace    = ParticleSystemSimulationSpace.World;
-        main.maxParticles       = 65;
-
-        var em          = ps.emission;
-        em.rateOverTime = 38f;
-
-        var sh          = ps.shape;
-        sh.enabled      = true;
-        sh.shapeType    = ParticleSystemShapeType.Circle;
-        sh.radius       = 0.3f;
-
-        var col         = ps.colorOverLifetime;
-        col.enabled     = true;
-        var g           = new Gradient();
-        g.SetKeys(
-            new[] { new GradientColorKey(Color.white,               0f),
-                    new GradientColorKey(new Color(0.2f,1f,0.75f),  0.25f),
-                    new GradientColorKey(new Color(0f,0.6f,1f),     1f) },
-            new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.6f, 0.4f), new GradientAlphaKey(0f, 1f) });
-        col.color       = new ParticleSystem.MinMaxGradient(g);
-
-        return go;
-    }
-
-    // ─────────────────────────────────────────────────────────────────
-    // ⑱ FX_Heal_Aura  — 치유 오라 (HealAura Caster)
-    // ─────────────────────────────────────────────────────────────────
-    static GameObject BuildHealAura()
-    {
-        var go = NewGO();
-        var ps = AddPS(go);
-
-        var main        = ps.main;
-        main.duration           = 2.0f;
-        main.loop               = true;
-        main.startLifetime      = new ParticleSystem.MinMaxCurve(0.8f, 1.4f);
-        main.startSpeed         = new ParticleSystem.MinMaxCurve(0.5f, 2.5f);
-        main.startSize          = new ParticleSystem.MinMaxCurve(0.13f, 0.38f);  // +25%
-        main.startColor         = new ParticleSystem.MinMaxGradient(C(80,255,120), C(20,220,60));
-        main.gravityModifier    = -0.8f;
-        main.simulationSpace    = ParticleSystemSimulationSpace.World;
-        main.maxParticles       = 76;
-
-        var em          = ps.emission;
-        em.rateOverTime = 26f;
-
-        var sh          = ps.shape;
-        sh.enabled      = true;
-        sh.shapeType    = ParticleSystemShapeType.Circle;
-        sh.radius       = 1.8f;
-
-        var col         = ps.colorOverLifetime;
-        col.enabled     = true;
-        var g           = new Gradient();
-        g.SetKeys(
-            new[] { new GradientColorKey(Color.white,              0f),
-                    new GradientColorKey(new Color(0.2f,1f,0.4f),  0.25f),
-                    new GradientColorKey(new Color(0f,0.85f,0.15f),1f) },
-            new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.65f, 0.5f), new GradientAlphaKey(0f, 1f) });
-        col.color       = new ParticleSystem.MinMaxGradient(g);
-
-        var sz          = ps.sizeOverLifetime;
-        sz.enabled      = true;
-        sz.size         = new ParticleSystem.MinMaxCurve(1f,
-            new AnimationCurve(new Keyframe(0f,0.4f), new Keyframe(0.5f,1f), new Keyframe(1f,0.3f)));
-
-        return go;
-    }
-
-    // ─────────────────────────────────────────────────────────────────
-    // ⑲ FX_Heal_Target  — 집중 치유 (TargetHeal Target)
-    // ─────────────────────────────────────────────────────────────────
-    static GameObject BuildHealTarget()
-    {
-        var go = NewGO();
-        var ps = AddPS(go);
-
-        var main        = ps.main;
-        main.duration           = 0.8f;
-        main.loop               = false;
-        main.startLifetime      = new ParticleSystem.MinMaxCurve(0.5f, 1.0f);
-        main.startSpeed         = new ParticleSystem.MinMaxCurve(-2f, -0.5f);  // 안쪽 수렴 후 위로
-        main.startSize          = new ParticleSystem.MinMaxCurve(0.13f, 0.32f);  // +28%
-        main.startColor         = new ParticleSystem.MinMaxGradient(C(150,255,160), C(50,255,80));
-        main.gravityModifier    = -1.2f;
-        main.simulationSpace    = ParticleSystemSimulationSpace.World;
-        main.maxParticles       = 38;
-
-        var em          = ps.emission;
-        em.rateOverTime = 0f;
-        em.SetBursts(new[] {
-            new ParticleSystem.Burst(0f,   19),
-            new ParticleSystem.Burst(0.2f, 13),
-        });
-
-        var sh          = ps.shape;
-        sh.enabled      = true;
-        sh.shapeType    = ParticleSystemShapeType.Circle;
-        sh.radius       = 0.8f;
-
-        var col         = ps.colorOverLifetime;
-        col.enabled     = true;
-        var g           = new Gradient();
-        g.SetKeys(
-            new[] { new GradientColorKey(Color.white,              0f),
-                    new GradientColorKey(new Color(0.3f,1f,0.5f),  0.25f),
-                    new GradientColorKey(new Color(0.1f,0.95f,0.25f),1f) },
-            new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.75f, 0.4f), new GradientAlphaKey(0f, 1f) });
-        col.color       = new ParticleSystem.MinMaxGradient(g);
-
-        return go;
-    }
-
-    // ─────────────────────────────────────────────────────────────────
-    // ⑳ FX_Bind  — 속박 (Bind Target)
-    // ─────────────────────────────────────────────────────────────────
-    static GameObject BuildBind()
-    {
-        var go = NewGO();
-        var ps = AddPS(go);
-
-        var main        = ps.main;
-        main.duration           = 2.0f;
-        main.loop               = true;
-        main.startLifetime      = new ParticleSystem.MinMaxCurve(0.8f, 1.5f);
-        main.startSpeed         = new ParticleSystem.MinMaxCurve(0.2f, 1.2f);
-        main.startSize          = new ParticleSystem.MinMaxCurve(0.10f, 0.25f);  // +25%
-        main.startColor         = new ParticleSystem.MinMaxGradient(C(60,80,255), C(20,40,220));
-        main.startRotation      = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
-        main.gravityModifier    = 0f;
-        main.simulationSpace    = ParticleSystemSimulationSpace.World;
-        main.maxParticles       = 52;
-
-        var em          = ps.emission;
-        em.rateOverTime = 20f;
-
-        var sh          = ps.shape;
-        sh.enabled      = true;
-        sh.shapeType    = ParticleSystemShapeType.Circle;
-        sh.radius       = 0.5f;
-        sh.radiusThickness = 0.2f;
-
-        var col         = ps.colorOverLifetime;
-        col.enabled     = true;
-        var g           = new Gradient();
-        g.SetKeys(
-            new[] { new GradientColorKey(Color.white,              0f),
-                    new GradientColorKey(new Color(0.3f,0.4f,1f),  0.25f),
-                    new GradientColorKey(new Color(0f,0.1f,0.8f),  1f) },
-            new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.75f, 0.4f), new GradientAlphaKey(0f, 1f) });
-        col.color       = new ParticleSystem.MinMaxGradient(g);
-
-        var rot         = ps.rotationOverLifetime;
-        rot.enabled     = true;
-        rot.z           = new ParticleSystem.MinMaxCurve(90f * Mathf.Deg2Rad);
-
-        return go;
-    }
-
-    // ─────────────────────────────────────────────────────────────────
-    // ㉑ FX_Poison_Zone  — 독 안개 영역 (PoisonZone Base)
-    //    Layer 1 (root) : 독 안개 연기
-    //    Layer 2 Bubble : 독 버블 팝 링
-    // ─────────────────────────────────────────────────────────────────
-    static GameObject BuildPoisonZone()
-    {
-        var go = NewGO();
-        var ps = AddPS(go);
-
-        var main        = ps.main;
-        main.duration           = 5f;
-        main.loop               = true;
-        main.startLifetime      = new ParticleSystem.MinMaxCurve(1.5f, 3f);
-        main.startSpeed         = new ParticleSystem.MinMaxCurve(0.1f, 0.6f);
-        main.startSize          = new ParticleSystem.MinMaxCurve(0.63f, 1.88f);  // +25%
-        main.startColor         = new ParticleSystem.MinMaxGradient(
-            new Color(0.15f, 0.85f, 0.05f, 0.55f),
-            new Color(0.05f, 0.6f,  0.02f, 0.45f));
-        main.gravityModifier    = -0.1f;
-        main.simulationSpace    = ParticleSystemSimulationSpace.World;
-        main.maxParticles       = 50;
-
-        var em          = ps.emission;
-        em.rateOverTime = 10f;
-
-        var sh          = ps.shape;
-        sh.enabled      = true;
-        sh.shapeType    = ParticleSystemShapeType.Circle;
-        sh.radius       = 1.5f;
-
-        var col         = ps.colorOverLifetime;
-        col.enabled     = true;
-        var g           = new Gradient();
-        g.SetKeys(
-            new[] { new GradientColorKey(new Color(0.2f,1f,0.05f),  0f),
-                    new GradientColorKey(new Color(0.1f,0.7f,0.03f), 0.5f),
-                    new GradientColorKey(new Color(0.05f,0.45f,0f),  1f) },
-            new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.55f, 0.3f),
-                    new GradientAlphaKey(0.45f, 0.7f), new GradientAlphaKey(0f, 1f) });
-        col.color       = new ParticleSystem.MinMaxGradient(g);
-
-        var sz          = ps.sizeOverLifetime;
-        sz.enabled      = true;
-        sz.size         = new ParticleSystem.MinMaxCurve(1f,
-            new AnimationCurve(new Keyframe(0f,0.3f), new Keyframe(0.5f,1f), new Keyframe(1f,1.5f)));
-
-        // Layer 2: 독 버블 팝 — 주기적으로 터지는 링 파티클
-        var bubbleGO = new GameObject("BubblePop");
-        bubbleGO.transform.SetParent(go.transform, false);
-        var psBubble = AddPS(bubbleGO);
+        // Root — 다이아몬드 방패 파편 (시안/빙설)
         {
-            var m = psBubble.main;
-            m.duration        = 5f;
-            m.loop            = true;
-            m.startLifetime   = new ParticleSystem.MinMaxCurve(0.25f, 0.55f);
-            m.startSpeed      = new ParticleSystem.MinMaxCurve(0.5f, 2f);
-            m.startSize       = new ParticleSystem.MinMaxCurve(0.1f, 0.35f);
-            m.startColor      = new ParticleSystem.MinMaxGradient(C(160,255,80), C(80,220,20));
-            m.gravityModifier = -0.2f;
-            m.simulationSpace = ParticleSystemSimulationSpace.World;
-            m.maxParticles    = 30;
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.6f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.4f, 0.9f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(3f, 10f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.2f, 0.65f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(210,245,255), C(80,200,255));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 28;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 20) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.5f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.4f, new Color(0.5f,0.88f,1f)), (1f, new Color(0.15f,0.55f,1f)) },
+                new[] { (0f, 1f), (0.5f, 0.8f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.2f, 0.3f, 1.3f, 0f));
+        }
 
-            var e = psBubble.emission;
-            e.rateOverTime = 8f;
+        // c1 — 얼음 결정 파편 (Crystal_Add)
+        var c1 = new GameObject("IceCrystals"); c1.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.3f, 0.7f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(2f, 8f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.1f, 0.38f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(220,248,255), C(100,210,255));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
+            m.gravityModifier = 0.15f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 30;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.05f, 22) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.6f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.4f, new Color(0.6f,0.92f,1f)), (1f, new Color(0.2f,0.6f,1f)) },
+                new[] { (0f, 1f), (0.5f, 0.7f), (1f, 0f) }));
+        }
 
-            var s = psBubble.shape;
-            s.enabled   = true;
-            s.shapeType = ParticleSystemShapeType.Circle;
-            s.radius    = 1.4f;
-
-            var c = psBubble.colorOverLifetime;
-            c.enabled = true;
-            var gBub  = new Gradient();
-            gBub.SetKeys(
-                new[] { new GradientColorKey(new Color(0.7f,1f,0.3f), 0f),
-                        new GradientColorKey(new Color(0.3f,0.9f,0.1f),0.5f),
-                        new GradientColorKey(new Color(0.1f,0.5f,0f), 1f) },
-                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.6f, 0.5f), new GradientAlphaKey(0f, 1f) });
-            c.color = new ParticleSystem.MinMaxGradient(gBub);
-
-            var sz2 = psBubble.sizeOverLifetime;
-            sz2.enabled = true;
-            sz2.size    = new ParticleSystem.MinMaxCurve(1f,
-                new AnimationCurve(new Keyframe(0f,0.2f), new Keyframe(0.4f,1.3f), new Keyframe(1f,0f)));
+        // c2 — 빙청 글로우 (Soft_Add)
+        var c2 = new GameObject("IceGlow"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.3f, 0.7f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0f, 1f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(1f, 2.8f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(200,240,255,210), C(80,195,255,155));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 6;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 5) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.3f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.78f,0.94f,1f)), (1f, new Color(0.3f,0.68f,1f)) },
+                new[] { (0f, 0.8f), (1f, 0f) }));
         }
 
         return go;
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // ㉒ FX_Blizzard  — 눈보라 영역 (Blizzard Base)
-    // ─────────────────────────────────────────────────────────────────
+    // ── #17  FX_Speed_Up ─────────────────────────────────────
+    // Root:Spark_Add  c1:Wisp_Add  c2:Ring_Add
+    static GameObject BuildSpeedUp()
+    {
+        var go = NewGO();
+
+        // Root — 라임 스파크 스트림
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.15f, 0.4f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(6f, 18f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.05f, 0.18f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(220,255,100), C(100,255,50));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 50;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 38) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Cone; sh.angle = 55f; sh.radius = 0.3f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.3f, new Color(0.82f,1f,0.28f)), (1f, new Color(0.22f,0.8f,0.05f)) },
+                new[] { (0f, 1f), (0.4f, 0.7f), (1f, 0f) }));
+        }
+
+        // c1 — 속도 위습 트레일 (Wisp_Add)
+        var c1 = new GameObject("SpeedWisps"); c1.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.2f, 0.5f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(3f, 10f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.1f, 0.35f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(180,255,120), C(80,220,40));
+            m.gravityModifier = -0.1f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 22;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.03f, 16) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.3f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.85f,1f,0.55f)), (0.5f, new Color(0.4f,1f,0.18f)), (1f, new Color(0.1f,0.55f,0f)) },
+                new[] { (0f, 0.9f), (0.5f, 0.6f), (1f, 0f) }));
+        }
+
+        // c2 — 링 펄스 (Ring_Add)
+        var c2 = new GameObject("RingPulse"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 0.4f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.2f, 0.35f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(8f, 20f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.12f, 0.35f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(200,255,120), C(85,220,30));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 48;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.04f, 40) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 0.1f; sh.radiusThickness = 0f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.4f, new Color(0.65f,1f,0.18f)), (1f, new Color(0.18f,0.65f,0f)) },
+                new[] { (0f, 0.9f), (0.5f, 0.5f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.1f, 0.35f, 1.4f, 0f));
+        }
+
+        return go;
+    }
+
+    // ── #18  FX_Heal_Aura ────────────────────────────────────
+    // Root:Petal_Add  c1:Soft_Add  c2:Ring_Add
+    static GameObject BuildHealAura()
+    {
+        var go = NewGO();
+
+        // Root — 상승 꽃잎 (밝은 녹색/청록)
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.8f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.5f, 1.2f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(1f, 4f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.15f, 0.48f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(140,255,180), C(40,220,130));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
+            m.gravityModifier = -0.35f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 35;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 26) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 0.8f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.35f, new Color(0.48f,1f,0.62f)), (1f, new Color(0.1f,0.75f,0.4f)) },
+                new[] { (0f, 1f), (0.5f, 0.8f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.3f, 0.4f, 1.2f, 0.1f));
+        }
+
+        // c1 — 치유 글로우 (Soft_Add)
+        var c1 = new GameObject("HealGlow"); c1.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 0.6f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.3f, 0.7f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0f, 1f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.8f, 2.4f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(155,255,195,200), C(55,210,130,145));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 8;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 6) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.4f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.6f,1f,0.72f)), (1f, new Color(0.18f,0.8f,0.45f)) },
+                new[] { (0f, 0.75f), (1f, 0f) }));
+        }
+
+        // c2 — 치유 링 (Ring_Add)
+        var c2 = new GameObject("HealRing"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.22f, 0.4f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(6f, 16f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.12f, 0.38f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(175,255,205), C(55,215,138));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 50;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.03f, 42) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 0.1f; sh.radiusThickness = 0f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.4f, new Color(0.42f,1f,0.6f)), (1f, new Color(0.1f,0.7f,0.38f)) },
+                new[] { (0f, 0.9f), (0.5f, 0.5f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.1f, 0.35f, 1.38f, 0f));
+        }
+
+        return go;
+    }
+
+    // ── #19  FX_Heal_Target ──────────────────────────────────
+    // Root:Cross_Add  c1:Wisp_Add  c2:Soft_Add
+    static GameObject BuildHealTarget()
+    {
+        var go = NewGO();
+
+        // Root — 치유 십자 (Cross_Add)
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.3f, 0.6f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(2f, 8f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.25f, 0.75f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(175,255,205), C(55,220,140));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(-0.3f, 0.3f);
+            m.gravityModifier = -0.2f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 18;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 12) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.2f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.35f, new Color(0.5f,1f,0.65f)), (1f, new Color(0.12f,0.78f,0.45f)) },
+                new[] { (0f, 1f), (0.4f, 0.85f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.2f, 0.25f, 1.25f, 0f));
+        }
+
+        // c1 — 치유 위습 (Wisp_Add)
+        var c1 = new GameObject("HealWisps"); c1.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 0.6f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.4f, 0.9f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(1.5f, 4.5f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.12f, 0.38f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(190,255,215), C(65,225,148));
+            m.gravityModifier = -0.25f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 20;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.05f, 15) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.4f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.75f,1f,0.84f)), (0.5f, new Color(0.3f,1f,0.58f)), (1f, new Color(0.08f,0.62f,0.3f)) },
+                new[] { (0f, 0.9f), (0.5f, 0.6f), (1f, 0f) }));
+        }
+
+        // c2 — 치유 섬광 (Soft_Add)
+        var c2 = new GameObject("HealFlash"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 0.12f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.08f, 0.15f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0f, 0.5f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(1f, 2.5f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(200,255,220,230), C(100,240,175,180));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 3;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 2) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.1f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.78f,1f,0.86f)), (1f, new Color(0.38f,1f,0.6f)) },
+                new[] { (0f, 0.9f), (1f, 0f) }));
+        }
+
+        return go;
+    }
+
+    // ── #20  FX_Bind ─────────────────────────────────────────
+    // 속박 지속 이펙트 (3초 loop) — EffectDespawnDelay=4로 자동 소멸
+    // Root:Spiral_Add(loop)  c1:Ring_Add(loop)  c2:Smoke_Alpha(loop)
+    static GameObject BuildBind()
+    {
+        var go = NewGO();
+
+        // Root — 나선 속박 파티클 (보라, loop)
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 3f; m.loop = true;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.5f, 1.0f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(1.5f, 3.5f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.12f, 0.38f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(180,80,255), C(100,20,200));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 60;
+            var em = ps.emission; em.rateOverTime = 18f;
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle;
+            sh.radius = 0.6f; sh.radiusThickness = 0f;  // 가장자리에서만 발생 → 링처럼 보임
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.85f,0.55f,1f)), (0.5f, new Color(0.58f,0.12f,1f)), (1f, new Color(0.25f,0f,0.55f)) },
+                new[] { (0f, 1f), (0.6f, 0.65f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.3f, 0.5f, 1.0f, 0.0f));
+        }
+
+        // c1 — 맥동하는 링 (Ring_Add, loop)
+        var c1 = new GameObject("BindRings"); c1.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 3f; m.loop = true;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.3f, 0.6f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0.5f, 2f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.15f, 0.45f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(210,140,255), C(130,30,255));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 40;
+            var em = ps.emission; em.rateOverTime = 10f;
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle;
+            sh.radius = 0.75f; sh.radiusThickness = 0f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.4f, new Color(0.72f,0.28f,1f)), (1f, new Color(0.3f,0f,0.62f)) },
+                new[] { (0f, 0.85f), (0.5f, 0.45f), (1f, 0f) }));
+        }
+
+        // c2 — 어둠 안개 (Smoke_Alpha, loop)
+        var c2 = new GameObject("DarkMist"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 3f; m.loop = true;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.8f, 1.4f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0.3f, 1.2f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.5f, 1.2f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(55,20,80), C(30,8,50));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 15;
+            var em = ps.emission; em.rateOverTime = 4f;
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.4f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.22f,0.08f,0.32f)), (1f, new Color(0.1f,0.03f,0.18f)) },
+                new[] { (0f, 0.55f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.4f, 0.6f, 1.2f, 0.1f));
+        }
+
+        return go;
+    }
+
+    // ── #21  FX_Poison_Zone ──────────────────────────────────
+    // Root:Smoke_Alpha(loop)  c1:Poison_Alpha(loop)  c2:Ring_Add
+    static GameObject BuildPoisonZone()
+    {
+        var go = NewGO();
+
+        // Root — 짙은 독 연기 (Smoke_Alpha, loop)
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 3f; m.loop = true;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.8f, 1.8f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0.3f, 1.5f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.5f, 1.4f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(28,55,18), C(50,80,25));
+            m.gravityModifier = -0.05f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 40;
+            var em = ps.emission; em.rateOverTime = 14f;
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 1.2f; sh.radiusThickness = 1f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.16f,0.28f,0.08f)), (1f, new Color(0.08f,0.14f,0.04f)) },
+                new[] { (0f, 0.7f), (0.5f, 0.45f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.3f, 0.4f, 1.4f, 0.4f));
+        }
+
+        // c1 — 독성 구름 (Poison_Alpha, loop)
+        var c1 = new GameObject("ToxicCloud"); c1.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 3f; m.loop = true;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.6f, 1.4f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0.2f, 1.2f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.4f, 1.1f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(100,200,30,200), C(160,240,40,170));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 30;
+            var em = ps.emission; em.rateOverTime = 10f;
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 1.0f; sh.radiusThickness = 1f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.42f,0.88f,0.1f)), (0.5f, new Color(0.58f,0.95f,0.12f)), (1f, new Color(0.22f,0.5f,0.05f)) },
+                new[] { (0f, 0.65f), (0.5f, 0.45f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.2f, 0.4f, 1.3f, 0.35f));
+        }
+
+        // c2 — 독 존 링 마커 (Ring_Add)
+        var c2 = new GameObject("PoisonRing"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 1f; m.loop = true;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.4f, 0.7f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(2f, 6f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.08f, 0.25f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(120,220,35), C(80,180,20));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 55;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 45), new ParticleSystem.Burst(0.5f, 45) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 0.1f; sh.radiusThickness = 0f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.58f,1f,0.18f)), (0.5f, new Color(0.38f,0.8f,0.1f)), (1f, new Color(0.18f,0.45f,0.05f)) },
+                new[] { (0f, 0.8f), (0.5f, 0.4f), (1f, 0f) }));
+        }
+
+        return go;
+    }
+
+    // ── #22  FX_Blizzard ─────────────────────────────────────
+    // Root:Snowflake_Add  c1:Crystal_Add  c2:Smoke_Alpha  (지속 장판)
     static GameObject BuildBlizzard()
     {
         var go = NewGO();
 
-        // Layer 1: 눈송이
-        var ps1 = AddPS(go);
+        // Root — 낙설 (Snowflake_Add, loop 지속)
         {
-            var main     = ps1.main;
-            main.duration        = 5f;
-            main.loop            = true;
-            main.startLifetime   = new ParticleSystem.MinMaxCurve(1.0f, 2.0f);
-            main.startSpeed      = new ParticleSystem.MinMaxCurve(1f, 4f);
-            main.startSize       = new ParticleSystem.MinMaxCurve(0.06f, 0.23f);  // +25%
-            main.startColor      = new ParticleSystem.MinMaxGradient(C(210,240,255), C(160,205,255));
-            main.gravityModifier = 0.3f;
-            main.startRotation   = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles    = 100;
-
-            var em       = ps1.emission;
-            em.rateOverTime = 38f;
-
-            var sh       = ps1.shape;
-            sh.enabled   = true;
-            sh.shapeType = ParticleSystemShapeType.Circle;
-            sh.radius    = 2f;
-
-            // 위에서 아래로 낙하 + 가로 흐름
-            var vel      = ps1.velocityOverLifetime;
-            vel.enabled  = true;
-            vel.x        = new ParticleSystem.MinMaxCurve(-1.5f, 1.5f);
-            vel.y        = new ParticleSystem.MinMaxCurve(-2f, -0.5f);
-            vel.z        = new ParticleSystem.MinMaxCurve(0f, 0f);   // 모든 축 TwoConstants 모드 통일
-
-            var col      = ps1.colorOverLifetime;
-            col.enabled  = true;
-            var g        = new Gradient();
-            g.SetKeys(
-                new[] { new GradientColorKey(Color.white,              0f),
-                        new GradientColorKey(new Color(0.75f,0.88f,1f),1f) },
-                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.9f, 0.2f),
-                        new GradientAlphaKey(0.9f, 0.75f), new GradientAlphaKey(0f, 1f) });
-            col.color    = new ParticleSystem.MinMaxGradient(g);
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 2f; m.loop = true;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.8f, 1.6f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0.5f, 2.5f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.15f, 0.55f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(240,250,255), C(160,220,255));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
+            m.gravityModifier = 0.15f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 80;
+            var em = ps.emission; em.rateOverTime = 30f;
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 3f; sh.radiusThickness = 1f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.5f, new Color(0.72f,0.9f,1f)), (1f, new Color(0.35f,0.65f,1f)) },
+                new[] { (0f, 1f), (0.6f, 0.75f), (1f, 0f) }));
         }
 
-        // Layer 2: 눈보라 안개
-        var child2 = new GameObject("Fog");
-        child2.transform.SetParent(go.transform, false);
-        var ps2 = AddPS(child2);
+        // c1 — 빙결 결정 부유 (Crystal_Add, loop)
+        var c1 = new GameObject("IceCrystals"); c1.transform.SetParent(go.transform, false);
         {
-            var main     = ps2.main;
-            main.duration        = 5f;
-            main.loop            = true;
-            main.startLifetime   = new ParticleSystem.MinMaxCurve(1.5f, 3f);
-            main.startSpeed      = new ParticleSystem.MinMaxCurve(0.3f, 1f);
-            main.startSize       = new ParticleSystem.MinMaxCurve(1.0f, 2.5f);   // +25%
-            main.startColor      = new ParticleSystem.MinMaxGradient(
-                new Color(0.88f, 0.94f, 1f, 0.28f),
-                new Color(0.75f, 0.87f, 1f, 0.22f));
-            main.gravityModifier = 0f;
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles    = 25;
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 2f; m.loop = true;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.6f, 1.2f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0.3f, 1.5f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.1f, 0.38f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(210,240,255), C(85,185,255));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 40;
+            var em = ps.emission; em.rateOverTime = 18f;
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 2.5f; sh.radiusThickness = 1f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.4f, new Color(0.58f,0.88f,1f)), (1f, new Color(0.18f,0.55f,1f)) },
+                new[] { (0f, 0.85f), (0.6f, 0.5f), (1f, 0f) }));
+        }
 
-            var em       = ps2.emission;
-            em.rateOverTime = 6f;
-
-            var sh       = ps2.shape;
-            sh.enabled   = true;
-            sh.shapeType = ParticleSystemShapeType.Circle;
-            sh.radius    = 1.8f;
-
-            var vel      = ps2.velocityOverLifetime;
-            vel.enabled  = true;
-            vel.x        = new ParticleSystem.MinMaxCurve(-0.8f, 0.8f);
-            vel.y        = new ParticleSystem.MinMaxCurve(0f, 0f);   // 모든 축 TwoConstants 모드 통일
-            vel.z        = new ParticleSystem.MinMaxCurve(0f, 0f);
-
-            var col      = ps2.colorOverLifetime;
-            col.enabled  = true;
-            var g        = new Gradient();
-            g.SetKeys(
-                new[] { new GradientColorKey(Color.white,              0f),
-                        new GradientColorKey(new Color(0.85f,0.93f,1f),1f) },
-                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.35f, 0.3f),
-                        new GradientAlphaKey(0.28f, 0.7f), new GradientAlphaKey(0f, 1f) });
-            col.color    = new ParticleSystem.MinMaxGradient(g);
-
-            var sz       = ps2.sizeOverLifetime;
-            sz.enabled   = true;
-            sz.size      = new ParticleSystem.MinMaxCurve(1f,
-                new AnimationCurve(new Keyframe(0f,0.3f), new Keyframe(0.5f,1f), new Keyframe(1f,1.3f)));
+        // c2 — 빙설 안개 (Smoke_Alpha, loop 지속)
+        var c2 = new GameObject("IcyMist"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 2f; m.loop = true;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(1.2f, 2.0f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0.2f, 1.0f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.8f, 2.2f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(195,230,255,140), C(130,195,255,95));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 25;
+            var em = ps.emission; em.rateOverTime = 6f;
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 2.8f; sh.radiusThickness = 1f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.78f,0.9f,1f)), (1f, new Color(0.52f,0.76f,1f)) },
+                new[] { (0f, 0.45f), (0.5f, 0.3f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.2f, 0.5f, 1.4f, 0.4f));
         }
 
         return go;

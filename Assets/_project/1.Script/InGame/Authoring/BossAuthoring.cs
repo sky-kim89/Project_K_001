@@ -57,10 +57,10 @@ namespace BattleGame.Units
         public float ChargePatternCooldown = 8f;
 
         [Tooltip("돌진 이동속도 배율")]
-        public float ChargeSpeedMult = 2.5f;
+        public float ChargeSpeedMult = 4.0f;
 
         [Tooltip("돌진 지속 시간 (초)")]
-        public float ChargeDuration = 1.2f;
+        public float ChargeDuration = 1.0f;
 
         [Tooltip("돌진 중 공격력 추가 배율 (0.5 = +50%)")]
         public float ChargeDamageBonus = 0.5f;

@@ -46,8 +46,9 @@ public class GeneralPanelUI : MonoBehaviour
     [Header("스킬")]
     [SerializeField] SkillSlotUI          _skillSlot;
 
-    [Header("버프 아이콘 슬롯 (최대 4개, 선택)")]
+    [Header("버프 아이콘 슬롯")]
     [SerializeField] Image[]              _buffSlots;
+    [SerializeField] TextMeshProUGUI[]       _buffStackTexts;
 
     // ── 직업·등급 표현 상수 ─────────────────────────────────────
     static readonly Color[] s_JobColors =
@@ -67,6 +68,8 @@ public class GeneralPanelUI : MonoBehaviour
     float                  _maxHp;
     int                    _maxSoldierCount;
     bool                   _initialized;
+    readonly int[]         _grpIds    = new int[16];
+    readonly int[]         _grpCounts = new int[16];
 
     /// <summary>중복 생성 방지를 위해 InGameHUD 가 참조하는 브릿지.</summary>
     public GeneralRuntimeBridge LinkedBridge { get; private set; }
@@ -203,21 +206,114 @@ public class GeneralPanelUI : MonoBehaviour
         if (_buffSlots == null || _buffSlots.Length == 0) return;
         if (!_em.HasBuffer<StatusEffectBufferElement>(_entity)) return;
 
-        var buffs        = _em.GetBuffer<StatusEffectBufferElement>(_entity, true);
-        int activeCount  = 0;
+        var buffs  = _em.GetBuffer<StatusEffectBufferElement>(_entity, true);
+        int unique = 0;
 
-        for (int i = 0; i < buffs.Length && i < _buffSlots.Length; i++)
+        // 활성 버프를 (SourceType, SourceId) 기준으로 그룹화 (스택 카운트)
+        for (int i = 0; i < buffs.Length; i++)
         {
             bool active = buffs[i].Duration < 0f || buffs[i].Remaining > 0f;
-            if (_buffSlots[i] != null)
-                _buffSlots[i].gameObject.SetActive(active);
-            if (active) activeCount++;
+            if (!active) continue;
+
+            int key = PackKey(buffs[i].SourceType, buffs[i].SourceId);
+            if (key == 0) continue;
+
+            bool found = false;
+            for (int k = 0; k < unique; k++)
+            {
+                if (_grpIds[k] == key) { _grpCounts[k]++; found = true; break; }
+            }
+            if (!found && unique < _grpIds.Length)
+            {
+                _grpIds[unique]    = key;
+                _grpCounts[unique] = 1;
+                unique++;
+            }
         }
 
-        // 버프 수보다 많은 슬롯 비활성화
-        for (int i = activeCount; i < _buffSlots.Length; i++)
-            if (_buffSlots[i] != null)
-                _buffSlots[i].gameObject.SetActive(false);
+        // 버프 슬롯 표시 — 아이콘 없는 그룹은 슬롯 소비 안 함
+        int slotIdx = 0;
+        for (int g = 0; g < unique && slotIdx < _buffSlots.Length; g++)
+        {
+            Sprite icon = ResolveBuffIcon(_grpIds[g]);
+            if (icon == null) continue;
+            ShowSlot(slotIdx++, icon, _grpCounts[g]);
+        }
+
+        // 미사용 슬롯 비활성화
+        for (int i = slotIdx; i < _buffSlots.Length; i++)
+        {
+            if (_buffSlots[i] != null) _buffSlots[i].gameObject.SetActive(false);
+        }
+    }
+
+    static int PackKey(BuffSourceType type, int id)
+        => type == BuffSourceType.None ? 0 : ((int)type << 24) | (id & 0xFFFFFF);
+
+    void ShowSlot(int idx, Sprite icon, int stackCount)
+    {
+        var slot = _buffSlots[idx];
+        if (slot == null) return;
+        slot.gameObject.SetActive(true);
+        slot.sprite = icon;
+
+        if (_buffStackTexts != null && idx < _buffStackTexts.Length)
+        {
+            var txt = _buffStackTexts[idx];
+            if (txt != null)
+            {
+                bool show = stackCount > 1;
+                txt.gameObject.SetActive(show);
+                if (show) txt.text = stackCount.ToString();
+            }
+        }
+    }
+
+    Sprite ResolveBuffIcon(int packedKey)
+    {
+        var sourceType = (BuffSourceType)(packedKey >> 24);
+        int sourceId   = packedKey & 0xFFFFFF;
+        return sourceType switch
+        {
+            BuffSourceType.ActiveSkill => GetActiveSkillIcon(sourceId),
+            BuffSourceType.Passive     => GetPassiveIcon(sourceId),
+            BuffSourceType.Ability     => GetAbilityIcon(sourceId),
+            BuffSourceType.Equipment   => GetEquipSlotIcon(sourceId),
+            _                          => null,
+        };
+    }
+
+    Sprite GetActiveSkillIcon(int skillId)
+    {
+        string key = ((ActiveSkillId)skillId).IconKey();
+        if (key == null) return null;
+        var manager = SpriteManager.Instance;
+        return manager != null ? manager.GetGeneral(key) : null;
+    }
+
+    Sprite GetPassiveIcon(int typeId)
+    {
+        var db = PassiveSkillDatabase.Current;
+        if (db == null) return null;
+        var data = db.Get((PassiveSkillType)typeId);
+        return data != null ? data.Icon : null;
+    }
+
+    Sprite GetAbilityIcon(int abilityId)
+    {
+        var db = AbilityDatabase.Current;
+        if (db == null) return null;
+        var data = db.Get((AbilityId)abilityId);
+        return data != null ? data.Icon : null;
+    }
+
+    Sprite GetEquipSlotIcon(int slotIndex)
+    {
+        if (!_em.HasComponent<GeneralTriggerSetComponent>(_entity)) return null;
+        var trigSet = _em.GetComponentObject<GeneralTriggerSetComponent>(_entity);
+        if (trigSet == null || slotIndex >= trigSet.EquipSlots.Length) return null;
+        var equip = trigSet.EquipSlots[slotIndex];
+        return equip != null ? equip.Icon : null;
     }
 
     void ApplyDeadState(bool dead)

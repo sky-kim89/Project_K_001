@@ -62,6 +62,7 @@ public class HeroDetailPopup : PopupBase
     [SerializeField] TextMeshProUGUI _rangeText;
     [SerializeField] TextMeshProUGUI _soldierCountText;
     [SerializeField] TextMeshProUGUI _cmdPwrText;
+    [SerializeField] TextMeshProUGUI _cooldownText;
 
     [Header("EXP · 성장")]
     [SerializeField] TextMeshProUGUI _expText;
@@ -267,7 +268,7 @@ public class HeroDetailPopup : PopupBase
 
         if (activeDb != null)
         {
-            var activeId   = ActiveSkillRoller.Roll(entry.UnitName, job, activeDb);
+            var activeId   = ActiveSkillRoller.Roll(entry.UnitName, job, activeDb, entry.Grade);
             var activeData = activeDb.Get(activeId);
             if (_activeSkillText     != null) _activeSkillText.text     = activeData?.SkillName   ?? "-";
             if (_activeSkillDescText != null) _activeSkillDescText.text = activeData?.Description ?? "";
@@ -526,6 +527,7 @@ public class HeroDetailPopup : PopupBase
             (_rangeText,        StatType.AttackRange),
             (_soldierCountText, StatType.SoldierCount),
             (_cmdPwrText,       StatType.CommandPower),
+            (_cooldownText,     StatType.SkillCooldownReduce),
         };
 
         _statRowEntries = new StatRowEntry[defs.Length];

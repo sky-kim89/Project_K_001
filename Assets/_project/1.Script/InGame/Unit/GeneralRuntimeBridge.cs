@@ -142,11 +142,11 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
 
         // ── 액티브 스킬: 이름+직업 기반 결정론적 선택 ──────────
         var activeDb  = ActiveSkillDatabase.Current;
-        var rolledId  = ActiveSkillRoller.Roll(_unitName, _job, activeDb);
+        var rolledId  = ActiveSkillRoller.Roll(_unitName, _job, activeDb, _grade);
         var skillData = activeDb?.Get(rolledId);
 
         float baseCooldown = skillData?.Cooldown ?? 15f;
-        float cdr          = Mathf.Clamp01(_stat.Get(StatType.SkillCooldownReduce));
+        float cdr          = Mathf.Clamp(_stat.Get(StatType.SkillCooldownReduce), 0f, GameplayConfig.Current?.CooldownReduceMax ?? 0.9f);
         em.AddComponentData(entity, new GeneralActiveSkillComponent
         {
             SkillId           = (int)rolledId,
@@ -309,9 +309,9 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
 
         // ── 액티브 스킬 갱신 ─────────────────────────────────────
         var activeDb  = ActiveSkillDatabase.Current;
-        var rolledId  = ActiveSkillRoller.Roll(_unitName, _job, activeDb);
+        var rolledId  = ActiveSkillRoller.Roll(_unitName, _job, activeDb, _grade);
         var skillData = activeDb?.Get(rolledId);
-        float cdr     = Mathf.Clamp01(_stat.Get(StatType.SkillCooldownReduce));
+        float cdr     = Mathf.Clamp(_stat.Get(StatType.SkillCooldownReduce), 0f, GameplayConfig.Current?.CooldownReduceMax ?? 0.9f);
         em.SetComponentData(entity, new GeneralActiveSkillComponent
         {
             SkillId           = (int)rolledId,

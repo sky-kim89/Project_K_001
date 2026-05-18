@@ -67,7 +67,16 @@ public class NormalMode : BattleModeBase
         return entries;
     }
 
-    public override List<SpawnEntry> GetEnemySpawnEntries(int wave) => GetWaveData(wave)?.EnemyEntries;
+    public override List<SpawnEntry> GetEnemySpawnEntries(int wave)
+    {
+        var entries = GetWaveData(wave)?.EnemyEntries;
+        if (entries == null) return null;
+
+        int   maxStage = GameplayConfig.Current.MaxStage;
+        float bias     = Mathf.Clamp01((float)_stage.StageNumber / maxStage);
+        foreach (var e in entries) e.StageBias = bias;
+        return entries;
+    }
 
     public override void ApplyStageClearReward()
     {
@@ -106,6 +115,15 @@ public class NormalMode : BattleModeBase
     }
 
     // ── 내부 ─────────────────────────────────────────────────
+
+    // 2차 곡선: 1 − ((stage−1) / 19)²
+    // Stage  5 → ×0.956   Stage  9 → ×0.823   Stage 15 → ×0.457
+    // Stage 20+ → ×0.05 (최소)
+    protected override float GetSpawnDelayMultiplier()
+    {
+        float t = (_stage.StageNumber - 1) / 19f;
+        return Mathf.Max(0.05f, 1.0f - t * t);
+    }
 
     WaveData GetWaveData(int wave)
     {

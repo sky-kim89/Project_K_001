@@ -9,7 +9,8 @@ using Unity.Collections;
 //  Grid 기반 타겟 탐색 시스템
 //  - 전체 유닛 O(n²) 순회 없이 인접 Grid 셀만 탐색
 //  - 적팀 유닛 중 가장 가까운 유닛을 타겟으로 설정
-//  - 3프레임마다 실행 (매 프레임 불필요 — 성능 최적화)
+//  - 중앙선(battleCenterX)을 넘은 침투 적은 폴백 탐색으로 항상 감지
+//  - 침투 적 추격 임계값 50유닛, 전방 적은 그리드 범위(9유닛) 유지
 // ============================================================
 
 namespace BattleGame.Units
@@ -20,13 +21,13 @@ namespace BattleGame.Units
     public partial struct UnitTargetSearchSystem : ISystem
     {
         NativeParallelMultiHashMap<int2, UnitGridEntry> _gridMap;
-        uint _frameIndex;
+        float _battleCenterX;   // 전장 중앙 X — 이 선을 넘은 적만 폴백 탐색 대상
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _gridMap = new NativeParallelMultiHashMap<int2, UnitGridEntry>(
-                1024, Allocator.Persistent);
+            _gridMap       = new NativeParallelMultiHashMap<int2, UnitGridEntry>(1024, Allocator.Persistent);
+            _battleCenterX = 0f;
         }
 
         [BurstCompile]
@@ -38,9 +39,6 @@ namespace BattleGame.Units
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            _frameIndex++;
-            if (_frameIndex % 3 != 0) return;
-
             _gridMap.Clear();
 
             int unitCount = SystemAPI.QueryBuilder()
@@ -58,12 +56,40 @@ namespace BattleGame.Units
 
             state.Dependency.Complete();
 
-            // ② 타겟 탐색
+            // ② 선두 아군 x = 화면 중앙 x (카메라 추종 기준)
+            //    이 선보다 왼쪽(뒤)에 있는 Enemy = 침투 적 → 폴백 탐색 대상
+            var allVals    = _gridMap.GetValueArray(Allocator.Temp);
+            float maxAllyX = float.MinValue;
+            for (int i = 0; i < allVals.Length; i++)
+            {
+                var u = allVals[i];
+                if (u.Team == TeamType.Ally && u.Position.x > maxAllyX)
+                    maxAllyX = u.Position.x;
+            }
+            if (maxAllyX > float.MinValue)
+                _battleCenterX = maxAllyX;
+
+            var infiltrators = new NativeList<UnitGridEntry>(allVals.Length, Allocator.TempJob);
+            float cx = _battleCenterX;
+            for (int i = 0; i < allVals.Length; i++)
+            {
+                var u = allVals[i];
+                if (u.Team == TeamType.Enemy && u.Position.x < cx && math.all(math.isfinite(u.Position)))
+                    infiltrators.Add(u);
+            }
+            allVals.Dispose();
+
+            // ③ 타겟 탐색
             new FindNearestTargetJob
             {
-                GridMap  = _gridMap,
-                CellSize = UnitGridConstants.CellSize
+                GridMap       = _gridMap,
+                CellSize      = UnitGridConstants.CellSize,
+                AllUnits      = infiltrators.AsArray(),
+                BattleCenterX = _battleCenterX,
             }.ScheduleParallel();
+
+            state.Dependency.Complete();
+            infiltrators.Dispose();
         }
     }
 
@@ -117,7 +143,8 @@ namespace BattleGame.Units
     // ──────────────────────────────────────────
 
     /// <summary>
-    /// 자신의 Grid 셀과 인접 셀만 탐색해 가장 가까운 적팀 유닛을 타겟으로 설정.
+    /// 자신의 Grid 셀과 인접 셀을 탐색해 가까운 적팀 유닛 중 하나를 타겟으로 설정.
+    /// 가장 가까운 3명을 후보로 수집한 뒤, 최근접 거리의 2배 이내인 후보 중 랜덤 선택.
     /// 탐색 범위 = CellSize × (SearchRadius × 2 + 1)
     /// </summary>
     [BurstCompile]
@@ -125,7 +152,9 @@ namespace BattleGame.Units
     public partial struct FindNearestTargetJob : IJobEntity
     {
         [ReadOnly] public NativeParallelMultiHashMap<int2, UnitGridEntry> GridMap;
+        [ReadOnly] public NativeArray<UnitGridEntry>                      AllUnits;
         public float CellSize;
+        public float BattleCenterX;
 
         const int SearchRadius = 3;
 
@@ -135,9 +164,23 @@ namespace BattleGame.Units
             in  GridCellComponent     gridCell,
             ref AttackComponent       attack)
         {
-            float  closestDistSq  = float.MaxValue;
-            Entity closestEntity  = Entity.Null;
-            float3 closestPos     = float3.zero;
+            // 이미 유효한 타겟이 있으면 유지 — 단, 탐색 범위 초과 시 재탐색
+            // (넉백·이동 스킬로 타겟이 멀리 날아간 경우 주변 적을 새로 탐색)
+            // 타겟 사망 시 MeleeAttackJob / RangedAttackJob 이 HasTarget = false 로 초기화함
+            if (attack.HasTarget)
+            {
+                // 침투 적(중앙선 뒤)은 원거리 추격 허용, 전방 적은 그리드 범위 내만 유지
+                float maxChaseDistSq = attack.TargetPosition.x < BattleCenterX
+                    ? 50f * 50f
+                    : CellSize * SearchRadius * (CellSize * SearchRadius);
+                if (math.distancesq(transform.Position, attack.TargetPosition) <= maxChaseDistSq) return;
+                attack.HasTarget = false;
+            }
+
+            // 가장 가까운 3명 후보 수집
+            Entity c0 = Entity.Null, c1 = Entity.Null, c2 = Entity.Null;
+            float  d0 = float.MaxValue, d1 = float.MaxValue, d2 = float.MaxValue;
+            float3 p0 = float3.zero,    p1 = float3.zero,    p2 = float3.zero;
 
             for (int dx = -SearchRadius; dx <= SearchRadius; dx++)
             for (int dy = -SearchRadius; dy <= SearchRadius; dy++)
@@ -149,30 +192,54 @@ namespace BattleGame.Units
 
                 do
                 {
-                    // 같은 팀이면 스킵
                     if (entry.Team == identity.Team) continue;
 
                     float distSq = math.distancesq(transform.Position, entry.Position);
-                    if (distSq < closestDistSq)
-                    {
-                        closestDistSq = distSq;
-                        closestEntity = entry.Entity;
-                        closestPos    = entry.Position;
-                    }
+                    if (distSq < d0)
+                    { c2=c1; d2=d1; p2=p1; c1=c0; d1=d0; p1=p0; c0=entry.Entity; d0=distSq; p0=entry.Position; }
+                    else if (distSq < d1)
+                    { c2=c1; d2=d1; p2=p1; c1=entry.Entity; d1=distSq; p1=entry.Position; }
+                    else if (distSq < d2)
+                    { c2=entry.Entity; d2=distSq; p2=entry.Position; }
                 }
                 while (GridMap.TryGetNextValue(out entry, ref it));
             }
 
-            if (closestEntity != Entity.Null)
+            // 그리드 범위 밖 적 폴백 — 전선을 넘어온 침투 적 대응
+            if (c0 == Entity.Null)
             {
-                attack.TargetEntity   = closestEntity;
-                attack.TargetPosition = closestPos;
-                attack.HasTarget      = true;
+                for (int i = 0; i < AllUnits.Length; i++)
+                {
+                    var u = AllUnits[i];
+                    if (u.Team == identity.Team) continue;
+                    float distSq = math.distancesq(transform.Position, u.Position);
+                    if (distSq < d0) { c0 = u.Entity; d0 = distSq; p0 = u.Position; }
+                }
             }
-            else
-            {
-                attack.HasTarget = false;
-            }
+
+            if (c0 == Entity.Null) { attack.HasTarget = false; return; }
+
+            // 최근접 거리 2배 이내 후보만 풀에 포함 (d² 비교: 2배 거리 = 4배 d²)
+            float threshold = d0 * 4f;
+            int   count     = 1;
+            if (c1 != Entity.Null && d1 <= threshold) count++;
+            if (c2 != Entity.Null && d2 <= threshold) count++;
+
+            // 후보 중 랜덤 선택 (RandomSeed로 결정론적 랜덤)
+            var rng  = new Unity.Mathematics.Random(
+                attack.RandomSeed == 0u ? (uint)(c0.Index + 1) : attack.RandomSeed);
+            int pick = count > 1 ? rng.NextInt(0, count) : 0;
+            attack.RandomSeed = rng.state;
+
+            Entity chosen;
+            float3 chosenPos;
+            if      (pick == 2) { chosen = c2; chosenPos = p2; }
+            else if (pick == 1) { chosen = c1; chosenPos = p1; }
+            else                { chosen = c0; chosenPos = p0; }
+
+            attack.TargetEntity   = chosen;
+            attack.TargetPosition = chosenPos;
+            attack.HasTarget      = true;
         }
     }
 }

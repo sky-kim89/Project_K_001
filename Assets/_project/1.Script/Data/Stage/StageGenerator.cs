@@ -125,7 +125,8 @@ public static class StageGenerator
 
         var entries = new List<SpawnEntry>();
 
-        int eliteSlots  = (hasElite || hasEliteNormal) && !hasBoss ? 1 + (isHurdle ? stageNumber / 15 : 0) : 0;
+        int halfStages  = Mathf.Max(1, config.NormalStageCount / 2);
+        int eliteSlots  = (hasElite || hasEliteNormal) && !hasBoss ? 1 + (isHurdle ? stageNumber / halfStages : 0) : 0;
         int normalCount = hasBoss ? Mathf.Max(1, enemyCount - 2)
                         : eliteSlots > 0 ? Mathf.Max(1, enemyCount - eliteSlots)
                         : enemyCount;
@@ -146,7 +147,7 @@ public static class StageGenerator
         if ((hasElite || hasEliteNormal) && !hasBoss)
         {
             // 후반 허들일수록 엘리트 수 증가 (15스테이지마다 +1)
-            int eliteCount = 1 + (isHurdle ? stageNumber / 15 : 0);
+            int eliteCount = 1 + (isHurdle ? stageNumber / halfStages : 0);
             entries.Add(new SpawnEntry
             {
                 Name           = $"S{stageNumber}W{wave}El",

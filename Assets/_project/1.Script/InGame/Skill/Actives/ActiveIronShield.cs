@@ -27,11 +27,13 @@ public class ActiveIronShield : ActiveSkillData
 
         em.GetBuffer<StatusEffectBufferElement>(ctx.CasterEntity).Add(new StatusEffectBufferElement
         {
-            Stat      = StatType.Defense,
-            Delta     = EffectValue,   // Add: 방어율 + EffectValue
-            Mode      = EffectMode.Add,
-            Duration  = duration,
-            Remaining = duration,
+            Stat       = StatType.Defense,
+            Delta      = EffectValue,
+            Mode       = EffectMode.Add,
+            Duration   = duration,
+            Remaining  = duration,
+            SourceType = BuffSourceType.ActiveSkill,
+            SourceId   = (int)SkillId,
         });
     }
 }

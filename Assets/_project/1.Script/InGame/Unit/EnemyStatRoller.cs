@@ -25,7 +25,7 @@ public static class EnemyStatRoller
     /// level 과 statMultiplier 가 HP·ATK에 추가로 곱해진다 (DEF·Range·Speed 제외).
     /// </summary>
     public static UnitStat Roll(string unitName, SpawnUnitType unitType,
-                                int level = 1, float statMultiplier = 1f)
+                                int level = 1, float statMultiplier = 1f, float stageBias = 0f)
     {
         uint seed = ComputeSeed(unitName);
         var  rng  = new Unity.Mathematics.Random(seed);
@@ -43,17 +43,22 @@ public static class EnemyStatRoller
         float hpAtkMult = levelMult * Mathf.Max(0.1f, statMultiplier);
 
         var stat = new UnitStat();
-        stat.Set(StatType.MaxHp,       range.Hp.Lerp(rng.NextFloat())     * hpAtkMult);
-        stat.Set(StatType.Attack,      range.Attack.Lerp(rng.NextFloat())  * hpAtkMult);
-        stat.Set(StatType.Defense,     Mathf.Min(range.Defense.Lerp(rng.NextFloat()), 0.85f));
-        stat.Set(StatType.AttackRange, range.AttackRange.Lerp(rng.NextFloat()));
-        stat.Set(StatType.AttackSpeed, range.AttackSpeed.Lerp(rng.NextFloat()));
-        stat.Set(StatType.MoveSpeed,   range.MoveSpeed.Lerp(rng.NextFloat()));
+        stat.Set(StatType.MaxHp,       range.Hp.Lerp(B(ref rng, stageBias))        * hpAtkMult);
+        stat.Set(StatType.Attack,      range.Attack.Lerp(B(ref rng, stageBias))     * hpAtkMult);
+        stat.Set(StatType.Defense,     Mathf.Min(range.Defense.Lerp(B(ref rng, stageBias)), 0.85f));
+        stat.Set(StatType.AttackRange, range.AttackRange.Lerp(B(ref rng, stageBias)));
+        stat.Set(StatType.AttackSpeed, range.AttackSpeed.Lerp(B(ref rng, stageBias)));
+        stat.Set(StatType.MoveSpeed,   range.MoveSpeed.Lerp(B(ref rng, stageBias)));
         stat.Set(StatType.CritChance,  range.CritChance);
         stat.Set(StatType.CritDamage,  range.CritDamage);
 
         return stat;
     }
+
+    // stageBias=0: 균등 랜덤(0~1), stageBias=1: 항상 1.0(최댓값)
+    // 공식: t = bias + (1 - bias) × random → 유효 범위 [bias, 1]
+    static float B(ref Unity.Mathematics.Random rng, float bias)
+        => bias + (1f - bias) * rng.NextFloat();
 
     // ── 내부 ─────────────────────────────────────────────────
 

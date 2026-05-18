@@ -71,6 +71,7 @@ public class ActiveHeavyStrike : ActiveSkillData
             dashSpeed        : DashSpeed,
             returnSpeed      : ReturnSpeed,
             knockbackMult    : KnockbackMult,
+            attackRange      : context.CasterStat.Final[StatType.AttackRange],
             fx               : new SkillEffectConfig
             {
                 CasterEffectKey = CasterEffectKey,

@@ -29,11 +29,13 @@ public class PassiveSkillAdrenaline : PassiveSkillData
         {
             Stat = StatType.Attack, Delta = AttackBuff,
             Mode = EffectMode.Add, Duration = BuffDuration, Remaining = BuffDuration,
+            SourceType = BuffSourceType.Passive, SourceId = (int)Type,
         });
         buf.Add(new StatusEffectBufferElement
         {
             Stat = StatType.AttackSpeed, Delta = AtkSpeedBuff,
             Mode = EffectMode.Add, Duration = BuffDuration, Remaining = BuffDuration,
+            SourceType = BuffSourceType.Passive, SourceId = (int)Type,
         });
     }
 }

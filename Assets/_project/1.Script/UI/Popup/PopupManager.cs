@@ -158,7 +158,9 @@ public class PopupManager : Singleton<PopupManager>
 
     void HandlePopupClosed(PopupBase popup)
     {
-        _openByType.Remove(popup.PopupType);
+        // 닫히는 도중 같은 타입의 새 팝업이 열렸을 수 있으므로 동일 참조일 때만 제거
+        if (_openByType.TryGetValue(popup.PopupType, out var registered) && registered == popup)
+            _openByType.Remove(popup.PopupType);
         _stack.Remove(popup);
 
         popup.gameObject.SetActive(false);

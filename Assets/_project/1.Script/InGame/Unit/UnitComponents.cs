@@ -232,9 +232,9 @@ namespace BattleGame.Units
     public struct HitEventBufferElement : IBufferElementData
     {
         public float  Damage;
-        public float3 HitDirection;    // 넉백 방향 계산용
+        public float3 HitDirection;  // IsSkillHit=false: 방향벡터, true: 방향×힘(직접 사용)
         public Entity AttackerEntity;
-        public bool   IsSkillHit;      // 스킬 직접 타격 여부 (통계 분류용)
+        public bool   IsSkillHit;    // 스킬 직접 타격 — true면 HitDirection을 넉백으로 그대로 사용
     }
 
     // ──────────────────────────────────────────
@@ -254,6 +254,16 @@ namespace BattleGame.Units
         Dot      = 2,
     }
 
+    /// <summary>버프/디버프 출처 종류. GeneralPanelUI 아이콘 표시에 사용.</summary>
+    public enum BuffSourceType : byte
+    {
+        None        = 0,
+        ActiveSkill = 1,  // ActiveSkillId 값
+        Passive     = 2,  // PassiveSkillType 값
+        Ability     = 3,  // AbilityId 값
+        Equipment   = 4,  // 장비 슬롯 인덱스 (0 또는 1)
+    }
+
     /// <summary>
     /// 활성 버프/디버프 하나.
     /// StatType 기반이므로 새 스텟 추가 시 이 구조체는 수정하지 않아도 된다.
@@ -261,11 +271,13 @@ namespace BattleGame.Units
     [InternalBufferCapacity(8)]
     public struct StatusEffectBufferElement : IBufferElementData
     {
-        public StatType   Stat;       // 영향받는 스텟 종류 (Dot 이면 무시)
-        public float      Delta;      // 효과 수치 (양수 = 강화, 음수 = 약화)
-        public EffectMode Mode;       // Add / Multiply / Dot
-        public float      Duration;   // 전체 지속 시간 (-1 이면 영구)
-        public float      Remaining;  // 남은 시간
+        public StatType        Stat;        // 영향받는 스텟 종류 (Dot 이면 무시)
+        public float           Delta;       // 효과 수치 (양수 = 강화, 음수 = 약화)
+        public EffectMode      Mode;        // Add / Multiply / Dot
+        public float           Duration;    // 전체 지속 시간 (-1 이면 영구)
+        public float           Remaining;   // 남은 시간
+        public BuffSourceType  SourceType;  // 출처 종류
+        public int             SourceId;    // 출처 내 ID (종류별 의미는 BuffSourceType 주석 참고)
     }
 
     // ──────────────────────────────────────────

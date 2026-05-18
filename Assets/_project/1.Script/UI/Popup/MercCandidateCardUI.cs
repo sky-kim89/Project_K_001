@@ -50,8 +50,7 @@ public class MercCandidateCardUI : MonoBehaviour
         if (_jobText     != null) _jobText.text     = JobStyle.GetLabel(job);
         if (_hpText      != null) _hpText.text      = $"체력 {result.Total(StatType.MaxHp):N0}";
         if (_atkText     != null) _atkText.text     = $"공격 {result.Total(StatType.Attack):N0}";
-        float defPct = result.Total(StatType.Defense) * 100f;
-        if (_defText     != null) _defText.text     = $"방어 {(defPct < 1f ? $"{defPct:F1}" : $"{Mathf.RoundToInt(defPct)}")}%";
+        if (_defText     != null) _defText.text     = $"방어 {StatDisplayHelper.EffectiveDefensePct(result.Total(StatType.Defense)):F1}%";
         if (_soldierText != null) _soldierText.text = $"용병 {UnityEngine.Mathf.RoundToInt(result.Total(StatType.SoldierCount))}명";
 
         FillSkills(job, entry);
@@ -76,7 +75,7 @@ public class MercCandidateCardUI : MonoBehaviour
         var activeDb = ActiveSkillDatabase.Current;
         if (activeDb != null)
         {
-            var activeId   = ActiveSkillRoller.Roll(entry.UnitName, job, activeDb);
+            var activeId   = ActiveSkillRoller.Roll(entry.UnitName, job, activeDb, entry.Grade);
             var activeData = activeDb.Get(activeId);
 
             if (_activeSkillIcon != null)

@@ -102,14 +102,17 @@ namespace BattleGame.Units
             in  StatComponent       stat)
         {
             if (!attack.HasTarget || attack.AttackCooldown > 0f) return;
+            if (unitState.Current == UnitState.Hit) return;  // 속박/스턴 중 공격 불가
             if (!TransformLookup.HasComponent(attack.TargetEntity)) return;
             if (!HealthLookup.HasComponent(attack.TargetEntity))    return;
             if (HealthLookup[attack.TargetEntity].CurrentHp <= 0f) { attack.HasTarget = false; return; }
 
             float3 targetPos   = TransformLookup[attack.TargetEntity].Position;
+            attack.TargetPosition = targetPos;  // 이동 시스템에 항상 최신 위치 전달
             float  attackRange = stat.Final[StatType.AttackRange];
+            float  distSq      = math.distancesq(transform.Position, targetPos);
 
-            if (math.distancesq(transform.Position, targetPos) > attackRange * attackRange)
+            if (distSq > attackRange * attackRange)
             {
                 if (unitState.Current != UnitState.Chasing) ChangeState(ref unitState, UnitState.Chasing);
                 return;
@@ -162,7 +165,8 @@ namespace BattleGame.Units
         [ReadOnly] public ComponentLookup<LocalTransform>  TransformLookup;
         [ReadOnly] public ComponentLookup<HealthComponent> HealthLookup;
 
-        const float ProjectileSpeed = 10f;
+        const float ArrowSpeed     = 15f;
+        const float MagicBoltSpeed = 10f;
 
         public void Execute(
             Entity                                 entity,
@@ -171,17 +175,21 @@ namespace BattleGame.Units
             ref DynamicBuffer<ProjectileLaunchRequest> launchBuffer,
             in  LocalTransform                     transform,
             in  StatComponent                      stat,
-            in  UnitIdentityComponent              identity)
+            in  UnitIdentityComponent              identity,
+            in  UnitJobComponent                   jobComp)
         {
             if (!attack.HasTarget || attack.AttackCooldown > 0f) return;
+            if (unitState.Current == UnitState.Hit) return;  // 속박/스턴 중 공격 불가
             if (!TransformLookup.HasComponent(attack.TargetEntity)) return;
             if (!HealthLookup.HasComponent(attack.TargetEntity))    return;
             if (HealthLookup[attack.TargetEntity].CurrentHp <= 0f) { attack.HasTarget = false; return; }
 
             float3 targetPos   = TransformLookup[attack.TargetEntity].Position;
+            attack.TargetPosition = targetPos;  // 이동 시스템에 항상 최신 위치 전달
             float  attackRange = stat.Final[StatType.AttackRange];
+            float  distSq      = math.distancesq(transform.Position, targetPos);
 
-            if (math.distancesq(transform.Position, targetPos) > attackRange * attackRange)
+            if (distSq > attackRange * attackRange)
             {
                 if (unitState.Current != UnitState.Chasing) ChangeState(ref unitState, UnitState.Chasing);
                 return;
@@ -202,7 +210,7 @@ namespace BattleGame.Units
                 AttackerPos    = transform.Position,
                 TargetPos      = targetPos,
                 Damage         = finalDamage,
-                Speed          = ProjectileSpeed,
+                Speed          = jobComp.Job == UnitJob.Archer ? ArrowSpeed : MagicBoltSpeed,
                 Team           = identity.Team,
             });
         }

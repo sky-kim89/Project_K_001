@@ -166,6 +166,10 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
         if (em.HasComponent<DeadTag>(entity))
             em.RemoveComponent<DeadTag>(entity);
 
+        // SummonedTag 제거 (소환 유닛으로 쓰였던 엔티티가 재사용될 때 잔류 방지)
+        if (em.HasComponent<SummonedTag>(entity))
+            em.RemoveComponent<SummonedTag>(entity);
+
         // 풀 링크 갱신 — 사망 처리 시 UnitDeathDespawnSystem 이 제거하므로 없으면 재추가
         if (em.HasComponent<BattleGame.Units.UnitPoolLinkComponent>(entity))
         {

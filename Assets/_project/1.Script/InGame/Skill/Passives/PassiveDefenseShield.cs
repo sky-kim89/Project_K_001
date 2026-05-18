@@ -25,11 +25,13 @@ public class PassiveDefenseShield : PassiveSkillData
 
         em.GetBuffer<StatusEffectBufferElement>(ctx.GeneralEntity).Add(new StatusEffectBufferElement
         {
-            Stat      = StatType.Defense,
-            Delta     = DefenseBuff,
-            Mode      = EffectMode.Add,
-            Duration  = BuffDuration,
-            Remaining = BuffDuration,
+            Stat       = StatType.Defense,
+            Delta      = DefenseBuff,
+            Mode       = EffectMode.Add,
+            Duration   = BuffDuration,
+            Remaining  = BuffDuration,
+            SourceType = BuffSourceType.Passive,
+            SourceId   = (int)Type,
         });
     }
 }

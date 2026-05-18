@@ -35,13 +35,13 @@ public class AbilitySacrificeForce : AbilityData
         float atkBonus = stat.Base[StatType.Attack] * AttackBonusRatio * deaths;
         float hpBonus  = stat.Base[StatType.MaxHp]  * MaxHpBonusRatio  * deaths;
 
-        AddOrMerge(buf, StatType.Attack, atkBonus);
-        AddOrMerge(buf, StatType.MaxHp,  hpBonus);
+        AddOrMerge(buf, StatType.Attack, atkBonus, Id);
+        AddOrMerge(buf, StatType.MaxHp,  hpBonus,  Id);
     }
 
     static void AddOrMerge(
         Unity.Entities.DynamicBuffer<StatusEffectBufferElement> buf,
-        StatType stat, float delta)
+        StatType stat, float delta, AbilityId sourceId)
     {
         for (int i = 0; i < buf.Length; i++)
         {
@@ -55,11 +55,13 @@ public class AbilitySacrificeForce : AbilityData
         }
         buf.Add(new StatusEffectBufferElement
         {
-            Stat      = stat,
-            Delta     = delta,
-            Mode      = EffectMode.Add,
-            Duration  = -1f,
-            Remaining = float.MaxValue,
+            Stat       = stat,
+            Delta      = delta,
+            Mode       = EffectMode.Add,
+            Duration   = -1f,
+            Remaining  = float.MaxValue,
+            SourceType = BuffSourceType.Ability,
+            SourceId   = (int)sourceId,
         });
     }
 }

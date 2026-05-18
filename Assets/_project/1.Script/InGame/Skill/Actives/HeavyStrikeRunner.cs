@@ -31,12 +31,13 @@ public class HeavyStrikeRunner : MonoBehaviour
         float           dashSpeed,
         float           returnSpeed,
         float           knockbackMult,
+        float           attackRange,
         SkillEffectConfig fx)
     {
         if (_current != null) StopCoroutine(_current);
         _current = StartCoroutine(Sequence(
             casterTransform, targetPos, targetEntity, casterEntity, casterStat, em,
-            damageMultiplier, dashSpeed, returnSpeed, knockbackMult, fx));
+            damageMultiplier, dashSpeed, returnSpeed, knockbackMult, attackRange, fx));
     }
 
     IEnumerator Sequence(
@@ -50,6 +51,7 @@ public class HeavyStrikeRunner : MonoBehaviour
         float           dashSpeed,
         float           returnSpeed,
         float           knockbackMult,
+        float           attackRange,
         SkillEffectConfig fx)
     {
         Vector3 originPos = casterTransform.position;
@@ -58,7 +60,7 @@ public class HeavyStrikeRunner : MonoBehaviour
         SkillEffectHelper.SpawnBase(fx.BaseEffectKey, casterTransform.position, fx.DespawnDelay);
 
         // ── ② 돌진 ────────────────────────────────────────────
-        yield return MoveToward(casterTransform, targetPos, dashSpeed, stopDistance: 0.8f);
+        yield return MoveToward(casterTransform, targetPos, dashSpeed, stopDistance: attackRange);
 
         // ── ③ 타격 + 임팩트 이펙트 ───────────────────────────
         Vector3 hitPos = casterTransform.position;

@@ -88,7 +88,7 @@ public class DeploySlotUI : MonoBehaviour
         if (_jobText     != null) _jobText.text        = JobStyle.GetLabel(job);
         if (_hpText      != null) _hpText.text         = $"{result.Total(StatType.MaxHp):N0}";
         if (_atkText     != null) _atkText.text        = $"{result.Total(StatType.Attack):N0}";
-        if (_defText     != null) _defText.text        = $"{result.Total(StatType.Defense) * 100f:F0}%";
+        if (_defText     != null) _defText.text        = $"{StatDisplayHelper.EffectiveDefensePct(result.Total(StatType.Defense)):F1}%";
         if (_soldierText != null) _soldierText.text    = $"{Mathf.RoundToInt(result.Total(StatType.SoldierCount))}명";
 
         UnitPortraitHelper.Render(entry.UnitName, job, entry.Grade,

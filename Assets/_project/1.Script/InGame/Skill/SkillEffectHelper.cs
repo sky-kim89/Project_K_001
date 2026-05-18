@@ -28,28 +28,37 @@ using UnityEngine;
 public static class SkillEffectHelper
 {
     /// <summary>사용자 이펙트 (시전자 위치)</summary>
-    public static void SpawnCaster(string key, Vector3 position, float despawnDelay)
-        => Spawn(key, position, despawnDelay);
+    public static void SpawnCaster(string key, Vector3 position, float despawnDelay,
+        Quaternion rotation = default, float scale = 1f)
+        => Spawn(key, position, despawnDelay, rotation, scale);
 
     /// <summary>피격 대상 이펙트</summary>
-    public static void SpawnTarget(string key, Vector3 position, float despawnDelay)
-        => Spawn(key, position, despawnDelay);
+    public static void SpawnTarget(string key, Vector3 position, float despawnDelay,
+        Quaternion rotation = default, float scale = 1f)
+        => Spawn(key, position, despawnDelay, rotation, scale);
 
     /// <summary>기본/범위 이펙트</summary>
-    public static void SpawnBase(string key, Vector3 position, float despawnDelay)
-        => Spawn(key, position, despawnDelay);
+    public static void SpawnBase(string key, Vector3 position, float despawnDelay,
+        Quaternion rotation = default, float scale = 1f)
+        => Spawn(key, position, despawnDelay, rotation, scale);
 
     /// <summary>
     /// PoolType.Effect 에서 key 에 해당하는 이펙트를 스폰한다.
+    /// rotation=default 이면 Quaternion.identity 사용.
+    /// scale=1 이면 원본 크기.
     /// 반환 값: 스폰된 GO (null 이면 실패)
     /// </summary>
-    public static GameObject Spawn(string key, Vector3 position, float despawnDelay)
+    public static GameObject Spawn(string key, Vector3 position, float despawnDelay,
+        Quaternion rotation = default, float scale = 1f)
     {
         if (string.IsNullOrEmpty(key)) return null;
         if (PoolController.Instance == null) return null;
 
-        var go = PoolController.Instance.Spawn(PoolType.Effect, key, position, Quaternion.identity);
+        Quaternion rot = rotation.Equals(default(Quaternion)) ? Quaternion.identity : rotation;
+        var go = PoolController.Instance.Spawn(PoolType.Effect, key, position, rot);
         if (go == null) return null;
+
+        go.transform.localScale = Vector3.one * Mathf.Max(0.01f, scale);
 
         var ret = go.GetComponent<EffectAutoReturn>() ?? go.AddComponent<EffectAutoReturn>();
         ret.StartReturn(despawnDelay);

@@ -48,11 +48,13 @@ public class ActiveBerserker : ActiveSkillData
 
         em.GetBuffer<StatusEffectBufferElement>(entity).Add(new StatusEffectBufferElement
         {
-            Stat      = StatType.AttackSpeed,
-            Delta     = EffectValue,   // Multiply: 공격속도 × EffectValue
-            Mode      = EffectMode.Multiply,
-            Duration  = duration,
-            Remaining = duration,
+            Stat       = StatType.AttackSpeed,
+            Delta      = EffectValue,
+            Mode       = EffectMode.Multiply,
+            Duration   = duration,
+            Remaining  = duration,
+            SourceType = BuffSourceType.ActiveSkill,
+            SourceId   = (int)SkillId,
         });
     }
 }

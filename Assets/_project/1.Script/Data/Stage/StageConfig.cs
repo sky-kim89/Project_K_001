@@ -16,11 +16,22 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "StageConfig", menuName = "Project K/Stage Config")]
 public class StageConfig : ScriptableObject
 {
-    public static StageConfig Current { get; internal set; }
+    static StageConfig _current;
+    public static StageConfig Current
+    {
+        get => _current != null ? _current : (_current = Resources.Load<StageConfig>("StageConfig"));
+        internal set => _current = value;
+    }
 
     [Header("스테이지 수")]
     public int NormalStageCount = 30;
     public int EliteStageCount  = 15;
+
+    [Header("잠금 해제 조건")]
+    [Tooltip("엘리트 탭 해제에 필요한 일반 스테이지 클리어 수")]
+    public int EliteUnlockStage    = 5;
+    [Tooltip("환생 가능 최소 일반 스테이지 클리어 수")]
+    public int ReincarnateMinStage = 5;
 
     [Header("에너지 비용")]
     public int EnergyCostNormal = 5;

@@ -127,21 +127,9 @@ public class LobbyManager : Singleton<LobbyManager>
             return;
         }
 
-        // 에너지 체크
-        var items = UserDataManager.Instance?.Get<ItemData>();
-        if (items == null || !items.CanSpend(eItem.Energy, stage.EnergyCost))
-        {
-            int have = items?.Get(eItem.Energy) ?? 0;
-            Debug.LogWarning($"[LobbyManager] 에너지 부족 — 필요: {stage.EnergyCost}, 보유: {have}");
-            // TODO: 에너지 부족 팝업 표시
-            return;
-        }
-        items.Spend(eItem.Energy, stage.EnergyCost);
-        UserDataManager.Instance.RequestSave();
-
         _isBattleStarting = true;
         GameSession.Instance.CurrentStage = stage;
-        Debug.Log($"[LobbyManager] 전투 시작 → {stage.DisplayName} (에너지 -{stage.EnergyCost}, 웨이브 {stage.Waves.Count}개)");
+        Debug.Log($"[LobbyManager] 전투 시작 → {stage.DisplayName} (웨이브 {stage.Waves.Count}개)");
 
         if (ScenePreloader.IsInGameReady)
             StartCoroutine(TransitionToInGame());

@@ -32,11 +32,11 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
 
     /// <summary>EnemySpawner 가 스폰 직후 호출.</summary>
     public void Initialize(string unitName, SpawnUnitType unitType, EnemyRace race,
-                           int level = 1, float statMultiplier = 1f)
+                           int level = 1, float statMultiplier = 1f, float stageBias = 0f)
     {
         _unitName = unitName;
         _unitType = unitType;
-        _stat     = EnemyStatRoller.Roll(unitName, unitType, level, statMultiplier);
+        _stat     = EnemyStatRoller.Roll(unitName, unitType, level, statMultiplier, stageBias);
 
         GetComponent<UnitAppearanceBridge>()?.ApplyEnemy(race, unitName);
 
@@ -89,8 +89,8 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
                     // 돌진 패턴 설정
                     ChargePatternCooldown  = 8f,
                     ChargePatternTimer     = 4f,    // 첫 돌진은 4초 후
-                    ChargeSpeedMult        = 2.5f,
-                    ChargeDuration         = 1.2f,
+                    ChargeSpeedMult        = 4.0f,
+                    ChargeDuration         = 1.0f,
                     ChargeDamageBonus      = 0.5f,  // 돌진 중 공격력 +50%
                 });
                 break;

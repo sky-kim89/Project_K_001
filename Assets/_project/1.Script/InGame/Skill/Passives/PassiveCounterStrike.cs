@@ -32,11 +32,13 @@ public class PassiveCounterStrike : PassiveSkillData
 
         em.GetBuffer<StatusEffectBufferElement>(ctx.GeneralEntity).Add(new StatusEffectBufferElement
         {
-            Stat      = StatType.Attack,
-            Delta     = bonus,
-            Mode      = EffectMode.Add,
-            Duration  = BuffDuration,
-            Remaining = BuffDuration,
+            Stat       = StatType.Attack,
+            Delta      = bonus,
+            Mode       = EffectMode.Add,
+            Duration   = BuffDuration,
+            Remaining  = BuffDuration,
+            SourceType = BuffSourceType.Passive,
+            SourceId   = (int)Type,
         });
     }
 }

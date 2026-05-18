@@ -102,10 +102,13 @@ public class BattleManager : Singleton<BattleManager>
         // 장군 스폰 완료 통보 → InGameManager 가 로딩 팝업을 닫는다
         OnAlliesReady?.Invoke();
 
-        // ── 적군 프리웜 (아군 스폰 후) ───────────────────────────
-        List<SpawnEntry> wave1Enemies = _mode.GetEnemySpawnEntries(1);
-        if (wave1Enemies is { Count: > 0 })
-            yield return StartCoroutine(EnemySpawner.Prewarm(wave1Enemies));
+        // ── 전 웨이브 적군 프리웜 (아군 스폰 후) ────────────────
+        for (int w = 1; w <= _context.TotalWaves; w++)
+        {
+            List<SpawnEntry> waveEnemies = _mode.GetEnemySpawnEntries(w);
+            if (waveEnemies is { Count: > 0 })
+                yield return StartCoroutine(EnemySpawner.Prewarm(waveEnemies));
+        }
 
         yield return StartCoroutine(BattleRoutine());
     }
@@ -294,6 +297,7 @@ public class BattleManager : Singleton<BattleManager>
         if (world != null && world.IsCreated)
         {
             var em    = world.EntityManager;
+            em.CompleteAllTrackedJobs();  // 실행 중인 Burst Job 완료 대기
             var query = em.CreateEntityQuery(
                 new ComponentType[] { ComponentType.ReadOnly<BattleGame.Units.UnitPoolLinkComponent>() });
 

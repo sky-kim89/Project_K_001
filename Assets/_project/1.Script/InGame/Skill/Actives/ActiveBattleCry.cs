@@ -56,11 +56,13 @@ public class ActiveBattleCry : ActiveSkillData
 
             em.GetBuffer<StatusEffectBufferElement>(entities[i]).Add(new StatusEffectBufferElement
             {
-                Stat      = StatType.Attack,
-                Delta     = EffectValue,
-                Mode      = EffectMode.Multiply,
-                Duration  = duration,
-                Remaining = duration,
+                Stat       = StatType.Attack,
+                Delta      = EffectValue,
+                Mode       = EffectMode.Multiply,
+                Duration   = duration,
+                Remaining  = duration,
+                SourceType = BuffSourceType.ActiveSkill,
+                SourceId   = (int)SkillId,
             });
         }
 

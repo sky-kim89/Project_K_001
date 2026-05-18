@@ -86,8 +86,26 @@ public class SoldierRuntimeBridge : UnitRuntimeBridge
         if (em.HasComponent<UnitJobComponent>(entity))
             em.SetComponentData(entity, new UnitJobComponent { Job = _job });
 
-        if (em.HasBuffer<ProjectileLaunchRequest>(entity))
+        // 풀 재사용 시 이전 직업과 현재 직업이 다를 수 있음
+        // — RangedTag / ProjectileLaunchRequest 를 현재 직업 기준으로 맞춤
+        bool shouldBeRanged = _job == UnitJob.Archer || _job == UnitJob.Mage;
+        bool hasRangedTag   = em.HasComponent<RangedTag>(entity);
+
+        if (shouldBeRanged && !hasRangedTag)
+        {
+            em.AddComponent<RangedTag>(entity);
+            em.AddBuffer<ProjectileLaunchRequest>(entity);
+        }
+        else if (!shouldBeRanged && hasRangedTag)
+        {
+            em.RemoveComponent<RangedTag>(entity);
+            if (em.HasBuffer<ProjectileLaunchRequest>(entity))
+                em.GetBuffer<ProjectileLaunchRequest>(entity).Clear();
+        }
+        else if (shouldBeRanged && em.HasBuffer<ProjectileLaunchRequest>(entity))
+        {
             em.GetBuffer<ProjectileLaunchRequest>(entity).Clear();
+        }
     }
 
     // ── 내부 ─────────────────────────────────────────────────

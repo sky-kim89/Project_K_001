@@ -69,7 +69,7 @@ namespace BattleGame.Units
                     if (!fire) continue;
                     if (Random.value > equip.TriggerChance) continue;
 
-                    ApplyEquipTrigger(equip, enhance, ctx);
+                    ApplyEquipTrigger(equip, enhance, s, ctx);
                 }
 
                 // ── 특수 어빌리티 트리거 디스패치 ────────────────
@@ -95,7 +95,7 @@ namespace BattleGame.Units
 
         // ── 장비 트리거 효과 적용 ────────────────────────────────
 
-        static void ApplyEquipTrigger(EquipmentData equip, int enhance, PassiveTriggerContext ctx)
+        static void ApplyEquipTrigger(EquipmentData equip, int enhance, int slotIndex, PassiveTriggerContext ctx)
         {
             var   em    = ctx.EntityManager;
             float value = CalcValue(equip, enhance, ctx);
@@ -114,11 +114,13 @@ namespace BattleGame.Units
             float dur = equip.TriggerDuration > 0f ? equip.TriggerDuration : 0.1f;
             em.GetBuffer<StatusEffectBufferElement>(ctx.GeneralEntity).Add(new StatusEffectBufferElement
             {
-                Stat      = equip.TriggerStat,
-                Delta     = value,
-                Mode      = EffectMode.Add,
-                Duration  = dur,
-                Remaining = dur,
+                Stat       = equip.TriggerStat,
+                Delta      = value,
+                Mode       = EffectMode.Add,
+                Duration   = dur,
+                Remaining  = dur,
+                SourceType = BuffSourceType.Equipment,
+                SourceId   = slotIndex,
             });
         }
 

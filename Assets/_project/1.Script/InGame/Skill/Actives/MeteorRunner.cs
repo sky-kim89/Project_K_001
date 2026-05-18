@@ -50,14 +50,16 @@ public class MeteorRunner : MonoBehaviour
         float           knockbackMult,
         SkillEffectConfig fx)
     {
+        float fxScale = aoeRadius / 3f;  // FX_Meteor_Warning / FX_Meteor_Explosion 프리팹 기준 반경 3
+
         // ── ① 낙하 예고 이펙트 (즉시) ────────────────────────
-        SkillEffectHelper.SpawnBase(fx.BaseEffectKey, impactPos, delay + fx.DespawnDelay);
+        SkillEffectHelper.SpawnBase(fx.BaseEffectKey, impactPos, delay + fx.DespawnDelay, scale: fxScale);
 
         // ── ② 착탄 대기 ───────────────────────────────────────
         yield return new WaitForSeconds(delay);
 
         // ── ③ 폭발 이펙트 + AoE 피해 ─────────────────────────
-        SkillEffectHelper.SpawnTarget(fx.TargetEffectKey, impactPos, fx.DespawnDelay);
+        SkillEffectHelper.SpawnTarget(fx.TargetEffectKey, impactPos, fx.DespawnDelay, scale: fxScale);
 
         em.CompleteAllTrackedJobs();
         float3 center = new float3(impactPos.x, impactPos.y, 0f);

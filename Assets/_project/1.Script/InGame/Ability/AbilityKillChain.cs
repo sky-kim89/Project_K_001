@@ -43,11 +43,13 @@ public class AbilityKillChain : AbilityData
         // 최초 처치 — 신규 항목 추가 (Duration -1 = 전투 종료까지 유지)
         buf.Add(new StatusEffectBufferElement
         {
-            Stat      = StatType.Attack,
-            Delta     = bonus,
-            Mode      = EffectMode.Add,
-            Duration  = -1f,
-            Remaining = float.MaxValue,
+            Stat       = StatType.Attack,
+            Delta      = bonus,
+            Mode       = EffectMode.Add,
+            Duration   = -1f,
+            Remaining  = float.MaxValue,
+            SourceType = BuffSourceType.Ability,
+            SourceId   = (int)Id,
         });
     }
 }
