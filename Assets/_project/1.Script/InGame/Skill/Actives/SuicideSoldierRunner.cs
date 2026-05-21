@@ -121,7 +121,7 @@ public class SuicideSoldierRunner : MonoBehaviour
                 Damage         = damage,
                 HitDirection   = knockDir * knockbackMult,
                 AttackerEntity = soldierEntity,
-                IsSkillHit     = true,
+                Type = BattleGame.Units.HitType.Skill,
             });
         }
 

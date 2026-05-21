@@ -1,4 +1,5 @@
 using Unity.Entities;
+using Unity.Mathematics;
 
 // ============================================================
 //  SkillComponents.cs
@@ -80,7 +81,8 @@ namespace BattleGame.Units
     [InternalBufferCapacity(1)]
     public struct ActiveSkillExecuteEvent : IBufferElementData
     {
-        public int   SkillId;       // 발동할 스킬 ID (ActiveSkillId enum)
-        public Entity TargetEntity; // 현재 공격 타겟 (없으면 Entity.Null)
+        public int    SkillId;          // 발동할 스킬 ID (ActiveSkillId enum)
+        public Entity TargetEntity;     // 현재 공격 타겟 (없으면 Entity.Null)
+        public float3 TargetPosition;   // 스킬 발동 시점의 타겟 위치 스냅샷 (타겟 사망 후에도 유효)
     }
 }

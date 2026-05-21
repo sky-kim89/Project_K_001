@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using UnityEngine;
 using BattleGame.Units;
 
@@ -12,7 +12,7 @@ using BattleGame.Units;
 //    HealRatio: 최대체력 대비 회복 비율 (0.08 = 8%)
 // ============================================================
 
-[CreateAssetMenu(fileName = "Passive_SkillInstinct", menuName = "BattleGame/Passives/SkillInstinct")]
+[UnityEngine.CreateAssetMenu(fileName = "Passive_SkillInstinct", menuName = "BattleGame/Passives/SkillInstinct")]
 public class PassiveSkillInstinct : PassiveSkillData
 {
     [Header("생존 본능 설정")]

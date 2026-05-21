@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using UnityEngine;
 using BattleGame.Units;
 
@@ -11,7 +11,7 @@ using BattleGame.Units;
 //    HealRatio: 최대체력 대비 회복 비율 (0.05 = 5%)
 // ============================================================
 
-[CreateAssetMenu(fileName = "Passive_KillHeal", menuName = "BattleGame/Passives/KillHeal")]
+[UnityEngine.CreateAssetMenu(fileName = "Passive_KillHeal", menuName = "BattleGame/Passives/KillHeal")]
 public class PassiveKillHeal : PassiveSkillData
 {
     [Header("처치 회복 설정")]

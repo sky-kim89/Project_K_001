@@ -13,9 +13,12 @@ using UnityEngine;
 //    AbilitySelectPopup 에서 새로고침 시 UseRefresh() 로 증가.
 //    환생 시 ResetOnReincarnation() 으로 초기화 — 환생 전까지 누적 유지.
 //
-//  ■ 레벨업 비용 공식
-//    LevelUpCost(currentLevel) = (currentLevel + 1)²
-//    0→1 : 1pt, 1→2 : 4pt, 2→3 : 9pt, 3→4 : 16pt, 4→5 : 25pt
+//  ■ 환생 포인트 획득 공식 (구간별 누적)
+//    5~9구간 +1pt/스테이지, 10~14 +2pt, 15~19 +3pt, 20~24 +4pt, 25+ +(stage-20)pt
+//    → 스테이지 30 최대: 95pt 누적
+//
+//  ■ 레벨업 비용 공식 (GameplayConfig.RelicLevelUpCostExponent 사용)
+//    기본 지수 2: (currentLevel+1)²  →  0→1: 1pt, 1→2: 4pt, 4→5: 25pt
 // ============================================================
 
 [Serializable]
@@ -38,33 +41,61 @@ public class ReincarnationData : ISaveSection
     // ── 환생 포인트 공식 ──────────────────────────────────────
 
     /// <summary>
-    /// 클리어한 일반 스테이지 수에 따른 환생 포인트.
-    /// stage² — 스테이지 5=25pt, 10=100pt, 20=400pt.
-    /// 스테이지 5 미만이면 0.
+    /// 클리어한 일반 스테이지 수에 따른 환생 포인트 (누적).
+    /// 구간별 획득량: 5~9구간 +1pt, 10~14 +2pt, 15~19 +3pt, 20~24 +4pt, 25+ +(stage-20)pt.
+    /// 예) st30 = 1×5 + 2×5 + 3×5 + 4×5 + 5+6+7+8+9+10 = 5+10+15+20+45 = 95pt.
     /// </summary>
     public static int CalculateReincarnationPoints(int clearedNormalStage)
-        => clearedNormalStage < ReincarnateMinStage ? 0
-           : clearedNormalStage * clearedNormalStage;
+    {
+        if (clearedNormalStage < ReincarnateMinStage) return 0;
+        int total = 0;
+        for (int s = ReincarnateMinStage; s <= clearedNormalStage; s++)
+            total += StagePointIncrement(s);
+        return total;
+    }
+
+    static int StagePointIncrement(int stage)
+    {
+        if (stage < 10) return 1;
+        if (stage < 15) return 2;
+        if (stage < 20) return 3;
+        if (stage < 25) return 4;
+        return stage - 20;
+    }
 
     public static bool CanReincarnate(int clearedNormalStage)
         => clearedNormalStage >= ReincarnateMinStage;
 
     // ── 레벨업 비용 ───────────────────────────────────────────
 
-    /// <summary>현재 레벨 → 다음 레벨 강화 비용. 0→1 : 1pt, N→N+1 : (N+1)²pt.</summary>
+    /// <summary>
+    /// 현재 레벨 → 다음 레벨 강화 비용.
+    /// 공식: (currentLevel+1)^GameplayConfig.RelicLevelUpCostExponent (기본 지수 2).
+    /// 0→1: 1pt, 1→2: 4pt, 2→3: 9pt, 4→5: 25pt.
+    /// </summary>
     public static int LevelUpCost(int currentLevel)
-        => (currentLevel + 1) * (currentLevel + 1);
-
-    /// <summary>희귀도별 유물 첫 획득 포인트 비용.</summary>
-    public static int AcquireCost(RelicRarity rarity) => rarity switch
     {
-        RelicRarity.Common    =>  5,
-        RelicRarity.Uncommon  => 10,
-        RelicRarity.Rare      => 20,
-        RelicRarity.Epic      => 40,
-        RelicRarity.Legendary => 80,
-        _ => 10,
-    };
+        float exp = GameplayConfig.Current != null
+            ? GameplayConfig.Current.RelicLevelUpCostExponent
+            : 2f;
+        return Mathf.Max(1, Mathf.RoundToInt(Mathf.Pow(currentLevel + 1, exp)));
+    }
+
+    /// <summary>희귀도별 유물 첫 획득 포인트 비용 (GameplayConfig 에서 읽음).</summary>
+    public static int AcquireCost(RelicRarity rarity)
+    {
+        var cfg = GameplayConfig.Current;
+        if (cfg != null) return cfg.GetRelicAcquireCost(rarity);
+        return rarity switch
+        {
+            RelicRarity.Common    => 1,
+            RelicRarity.Uncommon  => 2,
+            RelicRarity.Rare      => 3,
+            RelicRarity.Epic      => 4,
+            RelicRarity.Legendary => 5,
+            _ => 2,
+        };
+    }
 
     // ── 포인트 조작 ───────────────────────────────────────────
 

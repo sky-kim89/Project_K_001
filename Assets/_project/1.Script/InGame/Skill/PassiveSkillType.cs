@@ -63,4 +63,18 @@ public enum PassiveSkillType : byte
     SkillAdrenaline          = 30,  // 스킬 사용 시 공격력·공격속도 T초 버프
     SkillInstinct            = 31,  // 스킬 사용 시 X% 확률로 즉시 최대체력의 Y% 회복
     SkillRally               = 32,  // 스킬 사용 시 병사 전체 공격력·이동속도 T초 버프
+
+    // ── OnBattleStart 트리거 ─────────────────────────────────
+    GoldenPower              = 33,  // 보유 골드 N당 공격력·최대체력 +X%
+    SwiftAssault             = 34,  // 이동속도 증가분만큼 공격속도도 증가
+    SteelBody                = 35,  // 최대체력의 X%를 공격력으로 전환
+    ShieldEdge               = 36,  // 방어율 10%당 공격력 +Y%
+    FocusedFire              = 37,  // 공격속도 0.1당 치명타 확률 +Z%
+
+    // ── 즉시 적용 (None 트리거) ──────────────────────────────
+    WideRange                = 38,  // 사정거리 +10% (StatModifier만 사용, 서브클래스 없음)
+
+    // ── OnEnemyKill 트리거 ───────────────────────────────────
+    LootHunter               = 39,  // 적 처치 시 골드 N 획득
+    Slaughterer              = 40,  // 처치 시 공격력 X% 누적 (최대 MaxStacks 스택)
 }

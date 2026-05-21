@@ -55,10 +55,10 @@ namespace BattleGame.Units
                             RefRO<StatComponent>>()
                         .WithEntityAccess())
             {
-                // SoldierCount — StatComponent 에 값이 있으면 우선 사용, 없으면 Authoring 값
+                // SoldierCount — Authoring 기준값 + 어빌리티 가산분 (A16/B13 등)
                 StatBlock generalStat  = stat.ValueRO.Final;
                 float     statCount    = generalStat[StatType.SoldierCount];
-                int       count        = statCount > 0f ? (int)statCount : request.ValueRO.Count;
+                int       count        = request.ValueRO.Count + (int)math.max(0f, statCount);
 
                 // CommandPower — 1포인트당 병사 스텟 1% 증가 (기본 StatScaleRatio 에 곱)
                 float commandPower = generalStat[StatType.CommandPower];
@@ -273,14 +273,18 @@ namespace BattleGame.Units
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct ActiveSkillCooldownSystem : ISystem
     {
+        ComponentLookup<LocalTransform> _transformLookup;
+
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<GeneralActiveSkillComponent>();
+            _transformLookup = state.GetComponentLookup<LocalTransform>(true);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            _transformLookup.Update(ref state);
             float dt = SystemAPI.Time.DeltaTime;
 
             // 쿨다운 감소
@@ -310,11 +314,18 @@ namespace BattleGame.Units
 
                 skill.ValueRW.CooldownRemaining = skill.ValueRO.Cooldown;
 
+                // 타겟 위치를 이 시점에 스냅샷 — 이후 타겟이 사망해도 착탄 위치가 유지됨
+                Entity targetEnt = attack.ValueRO.TargetEntity;
+                float3 targetPos = _transformLookup.TryGetComponent(targetEnt, out LocalTransform lt)
+                    ? lt.Position
+                    : float3.zero;
+
                 // 실행 이벤트 버퍼에 추가 → ActiveSkillExecuteSystem 이 다음에 처리
                 ecb.AppendToBuffer(entity, new ActiveSkillExecuteEvent
                 {
-                    SkillId      = skill.ValueRO.SkillId,
-                    TargetEntity = attack.ValueRO.TargetEntity,
+                    SkillId        = skill.ValueRO.SkillId,
+                    TargetEntity   = targetEnt,
+                    TargetPosition = targetPos,
                 });
             }
 

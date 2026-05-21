@@ -12,7 +12,7 @@ using Unity.Entities;
 //  딜 분류 (DamageCategory):
 //    General — 장군 일반 공격
 //    Soldier — 병사 일반 공격
-//    Skill   — 스킬 직접 타격(IsSkillHit) + 소환 유닛(SummonedTag)
+//    Skill   — 스킬 직접 타격(HitType.Skill) + 소환 유닛(SummonedTag)
 // ============================================================
 
 public class BattleStatsTracker : SingletonPure<BattleStatsTracker>

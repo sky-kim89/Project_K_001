@@ -83,33 +83,27 @@ public class AbilityListPopup : PopupBase
         var db = AbilityDatabase.Current;
         if (db == null) return;
 
-        // 동일 ID 중복 카운트
-        var counts = new Dictionary<AbilityId, int>();
-        foreach (var id in runData.HeldAbilities)
-        {
-            if (!counts.ContainsKey(id)) counts[id] = 0;
-            counts[id]++;
-        }
-
-        if (_headerCountTmp != null)
-            _headerCountTmp.text = $"{runData.HeldAbilities.Count}개 보유";
-
+        int uniqueCount = 0;
         AbilityData firstData = null;
-        foreach (var (id, cnt) in counts)
+        foreach (var id in runData.OwnedAbilityIds)
         {
             var data = db.Get(id);
             if (data == null) continue;
+            uniqueCount++;
             firstData ??= data;
 
-            var item = CreateListItem(data, cnt);
+            var item = CreateListItem(data, runData.GetLevel(id));
             item.transform.SetParent(_listContent, false);
             _listItems.Add(item);
         }
 
+        if (_headerCountTmp != null)
+            _headerCountTmp.text = $"{uniqueCount}종 보유";
+
         if (firstData != null) SelectAbility(firstData);
     }
 
-    GameObject CreateListItem(AbilityData data, int count)
+    GameObject CreateListItem(AbilityData data, int level)
     {
         GameObject go;
         if (_listItemTemplate != null)
@@ -125,7 +119,7 @@ public class AbilityListPopup : PopupBase
 
         // 배경 등급 색
         var bg = go.GetComponent<Image>();
-        if (bg != null) bg.color = GetGradeColor(data.Grade) * 0.25f + new Color(0.06f, 0.07f, 0.12f, 1f);
+        if (bg != null) bg.color = AbilityUIHelper.GradeColor(data.Grade) * 0.25f + new Color(0.06f, 0.07f, 0.12f, 1f);
 
         // 아이콘
         var iconImg = go.transform.Find("Icon")?.GetComponent<Image>();
@@ -139,17 +133,22 @@ public class AbilityListPopup : PopupBase
         // 등급
         var gradeTmp = go.transform.Find("GradeText")?.GetComponent<TextMeshProUGUI>();
         if (gradeTmp != null)
-        { gradeTmp.text = GetGradeLabel(data.Grade); gradeTmp.color = GetGradeColor(data.Grade); }
+        { gradeTmp.text = AbilityUIHelper.GradeLabel(data.Grade); gradeTmp.color = AbilityUIHelper.GradeColor(data.Grade); }
 
         // 대상
         var targetTmp = go.transform.Find("TargetText")?.GetComponent<TextMeshProUGUI>();
-        if (targetTmp != null) targetTmp.text = GetTargetLabel(data.Target);
+        if (targetTmp != null) targetTmp.text = AbilityUIHelper.TargetLabel(data.Target);
 
-        // ×N 카운트 뱃지
+        // Lv N/MaxN 레벨 뱃지
         var countGo  = go.transform.Find("CountBadge");
         var countTmp = countGo?.GetComponent<TextMeshProUGUI>();
-        if (countGo != null)  countGo.gameObject.SetActive(count > 1);
-        if (countTmp != null) countTmp.text = $"×{count}";
+        bool showLv  = data.MaxLevel > 1;
+        if (countGo  != null) countGo.gameObject.SetActive(showLv);
+        if (countTmp != null)
+        {
+            countTmp.text  = $"Lv {level}/{data.MaxLevel}";
+            countTmp.color = level >= data.MaxLevel ? new Color(1f, 0.85f, 0.2f) : Color.white;
+        }
 
         // 선택 버튼
         var btn = go.GetComponent<Button>();
@@ -167,20 +166,20 @@ public class AbilityListPopup : PopupBase
     {
         _selected = data;
         RefreshDetail();
-        HighlightListItem(data.Id);
+        RefreshHighlightColors(data.Id);
     }
 
     void RefreshDetail()
     {
         if (_selected == null) return;
         var d  = _selected;
-        var gc = GetGradeColor(d.Grade);
+        var gc = AbilityUIHelper.GradeColor(d.Grade);
 
         if (_infoIcon     != null) { _infoIcon.sprite = d.Icon; _infoIcon.enabled = d.Icon != null; }
         if (_infoGradeBar != null)   _infoGradeBar.color = gc;
-        if (_infoGradeTmp != null) { _infoGradeTmp.text = GetGradeLabel(d.Grade); _infoGradeTmp.color = gc; }
+        if (_infoGradeTmp != null) { _infoGradeTmp.text = AbilityUIHelper.GradeLabel(d.Grade); _infoGradeTmp.color = gc; }
         if (_infoNameTmp  != null)   _infoNameTmp.text  = d.AbilityName;
-        if (_infoTargetTmp!= null)   _infoTargetTmp.text = GetTargetLabel(d.Target);
+        if (_infoTargetTmp!= null)   _infoTargetTmp.text = AbilityUIHelper.TargetLabel(d.Target);
 
         // 기존 스탯 행 제거
         foreach (var r in _infoRows) { if (r) Destroy(r); }
@@ -188,21 +187,25 @@ public class AbilityListPopup : PopupBase
 
         if (_infoStatContent == null || _infoStatTemplate == null) return;
 
-        if (d.Grade == AbilityGrade.Special)
+        if (d.Grade == AbilityGrade.Special || d.Grade == AbilityGrade.Mastery)
         {
-            // 발동 조건
-            AddInfoRow($"<color=#888888>발동 조건</color>  {GetTriggerLabel(d.GetTriggerType())}", gc);
-            // 실제 효과 설명
+            AddInfoRow($"<color=#888888>발동 조건</color>  {AbilityUIHelper.TriggerLabel(d.GetTriggerType())}", gc);
             var desc = d.Description;
             if (!string.IsNullOrEmpty(desc))
                 AddInfoRow($"<color=#888888>효과</color>  {desc}", Color.white);
         }
         else
         {
-            // Value1 / Value2 는 float 비율 (예: 0.08 = 8%)
-            AddInfoRow($"<color=#888888>{StatLabel(d.Stat1)}</color>  +{d.Value1 * 100f:0.#}%", Color.white);
+            var runData = UserDataManager.Instance?.Get<RunAbilityData>();
+            int lv      = runData != null ? runData.GetLevel(d.Id) : 0;
+            int maxLv   = d.MaxLevel;
+
+            string LvTag() => lv > 0 ? $"  <color=#aaaaaa>Lv {lv}/{maxLv}</color>" : string.Empty;
+            int    mult   = lv > 0 ? lv : 1;
+
+            AddInfoRow($"<color=#888888>{AbilityUIHelper.StatLabel(d.Stat1)}</color>  {AbilityUIHelper.FormatStatValue(d.Stat1, d.Value1 * mult)}{LvTag()}", Color.white);
             if (d.HasStat2)
-                AddInfoRow($"<color=#888888>{StatLabel(d.Stat2)}</color>  +{d.Value2 * 100f:0.#}%", Color.white);
+                AddInfoRow($"<color=#888888>{AbilityUIHelper.StatLabel(d.Stat2)}</color>  {AbilityUIHelper.FormatStatValue(d.Stat2, d.Value2 * mult)}{LvTag()}", Color.white);
         }
     }
 
@@ -237,7 +240,7 @@ public class AbilityListPopup : PopupBase
         foreach (var id in runData.HeldAbilities)
         {
             var d = db.Get(id);
-            if (d == null || d.Grade == AbilityGrade.Special) continue;
+            if (d == null || d.Grade == AbilityGrade.Special || d.Grade == AbilityGrade.Mastery) continue;
 
             var k1 = (d.Stat1, d.Target);
             totals[k1] = totals.GetValueOrDefault(k1) + d.Value1;
@@ -258,40 +261,16 @@ public class AbilityListPopup : PopupBase
 
         foreach (var (key, total) in sorted)
         {
-            string label = $"{StatLabel(key.stat)}({GetTargetLabel(key.target)})";
+            string label   = $"{AbilityUIHelper.StatLabel(key.stat)}({AbilityUIHelper.TargetLabel(key.target)})";
+            string valStr  = AbilityApplier.IsAbsoluteStat(key.stat)
+                ? $"+{total:0}"
+                : $"+{total * 100f:0.#}%";
             var go  = Instantiate(_totalStatTemplate.gameObject, _totalStatContent);
             var tmp = go.GetComponent<TextMeshProUGUI>();
-            tmp.text  = $"<color=#888888>{label}</color>  <color=#{StatBonusColors.Ability}>+{total * 100f:0.#}%</color>";
+            tmp.text  = $"<color=#888888>{label}</color>  <color=#{StatBonusColors.Ability}>{valStr}</color>";
             tmp.color = Color.white;
             go.SetActive(true);
             _totalRows.Add(go);
-        }
-    }
-
-    // ── 선택 하이라이트 ────────────────────────────────────────
-
-    void HighlightListItem(AbilityId selectedId)
-    {
-        foreach (var go in _listItems)
-        {
-            if (go == null) continue;
-            // 아이템 이름이 AbilityId 이름과 일치하면 강조
-            bool isSelected = go.name == selectedId.ToString();
-            var bg = go.GetComponent<Image>();
-            if (bg == null) continue;
-            var baseColor = _selected != null
-                ? GetGradeColor(_selected.Grade) * 0.25f + new Color(0.06f, 0.07f, 0.12f, 1f)
-                : new Color(0.08f, 0.09f, 0.14f, 1f);
-
-            // 이름으로 올바르게 강조
-            var d = AbilityDatabase.Current?.Get((AbilityId)System.Enum.Parse(typeof(AbilityId), go.name, true));
-            if (d != null)
-            {
-                var gc = GetGradeColor(d.Grade);
-                bg.color = (go.name == selectedId.ToString())
-                    ? gc * 0.35f + new Color(0.06f, 0.07f, 0.12f, 1f)
-                    : gc * 0.20f + new Color(0.06f, 0.07f, 0.12f, 1f);
-            }
         }
     }
 
@@ -313,58 +292,22 @@ public class AbilityListPopup : PopupBase
         _selected = null;
     }
 
-    // ── 레이블 헬퍼 ───────────────────────────────────────────
+    // ── 하이라이트 재계산 (선택 배경색) ─────────────────────────
 
-    static string GetGradeLabel(AbilityGrade g) => g switch
+    void RefreshHighlightColors(AbilityId selectedId)
     {
-        AbilityGrade.Normal   => "일반",
-        AbilityGrade.Advanced => "고급",
-        AbilityGrade.Special  => "특수",
-        _                     => "?"
-    };
-
-    static Color GetGradeColor(AbilityGrade g) => g switch
-    {
-        AbilityGrade.Normal   => new Color(0.70f, 0.70f, 0.75f),
-        AbilityGrade.Advanced => new Color(0.40f, 0.72f, 1.00f),
-        AbilityGrade.Special  => new Color(1.00f, 0.80f, 0.20f),
-        _                     => Color.white
-    };
-
-    static string GetTargetLabel(AbilityTarget t) => t switch
-    {
-        AbilityTarget.All              => "전체",
-        AbilityTarget.Job_Knight       => "기사",
-        AbilityTarget.Job_Archer       => "궁수",
-        AbilityTarget.Job_Mage         => "마법사",
-        AbilityTarget.Job_ShieldBearer => "방패병",
-        AbilityTarget.Range_Melee      => "근거리",
-        AbilityTarget.Range_Ranged     => "원거리",
-        AbilityTarget.Unit_General     => "장군",
-        AbilityTarget.Unit_Soldier     => "병사",
-        _                              => "?"
-    };
-
-    static string GetTriggerLabel(PassiveTrigger t) => t switch
-    {
-        PassiveTrigger.OnAttack       => "공격 시",
-        PassiveTrigger.OnHit          => "피격 시",
-        PassiveTrigger.OnEnemyKill    => "처치 시",
-        PassiveTrigger.OnSoldierDeath => "병사 사망 시",
-        PassiveTrigger.OnSkillUse     => "스킬 사용 시",
-        _                             => "즉시"
-    };
-
-    static string StatLabel(StatType t) => t switch
-    {
-        StatType.MaxHp               => "최대 체력",
-        StatType.Attack              => "공격력",
-        StatType.AttackSpeed         => "공격속도",
-        StatType.MoveSpeed           => "이동속도",
-        StatType.Defense             => "방어율",
-        StatType.AttackRange         => "사거리",
-        StatType.CritChance          => "치명타",
-        StatType.SkillCooldownReduce => "스킬 쿨감",
-        _                            => t.ToString()
-    };
+        foreach (var go in _listItems)
+        {
+            if (go == null) continue;
+            var d = AbilityDatabase.Current?.Get(
+                (AbilityId)System.Enum.Parse(typeof(AbilityId), go.name, true));
+            if (d == null) continue;
+            var gc = AbilityUIHelper.GradeColor(d.Grade);
+            var bg = go.GetComponent<Image>();
+            if (bg != null)
+                bg.color = (go.name == selectedId.ToString())
+                    ? gc * 0.35f + new Color(0.06f, 0.07f, 0.12f, 1f)
+                    : gc * 0.20f + new Color(0.06f, 0.07f, 0.12f, 1f);
+        }
+    }
 }

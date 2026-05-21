@@ -27,6 +27,9 @@ public class AbilityData : ScriptableObject
     [Tooltip("% 비율 (0.08 = 8%)")]
     public float    Value2;
 
+    [Tooltip("최대 중복 보유 횟수 (Normal/Advanced=3, Special/Mastery=1)")]
+    public int MaxLevel = 3;
+
     public Sprite   Icon;
 
     // ── 트리거 어빌리티 지원 (Special 등급 서브클래스 전용) ───

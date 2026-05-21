@@ -36,6 +36,7 @@ public enum PassiveTrigger : byte
     OnEnemyKill    = 3,  // 제너럴 또는 소속 병사가 적을 처치할 때
     OnSoldierDeath = 4,  // 소속 병사가 사망할 때
     OnSkillUse     = 5,  // 제너럴이 액티브 스킬을 사용할 때
+    OnBattleStart  = 6,  // 전투 시작 시 1회 — BattleManager.FireBattleStartTriggers() 가 호출
 }
 
 [CreateAssetMenu(fileName = "PassiveSkillData", menuName = "BattleGame/PassiveSkillData")]

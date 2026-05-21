@@ -82,14 +82,18 @@ public class NormalMode : BattleModeBase
     {
         Context.StageLevel = _stage.StageNumber;
 
-        if (_stage.GoldReward  > 0) Context.PendingRewards.Add(new ItemAmount { Item = eItem.Gold,        Amount = _stage.GoldReward  });
-        if (_stage.StoneReward > 0) Context.PendingRewards.Add(new ItemAmount { Item = eItem.BattleStone, Amount = _stage.StoneReward });
+        var   runData   = UserDataManager.Instance?.Get<RunAbilityData>();
+        float goldBonus = AbilityApplier.GetGoldBonusRatio(runData?.HeldAbilities, AbilityDatabase.Current);
+        int   totalGold = Mathf.RoundToInt(_stage.GoldReward * (1f + goldBonus));
+
+        if (totalGold          > 0) Context.PendingRewards.Add(new ItemAmount { Item = eItem.Gold,        Amount = totalGold           });
+        if (_stage.StoneReward > 0) Context.PendingRewards.Add(new ItemAmount { Item = eItem.BattleStone, Amount = _stage.StoneReward  });
 
         for (int i = 0; i < _stage.EquipBoxReward; i++)
             Context.PendingRewards.Add(new ItemAmount { Item = eItem.EquipBox, Amount = 1 });
         Context.PendingRewards.Add(new ItemAmount { Item = eItem.SoldierShard, Amount = _stage.ShardReward });
 
-        Debug.Log($"[NormalMode] 클리어 보상: 골드 +{_stage.GoldReward}, 전투석 +{_stage.StoneReward}, 장비 박스 ×{_stage.EquipBoxReward}, 용병 조각 ×{_stage.ShardReward}");
+        Debug.Log($"[NormalMode] 클리어 보상: 골드 +{totalGold}(×{1f + goldBonus:F2}), 전투석 +{_stage.StoneReward}, 장비 박스 ×{_stage.EquipBoxReward}, 용병 조각 ×{_stage.ShardReward}");
     }
 
     // ── 훅 오버라이드 ─────────────────────────────────────────

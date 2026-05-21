@@ -17,26 +17,47 @@ public class AbilityCardUI : MonoBehaviour
     [SerializeField] TextMeshProUGUI  _targetTmp;
     [SerializeField] TextMeshProUGUI  _descTmp;
     [SerializeField] Button           _selectBtn;
+    [SerializeField] TextMeshProUGUI  _levelTmp;
 
-    public void Setup(AbilityData data, Action<AbilityData> onClicked)
+    /// <param name="currentLevel">현재 보유 레벨 (0=미보유). 선택 후 currentLevel+1 이 됨.</param>
+    public void Setup(AbilityData data, Action<AbilityData> onClicked, int currentLevel = 0)
     {
-        Color gradeColor = GetGradeColor(data.Grade);
+        Color gradeColor = AbilityUIHelper.GradeColor(data.Grade);
 
         if (_gradeBar  != null) _gradeBar.color  = gradeColor;
         if (_icon      != null) _icon.sprite      = data.Icon;
 
         if (_gradeTmp != null)
         {
-            _gradeTmp.text  = GetGradeLabel(data.Grade);
+            _gradeTmp.text  = AbilityUIHelper.GradeLabel(data.Grade);
             _gradeTmp.color = gradeColor;
         }
 
         if (_nameTmp   != null) _nameTmp.text   = data.AbilityName;
         if (_targetTmp != null)
-            _targetTmp.text = data.Grade == AbilityGrade.Special
-                ? $"발동: {GetTriggerLabel(data.GetTriggerType())}"
-                : GetTargetLabel(data.Target);
+            _targetTmp.text = (data.Grade == AbilityGrade.Special || data.Grade == AbilityGrade.Mastery)
+                ? $"발동: {AbilityUIHelper.TriggerLabel(data.GetTriggerType())}"
+                : AbilityUIHelper.TargetLabel(data.Target);
         if (_descTmp   != null) _descTmp.text   = BuildDesc(data);
+
+        // 레벨 표시 — MaxLevel > 1 인 어빌리티만 (Normal/Advanced)
+        if (_levelTmp != null)
+        {
+            int maxLv = data.MaxLevel;
+            if (maxLv <= 1)
+            {
+                _levelTmp.gameObject.SetActive(false);
+            }
+            else
+            {
+                _levelTmp.gameObject.SetActive(true);
+                int nextLv = currentLevel + 1;
+                _levelTmp.text  = currentLevel > 0
+                    ? $"Lv {currentLevel} → {nextLv} / {maxLv}"
+                    : $"Lv {nextLv} / {maxLv}";
+                _levelTmp.color = nextLv >= maxLv ? new Color(1f, 0.85f, 0.2f) : gradeColor;
+            }
+        }
 
         if (_selectBtn != null)
         {
@@ -46,68 +67,13 @@ public class AbilityCardUI : MonoBehaviour
         }
     }
 
-    // ── 레이블 헬퍼 ───────────────────────────────────────────
-
-    static string GetGradeLabel(AbilityGrade grade) => grade switch
-    {
-        AbilityGrade.Normal   => "일반",
-        AbilityGrade.Advanced => "고급",
-        AbilityGrade.Special  => "특수",
-        _                     => "?"
-    };
-
-    static Color GetGradeColor(AbilityGrade grade) => grade switch
-    {
-        AbilityGrade.Normal   => new Color(0.70f, 0.70f, 0.75f),
-        AbilityGrade.Advanced => new Color(0.40f, 0.72f, 1.00f),
-        AbilityGrade.Special  => new Color(1.00f, 0.80f, 0.20f),
-        _                     => Color.white
-    };
-
-    static string GetTargetLabel(AbilityTarget target) => target switch
-    {
-        AbilityTarget.All              => "전체",
-        AbilityTarget.Job_Knight       => "기사",
-        AbilityTarget.Job_Archer       => "궁수",
-        AbilityTarget.Job_Mage         => "마법사",
-        AbilityTarget.Job_ShieldBearer => "방패병",
-        AbilityTarget.Range_Melee      => "근거리",
-        AbilityTarget.Range_Ranged     => "원거리",
-        AbilityTarget.Unit_General     => "장군",
-        AbilityTarget.Unit_Soldier     => "병사",
-        _                              => "?"
-    };
-
     static string BuildDesc(AbilityData data)
     {
-        if (data.Grade == AbilityGrade.Special)
+        if (data.Grade == AbilityGrade.Special || data.Grade == AbilityGrade.Mastery)
             return data.Description;
 
-        string d = $"{StatLabel(data.Stat1)} +{data.Value1 * 100f:0}%";
-        if (data.HasStat2) d += $"\n{StatLabel(data.Stat2)} +{data.Value2 * 100f:0}%";
+        string d = $"{AbilityUIHelper.StatLabel(data.Stat1)} {AbilityUIHelper.FormatStatValue(data.Stat1, data.Value1)}";
+        if (data.HasStat2) d += $"\n{AbilityUIHelper.StatLabel(data.Stat2)} {AbilityUIHelper.FormatStatValue(data.Stat2, data.Value2)}";
         return d;
     }
-
-    static string GetTriggerLabel(PassiveTrigger t) => t switch
-    {
-        PassiveTrigger.OnAttack       => "공격 시",
-        PassiveTrigger.OnHit          => "피격 시",
-        PassiveTrigger.OnEnemyKill    => "처치 시",
-        PassiveTrigger.OnSoldierDeath => "병사 사망 시",
-        PassiveTrigger.OnSkillUse     => "스킬 사용 시",
-        _                             => "즉시"
-    };
-
-    static string StatLabel(StatType type) => type switch
-    {
-        StatType.MaxHp               => "체력",
-        StatType.Attack              => "공격력",
-        StatType.AttackSpeed         => "공격속도",
-        StatType.MoveSpeed           => "이동속도",
-        StatType.Defense             => "방어력",
-        StatType.AttackRange         => "사거리",
-        StatType.CritChance          => "치명타",
-        StatType.SkillCooldownReduce => "스킬쿨감",
-        _                            => type.ToString()
-    };
 }

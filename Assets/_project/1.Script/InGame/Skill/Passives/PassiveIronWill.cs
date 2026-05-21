@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using UnityEngine;
 using BattleGame.Units;
 
@@ -12,7 +12,7 @@ using BattleGame.Units;
 //    StatModifiers: Runtime 스텟 변경 목록 (Target 은 무시, OnTrigger 에서 직접 처리)
 // ============================================================
 
-[CreateAssetMenu(fileName = "Passive_IronWill", menuName = "BattleGame/Passives/IronWill")]
+[UnityEngine.CreateAssetMenu(fileName = "Passive_IronWill", menuName = "BattleGame/Passives/IronWill")]
 public class PassiveIronWill : PassiveSkillData
 {
     [Header("IronWill 설정")]

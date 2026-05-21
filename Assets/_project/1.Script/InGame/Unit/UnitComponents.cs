@@ -225,16 +225,29 @@ namespace BattleGame.Units
     }
 
     /// <summary>
+    /// 피격 이벤트 타입.
+    /// Normal    — 일반 공격 (근거리·원거리 기본 공격)
+    /// Skill     — 스킬 직접 타격 (HitDirection 을 넉백으로 그대로 사용)
+    /// Reflected — 거울 방어 반사 피해 (다시 반사 불가)
+    /// </summary>
+    public enum HitType : byte
+    {
+        Normal    = 0,
+        Skill     = 1,
+        Reflected = 2,
+    }
+
+    /// <summary>
     /// 피격 이벤트 버퍼 (한 프레임에 여러 번 맞을 수 있음)
     /// DynamicBuffer 로 선언해 GC 없이 가변 크기 처리
     /// </summary>
     [InternalBufferCapacity(4)]
     public struct HitEventBufferElement : IBufferElementData
     {
-        public float  Damage;
-        public float3 HitDirection;  // IsSkillHit=false: 방향벡터, true: 방향×힘(직접 사용)
-        public Entity AttackerEntity;
-        public bool   IsSkillHit;    // 스킬 직접 타격 — true면 HitDirection을 넉백으로 그대로 사용
+        public float   Damage;
+        public float3  HitDirection;   // Normal: 방향벡터, Skill: 방향×힘(직접 사용)
+        public Entity  AttackerEntity;
+        public HitType Type;
     }
 
     // ──────────────────────────────────────────
@@ -373,6 +386,15 @@ namespace BattleGame.Units
     /// <summary>죽은 유닛에 붙이는 태그 — 각 시스템에서 이 태그로 필터링해 연산 제외.</summary>
     public struct DeadTag : IComponentData { }
 
+    /// <summary>
+    /// 도발 태그 — 이 태그를 가진 유닛은 적의 우선 타겟이 된다.
+    /// 철벽 방어 스킬 시전 시 EffectDuration 동안 부여된다.
+    /// </summary>
+    public struct TauntTag : IComponentData
+    {
+        public float Remaining;  // 남은 지속시간 (초)
+    }
+
     // ──────────────────────────────────────────
     // 직업 컴포넌트
     // ──────────────────────────────────────────
@@ -429,11 +451,11 @@ namespace BattleGame.Units
     [InternalBufferCapacity(4)]
     public struct DamageResultElement : IBufferElementData
     {
-        public Entity AttackerEntity;   // 공격자 (딜 귀속용)
-        public float  ActualDamage;     // 방어 적용 후 실제 피해
-        public float  AbsorbedDamage;   // 방어로 감소된 피해
-        public bool   IsKill;           // 이 히트로 대상이 사망했는가
-        public bool   IsSkillHit;       // 스킬 직접 타격 여부 (통계 분류용)
+        public Entity  AttackerEntity;   // 공격자 (딜 귀속용)
+        public float   ActualDamage;    // 방어 적용 후 실제 피해
+        public float   AbsorbedDamage;  // 방어로 감소된 피해
+        public bool    IsKill;          // 이 히트로 대상이 사망했는가
+        public HitType Type;            // 피격 종류 (통계 분류·반사 여부 판단용)
     }
 
     /// <summary>
@@ -452,4 +474,57 @@ namespace BattleGame.Units
     /// 딜 귀속 시 SoldierDmg 가 아닌 SkillDmg 로 분류하기 위해 사용.
     /// </summary>
     public struct SummonedTag : IComponentData { }
+
+    // ──────────────────────────────────────────
+    // 어빌리티 전투 컴포넌트
+    // ──────────────────────────────────────────
+
+    /// <summary>
+    /// 거울 방어 (AbilityMirrorArmor) 어빌리티가 붙은 유닛 마커.
+    /// ProcessHitEventsJob 이 이 컴포넌트를 확인해 공격자에게 반사 HitEvent 를 보낸다.
+    /// 반사된 피해(HitType.Reflected)는 다시 반사되지 않는다.
+    /// </summary>
+    public struct MirrorArmorComponent : IComponentData
+    {
+        public float ReflectRatio;  // 반사 비율 (0.25 = 25%)
+    }
+
+    /// <summary>
+    /// 쌍신 공격 (AbilityTwinStrike) 어빌리티가 붙은 유닛 마커.
+    /// MeleeAttackJob / RangedAttackJob 이 이 태그를 확인해 1회 공격마다 HitEvent 를 2번 추가한다.
+    /// </summary>
+    public struct DoubleStrikeTag : IComponentData { }
+
+    // ──────────────────────────────────────────
+    // 달인(Mastery) 어빌리티 컴포넌트
+    // ──────────────────────────────────────────
+
+    /// <summary>
+    /// 기사 달인 — 주기적 돌진 공격 상태 관리.
+    /// MeleeAttackJob 이 CooldownTimer &lt;= 0 일 때 공격 피해를 300%로 적용하고 타이머를 리셋한다.
+    /// KnightChargeCooldownJob 이 매 프레임 타이머를 감소시킨다.
+    /// </summary>
+    public struct KnightChargeComponent : IComponentData
+    {
+        public float CooldownTimer;  // 남은 대기 시간 (0 이하 = 돌진 준비)
+        public float CooldownMax;    // 재충전 시간 (기본 6초)
+    }
+
+    /// <summary>
+    /// 궁수 달인 — 일반 공격 시 50% 확률로 인접 2번째 적에게도 공격.
+    /// ArcherMultiShotSystem 이 AttackedThisFrame 프레임에 추가 발사체를 생성한다.
+    /// </summary>
+    public struct ArcherMultiShotTag : IComponentData { }
+
+    /// <summary>
+    /// 마법사 달인 — 일반 공격 시 1% 확률로 보유 스킬 즉시 발동.
+    /// MageSkillProcSystem 이 AttackedThisFrame 프레임에 UseActiveSkillTag 를 추가한다.
+    /// </summary>
+    public struct MageSkillProcTag : IComponentData { }
+
+    /// <summary>
+    /// 방패병 달인 — 넉백 완전 무시.
+    /// ProcessHitEventsJob 이 이 태그를 확인해 KnockbackVelocity / StunDuration 적용을 건너뛴다.
+    /// </summary>
+    public struct KnockbackImmuneTag : IComponentData { }
 }

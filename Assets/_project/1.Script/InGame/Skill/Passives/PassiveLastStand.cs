@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Collections;
 using UnityEngine;
 using BattleGame.Units;
@@ -13,7 +13,7 @@ using BattleGame.Units;
 //    StatModifiers: 발동 시 병사에게 적용할 스텟 변경 목록
 // ============================================================
 
-[CreateAssetMenu(fileName = "Passive_LastStand", menuName = "BattleGame/Passives/LastStand")]
+[UnityEngine.CreateAssetMenu(fileName = "Passive_LastStand", menuName = "BattleGame/Passives/LastStand")]
 public class PassiveLastStand : PassiveSkillData
 {
     [Header("LastStand 설정")]

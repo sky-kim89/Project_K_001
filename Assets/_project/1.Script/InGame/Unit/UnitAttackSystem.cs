@@ -17,14 +17,18 @@ namespace BattleGame.Units
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     public partial struct UnitAttackSystem : ISystem
     {
-        ComponentLookup<LocalTransform>  _transformLookup;
-        ComponentLookup<HealthComponent> _healthLookup;
+        ComponentLookup<LocalTransform>       _transformLookup;
+        ComponentLookup<HealthComponent>      _healthLookup;
+        ComponentLookup<DoubleStrikeTag>      _doubleStrikeLookup;
+        ComponentLookup<KnightChargeComponent> _chargeLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _transformLookup = state.GetComponentLookup<LocalTransform>(isReadOnly: true);
-            _healthLookup    = state.GetComponentLookup<HealthComponent>(isReadOnly: true);
+            _transformLookup    = state.GetComponentLookup<LocalTransform>(isReadOnly: true);
+            _healthLookup       = state.GetComponentLookup<HealthComponent>(isReadOnly: true);
+            _doubleStrikeLookup = state.GetComponentLookup<DoubleStrikeTag>(isReadOnly: true);
+            _chargeLookup       = state.GetComponentLookup<KnightChargeComponent>(isReadOnly: true);
         }
 
         [BurstCompile]
@@ -34,9 +38,12 @@ namespace BattleGame.Units
 
             _transformLookup.Update(ref state);
             _healthLookup.Update(ref state);
+            _doubleStrikeLookup.Update(ref state);
+            _chargeLookup.Update(ref state);
 
-            // ① 쿨다운 감소 (병렬, 근거리 + 원거리 공통)
+            // ① 쿨다운 감소 (병렬, 근거리 + 원거리 + 기사 돌진)
             new CooldownTickJob { DeltaTime = deltaTime }.ScheduleParallel();
+            new KnightChargeCooldownJob { DeltaTime = deltaTime }.ScheduleParallel();
 
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb          = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
@@ -44,16 +51,19 @@ namespace BattleGame.Units
             // ② 근거리 공격 — 타겟 HitEventBuffer 에 직접 추가
             new MeleeAttackJob
             {
-                TransformLookup = _transformLookup,
-                HealthLookup    = _healthLookup,
-                Ecb             = ecb,
+                TransformLookup    = _transformLookup,
+                HealthLookup       = _healthLookup,
+                DoubleStrikeLookup = _doubleStrikeLookup,
+                ChargeLookup       = _chargeLookup,
+                Ecb                = ecb,
             }.ScheduleParallel();
 
             // ③ 원거리 공격 — 자신의 ProjectileLaunchRequest 버퍼에 추가
             new RangedAttackJob
             {
-                TransformLookup = _transformLookup,
-                HealthLookup    = _healthLookup,
+                TransformLookup    = _transformLookup,
+                HealthLookup       = _healthLookup,
+                DoubleStrikeLookup = _doubleStrikeLookup,
             }.ScheduleParallel();
         }
     }
@@ -77,6 +87,22 @@ namespace BattleGame.Units
     }
 
     // ──────────────────────────────────────────
+    // 기사 달인 돌진 쿨다운 감소 Job
+    // ──────────────────────────────────────────
+
+    [BurstCompile]
+    [WithNone(typeof(DeadTag))]
+    public partial struct KnightChargeCooldownJob : IJobEntity
+    {
+        public float DeltaTime;
+        public void Execute(ref KnightChargeComponent charge)
+        {
+            if (charge.CooldownTimer > 0f)
+                charge.CooldownTimer -= DeltaTime;
+        }
+    }
+
+    // ──────────────────────────────────────────
     // 근거리 공격 Job
     // ──────────────────────────────────────────
 
@@ -89,9 +115,11 @@ namespace BattleGame.Units
     [WithNone(typeof(DeadTag), typeof(RangedTag), typeof(BossComponent))]
     public partial struct MeleeAttackJob : IJobEntity
     {
-        [ReadOnly] public ComponentLookup<LocalTransform>  TransformLookup;
-        [ReadOnly] public ComponentLookup<HealthComponent> HealthLookup;
-        public EntityCommandBuffer.ParallelWriter          Ecb;
+        [ReadOnly] public ComponentLookup<LocalTransform>       TransformLookup;
+        [ReadOnly] public ComponentLookup<HealthComponent>      HealthLookup;
+        [ReadOnly] public ComponentLookup<DoubleStrikeTag>      DoubleStrikeLookup;
+        [ReadOnly] public ComponentLookup<KnightChargeComponent> ChargeLookup;
+        public EntityCommandBuffer.ParallelWriter                Ecb;
 
         public void Execute(
             [ChunkIndexInQuery] int chunkIndex,
@@ -102,13 +130,13 @@ namespace BattleGame.Units
             in  StatComponent       stat)
         {
             if (!attack.HasTarget || attack.AttackCooldown > 0f) return;
-            if (unitState.Current == UnitState.Hit) return;  // 속박/스턴 중 공격 불가
+            if (unitState.Current == UnitState.Hit) return;
             if (!TransformLookup.HasComponent(attack.TargetEntity)) return;
             if (!HealthLookup.HasComponent(attack.TargetEntity))    return;
             if (HealthLookup[attack.TargetEntity].CurrentHp <= 0f) { attack.HasTarget = false; return; }
 
             float3 targetPos   = TransformLookup[attack.TargetEntity].Position;
-            attack.TargetPosition = targetPos;  // 이동 시스템에 항상 최신 위치 전달
+            attack.TargetPosition = targetPos;
             float  attackRange = stat.Final[StatType.AttackRange];
             float  distSq      = math.distancesq(transform.Position, targetPos);
 
@@ -122,17 +150,33 @@ namespace BattleGame.Units
             ChangeState(ref unitState, UnitState.Attacking);
 
             float finalDamage = RollDamage(ref attack, in stat);
-            float3 hitDir     = math.normalize(targetPos - transform.Position);
+
+            // 기사 달인 — 돌진 준비됐으면 300% 피해, 쿨다운 리셋
+            bool chargeReady = ChargeLookup.HasComponent(entity) && ChargeLookup[entity].CooldownTimer <= 0f;
+            if (chargeReady)
+            {
+                finalDamage *= 3f;
+                var chargeData = ChargeLookup[entity];
+                Ecb.SetComponent(chunkIndex, entity, new KnightChargeComponent
+                {
+                    CooldownTimer = chargeData.CooldownMax,
+                    CooldownMax   = chargeData.CooldownMax,
+                });
+            }
+
+            float3 hitDir = math.normalize(targetPos - transform.Position);
 
             attack.AttackedThisFrame = true;
             attack.LastDamageDealt   = finalDamage;
 
-            Ecb.AppendToBuffer(chunkIndex, attack.TargetEntity, new HitEventBufferElement
-            {
-                Damage         = finalDamage,
-                HitDirection   = hitDir,
-                AttackerEntity = entity,
-            });
+            int hitCount = DoubleStrikeLookup.HasComponent(entity) ? 2 : 1;
+            for (int h = 0; h < hitCount; h++)
+                Ecb.AppendToBuffer(chunkIndex, attack.TargetEntity, new HitEventBufferElement
+                {
+                    Damage         = finalDamage,
+                    HitDirection   = hitDir,
+                    AttackerEntity = entity,
+                });
         }
 
         static void ChangeState(ref UnitStateComponent s, UnitState next)
@@ -164,6 +208,7 @@ namespace BattleGame.Units
     {
         [ReadOnly] public ComponentLookup<LocalTransform>  TransformLookup;
         [ReadOnly] public ComponentLookup<HealthComponent> HealthLookup;
+        [ReadOnly] public ComponentLookup<DoubleStrikeTag> DoubleStrikeLookup;
 
         const float ArrowSpeed     = 15f;
         const float MagicBoltSpeed = 10f;
@@ -203,16 +248,18 @@ namespace BattleGame.Units
             attack.AttackedThisFrame = true;
             attack.LastDamageDealt   = finalDamage;
 
-            launchBuffer.Add(new ProjectileLaunchRequest
-            {
-                TargetEntity   = attack.TargetEntity,
-                AttackerEntity = entity,
-                AttackerPos    = transform.Position,
-                TargetPos      = targetPos,
-                Damage         = finalDamage,
-                Speed          = jobComp.Job == UnitJob.Archer ? ArrowSpeed : MagicBoltSpeed,
-                Team           = identity.Team,
-            });
+            int launchCount = DoubleStrikeLookup.HasComponent(entity) ? 2 : 1;
+            for (int h = 0; h < launchCount; h++)
+                launchBuffer.Add(new ProjectileLaunchRequest
+                {
+                    TargetEntity   = attack.TargetEntity,
+                    AttackerEntity = entity,
+                    AttackerPos    = transform.Position,
+                    TargetPos      = targetPos,
+                    Damage         = finalDamage,
+                    Speed          = jobComp.Job == UnitJob.Archer ? ArrowSpeed : MagicBoltSpeed,
+                    Team           = identity.Team,
+                });
         }
 
         static void ChangeState(ref UnitStateComponent s, UnitState next)

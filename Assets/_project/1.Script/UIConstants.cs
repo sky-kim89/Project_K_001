@@ -108,9 +108,20 @@ public static class StatDisplayHelper
         StatType.SoldierCount          => $"{Mathf.RoundToInt(value)}명",
         StatType.CritChance            => $"{value * 100f:F1}%",
         StatType.CritDamage            => $"×{value:F2}",
-        StatType.SkillCooldownReduce   => $"{value * 100f:F1}%",
+        // 체감 공식 적용값 표시. 원시값과 동일하면 단순 표시, 다르면 "(체감 X%)" 병기
+        StatType.SkillCooldownReduce   => FormatCDRTotal(value),
         _                              => $"{value:N0}",
     };
+
+    static string FormatCDRTotal(float rawCDR)
+    {
+        float maxCDR      = GameplayConfig.Current?.CooldownReduceMax ?? 0.9f;
+        float effectiveCDR = GeneralRuntimeBridge.CalcEffectiveCDR(rawCDR, maxCDR);
+        float diff         = Mathf.Abs(rawCDR - effectiveCDR);
+        if (diff < 0.001f)
+            return $"{rawCDR * 100f:F1}%";
+        return $"{effectiveCDR * 100f:F1}% <size=80%><color=#888888>(합산 {rawCDR * 100f:F1}%)</color></size>";
+    }
 
     /// <summary>스탯 델타 문자열 (합산 상세 각 항목용, withSign = true 이면 +부호 포함)</summary>
     public static string FormatDelta(StatType stat, float value, bool withSign)
@@ -144,6 +155,25 @@ public static class StatDisplayHelper
         if (passiveVal != 0f) sb.Append($"  <color=#{StatBonusColors.Passive}>{FormatDelta(stat, passiveVal, true)}</color>");
         if (abilityVal != 0f) sb.Append($"  <color=#{StatBonusColors.Ability}>{FormatDelta(stat, abilityVal, true)}</color>");
         if (relicVal   != 0f) sb.Append($"  <color=#{StatBonusColors.Relic}>{FormatDelta(stat, relicVal,   true)}</color>");
+
+        // CDR·방어율은 체감 공식이 적용되므로 합산 후 실효값을 별도 표시
+        if (stat == StatType.SkillCooldownReduce)
+        {
+            float rawTotal     = baseVal + equipVal + passiveVal + abilityVal + relicVal;
+            float maxCDR       = GameplayConfig.Current?.CooldownReduceMax ?? 0.9f;
+            float effectiveCDR = GeneralRuntimeBridge.CalcEffectiveCDR(rawTotal, maxCDR);
+            if (Mathf.Abs(rawTotal - effectiveCDR) > 0.001f)
+                sb.Append($"\n<color=#AAAAAA>→ 체감 {effectiveCDR * 100f:F1}%</color>");
+        }
+        else if (stat == StatType.Defense)
+        {
+            float rawTotal  = baseVal + equipVal + passiveVal + abilityVal + relicVal;
+            float effective = StatDisplayHelper.EffectiveDefensePct(rawTotal);
+            float rawPct    = rawTotal * 100f;
+            if (Mathf.Abs(rawPct - effective) > 0.1f)
+                sb.Append($"\n<color=#AAAAAA>→ 체감 {effective:F1}%</color>");
+        }
+
         return sb.ToString();
     }
 }

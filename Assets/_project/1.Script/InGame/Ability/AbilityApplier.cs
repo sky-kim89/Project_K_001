@@ -33,7 +33,7 @@ public static class AbilityApplier
         {
             var data = db.Get(id);
             if (data == null) continue;
-            if (data.Grade == AbilityGrade.Special) continue;   // Special은 OnTrigger에서만 처리
+            if (data.Grade == AbilityGrade.Special || data.Grade == AbilityGrade.Mastery) continue;   // OnTrigger에서만 처리
             if (data.Target == AbilityTarget.Unit_Soldier) continue;
             if (!MatchesGeneralTarget(data.Target, job)) continue;
 
@@ -118,7 +118,29 @@ public static class AbilityApplier
     public static bool IsAbsoluteStat(StatType type)
         => type == StatType.SkillCooldownReduce
         || type == StatType.CritChance
-        || type == StatType.Defense;
+        || type == StatType.Defense
+        || type == StatType.SoldierCount   // 절대 가산 (+1, +2)
+        || type == StatType.CommandPower;  // 절대 가산 (+10, +20)
+
+    // ── 시스템 보너스 조회 (골드·경험치 획득량 증가 어빌리티) ─────
+
+    public static float GetGoldBonusRatio(IReadOnlyList<AbilityId> ids, AbilityDatabase db)
+    {
+        float total = 0f;
+        if (ids == null || db == null) return total;
+        foreach (var id in ids)
+            if (db.Get(id) is AbilityGoldBonus g) total += g.GoldBonusRatio;
+        return total;
+    }
+
+    public static float GetExpBonusRatio(IReadOnlyList<AbilityId> ids, AbilityDatabase db)
+    {
+        float total = 0f;
+        if (ids == null || db == null) return total;
+        foreach (var id in ids)
+            if (db.Get(id) is AbilityExpBonus e) total += e.ExpBonusRatio;
+        return total;
+    }
 
     static void Accumulate(Dictionary<StatType, float> bonuses, StatType type, float value)
     {

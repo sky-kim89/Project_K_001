@@ -65,6 +65,8 @@ public class UnitAnimationSync : MonoBehaviour
     UnitJob   _job;
     bool      _jobCached;
 
+    Coroutine _doubleStrikeCoroutine;
+
     // EntityLink 와 공유하는 CompleteAllTrackedJobs 프레임 캐시
     static int _lastCompletedFrame = -1;
 
@@ -91,11 +93,13 @@ public class UnitAnimationSync : MonoBehaviour
         _prevState    = (UnitState)255; // 첫 프레임 강제 갱신
         _prevCooldown = 0f;
         _lastFacingX  = 1f;
-        _isDying      = false;
-        _hitCoroutine = null;
-        _jobCached    = false;
+        _isDying               = false;
+        _hitCoroutine          = null;
+        _doubleStrikeCoroutine = null;
+        _jobCached             = false;
 
-        if (_renderer != null) _renderer.color = Color.white;
+        if (_animator  != null) _animator.speed = 1f;
+        if (_renderer  != null) _renderer.color = Color.white;
     }
 
     void LateUpdate()
@@ -136,7 +140,18 @@ public class UnitAnimationSync : MonoBehaviour
                         : UnitJob.Knight;
                     _jobCached = true;
                 }
-                _animator.SetTrigger(_job == UnitJob.Archer ? "Shot" : "Slash");
+
+                string triggerName = _job == UnitJob.Archer ? "Shot" : "Slash";
+
+                if (em.HasComponent<DoubleStrikeTag>(_link.Entity))
+                {
+                    if (_doubleStrikeCoroutine != null) StopCoroutine(_doubleStrikeCoroutine);
+                    _doubleStrikeCoroutine = StartCoroutine(DoubleStrikeRoutine(triggerName));
+                }
+                else
+                {
+                    _animator.SetTrigger(triggerName);
+                }
             }
 
             _prevCooldown = cooldown;
@@ -196,6 +211,12 @@ public class UnitAnimationSync : MonoBehaviour
         {
             StopCoroutine(_hitCoroutine);
             _hitCoroutine = null;
+        }
+        if (_doubleStrikeCoroutine != null)
+        {
+            StopCoroutine(_doubleStrikeCoroutine);
+            _doubleStrikeCoroutine = null;
+            if (_animator != null) _animator.speed = 1f;
         }
 
         if (_renderer != null) _renderer.color = Color.white;
@@ -268,6 +289,18 @@ public class UnitAnimationSync : MonoBehaviour
 
         _renderer.color = Color.white;
         _hitCoroutine   = null;
+    }
+
+    // 쌍신 공격(DoubleStrikeTag): 2배 속도로 공격 모션을 0.15초 간격으로 2회 재생
+    System.Collections.IEnumerator DoubleStrikeRoutine(string triggerName)
+    {
+        _animator.speed = 2f;
+        _animator.SetTrigger(triggerName);
+        yield return new WaitForSeconds(0.15f);
+        _animator.SetTrigger(triggerName);
+        yield return new WaitForSeconds(0.15f);
+        _animator.speed          = 1f;
+        _doubleStrikeCoroutine   = null;
     }
 
     System.Collections.IEnumerator DeathSequence()

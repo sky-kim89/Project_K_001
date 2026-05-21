@@ -39,6 +39,36 @@ public class GameplayConfig : ScriptableObject
     public int HireMercenaryCost = 500;
 
     // ──────────────────────────────────────────────────────────
+    // ■ 유물 비용
+    // ──────────────────────────────────────────────────────────
+
+    [Header("유물 비용 — 획득")]
+    [Tooltip("Common 유물 첫 획득 비용 (환생 포인트)")]
+    public int RelicAcquireCostCommon    = 1;
+    [Tooltip("Uncommon 유물 첫 획득 비용 (환생 포인트)")]
+    public int RelicAcquireCostUncommon  = 2;
+    [Tooltip("Rare 유물 첫 획득 비용 (환생 포인트)")]
+    public int RelicAcquireCostRare      = 3;
+    [Tooltip("Epic 유물 첫 획득 비용 (환생 포인트)")]
+    public int RelicAcquireCostEpic      = 4;
+    [Tooltip("Legendary 유물 첫 획득 비용 (환생 포인트)")]
+    public int RelicAcquireCostLegendary = 5;
+
+    [Header("유물 비용 — 레벨업")]
+    [Tooltip("레벨업 비용 지수. 기본 2 → (현재레벨+1)^지수 pt.\n예) 지수 2: 0→1: 1pt, 1→2: 4pt, 4→5: 25pt")]
+    public float RelicLevelUpCostExponent = 2f;
+
+    public int GetRelicAcquireCost(RelicRarity rarity) => rarity switch
+    {
+        RelicRarity.Common    => RelicAcquireCostCommon,
+        RelicRarity.Uncommon  => RelicAcquireCostUncommon,
+        RelicRarity.Rare      => RelicAcquireCostRare,
+        RelicRarity.Epic      => RelicAcquireCostEpic,
+        RelicRarity.Legendary => RelicAcquireCostLegendary,
+        _ => RelicAcquireCostUncommon,
+    };
+
+    // ──────────────────────────────────────────────────────────
     // ■ 디버그
     // ──────────────────────────────────────────────────────────
 
@@ -213,15 +243,15 @@ public class GameplayConfig : ScriptableObject
         // 평균 DPS(크리 포함): Knight ~170, Archer ~158, Mage ~155, ShieldBearer ~90(탱킹 보정)
         KnightRange = new JobStatRange
         {
-            Hp           = new FloatRange(800f,   1600f),  // +7% 상향
-            Attack       = new FloatRange(70f,    160f),   // +7% 상향
+            Hp           = new FloatRange(800f,   1600f),
+            Attack       = new FloatRange(90f,    200f),   // ↑ 근접 고위험 고딜 정체성
             Defense      = new FloatRange(0.08f,  0.20f),
             AttackRange  = new FloatRange(0.8f,   1.2f),
-            AttackSpeed  = new FloatRange(0.9f,   1.9f),   // 소폭 상향
+            AttackSpeed  = new FloatRange(0.9f,   1.9f),
             MoveSpeed    = new FloatRange(2.5f,   3.0f),
             SoldierCount = new FloatRange(1f,     2f),
             CommandPower = new FloatRange(1f,     30f),
-            CritChance   = 0.10f,
+            CritChance   = 0.13f,                          // ↑ 10% → 13%
             CritDamage   = 1.50f,
         };
         ArcherRange = new JobStatRange

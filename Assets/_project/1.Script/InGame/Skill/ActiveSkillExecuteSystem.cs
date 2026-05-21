@@ -62,9 +62,10 @@ namespace BattleGame.Units
                 // 컨텍스트 구성
                 var context = new ActiveSkillContext
                 {
-                    CasterEntity  = entity,
-                    TargetEntity  = evt.TargetEntity,
-                    EntityManager = EntityManager,
+                    CasterEntity   = entity,
+                    TargetEntity   = evt.TargetEntity,
+                    TargetPosition = new Vector3(evt.TargetPosition.x, evt.TargetPosition.y, evt.TargetPosition.z),
+                    EntityManager  = EntityManager,
                 };
 
                 // StatComponent 스냅샷

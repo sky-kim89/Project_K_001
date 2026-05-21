@@ -94,7 +94,7 @@ public class MeteorRunner : MonoBehaviour
                 Damage         = damage,
                 HitDirection   = knockDir * knockbackMult,
                 AttackerEntity = casterEntity,
-                IsSkillHit     = true,
+                Type = BattleGame.Units.HitType.Skill,
             });
         }
 

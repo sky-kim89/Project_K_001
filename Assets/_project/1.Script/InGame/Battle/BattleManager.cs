@@ -102,15 +102,29 @@ public class BattleManager : Singleton<BattleManager>
         // 장군 스폰 완료 통보 → InGameManager 가 로딩 팝업을 닫는다
         OnAlliesReady?.Invoke();
 
-        // ── 전 웨이브 적군 프리웜 (아군 스폰 후) ────────────────
-        for (int w = 1; w <= _context.TotalWaves; w++)
+        // OnBattleStart 트리거 어빌리티 일괄 발동
+        FireBattleStartTriggers();
+
+        // ── 웨이브 1 적군만 프리웜 (즉시 스폰을 위한 최소 준비) ──
+        List<SpawnEntry> wave1Enemies = _mode.GetEnemySpawnEntries(1);
+        if (wave1Enemies is { Count: > 0 })
+            yield return StartCoroutine(EnemySpawner.Prewarm(wave1Enemies));
+
+        // 웨이브 2+ 프리웜은 배틀 진행 중에 백그라운드로 처리
+        StartCoroutine(PrewarmRemainingWaves());
+
+        yield return StartCoroutine(BattleRoutine());
+    }
+
+    // 웨이브 2 이후 적군을 배틀 진행 중에 백그라운드로 프리웜한다.
+    IEnumerator PrewarmRemainingWaves()
+    {
+        for (int w = 2; w <= _context.TotalWaves; w++)
         {
             List<SpawnEntry> waveEnemies = _mode.GetEnemySpawnEntries(w);
             if (waveEnemies is { Count: > 0 })
                 yield return StartCoroutine(EnemySpawner.Prewarm(waveEnemies));
         }
-
-        yield return StartCoroutine(BattleRoutine());
     }
 
     /// <summary>
@@ -232,6 +246,59 @@ public class BattleManager : Singleton<BattleManager>
     }
 
     // ── 내부 ─────────────────────────────────────────────────
+
+    // OnBattleStart 트리거를 보유한 모든 장군의 어빌리티·패시브를 일괄 발동한다.
+    // 특정 타입을 직접 참조하지 않으므로 새 OnBattleStart 스킬 추가 시 자동 지원.
+    void FireBattleStartTriggers()
+    {
+        var world = World.DefaultGameObjectInjectionWorld;
+        if (world == null || !world.IsCreated) return;
+
+        var em    = world.EntityManager;
+        var query = em.CreateEntityQuery(ComponentType.ReadOnly<BattleGame.Units.GeneralComponent>());
+
+        using var entities = query.ToEntityArray(Unity.Collections.Allocator.Temp);
+        foreach (var entity in entities)
+        {
+            var ctx = new PassiveTriggerContext { GeneralEntity = entity, EntityManager = em };
+
+            // ── 어빌리티 (GeneralTriggerSetComponent) ───────────
+            if (em.HasComponent<BattleGame.Units.GeneralTriggerSetComponent>(entity))
+            {
+                var trigSet = em.GetComponentObject<BattleGame.Units.GeneralTriggerSetComponent>(entity);
+                if (trigSet?.TriggerAbilities != null)
+                {
+                    foreach (var ability in trigSet.TriggerAbilities)
+                    {
+                        if (ability == null) continue;
+                        if (ability.GetTriggerType() == PassiveTrigger.OnBattleStart)
+                            ability.OnTrigger(ctx);
+                    }
+                }
+            }
+
+            // ── 패시브 스킬 (GeneralPassiveSetComponent) ────────
+            if (em.HasComponent<BattleGame.Units.GeneralPassiveSetComponent>(entity))
+            {
+                var ps = em.GetComponentData<BattleGame.Units.GeneralPassiveSetComponent>(entity);
+                var db = PassiveSkillDatabase.Current;
+                if (db != null)
+                {
+                    TryFirePassiveOnBattleStart(db.Get(ps.Slot0), ctx, ps.ActiveSlotCount >= 1);
+                    TryFirePassiveOnBattleStart(db.Get(ps.Slot1), ctx, ps.ActiveSlotCount >= 2);
+                    TryFirePassiveOnBattleStart(db.Get(ps.Slot2), ctx, ps.ActiveSlotCount >= 3);
+                }
+            }
+        }
+        query.Dispose();
+    }
+
+    static void TryFirePassiveOnBattleStart(PassiveSkillData data, PassiveTriggerContext ctx, bool active)
+    {
+        if (!active || data == null) return;
+        if (data.TriggerType != PassiveTrigger.OnBattleStart) return;
+        data.OnTrigger(ctx);
+    }
 
     /// <summary>아군 전멸 시 패배를 판정한다. 웨이브 클리어는 BattleRoutine 이 처리.</summary>
     void EvaluateBattleState()

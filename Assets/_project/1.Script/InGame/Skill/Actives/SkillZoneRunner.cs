@@ -180,7 +180,7 @@ public class SkillZoneRunner : MonoBehaviour
                     Damage         = cfg.DamagePerTick,
                     HitDirection   = float3.zero,
                     AttackerEntity = cfg.CasterEntity,
-                    IsSkillHit     = true,
+                    Type = BattleGame.Units.HitType.Skill,
                 });
                 hitCount++;
             }

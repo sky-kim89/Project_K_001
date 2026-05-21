@@ -98,6 +98,11 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         if (relicDb != null && relicInventory != null)
             RelicApplier.ApplyToGeneralStat(_stat, _job, relicInventory, relicDb);
 
+        // ── 방어율 소프트캡 실전 적용 (UI·전투 일치) ─────────────
+        // UI(EffectiveDefensePct)와 전투(StatComponent.Final)가 같은 값을 사용하도록
+        // 모든 스탯 계산이 끝난 뒤 원시 방어율을 소프트캡 공식으로 덮어씀
+        ApplyDefenseSoftCap(_stat);
+
         // 외형 적용 (ECS Entity 생성과 독립적으로 실행)
         GetComponent<UnitAppearanceBridge>()?.ApplyAlly(unitName, _job, _grade);
 
@@ -131,6 +136,7 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
             em.AddBuffer<ProjectileLaunchRequest>(entity);
         }
 
+
         // ── 패시브 슬롯 컴포넌트 ─────────────────────────────
         em.AddComponentData(entity, new GeneralPassiveSetComponent
         {
@@ -146,14 +152,15 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         var skillData = activeDb?.Get(rolledId);
 
         float baseCooldown = skillData?.Cooldown ?? 15f;
-        float cdr          = Mathf.Clamp(_stat.Get(StatType.SkillCooldownReduce), 0f, GameplayConfig.Current?.CooldownReduceMax ?? 0.9f);
+        float rawCdr       = Mathf.Clamp(_stat.Get(StatType.SkillCooldownReduce), 0f, GameplayConfig.Current?.CooldownReduceMax ?? 0.9f);
+        float effectiveCdr = CalcEffectiveCDR(rawCdr, GameplayConfig.Current?.CooldownReduceMax ?? 0.9f);
         em.AddComponentData(entity, new GeneralActiveSkillComponent
         {
             SkillId           = (int)rolledId,
             EffectValue       = skillData?.EffectValue    ?? 1f,
             EffectRadius      = skillData?.EffectRadius   ?? 0f,
             EffectDuration    = skillData?.EffectDuration ?? 0f,
-            Cooldown          = baseCooldown * (1f - cdr),
+            Cooldown          = baseCooldown * (1f - effectiveCdr),
             CooldownRemaining = 0f,  // 첫 발동은 즉시 가능
         });
 
@@ -298,6 +305,8 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
                 em.RemoveComponent<RangedTag>(entity);
         }
 
+        if (em.HasComponent<TauntTag>(entity)) em.RemoveComponent<TauntTag>(entity);
+
         // ── 패시브 슬롯 갱신 ─────────────────────────────────────
         em.SetComponentData(entity, new GeneralPassiveSetComponent
         {
@@ -311,14 +320,15 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         var activeDb  = ActiveSkillDatabase.Current;
         var rolledId  = ActiveSkillRoller.Roll(_unitName, _job, activeDb, _grade);
         var skillData = activeDb?.Get(rolledId);
-        float cdr     = Mathf.Clamp(_stat.Get(StatType.SkillCooldownReduce), 0f, GameplayConfig.Current?.CooldownReduceMax ?? 0.9f);
+        float rawCdr2       = Mathf.Clamp(_stat.Get(StatType.SkillCooldownReduce), 0f, GameplayConfig.Current?.CooldownReduceMax ?? 0.9f);
+        float effectiveCdr2 = CalcEffectiveCDR(rawCdr2, GameplayConfig.Current?.CooldownReduceMax ?? 0.9f);
         em.SetComponentData(entity, new GeneralActiveSkillComponent
         {
             SkillId           = (int)rolledId,
             EffectValue       = skillData?.EffectValue    ?? 1f,
             EffectRadius      = skillData?.EffectRadius   ?? 0f,
             EffectDuration    = skillData?.EffectDuration ?? 0f,
-            Cooldown          = (skillData?.Cooldown ?? 15f) * (1f - cdr),
+            Cooldown          = (skillData?.Cooldown ?? 15f) * (1f - effectiveCdr2),
             CooldownRemaining = 0f,
         });
 
@@ -466,5 +476,41 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
             case 2: return new[] { _passive0, _passive1 };
             default: return new[] { _passive0 };
         }
+    }
+
+    /// <summary>
+    /// 모든 스탯 계산 후 방어율에 소프트캡을 적용한다.
+    /// UI(StatDisplayHelper.EffectiveDefensePct)와 실전 전투(StatComponent.Final)가 동일한 값을 갖는다.
+    /// </summary>
+    static void ApplyDefenseSoftCap(UnitStat stat)
+    {
+        var cfg = GameplayConfig.Current;
+        if (cfg == null) return;
+
+        float raw       = stat.Get(StatType.Defense);
+        float effective = raw <= cfg.DefenseMax
+            ? raw
+            : cfg.DefenseMax + (raw - cfg.DefenseMax) * cfg.DefenseOverflowRate;
+        effective = Mathf.Min(effective, cfg.DefenseEffectiveCap);
+
+        if (Mathf.Abs(raw - effective) > 0.0001f)
+            stat.Set(StatType.Defense, effective, UnitStat.BaseKey);
+    }
+
+    /// <summary>
+    /// 쿨다운 감소 체감 공식.
+    /// rawCDR 이 maxCDR 에 도달하면 effectiveCDR 도 maxCDR 에 도달한다(최상 달성 보장).
+    /// 중간 값은 선형보다 낮게 반환해 초반 CDR 축적 효율을 떨어뜨린다.
+    ///
+    /// 예: maxCDR=0.9, power=1.5
+    ///   raw 30% → effective 17%  (linear 30%)
+    ///   raw 60% → effective 49%  (linear 60%)
+    ///   raw 90% → effective 90%  (linear 90%)
+    /// </summary>
+    public static float CalcEffectiveCDR(float rawCDR, float maxCDR)
+    {
+        if (maxCDR <= 0f || rawCDR <= 0f) return 0f;
+        const float power = 1.5f;
+        return Mathf.Pow(rawCDR / maxCDR, power) * maxCDR;
     }
 }

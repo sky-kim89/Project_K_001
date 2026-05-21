@@ -71,6 +71,7 @@ public class SoldierRuntimeBridge : UnitRuntimeBridge
             em.AddComponent<RangedTag>(entity);
             em.AddBuffer<ProjectileLaunchRequest>(entity);
         }
+
     }
 
     protected override void OnEntityReset(EntityManager em, Entity entity)
@@ -106,6 +107,8 @@ public class SoldierRuntimeBridge : UnitRuntimeBridge
         {
             em.GetBuffer<ProjectileLaunchRequest>(entity).Clear();
         }
+
+        if (em.HasComponent<TauntTag>(entity)) em.RemoveComponent<TauntTag>(entity);
     }
 
     // ── 내부 ─────────────────────────────────────────────────

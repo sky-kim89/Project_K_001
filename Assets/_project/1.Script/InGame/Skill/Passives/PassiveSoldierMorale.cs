@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using UnityEngine;
 using BattleGame.Units;
 
@@ -13,7 +13,7 @@ using BattleGame.Units;
 //    BuffDuration: 버프 지속 시간(초)
 // ============================================================
 
-[CreateAssetMenu(fileName = "Passive_SoldierMorale", menuName = "BattleGame/Passives/SoldierMorale")]
+[UnityEngine.CreateAssetMenu(fileName = "Passive_SoldierMorale", menuName = "BattleGame/Passives/SoldierMorale")]
 public class PassiveSoldierMorale : PassiveSkillData
 {
     [Header("병사 고무 설정")]

@@ -30,11 +30,11 @@ using UnityEngine.UI;
 //    │   ├── CostText
 //    │   └── UpgradeBtn
 //    └── FooterBar                (하단 고정 200px)
-//        └── ReincarnateBtn
-//            ├── InnerRow (HLG)
-//            │   ├── LeftText     "즉시 환생"
-//            │   ├── ReincPtIcon  아이콘 (폰트 크기에 맞춤)
-//            │   └── RightText    "{pts}pt 획득"
+//        ├── ReincarnateBtn       (상단, 90px)
+//        │   ├── LeftText         "즉시 환생"
+//        │   ├── ReincPtIcon      아이콘
+//        │   └── RightText        "{pts}pt 획득"
+//        └── ResetBtn             (하단, 80px) "유물 초기화"
 // ============================================================
 
 public static class RelicPanelCreator
@@ -58,6 +58,7 @@ public static class RelicPanelCreator
     static readonly Color FooterBg         = new Color(0.07f, 0.07f, 0.12f, 1f);
     static readonly Color CardBg           = new Color(0.11f, 0.11f, 0.18f, 1f);
     static readonly Color ReincarnateColor = new Color(0.70f, 0.35f, 0.10f, 1f);
+    static readonly Color ResetBtnColor    = new Color(0.50f, 0.10f, 0.10f, 1f);
     static readonly Color UpgradeBtnColor  = new Color(0.18f, 0.50f, 0.28f, 1f);
     static readonly Color GoldColor        = new Color(1f, 0.82f, 0.25f);
 
@@ -142,6 +143,7 @@ public static class RelicPanelCreator
         BottomFull(footer.GetComponent<RectTransform>(), 0, FooterH);
 
         var reincBtn = BuildReincBtn(footer);
+        var resetBtn = BuildResetBtn(footer);
 
         // ── ScrollArea ────────────────────────────────────────
         var scrollGo = new GameObject("ScrollArea", typeof(RectTransform), typeof(ScrollRect));
@@ -204,6 +206,7 @@ public static class RelicPanelCreator
         SetObj(so, "_cardTemplate",   cardTemplate);
         SetObj(so, "_reincarnateBtn", reincBtn.GetComponent<Button>());
         SetObj(so, "_reincLabel",     reincLabelTmp);
+        SetObj(so, "_resetBtn",       resetBtn.GetComponent<Button>());
         SetObj(so, "_backBtn",        backBtn.GetComponent<Button>());
         so.ApplyModifiedProperties();
 
@@ -222,7 +225,7 @@ public static class RelicPanelCreator
         btnRt.anchorMin        = new Vector2(0.08f, 0.5f);
         btnRt.anchorMax        = new Vector2(0.92f, 0.5f);
         btnRt.pivot            = new Vector2(0.5f, 0.5f);
-        btnRt.anchoredPosition = Vector2.zero;
+        btnRt.anchoredPosition = new Vector2(0f, 50f);  // 상단에 배치 (Reset 버튼과 분리)
         btnRt.sizeDelta        = new Vector2(0f, BtnH);
 
         // LeftText: 왼쪽 절반, 우측 정렬
@@ -284,6 +287,37 @@ public static class RelicPanelCreator
         inactRt.offsetMin = new Vector2(16f, 0f);
         inactRt.offsetMax = new Vector2(-16f, 0f);
         inactGo.SetActive(false);
+
+        return btn;
+    }
+
+    // ── 초기화 버튼 (FooterBar 하단) ─────────────────────────
+
+    static GameObject BuildResetBtn(GameObject footer)
+    {
+        var btn = new GameObject("ResetBtn", typeof(RectTransform), typeof(Image), typeof(Button));
+        btn.transform.SetParent(footer.transform, false);
+        btn.GetComponent<Image>().color = ResetBtnColor;
+
+        var btnRt = btn.GetComponent<RectTransform>();
+        btnRt.anchorMin        = new Vector2(0.08f, 0.5f);
+        btnRt.anchorMax        = new Vector2(0.92f, 0.5f);
+        btnRt.pivot            = new Vector2(0.5f, 0.5f);
+        btnRt.anchoredPosition = new Vector2(0f, -46f);  // 하단에 배치
+        btnRt.sizeDelta        = new Vector2(0f, 80f);
+
+        var labelGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+        labelGo.transform.SetParent(btn.transform, false);
+        var labelRt = labelGo.GetComponent<RectTransform>();
+        labelRt.anchorMin = Vector2.zero;
+        labelRt.anchorMax = Vector2.one;
+        labelRt.offsetMin = labelRt.offsetMax = Vector2.zero;
+        var tmp = labelGo.GetComponent<TextMeshProUGUI>();
+        tmp.text      = "유물 초기화";
+        tmp.fontSize  = UIScale.FontMd;
+        tmp.fontStyle = FontStyles.Bold;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.color     = new Color(1f, 0.75f, 0.75f);
 
         return btn;
     }

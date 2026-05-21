@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -32,8 +33,9 @@ public class AbilitySelectPopup : PopupBase
     [SerializeField] Button          _refreshBtn;
     [SerializeField] TextMeshProUGUI _refreshCountTmp;
 
-    AbilityData[]      _choices;
-    Action<AbilityData> _onSelected;
+    AbilityData[]            _choices;
+    Action<AbilityData>      _onSelected;
+    readonly List<AbilityCardUI> _dynamicCards = new();
 
     AbilityDatabase    _abilityDb;
     RunAbilityData     _runData;
@@ -80,6 +82,7 @@ public class AbilitySelectPopup : PopupBase
 
     protected override void OnAfterClose()
     {
+        DestroyDynamicCards();
         _choices           = null;
         _onSelected        = null;
         _abilityDb         = null;
@@ -87,6 +90,13 @@ public class AbilitySelectPopup : PopupBase
         _relicInventory    = null;
         _relicDb           = null;
         _reincarnationData = null;
+    }
+
+    void DestroyDynamicCards()
+    {
+        foreach (var c in _dynamicCards)
+            if (c != null) Destroy(c.gameObject);
+        _dynamicCards.Clear();
     }
 
     // ── 새로고침 ─────────────────────────────────────────────
@@ -130,13 +140,31 @@ public class AbilitySelectPopup : PopupBase
     {
         if (_cards == null) return;
 
+        DestroyDynamicCards();
+
+        int choiceCount = _choices?.Length ?? 0;
+
+        // 고정 슬롯 처리
         for (int i = 0; i < _cards.Length; i++)
         {
             if (_cards[i] == null) continue;
-
-            bool hasData = _choices != null && i < _choices.Length && _choices[i] != null;
+            bool hasData = i < choiceCount && _choices[i] != null;
             _cards[i].gameObject.SetActive(hasData);
-            if (hasData) _cards[i].Setup(_choices[i], OnCardClicked);
+            if (hasData) _cards[i].Setup(_choices[i], OnCardClicked, _runData?.GetLevel(_choices[i].Id) ?? 0);
+        }
+
+        // 고정 슬롯 초과분 — 첫 번째 카드를 템플릿으로 동적 생성
+        if (_cards.Length > 0 && _cards[0] != null)
+        {
+            var parent = _cards[0].transform.parent;
+            for (int i = _cards.Length; i < choiceCount; i++)
+            {
+                if (_choices[i] == null) continue;
+                var extra = Instantiate(_cards[0], parent);
+                extra.gameObject.SetActive(true);
+                extra.Setup(_choices[i], OnCardClicked, _runData?.GetLevel(_choices[i].Id) ?? 0);
+                _dynamicCards.Add(extra);
+            }
         }
     }
 

@@ -1,4 +1,3 @@
-using Unity.Transforms;
 using UnityEngine;
 using BattleGame.Units;
 
@@ -27,12 +26,8 @@ public class ActiveMeteor : ActiveSkillData
         var em = ctx.EntityManager;
         em.CompleteAllTrackedJobs();
 
-        Vector3 targetPos = Vector3.zero;
-        if (em.HasComponent<LocalTransform>(ctx.TargetEntity))
-        {
-            var lt = em.GetComponentData<LocalTransform>(ctx.TargetEntity);
-            targetPos = new Vector3(lt.Position.x, lt.Position.y, lt.Position.z);
-        }
+        // 발동 시점에 스냅샷된 위치를 사용 — 타겟이 사망/디스폰되어도 원래 위치에 착탄
+        Vector3 targetPos = ctx.TargetPosition;
 
         var casterIdentity = em.GetComponentData<UnitIdentityComponent>(ctx.CasterEntity);
 

@@ -8,7 +8,7 @@ using BattleGame.Units;
 //  실행 순서: UnitHitSystem 이후 → 같은 프레임 내 결과를 즉시 집계
 //
 //  딜 분류:
-//    IsSkillHit == true           → DamageCategory.Skill
+//    HitType.Skill                → DamageCategory.Skill
 //    SummonedTag 있는 공격자      → DamageCategory.Skill
 //    SoldierComponent 있는 공격자 → DamageCategory.Soldier
 //    GeneralComponent 있는 공격자 → DamageCategory.General
@@ -91,7 +91,7 @@ namespace BattleGame.Units
                     if (tracker.GetEntry(attackerGeneral) == null) continue;
 
                     DamageCategory cat = ClassifyDamage(
-                        r.AttackerEntity, r.IsSkillHit,
+                        r.AttackerEntity, r.Type,
                         _generalLookup, _soldierLookup, _summonedLookup);
 
                     tracker.RecordDamage(attackerGeneral, r.ActualDamage, cat);
@@ -115,15 +115,15 @@ namespace BattleGame.Units
             return Entity.Null;
         }
 
-        static DamageCategory ClassifyDamage(Entity attacker, bool isSkillHit,
+        static DamageCategory ClassifyDamage(Entity attacker, BattleGame.Units.HitType hitType,
             ComponentLookup<GeneralComponent> generalLookup,
             ComponentLookup<SoldierComponent> soldierLookup,
             ComponentLookup<SummonedTag>      summonedLookup)
         {
-            if (isSkillHit)                            return DamageCategory.Skill;
-            if (summonedLookup.HasComponent(attacker)) return DamageCategory.Skill;
-            if (soldierLookup.HasComponent(attacker))  return DamageCategory.Soldier;
-            if (generalLookup.HasComponent(attacker))  return DamageCategory.General;
+            if (hitType == BattleGame.Units.HitType.Skill)  return DamageCategory.Skill;
+            if (summonedLookup.HasComponent(attacker))      return DamageCategory.Skill;
+            if (soldierLookup.HasComponent(attacker))       return DamageCategory.Soldier;
+            if (generalLookup.HasComponent(attacker))       return DamageCategory.General;
             return DamageCategory.General;
         }
     }

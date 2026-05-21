@@ -29,36 +29,36 @@ public static class PopupPrefabCreator
     }
 
     // ── ExpRow 프리팹 ─────────────────────────────────────────
-    // 한 줄 HLG 레이아웃:
-    //   [Portrait 56px] [Name 80px] [StatBar flex] [TotalText 80px]
-    //   [ExpText 70px] [LevelText 52px] [LevelUpText 70px]
+    // 고정 위치 레이아웃 (HLG 없음):
+    //   [Portrait 72px] [Name/Level] [StatBar 얇음 + Legend] [TotalText | ExpText | LevelUpText]
+    //   좌측 고정 200px / 우측 고정 260px / 나머지 StatBar 영역
 
     [MenuItem("Tools/Project K/Popup/Create ExpRow Prefab")]
     static void CreateExpRowPrefab()
     {
-        const float rowH       = 80f;
-        const float portraitSz = 64f;
+        const float rowH      = 92f;
+        const float portSz    = 72f;
+        const float nameX     = 84f;   // 6(margin) + 72(portrait) + 6(gap)
+        const float leftEnd   = 230f;  // nameX + 140(nameGroup) + 6(gap)
+        const float rightSize = 306f;  // TotalText(100+4) + ExpText(96+4) + LevelUpText(96+6)
+        // 수평 stretch 요소의 anchoredPosition.x 오프셋
+        float stretchX = (leftEnd - rightSize) / 2f;  // = -38
 
         var root = new GameObject("ExpRow", typeof(RectTransform));
         var rowComp = root.AddComponent<ExpRowUI>();
         root.GetComponent<RectTransform>().sizeDelta = new Vector2(860f, rowH);
         root.AddComponent<Image>().color = new Color(0.11f, 0.12f, 0.19f, 0.90f);
+        // HorizontalLayoutGroup 없음 — 모든 자식은 고정 위치
 
-        var hlg = root.AddComponent<HorizontalLayoutGroup>();
-        hlg.spacing              = 4f;
-        hlg.padding              = new RectOffset(6, 6, 4, 4);
-        hlg.childAlignment       = TextAnchor.MiddleLeft;
-        hlg.childControlHeight   = true;
-        hlg.childControlWidth    = false;
-        hlg.childForceExpandWidth  = false;
-        hlg.childForceExpandHeight = true;
-
-        // ── 초상화 영역 ─────────────────────────────────────────
+        // ── 초상화 (좌측 수직 중앙) ──────────────────────────────
         var portBg = new GameObject("PortraitBg", typeof(RectTransform), typeof(Image));
         portBg.transform.SetParent(root.transform, false);
         portBg.GetComponent<Image>().color = new Color(0.20f, 0.22f, 0.35f, 1f);
-        AddLE(portBg, portraitSz, portraitSz);
-        portBg.GetComponent<RectTransform>().sizeDelta = new Vector2(portraitSz, portraitSz);
+        var portRt = portBg.GetComponent<RectTransform>();
+        portRt.anchorMin = new Vector2(0f, 0.5f); portRt.anchorMax = new Vector2(0f, 0.5f);
+        portRt.pivot = new Vector2(0f, 0.5f);
+        portRt.anchoredPosition = new Vector2(6f, 0f);
+        portRt.sizeDelta = new Vector2(portSz, portSz);
 
         var portImg = new GameObject("PortraitImage", typeof(RectTransform), typeof(Image));
         portImg.transform.SetParent(portBg.transform, false);
@@ -71,38 +71,35 @@ public static class PopupPrefabCreator
         bridgeGo.AddComponent<UnitAppearanceBridge>();
         bridgeGo.AddComponent<Assets.PixelFantasy.PixelHeroes.Common.Scripts.CharacterScripts.CharacterBuilder>();
 
-        // ── 이름 + 레벨 (VLG 묶음) ───────────────────────────────
-        var nameGroup = new GameObject("NameGroup", typeof(RectTransform));
-        nameGroup.transform.SetParent(root.transform, false);
-        nameGroup.GetComponent<RectTransform>().sizeDelta = new Vector2(100f, rowH);
-        AddLE(nameGroup, 100f, 80f);
-
-        var ngVlg = nameGroup.AddComponent<VerticalLayoutGroup>();
-        ngVlg.spacing              = 2f;
-        ngVlg.childAlignment       = TextAnchor.MiddleLeft;
-        ngVlg.childControlWidth    = true;
-        ngVlg.childControlHeight   = false;
-        ngVlg.childForceExpandWidth  = true;
-        ngVlg.childForceExpandHeight = false;
-
-        var nameText = AddTMP(nameGroup, "NameText", "영웅 이름", UIScale.FontMd, FontStyles.Bold);
+        // ── 이름 텍스트 (좌측 상반부) ─────────────────────────────
+        var nameText = AddTMP(root, "NameText", "영웅 이름", 34f, FontStyles.Bold);
         nameText.alignment    = TextAlignmentOptions.MidlineLeft;
         nameText.overflowMode = TextOverflowModes.Ellipsis;
-        nameText.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, UIScale.FontMd + 6f);
+        var nameRt = nameText.rectTransform;
+        nameRt.anchorMin = new Vector2(0f, 0.5f); nameRt.anchorMax = new Vector2(0f, 0.5f);
+        nameRt.pivot = new Vector2(0f, 0.5f);
+        nameRt.anchoredPosition = new Vector2(nameX, 16f);
+        nameRt.sizeDelta = new Vector2(140f, 44f);
 
-        var levelText = AddTMP(nameGroup, "LevelText", "Lv.1", UIScale.FontSm, FontStyles.Normal);
+        // ── 레벨 텍스트 (좌측 하반부) ─────────────────────────────
+        var levelText = AddTMP(root, "LevelText", "Lv.1", UIScale.FontSm, FontStyles.Normal);
         levelText.alignment = TextAlignmentOptions.MidlineLeft;
         levelText.color     = new Color(0.60f, 0.62f, 0.75f);
-        levelText.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, UIScale.FontSm + 4f);
+        var levelRt = levelText.rectTransform;
+        levelRt.anchorMin = new Vector2(0f, 0.5f); levelRt.anchorMax = new Vector2(0f, 0.5f);
+        levelRt.pivot = new Vector2(0f, 0.5f);
+        levelRt.anchoredPosition = new Vector2(nameX, -16f);
+        levelRt.sizeDelta = new Vector2(140f, UIScale.FontSm + 4f);
 
-        // ── StatBar (가변 너비 — 나머지 공간 채움) ──────────────
+        // ── StatBar (얇게, 수평 stretch) ──────────────────────────
         var barGo = new GameObject("StatBar", typeof(RectTransform), typeof(Image));
         barGo.transform.SetParent(root.transform, false);
         barGo.GetComponent<Image>().color = new Color(0.18f, 0.20f, 0.32f, 1f);
-        barGo.GetComponent<RectTransform>().sizeDelta = new Vector2(200f, 22f);
-        var barLE = barGo.AddComponent<LayoutElement>();
-        barLE.flexibleWidth = 1f;
-        barLE.minWidth      = 80f;
+        var barRt = barGo.GetComponent<RectTransform>();
+        barRt.anchorMin = new Vector2(0f, 0.5f); barRt.anchorMax = new Vector2(1f, 0.5f);
+        barRt.pivot = new Vector2(0.5f, 0.5f);
+        barRt.anchoredPosition = new Vector2(stretchX, 18f);
+        barRt.sizeDelta = new Vector2(-(leftEnd + rightSize), 22f);
 
         var statBarComp = barGo.AddComponent<StatBarUI>();
         var segs = new Image[3];
@@ -125,23 +122,47 @@ public static class PopupPrefabCreator
             segsProp.GetArrayElementAtIndex(i).objectReferenceValue = segs[i];
         sbSo.ApplyModifiedProperties();
 
-        // ── TotalText (80px 고정) ─────────────────────────────────
+        // ── 범례 텍스트 (StatBar 바로 아래, 색상 설명) ───────────
+        var legendText = AddTMP(root, "LegendText",
+            "<color=#4D8CF2>■</color> 장군  <color=#59CC74>■</color> 병사  <color=#F28C33>■</color> 스킬",
+            30f, FontStyles.Normal);
+        legendText.alignment = TextAlignmentOptions.MidlineLeft;
+        legendText.color     = new Color(0.60f, 0.62f, 0.72f);
+        var legendRt = legendText.rectTransform;
+        legendRt.anchorMin = new Vector2(0f, 0.5f); legendRt.anchorMax = new Vector2(1f, 0.5f);
+        legendRt.pivot = new Vector2(0.5f, 0.5f);
+        legendRt.anchoredPosition = new Vector2(stretchX, -12f);
+        legendRt.sizeDelta = new Vector2(-(leftEnd + rightSize), 34f);
+
+        // ── TotalText (우측 상단 고정, 수치 표시) ────────────────
         var totalText = AddTMP(root, "TotalText", "", UIScale.FontSm, FontStyles.Normal);
-        totalText.alignment = TextAlignmentOptions.MidlineLeft;
+        totalText.alignment = TextAlignmentOptions.MidlineRight;
         totalText.color     = new Color(0.75f, 0.80f, 1.00f, 1f);
-        AddLE(totalText.gameObject, 80f, 50f);
+        var totalRt = totalText.rectTransform;
+        totalRt.anchorMin = new Vector2(1f, 0.5f); totalRt.anchorMax = new Vector2(1f, 0.5f);
+        totalRt.pivot = new Vector2(1f, 0.5f);
+        totalRt.anchoredPosition = new Vector2(-206f, 16f);
+        totalRt.sizeDelta = new Vector2(100f, 26f);
 
-        // ── EXP 텍스트 (70px 고정) ────────────────────────────────
-        var expText = AddTMP(root, "ExpText", "+0 EXP", UIScale.FontSm, FontStyles.Normal);
-        expText.alignment = TextAlignmentOptions.MidlineLeft;
+        // ── EXP 텍스트 (우측 하단) ───────────────────────────────
+        var expText = AddTMP(root, "ExpText", "+0", UIScale.FontSm, FontStyles.Normal);
+        expText.alignment = TextAlignmentOptions.MidlineRight;
         expText.color     = new Color(0.60f, 0.90f, 0.60f);
-        AddLE(expText.gameObject, 70f, 50f);
+        var expRt = expText.rectTransform;
+        expRt.anchorMin = new Vector2(1f, 0.5f); expRt.anchorMax = new Vector2(1f, 0.5f);
+        expRt.pivot = new Vector2(1f, 0.5f);
+        expRt.anchoredPosition = new Vector2(-106f, -16f);
+        expRt.sizeDelta = new Vector2(96f, 26f);
 
-        // ── 레벨업 텍스트 (70px, 기본 비활성) ─────────────────────
+        // ── 레벨업 텍스트 (우측 하단, 기본 비활성) ──────────────
         var lvupText = AddTMP(root, "LevelUpText", "▲UP!", UIScale.FontSm, FontStyles.Bold);
-        lvupText.alignment = TextAlignmentOptions.MidlineLeft;
+        lvupText.alignment = TextAlignmentOptions.MidlineRight;
         lvupText.color     = new Color(1.00f, 0.85f, 0.15f);
-        AddLE(lvupText.gameObject, 70f, 50f);
+        var lvupRt = lvupText.rectTransform;
+        lvupRt.anchorMin = new Vector2(1f, 0.5f); lvupRt.anchorMax = new Vector2(1f, 0.5f);
+        lvupRt.pivot = new Vector2(1f, 0.5f);
+        lvupRt.anchoredPosition = new Vector2(-6f, -16f);
+        lvupRt.sizeDelta = new Vector2(96f, 26f);
         lvupText.gameObject.SetActive(false);
 
         // ── 필드 연결 ─────────────────────────────────────────────
@@ -152,6 +173,7 @@ public static class PopupPrefabCreator
         SetObj(so, "_nameText",       nameText);
         SetObj(so, "_levelText",      levelText);
         SetObj(so, "_expText",        expText);
+        SetObj(so, "_legendText",     legendText);
         SetObj(so, "_levelUpText",    lvupText);
         SetObj(so, "_statBar",        statBarComp);
         SetObj(so, "_totalText",      totalText);
@@ -186,7 +208,7 @@ public static class PopupPrefabCreator
 
         // 레이아웃 (위 → 아래):
         //   승리! / 서브 / 스탯 → 보상 카드(스크롤) → 힌트 → 구분선 → 탭바 → EXP 행 목록 → 확인 버튼
-        var root  = CreateRoot<BattleResultPopup>("BattleResultPopup", 900, 1100);
+        var root  = CreateRoot<BattleResultPopup>("BattleResultPopup", 1000, 1100);
         var popup = root.GetComponent<BattleResultPopup>();
 
         AddBgPanel(root, new Color(0.08f, 0.10f, 0.16f, 0.96f));
@@ -195,16 +217,16 @@ public static class PopupPrefabCreator
         var subText    = AddTMP(root, "SubText", "모든 적을 물리쳤습니다!", UIScale.FontSm, FontStyles.Normal);
         var statsText  = AddTMP(root, "StatsText", "처치  0   |   웨이브  0 / 0", UIScale.FontSm, FontStyles.Normal);
 
-        SetRect(resultText.rectTransform, new Vector2(0,  480), new Vector2(800, 90));
-        SetRect(subText.rectTransform,    new Vector2(0,  400), new Vector2(800, 50));
-        SetRect(statsText.rectTransform,  new Vector2(0,  342), new Vector2(700, 50));
+        SetRect(resultText.rectTransform, new Vector2(0,  490), new Vector2(900, 90));
+        SetRect(subText.rectTransform,    new Vector2(0,  410), new Vector2(900, 50));
+        SetRect(statsText.rectTransform,  new Vector2(0,  350), new Vector2(800, 50));
 
         // ── 보상 카드 스크롤뷰 (5개 이상 카드를 수평 스크롤로 지원) ──
         var rewardScroll = new GameObject("RewardScrollView",
             typeof(RectTransform), typeof(Image), typeof(ScrollRect));
         rewardScroll.transform.SetParent(root.transform, false);
         rewardScroll.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0f);
-        SetRect(rewardScroll.GetComponent<RectTransform>(), new Vector2(0f, 250f), new Vector2(860f, 150f));
+        SetRect(rewardScroll.GetComponent<RectTransform>(), new Vector2(0f, 270f), new Vector2(960f, 280f));
 
         var rewardVp = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(Mask));
         rewardVp.transform.SetParent(rewardScroll.transform, false);
@@ -242,19 +264,19 @@ public static class PopupPrefabCreator
         // 힌트 텍스트
         var hintText = AddTMP(root, "HintText", "카드를 탭하면 개봉합니다", UIScale.FontSm, FontStyles.Italic);
         hintText.color = new Color(0.70f, 0.70f, 0.50f);
-        SetRect(hintText.rectTransform, new Vector2(0, 158f), new Vector2(800f, 44f));
+        SetRect(hintText.rectTransform, new Vector2(0, 105f), new Vector2(900f, 44f));
         hintText.gameObject.SetActive(false);
 
         // ── 구분선 ──────────────────────────────────────────────
         var divider = new GameObject("Divider", typeof(RectTransform), typeof(Image));
         divider.transform.SetParent(root.transform, false);
         divider.GetComponent<Image>().color = new Color(0.30f, 0.30f, 0.35f, 0.80f);
-        SetRect(divider.GetComponent<RectTransform>(), new Vector2(0f, 122f), new Vector2(840f, 2f));
+        SetRect(divider.GetComponent<RectTransform>(), new Vector2(0f, 70f), new Vector2(940f, 2f));
 
         // ── 탭 바 (딜 / 탱 / 힐) ──────────────────────────────────
         var tabBar = new GameObject("TabBar", typeof(RectTransform));
         tabBar.transform.SetParent(root.transform, false);
-        SetRect(tabBar.GetComponent<RectTransform>(), new Vector2(0f, 91f), new Vector2(840f, 36f));
+        SetRect(tabBar.GetComponent<RectTransform>(), new Vector2(0f, 35f), new Vector2(940f, 36f));
 
         var tabHlg = tabBar.AddComponent<HorizontalLayoutGroup>();
         tabHlg.spacing              = 6f;
@@ -302,8 +324,8 @@ public static class PopupPrefabCreator
         expAreaRt.anchorMin        = new Vector2(0f, 1f);
         expAreaRt.anchorMax        = new Vector2(1f, 1f);
         expAreaRt.pivot            = new Vector2(0.5f, 1f);
-        expAreaRt.anchoredPosition = new Vector2(0f, -488f);
-        expAreaRt.sizeDelta        = new Vector2(0f, 440f);
+        expAreaRt.anchoredPosition = new Vector2(0f, -539f);
+        expAreaRt.sizeDelta        = new Vector2(0f, 490f);
         var expVlg = expArea.AddComponent<VerticalLayoutGroup>();
         expVlg.spacing              = 6f;
         expVlg.padding              = new RectOffset(8, 8, 6, 6);
@@ -316,7 +338,7 @@ public static class PopupPrefabCreator
 
         // 확인 버튼
         var confirmBtn = AddButton(root, "ConfirmButton", "확인", new Color(0.20f, 0.55f, 0.20f), UIScale.FontMd);
-        SetRect(confirmBtn.GetComponent<RectTransform>(), new Vector2(0, -500f), new Vector2(400f, UIScale.BtnMd));
+        SetRect(confirmBtn.GetComponent<RectTransform>(), new Vector2(0, -480f), new Vector2(500f, UIScale.BtnMd));
 
         // 프리팹 로드 및 연결
         var rewardCardPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{SavePath}/RewardCard.prefab");
@@ -554,15 +576,32 @@ public static class PopupPrefabCreator
         refreshCountTmp.alignment = TextAlignmentOptions.Left;
         SetRect(refreshCountTmp.rectTransform, new Vector2(130f, 0f), new Vector2(380f, refreshRowH));
 
-        // ── 카드 영역 (HorizontalLayoutGroup) ─────────────────
+        // ── 카드 스크롤뷰 (4~5장 초과 시 수평 스크롤) ─────────
+        var cardScroll = new GameObject("CardScrollView",
+            typeof(RectTransform), typeof(Image), typeof(ScrollRect));
+        cardScroll.transform.SetParent(root.transform, false);
+        cardScroll.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0f);
+        SetRect(cardScroll.GetComponent<RectTransform>(),
+            new Vector2(0f, -60f), new Vector2(popupW - 40f, cardH));
+
+        var cardVp = new GameObject("Viewport",
+            typeof(RectTransform), typeof(Image), typeof(Mask));
+        cardVp.transform.SetParent(cardScroll.transform, false);
+        cardVp.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.01f);
+        cardVp.GetComponent<Mask>().showMaskGraphic = false;
+        var cardVpRt = cardVp.GetComponent<RectTransform>();
+        cardVpRt.anchorMin = Vector2.zero; cardVpRt.anchorMax = Vector2.one;
+        cardVpRt.offsetMin = cardVpRt.offsetMax = Vector2.zero;
+
+        // 중앙 앵커 — 3장: 뷰포트 안에서 자동 가운데 정렬 / 4~5장: 좌우 스크롤
         var cardArea = new GameObject("CardArea", typeof(RectTransform));
-        cardArea.transform.SetParent(root.transform, false);
+        cardArea.transform.SetParent(cardVp.transform, false);
         var cardAreaRt = cardArea.GetComponent<RectTransform>();
-        cardAreaRt.anchorMin        = new Vector2(0.5f, 0.5f);
-        cardAreaRt.anchorMax        = new Vector2(0.5f, 0.5f);
+        cardAreaRt.anchorMin        = new Vector2(0.5f, 0f);
+        cardAreaRt.anchorMax        = new Vector2(0.5f, 1f);
         cardAreaRt.pivot            = new Vector2(0.5f, 0.5f);
-        cardAreaRt.anchoredPosition = new Vector2(0f, -60f);
-        cardAreaRt.sizeDelta        = new Vector2(popupW - 40f, cardH);
+        cardAreaRt.anchoredPosition = Vector2.zero;
+        cardAreaRt.sizeDelta        = new Vector2(0f, 0f);
         var hlg = cardArea.AddComponent<HorizontalLayoutGroup>();
         hlg.spacing              = 16f;
         hlg.childAlignment       = TextAnchor.MiddleCenter;
@@ -570,6 +609,16 @@ public static class PopupPrefabCreator
         hlg.childControlHeight   = false;
         hlg.childForceExpandWidth  = false;
         hlg.childForceExpandHeight = false;
+        hlg.padding              = new RectOffset(4, 4, 0, 0);
+        cardArea.AddComponent<ContentSizeFitter>().horizontalFit =
+            ContentSizeFitter.FitMode.PreferredSize;
+
+        var cardScrollRect = cardScroll.GetComponent<ScrollRect>();
+        cardScrollRect.horizontal   = true;
+        cardScrollRect.vertical     = false;
+        cardScrollRect.movementType = ScrollRect.MovementType.Elastic;
+        cardScrollRect.viewport     = cardVpRt;
+        cardScrollRect.content      = cardAreaRt;
 
         // 카드 3장 생성
         var cards = new AbilityCardUI[3];
@@ -666,6 +715,12 @@ public static class PopupPrefabCreator
         SetRect(descTmp.rectTransform, new Vector2(0f, iconTopY - iconSz / 2f - 188f), new Vector2(w - 24f, 80f));
         descTmp.color = new Color(0.85f, 0.85f, 0.90f);
 
+        // 레벨 텍스트 (descTmp 아래, MaxLevel>1 어빌리티에만 표시)
+        var levelTmp = AddCardTMP(card, "LevelTmp", "Lv 1/3", UIScale.FontSm - 2f, FontStyles.Normal);
+        SetRect(levelTmp.rectTransform, new Vector2(0f, iconTopY - iconSz / 2f - 254f), new Vector2(w - 24f, 36f));
+        levelTmp.color = new Color(0.55f, 0.80f, 1.00f);
+        levelTmp.gameObject.SetActive(false);
+
         // 선택 버튼
         var selBtn = AddButton(card, "SelectBtn", "선택", new Color(0.20f, 0.45f, 0.75f), UIScale.FontSm);
         SetRect(selBtn.GetComponent<RectTransform>(), new Vector2(0f, -(h / 2f - 44f)), new Vector2(w - 24f, UIScale.BtnSm));
@@ -678,6 +733,7 @@ public static class PopupPrefabCreator
         SetObj(cardSo, "_nameTmp",   nameTmp);
         SetObj(cardSo, "_targetTmp", targetTmp);
         SetObj(cardSo, "_descTmp",   descTmp);
+        SetObj(cardSo, "_levelTmp",  levelTmp);
         SetObj(cardSo, "_selectBtn", selBtn.GetComponent<Button>());
         cardSo.ApplyModifiedProperties();
 

@@ -111,14 +111,16 @@ public static class ActiveSkillCreator
             id          : ActiveSkillId.ChargeSoldier,
             fileName    : "Active_ChargeSoldier",
             skillName   : "돌격 병사",
-            description : "체력이 가장 높은 병사를 타겟으로 돌격시켜 공격력 200% 피해 + 강한 넉백.",
+            description : "후방에 돌격 병사 3명을 소환해 전방으로 돌진. 경로 위 적에게 공격력×200% 피해 + 넉백.",
             cooldown    : 20f,
             effectValue : 2f,
             radius      : 0f,
             duration    : 0f,
             jobs        : new[] { UnitJob.ShieldBearer });
-        chargeSoldier.ChargeSpeed    = 20f;
-        chargeSoldier.KnockbackMult  = 5f;
+        chargeSoldier.ChargeSpeed    = 18f;
+        chargeSoldier.HitRadius      = 0.8f;
+        chargeSoldier.ChargeDistance = 12f;
+        chargeSoldier.KnockbackForce = 5f;
         EditorUtility.SetDirty(chargeSoldier);
 
         // ── ⑦ 스켈레톤 소환 (공통) ──────────────────────────
@@ -240,7 +242,7 @@ public static class ActiveSkillCreator
             id          : ActiveSkillId.IronShield,
             fileName    : "Active_IronShield",
             skillName   : "철벽 방어",
-            description : "시전자의 방어율을 8초 동안 +30% 증가.",
+            description : "시전자의 방어율을 8초 동안 +30% 증가. 지속 시간 동안 도발 상태가 되어 적의 우선 타겟이 됨.",
             cooldown    : 20f,
             effectValue : 0.3f,
             radius      : 0f,

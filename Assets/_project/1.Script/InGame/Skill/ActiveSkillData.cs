@@ -114,6 +114,7 @@ public struct ActiveSkillContext
     // ECS
     public Entity         CasterEntity;    // 스킬 사용자(제너럴) Entity
     public Entity         TargetEntity;    // 현재 공격 타겟 Entity (없으면 Entity.Null)
+    public Vector3        TargetPosition;  // 스킬 발동 시점의 타겟 위치 스냅샷 (타겟 사망 후에도 유효)
     public StatComponent  CasterStat;      // 사용자 StatComponent 스냅샷
     public EntityManager  EntityManager;
 

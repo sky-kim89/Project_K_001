@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using UnityEngine;
 using BattleGame.Units;
 
@@ -11,7 +11,7 @@ using BattleGame.Units;
 //    HealPerDeath: 병사 1명 사망당 회복량
 // ============================================================
 
-[CreateAssetMenu(fileName = "Passive_SacrificeAbsorb", menuName = "BattleGame/Passives/SacrificeAbsorb")]
+[UnityEngine.CreateAssetMenu(fileName = "Passive_SacrificeAbsorb", menuName = "BattleGame/Passives/SacrificeAbsorb")]
 public class PassiveSacrificeAbsorb : PassiveSkillData
 {
     [Header("희생 흡수 설정")]

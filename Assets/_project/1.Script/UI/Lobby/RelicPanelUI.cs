@@ -29,6 +29,7 @@ public class RelicPanelUI : MonoBehaviour
     [Header("하단")]
     [SerializeField] Button          _reincarnateBtn;
     [SerializeField] TextMeshProUGUI _reincLabel;
+    [SerializeField] Button          _resetBtn;
 
     [Header("뒤로가기")]
     [SerializeField] Button _backBtn;
@@ -52,6 +53,12 @@ public class RelicPanelUI : MonoBehaviour
         {
             _reincarnateBtn.onClick.RemoveAllListeners();
             _reincarnateBtn.onClick.AddListener(OnReincarnate);
+        }
+
+        if (_resetBtn != null)
+        {
+            _resetBtn.onClick.RemoveAllListeners();
+            _resetBtn.onClick.AddListener(OnRelicReset);
         }
 
         if (_backBtn != null)
@@ -164,13 +171,15 @@ public class RelicPanelUI : MonoBehaviour
             }
         }
 
+        bool isInfinite = data.Rarity == RelicRarity.Common;
+
         // 레벨 뱃지 (아이콘 우하단) — 미보유 시 완전 숨김
         var levelBadgeTr = card.transform.Find("IconBg/LevelBadge");
         if (levelBadgeTr != null) levelBadgeTr.gameObject.SetActive(owned);
         var levelTmp = levelBadgeTr?.GetComponentInChildren<TextMeshProUGUI>();
         if (levelTmp != null && owned)
         {
-            levelTmp.text = level >= data.MaxLevel ? "MAX" : $"Lv.{level}";
+            levelTmp.text = (!isInfinite && level >= data.MaxLevel) ? "MAX" : $"Lv.{level}";
         }
 
         // 이름
@@ -202,7 +211,7 @@ public class RelicPanelUI : MonoBehaviour
                 upgradeBtn.interactable = canAfford;
                 upgradeBtn.onClick.RemoveAllListeners();
                 var capturedId   = data.Id;
-                var capturedMax  = data.MaxLevel;
+                var capturedMax  = isInfinite ? int.MaxValue : data.MaxLevel;
                 var capturedCost = acquireCost;
                 upgradeBtn.onClick.AddListener(() =>
                 {
@@ -214,7 +223,7 @@ public class RelicPanelUI : MonoBehaviour
                 });
             }
         }
-        else if (level >= data.MaxLevel)
+        else if (!isInfinite && level >= data.MaxLevel)
         {
             if (costTmp    != null) costTmp.text = "";
             if (upgradeBtn != null) { SetBtnLabel(upgradeBtn, "최대"); upgradeBtn.interactable = false; }
@@ -231,7 +240,7 @@ public class RelicPanelUI : MonoBehaviour
                 upgradeBtn.interactable = canAfford;
                 upgradeBtn.onClick.RemoveAllListeners();
                 var capturedId   = data.Id;
-                var capturedMax  = data.MaxLevel;
+                var capturedMax  = isInfinite ? int.MaxValue : data.MaxLevel;
                 var capturedCost = cost;
                 upgradeBtn.onClick.AddListener(() => TryLevelUp(capturedId, capturedMax, capturedCost));
             }
@@ -265,6 +274,17 @@ public class RelicPanelUI : MonoBehaviour
 
         UserDataManager.Instance?.Reincarnate();
         LobbyManager.Instance?.ResetToFirstStage();
+        Refresh();
+    }
+
+    // ── 유물 초기화 ───────────────────────────────────────────
+
+    void OnRelicReset()
+    {
+        if (_inventory == null || _reincData == null || _db == null) return;
+        int refund = _inventory.ResetAll(_db);
+        _reincData.EarnPoints(refund);
+        UserDataManager.Instance?.RequestSave();
         Refresh();
     }
 }

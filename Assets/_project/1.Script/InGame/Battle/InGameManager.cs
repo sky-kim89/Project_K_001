@@ -87,17 +87,21 @@ public class InGameManager : MonoBehaviour
             var deployData = UserDataManager.Instance.Get<DeploymentData>();
             var deployed   = deployData?.GetDeployedUnits();
 
+            var   runData  = UserDataManager.Instance?.Get<RunAbilityData>();
+            float expBonus = AbilityApplier.GetExpBonusRatio(runData?.HeldAbilities, AbilityDatabase.Current);
+            int   expReward = Mathf.RoundToInt(stage.ExpReward * (1f + expBonus));
+
             foreach (var unit in unitData.Units)
             {
                 if (deployed != null && !deployed.Contains(unit.UnitName)) continue;
 
-                int gained = unitData.AddUnitExp(unit.UnitName, stage.ExpReward);
+                int gained = unitData.AddUnitExp(unit.UnitName, expReward);
                 if (gained > 0)
                     Debug.Log($"[InGameManager] {unit.UnitName} 레벨 업! → Lv.{unit.Level} (+{gained})");
                 context?.ExpGains.Add(new BattleContext.UnitExpGain
                 {
                     UnitName     = unit.UnitName,
-                    ExpGained    = stage.ExpReward,
+                    ExpGained    = expReward,
                     LevelsGained = gained,
                     NewLevel     = unit.Level,
                 });

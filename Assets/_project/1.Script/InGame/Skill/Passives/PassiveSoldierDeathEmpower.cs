@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using UnityEngine;
 using BattleGame.Units;
 
@@ -12,7 +12,7 @@ using BattleGame.Units;
 //      예) Stat=Attack, Delta=0.02, IsPercent=true → 사망 1명당 공격력 2% 증가
 // ============================================================
 
-[CreateAssetMenu(fileName = "Passive_SoldierDeathEmpower", menuName = "BattleGame/Passives/SoldierDeathEmpower")]
+[UnityEngine.CreateAssetMenu(fileName = "Passive_SoldierDeathEmpower", menuName = "BattleGame/Passives/SoldierDeathEmpower")]
 public class PassiveSoldierDeathEmpower : PassiveSkillData
 {
     public override void OnTrigger(PassiveTriggerContext ctx)

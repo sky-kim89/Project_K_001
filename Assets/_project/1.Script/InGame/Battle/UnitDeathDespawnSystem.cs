@@ -110,8 +110,12 @@ namespace BattleGame.Units
             }
 
             // ── ③ ForEach 완료 후 GO 반납 (이 시점은 Entity 순회 밖이므로 안전) ──
-            foreach (var (obj, team, _) in _pending)
+            foreach (var (obj, team, generalEntity) in _pending)
             {
+                // 아군 병사 사망 시 런 내 누적 카운터 갱신 (혼령 집결 어빌리티 참조)
+                if (generalEntity != Entity.Null && team == TeamType.Ally)
+                    UserDataManager.Instance?.Get<RunAbilityData>()?.IncrementSoldierDeaths();
+
                 // 생존 카운트 즉시 갱신 (승패 판정은 연출과 무관하게 바로 처리)
                 BattleManager.Instance?.OnUnitDead(team);
 

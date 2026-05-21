@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
 using BattleGame.Units;
@@ -13,7 +13,7 @@ using BattleGame.Units;
 //      예) Delta=0.5 → HP 0% 일 때 공격력 50% 증가
 // ============================================================
 
-[CreateAssetMenu(fileName = "Passive_BloodPact", menuName = "BattleGame/Passives/BloodPact")]
+[UnityEngine.CreateAssetMenu(fileName = "Passive_BloodPact", menuName = "BattleGame/Passives/BloodPact")]
 public class PassiveBloodPact : PassiveSkillData
 {
     // StatusEffect 버퍼에서 BloodPact 버프를 식별하기 위한 마커 Duration

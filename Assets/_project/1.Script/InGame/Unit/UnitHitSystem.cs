@@ -20,14 +20,18 @@ namespace BattleGame.Units
     [UpdateAfter(typeof(UnitAttackSystem))]
     public partial struct UnitHitSystem : ISystem
     {
-        ComponentLookup<BossComponent>  _bossLookup;
-        ComponentLookup<EliteComponent> _eliteLookup;
+        ComponentLookup<BossComponent>         _bossLookup;
+        ComponentLookup<EliteComponent>        _eliteLookup;
+        ComponentLookup<MirrorArmorComponent>  _mirrorArmorLookup;
+        ComponentLookup<KnockbackImmuneTag>    _knockbackImmuneLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _bossLookup  = state.GetComponentLookup<BossComponent>(isReadOnly: true);
-            _eliteLookup = state.GetComponentLookup<EliteComponent>(isReadOnly: true);
+            _bossLookup            = state.GetComponentLookup<BossComponent>(isReadOnly: true);
+            _eliteLookup           = state.GetComponentLookup<EliteComponent>(isReadOnly: true);
+            _mirrorArmorLookup     = state.GetComponentLookup<MirrorArmorComponent>(isReadOnly: true);
+            _knockbackImmuneLookup = state.GetComponentLookup<KnockbackImmuneTag>(isReadOnly: true);
         }
 
         [BurstCompile]
@@ -35,6 +39,8 @@ namespace BattleGame.Units
         {
             _bossLookup.Update(ref state);
             _eliteLookup.Update(ref state);
+            _mirrorArmorLookup.Update(ref state);
+            _knockbackImmuneLookup.Update(ref state);
 
             var cfg = GameplayConfig.Current;
             float softCap      = cfg.DefenseMax;
@@ -46,12 +52,14 @@ namespace BattleGame.Units
 
             new ProcessHitEventsJob
             {
-                Ecb            = ecb,
-                BossLookup     = _bossLookup,
-                EliteLookup    = _eliteLookup,
-                DefenseSoftCap = softCap,
-                DefenseOverflowRate = overflowRate,
-                DefenseEffectiveCap = effectiveCap,
+                Ecb                   = ecb,
+                BossLookup            = _bossLookup,
+                EliteLookup           = _eliteLookup,
+                MirrorArmorLookup     = _mirrorArmorLookup,
+                KnockbackImmuneLookup = _knockbackImmuneLookup,
+                DefenseSoftCap        = softCap,
+                DefenseOverflowRate   = overflowRate,
+                DefenseEffectiveCap   = effectiveCap,
             }.ScheduleParallel();
         }
     }
@@ -64,9 +72,11 @@ namespace BattleGame.Units
     [WithNone(typeof(DeadTag))]
     public partial struct ProcessHitEventsJob : IJobEntity
     {
-        public EntityCommandBuffer.ParallelWriter Ecb;
-        [ReadOnly] public ComponentLookup<BossComponent>  BossLookup;
-        [ReadOnly] public ComponentLookup<EliteComponent> EliteLookup;
+        public EntityCommandBuffer.ParallelWriter         Ecb;
+        [ReadOnly] public ComponentLookup<BossComponent>        BossLookup;
+        [ReadOnly] public ComponentLookup<EliteComponent>       EliteLookup;
+        [ReadOnly] public ComponentLookup<MirrorArmorComponent> MirrorArmorLookup;
+        [ReadOnly] public ComponentLookup<KnockbackImmuneTag>   KnockbackImmuneLookup;
         public float DefenseSoftCap;
         public float DefenseOverflowRate;
         public float DefenseEffectiveCap;
@@ -95,6 +105,9 @@ namespace BattleGame.Units
                 : DefenseSoftCap + (rawDef - DefenseSoftCap) * DefenseOverflowRate;
             float defense   = math.min(eff, DefenseEffectiveCap);
 
+            bool  hasMirror   = MirrorArmorLookup.HasComponent(entity);
+            float mirrorRatio = hasMirror ? MirrorArmorLookup[entity].ReflectRatio : 0f;
+
             for (int i = 0; i < hitBuffer.Length; i++)
             {
                 HitEventBufferElement hit = hitBuffer[i];
@@ -106,14 +119,14 @@ namespace BattleGame.Units
                 float absorbed     = rawDamage - actualDamage;
                 totalDamage       += actualDamage;
 
-                if (hit.IsSkillHit)
+                if (hit.Type == HitType.Skill)
                 {
                     // 스킬 직접 넉백 — HitDirection에 이미 힘이 담겨 있으므로 그대로 누적
                     totalKnockback += hit.HitDirection;
                 }
                 else
                 {
-                    // 일반 공격 — 수백 마리 누적 방지: 프레임 내 최대 단일 타격만 적용
+                    // 일반/반사 공격 — 수백 마리 누적 방지: 프레임 내 최대 단일 타격만 적용
                     float kbMag = math.min(actualDamage * 0.05f, 6f);
                     if (kbMag > maxNormalKbMag)
                     {
@@ -125,6 +138,17 @@ namespace BattleGame.Units
                 float stunTime = CalculateStunDuration(actualDamage);
                 maxStun        = math.max(maxStun, stunTime);
 
+                // 거울 방어 반사 — 실제로 받은 피해(방어 적용 후) 기준으로 반사. 반사된 피해는 재반사 불가.
+                if (hasMirror && hit.Type != HitType.Reflected && hit.AttackerEntity != Entity.Null)
+                {
+                    Ecb.AppendToBuffer(chunkIndex, hit.AttackerEntity, new HitEventBufferElement
+                    {
+                        Damage         = actualDamage * mirrorRatio,
+                        AttackerEntity = entity,
+                        Type           = HitType.Reflected,
+                    });
+                }
+
                 // 통계 결과 기록 (BattleStatCollectorSystem 이 매 프레임 읽어 귀속)
                 resultBuffer.Add(new DamageResultElement
                 {
@@ -132,7 +156,7 @@ namespace BattleGame.Units
                     ActualDamage   = actualDamage,
                     AbsorbedDamage = absorbed,
                     IsKill         = false,   // 사망 여부는 HP 판정 후 업데이트
-                    IsSkillHit     = hit.IsSkillHit,
+                    Type           = hit.Type,
                 });
             }
 
@@ -161,16 +185,25 @@ namespace BattleGame.Units
                 return;
             }
 
-            // ── 내성 적용 ──
-            if (BossLookup.HasComponent(entity))
+            // ── 방패병 달인: 넉백 완전 무시 ──
+            if (KnockbackImmuneLookup.HasComponent(entity))
             {
-                var boss = BossLookup[entity];
-                totalKnockback *= (1f - boss.KnockbackResistance);
-                maxStun        *= (1f - boss.CCResistance);
+                totalKnockback = float3.zero;
+                maxStun        = 0f;
             }
-            else if (EliteLookup.HasComponent(entity))
+            else
             {
-                totalKnockback *= (1f - EliteLookup[entity].KnockbackResistance);
+                // ── 내성 적용 ──
+                if (BossLookup.HasComponent(entity))
+                {
+                    var boss = BossLookup[entity];
+                    totalKnockback *= (1f - boss.KnockbackResistance);
+                    maxStun        *= (1f - boss.CCResistance);
+                }
+                else if (EliteLookup.HasComponent(entity))
+                {
+                    totalKnockback *= (1f - EliteLookup[entity].KnockbackResistance);
+                }
             }
 
             // ── 넉백 / 경직 적용 (누적 상한 8) ──
@@ -181,8 +214,6 @@ namespace BattleGame.Units
 
             hitReaction.KnockbackVelocity = totalKnockback;
 
-            // 이미 더 긴 스턴(속박 등)이 걸려 있으면 짧은 히트 경직으로 덮어쓰지 않는다.
-            // KnockbackJob 이 타이머를 소진했을 때만 IsStunned 를 해제한다.
             hitReaction.StunDuration = math.max(hitReaction.StunDuration, maxStun);
             hitReaction.StunTimer    = math.max(hitReaction.StunTimer,    maxStun);
             hitReaction.IsStunned    = hitReaction.IsStunned || maxStun > 0f;

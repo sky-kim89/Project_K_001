@@ -26,6 +26,7 @@ public class ExpRowUI : MonoBehaviour
     [Header("통계 바")]
     [SerializeField] StatBarUI            _statBar;
     [SerializeField] TextMeshProUGUI      _totalText;
+    [SerializeField] TextMeshProUGUI      _legendText;
 
     Texture2D        _portraitTexture;
     GeneralStatEntry _stats;
@@ -34,7 +35,7 @@ public class ExpRowUI : MonoBehaviour
     {
         if (_nameText  != null) _nameText.text  = gain.UnitName;
         if (_levelText != null) _levelText.text = $"Lv.{gain.NewLevel}";
-        if (_expText   != null) _expText.text   = $"+{gain.ExpGained}";
+        if (_expText   != null) _expText.text   = $"exp+{gain.ExpGained}";
 
         if (_levelUpText != null)
         {
@@ -68,6 +69,8 @@ public class ExpRowUI : MonoBehaviour
     /// <summary>탭 전환 시 호출. 바와 총량 텍스트를 갱신한다.</summary>
     public void RefreshTab(CombatStatTab tab, float maxValue)
     {
+        UpdateLegend(tab);
+
         if (_statBar == null) return;
         if (_stats == null || maxValue <= 0f)
         {
@@ -85,7 +88,7 @@ public class ExpRowUI : MonoBehaviour
                     new[] { _stats.GeneralDamageDealt, _stats.SoldierDamageDealt, _stats.SkillDamageDealt },
                     StatBarUI.DamageColors,
                     total / maxValue);
-                if (_totalText != null) _totalText.text = FormatTotal("딜", total);
+                if (_totalText != null) _totalText.text = FormatTotal(total);
                 break;
             }
             case CombatStatTab.Tank:
@@ -97,7 +100,7 @@ public class ExpRowUI : MonoBehaviour
                     new[] { taken, absorbed },
                     StatBarUI.TankColors,
                     total / maxValue);
-                if (_totalText != null) _totalText.text = FormatTotal("수비", taken);
+                if (_totalText != null) _totalText.text = FormatTotal(taken);
                 break;
             }
             case CombatStatTab.Heal:
@@ -107,13 +110,25 @@ public class ExpRowUI : MonoBehaviour
                     new[] { heal },
                     StatBarUI.HealColors,
                     heal / maxValue);
-                if (_totalText != null) _totalText.text = FormatTotal("힐", heal);
+                if (_totalText != null) _totalText.text = FormatTotal(heal);
                 break;
             }
         }
     }
 
-    static string FormatTotal(string label, float value)
+    void UpdateLegend(CombatStatTab tab)
+    {
+        if (_legendText == null) return;
+        _legendText.text = tab switch
+        {
+            CombatStatTab.Damage => "<color=#4D8CF2>■</color> 장군  <color=#59CC74>■</color> 병사  <color=#F28C33>■</color> 스킬",
+            CombatStatTab.Tank   => "<color=#E64040>■</color> 받은피해  <color=#4D8CF2>■</color> 감소피해",
+            CombatStatTab.Heal   => "<color=#59D98C>■</color> 치유",
+            _                    => "",
+        };
+    }
+
+    static string FormatTotal(float value)
     {
         if (value >= 1_000_000f) return $"{value / 1_000_000f:0.0}M";
         if (value >= 10_000f)    return $"{value / 1_000f:0.#}K";

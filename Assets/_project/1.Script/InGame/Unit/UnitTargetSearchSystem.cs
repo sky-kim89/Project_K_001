@@ -52,7 +52,11 @@ namespace BattleGame.Units
 
             // ① Grid 맵 빌드
             var gridWriter = _gridMap.AsParallelWriter();
-            new BuildGridMapJob { GridWriter = gridWriter }.ScheduleParallel();
+            new BuildGridMapJob
+            {
+                GridWriter  = gridWriter,
+                TauntLookup = SystemAPI.GetComponentLookup<TauntTag>(true),
+            }.ScheduleParallel();
 
             state.Dependency.Complete();
 
@@ -98,7 +102,8 @@ namespace BattleGame.Units
     {
         public Entity   Entity;
         public float3   Position;
-        public TeamType Team;     // TeamId(int) → Team(TeamType) 으로 변경
+        public TeamType Team;
+        public bool     HasTaunt; // TauntTag 보유 여부 — 타겟 우선순위에 사용
     }
 
     public static class UnitGridConstants
@@ -115,6 +120,7 @@ namespace BattleGame.Units
     public partial struct BuildGridMapJob : IJobEntity
     {
         public NativeParallelMultiHashMap<int2, UnitGridEntry>.ParallelWriter GridWriter;
+        [ReadOnly] public ComponentLookup<TauntTag> TauntLookup;
 
         public void Execute(
             Entity                   entity,
@@ -131,7 +137,8 @@ namespace BattleGame.Units
             {
                 Entity   = entity,
                 Position = transform.Position,
-                Team     = identity.Team,   // TeamId → Team
+                Team     = identity.Team,
+                HasTaunt = TauntLookup.HasComponent(entity),
             });
         }
 
@@ -177,7 +184,11 @@ namespace BattleGame.Units
                 attack.HasTarget = false;
             }
 
-            // 가장 가까운 3명 후보 수집
+            // 서치 반경 내 도발 유닛 추적 + 가장 가까운 3명 후보 수집
+            Entity tauntC = Entity.Null;
+            float  tauntD = float.MaxValue;
+            float3 tauntP = float3.zero;
+
             Entity c0 = Entity.Null, c1 = Entity.Null, c2 = Entity.Null;
             float  d0 = float.MaxValue, d1 = float.MaxValue, d2 = float.MaxValue;
             float3 p0 = float3.zero,    p1 = float3.zero,    p2 = float3.zero;
@@ -195,6 +206,10 @@ namespace BattleGame.Units
                     if (entry.Team == identity.Team) continue;
 
                     float distSq = math.distancesq(transform.Position, entry.Position);
+
+                    if (entry.HasTaunt && distSq < tauntD)
+                    { tauntC = entry.Entity; tauntD = distSq; tauntP = entry.Position; }
+
                     if (distSq < d0)
                     { c2=c1; d2=d1; p2=p1; c1=c0; d1=d0; p1=p0; c0=entry.Entity; d0=distSq; p0=entry.Position; }
                     else if (distSq < d1)
@@ -205,6 +220,15 @@ namespace BattleGame.Units
                 while (GridMap.TryGetNextValue(out entry, ref it));
             }
 
+            // 서치 반경 내 도발 유닛 발견 시 즉시 반환
+            if (tauntC != Entity.Null)
+            {
+                attack.TargetEntity   = tauntC;
+                attack.TargetPosition = tauntP;
+                attack.HasTarget      = true;
+                return;
+            }
+
             // 그리드 범위 밖 적 폴백 — 전선을 넘어온 침투 적 대응
             if (c0 == Entity.Null)
             {
@@ -213,7 +237,16 @@ namespace BattleGame.Units
                     var u = AllUnits[i];
                     if (u.Team == identity.Team) continue;
                     float distSq = math.distancesq(transform.Position, u.Position);
+                    if (u.HasTaunt && distSq < tauntD)
+                    { tauntC = u.Entity; tauntD = distSq; tauntP = u.Position; }
                     if (distSq < d0) { c0 = u.Entity; d0 = distSq; p0 = u.Position; }
+                }
+                if (tauntC != Entity.Null)
+                {
+                    attack.TargetEntity   = tauntC;
+                    attack.TargetPosition = tauntP;
+                    attack.HasTarget      = true;
+                    return;
                 }
             }
 

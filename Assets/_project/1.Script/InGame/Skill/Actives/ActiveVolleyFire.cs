@@ -85,7 +85,7 @@ public class ActiveVolleyFire : ActiveSkillData
                 Damage         = damage,
                 HitDirection   = float3.zero,
                 AttackerEntity = attacker,
-                IsSkillHit     = true,
+                Type = BattleGame.Units.HitType.Skill,
             });
         }
 

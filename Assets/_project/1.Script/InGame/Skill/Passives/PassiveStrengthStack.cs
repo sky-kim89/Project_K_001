@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using UnityEngine;
 using BattleGame.Units;
 
@@ -13,7 +13,7 @@ using BattleGame.Units;
 //    MaxStacks: 최대 스택 수
 // ============================================================
 
-[CreateAssetMenu(fileName = "Passive_StrengthStack", menuName = "BattleGame/Passives/StrengthStack")]
+[UnityEngine.CreateAssetMenu(fileName = "Passive_StrengthStack", menuName = "BattleGame/Passives/StrengthStack")]
 public class PassiveStrengthStack : PassiveSkillData
 {
     [Header("연격 스택 설정")]

@@ -68,6 +68,11 @@ public static class AbilityCreator
         new Def { Id=AbilityId.A15, Name="넓은 시야",     Grade=AbilityGrade.Normal, Target=AbilityTarget.All,
                   Stat1=StatType.AttackRange, Value1=0.08f },
 
+        new Def { Id=AbilityId.A16, Name="병사 추가",     Grade=AbilityGrade.Normal, Target=AbilityTarget.Unit_General,
+                  Stat1=StatType.SoldierCount, Value1=1f },
+        new Def { Id=AbilityId.A17, Name="지휘력 강화",   Grade=AbilityGrade.Normal, Target=AbilityTarget.Unit_General,
+                  Stat1=StatType.CommandPower, Value1=10f },
+
         // ── 고급 (Advanced) ───────────────────────────────────
         new Def { Id=AbilityId.B01, Name="철벽 체력",     Grade=AbilityGrade.Advanced, Target=AbilityTarget.All,
                   Stat1=StatType.MaxHp,    Value1=0.15f },
@@ -96,6 +101,11 @@ public static class AbilityCreator
                   Stat1=StatType.MaxHp,    Value1=0.18f, HasStat2=true, Stat2=StatType.Defense,            Value2=0.12f },
         new Def { Id=AbilityId.B12, Name="병사의 맹세",   Grade=AbilityGrade.Advanced, Target=AbilityTarget.Unit_Soldier,
                   Stat1=StatType.Attack,   Value1=0.18f, HasStat2=true, Stat2=StatType.MoveSpeed,          Value2=0.12f },
+
+        new Def { Id=AbilityId.B13, Name="병사 대규모",   Grade=AbilityGrade.Advanced, Target=AbilityTarget.Unit_General,
+                  Stat1=StatType.SoldierCount, Value1=2f },
+        new Def { Id=AbilityId.B14, Name="완벽한 지휘",   Grade=AbilityGrade.Advanced, Target=AbilityTarget.Unit_General,
+                  Stat1=StatType.CommandPower, Value1=20f },
     };
 
     const string IconDir = "Assets/_project/3.Textures/Icons/Abilities";
@@ -110,6 +120,7 @@ public static class AbilityCreator
             AssetDatabase.CreateFolder("Assets/Resources", "Abilities");
 
         CreateSpecialAbilities();
+        CreateMasteryAbilities();
 
         var normalAdvanced = new AbilityData[Defs.Length];
 
@@ -150,11 +161,28 @@ public static class AbilityCreator
             AssetDatabase.LoadAssetAtPath<AbilityData>($"{SaveDir}/Ability_C02.asset"),
             AssetDatabase.LoadAssetAtPath<AbilityData>($"{SaveDir}/Ability_C03.asset"),
             AssetDatabase.LoadAssetAtPath<AbilityData>($"{SaveDir}/Ability_C04.asset"),
+            AssetDatabase.LoadAssetAtPath<AbilityData>($"{SaveDir}/Ability_C05.asset"),
+            AssetDatabase.LoadAssetAtPath<AbilityData>($"{SaveDir}/Ability_C06.asset"),
+            AssetDatabase.LoadAssetAtPath<AbilityData>($"{SaveDir}/Ability_C07.asset"),
+            AssetDatabase.LoadAssetAtPath<AbilityData>($"{SaveDir}/Ability_C08.asset"),
+            AssetDatabase.LoadAssetAtPath<AbilityData>($"{SaveDir}/Ability_C09.asset"),
+            AssetDatabase.LoadAssetAtPath<AbilityData>($"{SaveDir}/Ability_C10.asset"),
+            AssetDatabase.LoadAssetAtPath<AbilityData>($"{SaveDir}/Ability_C11.asset"),
         };
 
-        var allAssets = new AbilityData[normalAdvanced.Length + specials.Length];
+        // 달인 어빌리티 로드 (CreateMasteryAbilities 에서 이미 저장됨)
+        var masteries = new AbilityData[]
+        {
+            AssetDatabase.LoadAssetAtPath<AbilityData>($"{SaveDir}/Ability_D01.asset"),
+            AssetDatabase.LoadAssetAtPath<AbilityData>($"{SaveDir}/Ability_D02.asset"),
+            AssetDatabase.LoadAssetAtPath<AbilityData>($"{SaveDir}/Ability_D03.asset"),
+            AssetDatabase.LoadAssetAtPath<AbilityData>($"{SaveDir}/Ability_D04.asset"),
+        };
+
+        var allAssets = new AbilityData[normalAdvanced.Length + specials.Length + masteries.Length];
         normalAdvanced.CopyTo(allAssets, 0);
         specials.CopyTo(allAssets, normalAdvanced.Length);
+        masteries.CopyTo(allAssets, normalAdvanced.Length + specials.Length);
 
         // Database 생성/업데이트
         var dbExisting = AssetDatabase.LoadAssetAtPath<AbilityDatabase>(DatabasePath);
@@ -172,7 +200,7 @@ public static class AbilityCreator
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log($"[AbilityCreator] 어빌리티 {allAssets.Length}종 (Normal 15 + Advanced 12 + Special 4) + AbilityDatabase 생성 완료");
+        Debug.Log($"[AbilityCreator] 어빌리티 {allAssets.Length}종 (Normal 17 + Advanced 14 + Special 11 + Mastery 4) + AbilityDatabase 생성 완료");
     }
 
     // ── 특수(Special) 어빌리티 C01-C04 생성 ─────────────────
@@ -199,6 +227,89 @@ public static class AbilityCreator
         c04.AttackBonusRatio = 0.05f;
         c04.MaxHpBonusRatio  = 0.05f;
         EditorUtility.SetDirty(c04);
+
+        // C05 — 고통의 계약 (OnBattleStart)
+        var c05 = MakeSpecial<AbilityPactOfAgony>(AbilityId.C05, "Ability_C05", "고통의 계약");
+        c05.AgonyCostRatio = 0.70f;
+        c05.AttackBonus    = 0.35f;
+        c05.AtkSpdBonus    = 0.20f;
+        c05.DefenseBonus   = 0.20f;
+        EditorUtility.SetDirty(c05);
+
+        // C06 — 거울 방어 (OnBattleStart)
+        var c06 = MakeSpecial<AbilityMirrorArmor>(AbilityId.C06, "Ability_C06", "거울 방어");
+        c06.ReflectRatio = 0.25f;
+        EditorUtility.SetDirty(c06);
+
+        // C07 — 혼령 집결 (OnBattleStart)
+        var c07 = MakeSpecial<AbilityGhostRally>(AbilityId.C07, "Ability_C07", "혼령 집결");
+        c07.BonusPerDeath = 0.05f;
+        EditorUtility.SetDirty(c07);
+
+        // C08 — 황금 탐욕 (시스템)
+        var c08 = MakeSpecial<AbilityGoldBonus>(AbilityId.C08, "Ability_C08", "황금 탐욕");
+        c08.GoldBonusRatio = 0.30f;
+        EditorUtility.SetDirty(c08);
+
+        // C09 — 성장 촉진 (시스템)
+        var c09 = MakeSpecial<AbilityExpBonus>(AbilityId.C09, "Ability_C09", "성장 촉진");
+        c09.ExpBonusRatio = 0.30f;
+        EditorUtility.SetDirty(c09);
+
+        // C10 — 시간 왜곡 (OnBattleStart)
+        var c10 = MakeSpecial<AbilityTimeWarp>(AbilityId.C10, "Ability_C10", "시간 왜곡");
+        c10.CooldownBonus  = 0.35f;
+        c10.AttackPenalty  = 0.10f;
+        EditorUtility.SetDirty(c10);
+
+        // C11 — 쌍신 공격 (OnBattleStart)
+        var c11 = MakeSpecial<AbilityTwinStrike>(AbilityId.C11, "Ability_C11", "쌍신 공격");
+        c11.AttackPenalty = 0.40f;
+        EditorUtility.SetDirty(c11);
+    }
+
+    // ── 달인(Mastery) 어빌리티 D01-D04 생성 ──────────────────
+
+    static void CreateMasteryAbilities()
+    {
+        // D01 — 기사 달인 (OnBattleStart)
+        var d01 = MakeMastery<AbilityKnightCharge>(AbilityId.D01, "Ability_D01", "기사 달인");
+        d01.ChargeCooldown = 6f;
+        EditorUtility.SetDirty(d01);
+
+        // D02 — 궁수 달인 (OnBattleStart)
+        MakeMastery<AbilityArcherMultiShot>(AbilityId.D02, "Ability_D02", "궁수 달인");
+
+        // D03 — 마법사 달인 (OnBattleStart)
+        MakeMastery<AbilityMageSkillProc>(AbilityId.D03, "Ability_D03", "마법사 달인");
+
+        // D04 — 방패병 달인 (OnBattleStart)
+        var d04 = MakeMastery<AbilityShieldMastery>(AbilityId.D04, "Ability_D04", "방패병 달인");
+        d04.ReflectRatio = 0.25f;
+        EditorUtility.SetDirty(d04);
+    }
+
+    static T MakeMastery<T>(AbilityId id, string fileName, string name) where T : AbilityData
+    {
+        string path     = $"{SaveDir}/{fileName}.asset";
+        var    existing = AssetDatabase.LoadAssetAtPath<T>(path);
+        var    so       = existing != null ? existing : ScriptableObject.CreateInstance<T>();
+
+        so.Id          = id;
+        so.AbilityName = name;
+        so.Grade       = AbilityGrade.Mastery;
+        so.Target      = AbilityTarget.All;
+        so.MaxLevel    = 1;
+
+        string idStr    = id.ToString().ToLower();
+        string iconPath = $"{IconDir}/ability_{idStr}.png";
+        var    sprite   = AssetDatabase.LoadAssetAtPath<Sprite>(iconPath);
+        if (sprite != null) so.Icon = sprite;
+
+        if (existing == null) AssetDatabase.CreateAsset(so, path);
+        else                  EditorUtility.SetDirty(so);
+
+        return so;
     }
 
     static T MakeSpecial<T>(AbilityId id, string fileName, string name) where T : AbilityData
@@ -211,6 +322,7 @@ public static class AbilityCreator
         so.AbilityName = name;
         so.Grade       = AbilityGrade.Special;
         so.Target      = AbilityTarget.All;
+        so.MaxLevel    = 1;
 
         // 아이콘 자동 연결 (ability_c01.png 등)
         string idStr    = id.ToString().ToLower();

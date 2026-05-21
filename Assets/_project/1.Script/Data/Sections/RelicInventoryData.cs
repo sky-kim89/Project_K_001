@@ -98,6 +98,32 @@ public class RelicInventoryData : ISaveSection
         else           _owned[id] = level;
     }
 
+    /// <summary>
+    /// 모든 유물을 초기화하고 투자한 포인트 합계를 반환한다.
+    /// 호출 후 반환값을 ReincarnationData.EarnPoints() 로 적립해야 한다.
+    /// </summary>
+    public int ResetAll(RelicDatabase db)
+    {
+        if (_owned.Count == 0) return 0;
+
+        var lookup = new Dictionary<RelicId, RelicData>();
+        if (db != null)
+            foreach (var relic in db.GetAll())
+                if (relic != null) lookup[relic.Id] = relic;
+
+        int refund = 0;
+        foreach (var kvp in _owned)
+        {
+            if (!lookup.TryGetValue(kvp.Key, out var data)) continue;
+            refund += ReincarnationData.AcquireCost(data.Rarity);
+            for (int lv = 0; lv < kvp.Value; lv++)
+                refund += ReincarnationData.LevelUpCost(lv);
+        }
+
+        _owned.Clear();
+        return refund;
+    }
+
     // ── ISaveSection ─────────────────────────────────────────
 
     public string Serialize()

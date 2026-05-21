@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using UnityEngine;
 using BattleGame.Units;
 
@@ -11,7 +11,7 @@ using BattleGame.Units;
 //    VampireRatio: 0.10 = 피해의 10% 회복
 // ============================================================
 
-[CreateAssetMenu(fileName = "Passive_VampiricStrike", menuName = "BattleGame/Passives/VampiricStrike")]
+[UnityEngine.CreateAssetMenu(fileName = "Passive_VampiricStrike", menuName = "BattleGame/Passives/VampiricStrike")]
 public class PassiveVampiricStrike : PassiveSkillData
 {
     [Header("흡혈 설정")]

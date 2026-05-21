@@ -28,6 +28,16 @@ public static class AbilityPicker
         0.10f,  // Special
     };
 
+    // 달인 해금 조건 — Normal·Advanced 직업 어빌리티 2종을 모두 보유해야 등장
+    static readonly Dictionary<AbilityId, AbilityId[]> MasteryPrerequisites =
+        new Dictionary<AbilityId, AbilityId[]>
+        {
+            { AbilityId.D01, new[] { AbilityId.A06, AbilityId.B05 } },  // 기사 달인
+            { AbilityId.D02, new[] { AbilityId.A07, AbilityId.B06 } },  // 궁수 달인
+            { AbilityId.D03, new[] { AbilityId.A08, AbilityId.B07 } },  // 마법사 달인
+            { AbilityId.D04, new[] { AbilityId.A09, AbilityId.B08 } },  // 방패병 달인
+        };
+
     /// <summary>
     /// 어빌리티 선택지를 추첨한다.
     /// relicInventory / relicDb 가 null 이면 유물 보너스 없이 기본값으로 동작.
@@ -59,11 +69,36 @@ public static class AbilityPicker
         var special  = new List<AbilityData>(db.GetByGrade(AbilityGrade.Special));
 
         if (runData != null)
-            special.RemoveAll(a => runData.HasAbility(a.Id));
+        {
+            // 최대 레벨 도달한 어빌리티는 더 이상 등장하지 않음
+            normal.RemoveAll(a   => runData.GetLevel(a.Id) >= a.MaxLevel);
+            advanced.RemoveAll(a => runData.GetLevel(a.Id) >= a.MaxLevel);
+            special.RemoveAll(a  => runData.HasAbility(a.Id));
+        }
+
+        // ── 달인 보장 슬롯 ──────────────────────────────────────
+        // 해당 직업 전용 어빌리티(Normal+Advanced)가 모두 MaxLevel 도달 시 보장 등장
+        AbilityData guaranteedMastery = null;
+        if (runData != null)
+        {
+            foreach (var m in db.GetByGrade(AbilityGrade.Mastery))
+            {
+                if (runData.HasAbility(m.Id)) continue;
+                if (!IsMasteryUnlocked(m.Id, runData, db)) continue;
+                guaranteedMastery = m;
+                break;
+            }
+        }
 
         var result  = new List<AbilityData>(pickCount);
         var usedIds = new HashSet<AbilityId>();
         int attempts = 0;
+
+        if (guaranteedMastery != null)
+        {
+            result.Add(guaranteedMastery);
+            usedIds.Add(guaranteedMastery.Id);
+        }
 
         while (result.Count < pickCount && attempts < 200)
         {
@@ -75,6 +110,18 @@ public static class AbilityPicker
         }
 
         return result.ToArray();
+    }
+
+    static bool IsMasteryUnlocked(AbilityId id, RunAbilityData runData, AbilityDatabase db)
+    {
+        if (!MasteryPrerequisites.TryGetValue(id, out var prereqs)) return false;
+        foreach (var prereq in prereqs)
+        {
+            var prereqData = db != null ? db.Get(prereq) : null;
+            int maxLv      = prereqData != null ? prereqData.MaxLevel : 1;
+            if (runData.GetLevel(prereq) < maxLv) return false;
+        }
+        return true;
     }
 
     static AbilityData PickOneWeighted(
