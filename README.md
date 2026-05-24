@@ -8,4 +8,4 @@
 개발 정도는 약 70% 정도 진행 된 상태입니다.
 
 ### 📥 다운로드
-[▶ APK 다운로드 (v1.0.0)](https://github.com/sky-kim89/Project_K_001/blob/main/Project_K_002_V1.apk)
+[▶ APK 다운로드 (v1.0.0)](https://github.com/sky-kim89/Project_K_001/blob/main/Project_K_001_V1.apk)
