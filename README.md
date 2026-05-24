@@ -6,3 +6,6 @@
 코드의 90%는 클로드가 작업하였고 전체적인 구조만 제가 잡고 진행 중 입니다.
 
 개발 정도는 약 70% 정도 진행 된 상태입니다.
+
+### 📥 다운로드
+[▶ APK 다운로드 (v1.0.0)](https://github.com/sky-kim89/Project_K_001/blob/main/Project_K_002_V1.apk)
