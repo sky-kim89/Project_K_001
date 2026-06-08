@@ -262,9 +262,7 @@ public class AbilityListPopup : PopupBase
         foreach (var (key, total) in sorted)
         {
             string label   = $"{AbilityUIHelper.StatLabel(key.stat)}({AbilityUIHelper.TargetLabel(key.target)})";
-            string valStr  = AbilityApplier.IsAbsoluteStat(key.stat)
-                ? $"+{total:0}"
-                : $"+{total * 100f:0.#}%";
+            string valStr  = AbilityUIHelper.FormatStatValue(key.stat, total);
             var go  = Instantiate(_totalStatTemplate.gameObject, _totalStatContent);
             var tmp = go.GetComponent<TextMeshProUGUI>();
             tmp.text  = $"<color=#888888>{label}</color>  <color=#{StatBonusColors.Ability}>{valStr}</color>";

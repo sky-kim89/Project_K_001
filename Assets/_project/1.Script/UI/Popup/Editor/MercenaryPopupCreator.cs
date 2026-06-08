@@ -69,7 +69,14 @@ public static class MercenaryPopupCreator
     [MenuItem("Tools/Project K/Popup/Create MercCandidateCard Prefab")]
     public static void CreateMercCandidateCard()
     {
-        const float CW = 380f, CH = 840f;
+        const float CW       = 380f, CH = 860f;
+        const float PortSz   = 130f;
+        const float PortX    = 12f;
+        const float PortY    = -14f;   // from top
+        const float RightX   = PortX + PortSz + 12f;
+        const float RightW   = CW - RightX - 12f;
+        const float PortBot  = PortY - PortSz; // -144
+        const float DivA     = PortBot - 14f;  // -158
 
         var root = new GameObject("MercCandidateCard", typeof(RectTransform), typeof(Image));
         root.AddComponent<MercCandidateCardUI>();
@@ -80,39 +87,64 @@ public static class MercenaryPopupCreator
         var topBar = AddImg(root, "GradeTopBar", new Color(0.3f, 0.3f, 0.4f));
         SetTopStretch(topBar.GetComponent<RectTransform>(), 8f);
 
-        // 초상화
-        const float portSz = 120f;
+        // 초상화 — 좌상단 고정
         var portBg = AddImg(root, "PortraitBg", PortraitBg);
-        SetTopCenter(portBg.GetComponent<RectTransform>(), -14f, portSz, portSz);
-        var portImg = AddImg(portBg, "PortraitImage", Color.white);
+        var pbRt = portBg.GetComponent<RectTransform>();
+        pbRt.anchorMin = pbRt.anchorMax = new Vector2(0f, 1f);
+        pbRt.pivot = new Vector2(0f, 1f);
+        pbRt.anchoredPosition = new Vector2(PortX, PortY);
+        pbRt.sizeDelta = new Vector2(PortSz, PortSz);
+        var portImg    = AddImg(portBg, "PortraitImage", Color.white);
         FullStretch(portImg.gameObject);
         var portBridge = portBg.gameObject.AddComponent<UnitAppearanceBridge>();
 
-        // 이름
-        var nameText = AddCardTMP(root, "NameText", "이름", UIScale.FontLg, FontStyles.Bold, -148f, CW - 16f, 48f);
+        // 이름 — 초상화 오른쪽 상단
+        var nameText = AddTMP(root, "NameText", "이름", UIScale.FontLg, FontStyles.Bold);
+        nameText.alignment = TextAlignmentOptions.Left;
+        var ntRt = nameText.rectTransform;
+        ntRt.anchorMin = ntRt.anchorMax = new Vector2(0f, 1f);
+        ntRt.pivot = new Vector2(0f, 1f);
+        ntRt.anchoredPosition = new Vector2(RightX, PortY);
+        ntRt.sizeDelta = new Vector2(RightW, 52f);
 
-        // 등급(좌) / 직업(우)
-        var gradeText = AddHalfTMP(root, "GradeText", "일반", UIScale.FontMd, FontStyles.Bold, -202f, CW, isLeft: true);
+        // 등급 — 초상화 오른쪽 중단
+        var gradeText = AddTMP(root, "GradeText", "일반", UIScale.FontMd, FontStyles.Bold);
+        gradeText.alignment = TextAlignmentOptions.Left;
         gradeText.color = new Color(0.80f, 0.80f, 0.90f);
-        var jobText = AddHalfTMP(root, "JobText", "직업", UIScale.FontMd, FontStyles.Normal, -202f, CW, isLeft: false);
-        jobText.color = MutedText;
-        jobText.alignment = TextAlignmentOptions.Right;
+        var gtRt = gradeText.rectTransform;
+        gtRt.anchorMin = gtRt.anchorMax = new Vector2(0f, 1f);
+        gtRt.pivot = new Vector2(0f, 1f);
+        gtRt.anchoredPosition = new Vector2(RightX, PortY - 60f);
+        gtRt.sizeDelta = new Vector2(RightW * 0.5f, 40f);
 
-        AddCardDivider(root, -246f, CW);
+        // 직업 — 등급 오른쪽
+        var jobText = AddTMP(root, "JobText", "직업", UIScale.FontMd, FontStyles.Normal);
+        jobText.alignment = TextAlignmentOptions.Right;
+        jobText.color = MutedText;
+        var jtRt = jobText.rectTransform;
+        jtRt.anchorMin = jtRt.anchorMax = new Vector2(0f, 1f);
+        jtRt.pivot = new Vector2(0f, 1f);
+        jtRt.anchoredPosition = new Vector2(RightX + RightW * 0.5f, PortY - 60f);
+        jtRt.sizeDelta = new Vector2(RightW * 0.5f, 40f);
+
+        AddCardDivider(root, DivA, CW);
 
         // 스탯 행 1: 체력(좌) / 공격(우)
-        var hpText  = AddStatHalf(root, "HpText",  "체력 0",  HpColor,     -260f, CW, isLeft: true);
-        var atkText = AddStatHalf(root, "AtkText",  "공격 0",  AtkColor,    -260f, CW, isLeft: false);
+        float statRow1Y = DivA - 14f;
+        var hpText  = AddStatHalf(root, "HpText",  "체력 0",  HpColor,  statRow1Y, CW, isLeft: true);
+        var atkText = AddStatHalf(root, "AtkText", "공격 0",  AtkColor, statRow1Y, CW, isLeft: false);
 
         // 스탯 행 2: 방어(좌) / 용병(우)
-        var defText     = AddStatHalf(root, "DefText",     "방어 0%",  DefColor,    -318f, CW, isLeft: true);
-        var soldierText = AddStatHalf(root, "SoldierText", "용병 0명", SoldierColor,-318f, CW, isLeft: false);
+        float statRow2Y = statRow1Y - 58f;
+        var defText     = AddStatHalf(root, "DefText",     "방어 0%",  DefColor,    statRow2Y, CW, isLeft: true);
+        var soldierText = AddStatHalf(root, "SoldierText", "용병 0명", SoldierColor,statRow2Y, CW, isLeft: false);
 
-        AddCardDivider(root, -376f, CW);
+        float divBY = statRow2Y - 64f;
+        AddCardDivider(root, divBY, CW);
 
         // 액티브 스킬 행: 아이콘(72×72) + 이름
         const float activeIconSz = 72f;
-        const float activeRowY   = -392f;
+        float activeRowY = divBY - 14f;
 
         var activeIcon = AddImg(root, "ActiveSkillIcon", new Color(0.25f, 0.30f, 0.48f));
         var aiRt = activeIcon.GetComponent<RectTransform>();
@@ -130,52 +162,68 @@ public static class MercenaryPopupCreator
         anRt.anchoredPosition = new Vector2(14f + activeIconSz + 10f, activeRowY - activeIconSz * 0.5f);
         anRt.sizeDelta = new Vector2(CW - 14f - activeIconSz - 10f - 14f, activeIconSz);
 
-        AddCardDivider(root, -472f, CW);
+        float divCY = activeRowY - activeIconSz - 14f;
+        AddCardDivider(root, divCY, CW);
 
-        // 패시브 스킬 (이름 + 설명)
-        var passive0     = AddPassiveNameTMP(root, "Passive0Text",     -486f, CW);
-        var passive0Desc = AddPassiveDescTMP(root, "Passive0DescText", -526f, CW);
-        var passive1     = AddPassiveNameTMP(root, "Passive1Text",     -562f, CW);
-        var passive1Desc = AddPassiveDescTMP(root, "Passive1DescText", -602f, CW);
-        var passive2     = AddPassiveNameTMP(root, "Passive2Text",     -638f, CW);
-        var passive2Desc = AddPassiveDescTMP(root, "Passive2DescText", -678f, CW);
+        // 패시브 스킬 (이름 38px + 설명 64px — 2줄 표시, FontSm=24 × 2 ≈ 58px)
+        float p0NameY = divCY - 14f;
+        float p0DescY = p0NameY - 40f;   // 2px gap after 38px name
+        float p1NameY = p0DescY - 68f;   // 4px gap after 64px desc
+        float p1DescY = p1NameY - 40f;
+        float p2NameY = p1DescY - 68f;
+        float p2DescY = p2NameY - 40f;
 
-        // 선택 버튼
+        var passive0     = AddPassiveNameTMP(root, "Passive0Text",     p0NameY, CW);
+        var passive0Desc = AddPassiveDescTMP(root, "Passive0DescText", p0DescY, CW);
+        var passive1     = AddPassiveNameTMP(root, "Passive1Text",     p1NameY, CW);
+        var passive1Desc = AddPassiveDescTMP(root, "Passive1DescText", p1DescY, CW);
+        var passive2     = AddPassiveNameTMP(root, "Passive2Text",     p2NameY, CW);
+        var passive2Desc = AddPassiveDescTMP(root, "Passive2DescText", p2DescY, CW);
+
+        // 하단 버튼 2개: [자세히 보기] [고용하기]
         var selBtn = AddBtn(root, "SelectBtn", "자세히 보기", new Color(0.22f, 0.45f, 0.72f), UIScale.FontMd);
         var sbRt = selBtn.GetComponent<RectTransform>();
-        sbRt.anchorMin = new Vector2(0f, 0f); sbRt.anchorMax = new Vector2(1f, 0f);
-        sbRt.pivot = new Vector2(0.5f, 0f);
-        sbRt.anchoredPosition = new Vector2(0f, 12f);
-        sbRt.sizeDelta = new Vector2(-16f, UIScale.BtnSm);
+        sbRt.anchorMin = new Vector2(0f, 0f); sbRt.anchorMax = new Vector2(0.5f, 0f);
+        sbRt.pivot = new Vector2(0f, 0f);
+        sbRt.anchoredPosition = new Vector2(8f, 12f);
+        sbRt.sizeDelta = new Vector2(-12f, UIScale.BtnSm);
 
-        // 선택 하이라이트 테두리 (전체 덮는 Image — 기본 투명, SetHighlighted()로 제어)
+        var hireBtn = AddBtn(root, "HireBtn", "고용하기", HireBtnColor, UIScale.FontMd);
+        var hbRt = hireBtn.GetComponent<RectTransform>();
+        hbRt.anchorMin = new Vector2(0.5f, 0f); hbRt.anchorMax = new Vector2(1f, 0f);
+        hbRt.pivot = new Vector2(1f, 0f);
+        hbRt.anchoredPosition = new Vector2(-8f, 12f);
+        hbRt.sizeDelta = new Vector2(-12f, UIScale.BtnSm);
+
+        // 선택 하이라이트 테두리
         var highlightBorder = AddImg(root, "HighlightBorder", new Color(0.80f, 0.75f, 1.00f, 0.00f));
         highlightBorder.raycastTarget = false;
         FullStretch(highlightBorder.gameObject);
 
         // 직렬화 필드 연결
         var so = new SerializedObject(root.GetComponent<MercCandidateCardUI>());
-        SetObj(so, "_gradeBorder",       topBar.GetComponent<Image>());
-        SetObj(so, "_portraitBg",        portBg.GetComponent<Image>());
-        SetObj(so, "_portraitImg",       portImg.GetComponent<Image>());
-        SetObj(so, "_portraitBridge",    portBridge);
-        SetObj(so, "_nameText",          nameText);
-        SetObj(so, "_gradeText",         gradeText);
-        SetObj(so, "_jobText",           jobText);
-        SetObj(so, "_hpText",            hpText);
-        SetObj(so, "_atkText",           atkText);
-        SetObj(so, "_defText",           defText);
-        SetObj(so, "_soldierText",       soldierText);
-        SetObj(so, "_activeSkillIcon",   activeIcon.GetComponent<Image>());
+        SetObj(so, "_gradeBorder",         topBar.GetComponent<Image>());
+        SetObj(so, "_portraitBg",          portBg.GetComponent<Image>());
+        SetObj(so, "_portraitImg",         portImg.GetComponent<Image>());
+        SetObj(so, "_portraitBridge",      portBridge);
+        SetObj(so, "_nameText",            nameText);
+        SetObj(so, "_gradeText",           gradeText);
+        SetObj(so, "_jobText",             jobText);
+        SetObj(so, "_hpText",              hpText);
+        SetObj(so, "_atkText",             atkText);
+        SetObj(so, "_defText",             defText);
+        SetObj(so, "_soldierText",         soldierText);
+        SetObj(so, "_activeSkillIcon",     activeIcon.GetComponent<Image>());
         SetObj(so, "_activeSkillNameText", activeNameText);
-        SetObj(so, "_passive0Text",      passive0);
-        SetObj(so, "_passive0DescText",  passive0Desc);
-        SetObj(so, "_passive1Text",      passive1);
-        SetObj(so, "_passive1DescText",  passive1Desc);
-        SetObj(so, "_passive2Text",      passive2);
-        SetObj(so, "_passive2DescText",  passive2Desc);
-        SetObj(so, "_button",            selBtn.GetComponent<Button>());
-        SetObj(so, "_highlightBorder",   highlightBorder);
+        SetObj(so, "_passive0Text",        passive0);
+        SetObj(so, "_passive0DescText",    passive0Desc);
+        SetObj(so, "_passive1Text",        passive1);
+        SetObj(so, "_passive1DescText",    passive1Desc);
+        SetObj(so, "_passive2Text",        passive2);
+        SetObj(so, "_passive2DescText",    passive2Desc);
+        SetObj(so, "_button",              selBtn.GetComponent<Button>());
+        SetObj(so, "_hireBtn",             hireBtn.GetComponent<Button>());
+        SetObj(so, "_highlightBorder",     highlightBorder);
         so.ApplyModifiedProperties();
 
         Save(root, "MercCandidateCard");
@@ -601,8 +649,10 @@ public static class MercenaryPopupCreator
         rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
         rt.pivot = new Vector2(0f, 1f);
         rt.anchoredPosition = new Vector2(16f, anchoredY);
-        rt.sizeDelta = new Vector2(cardW - 32f, 32f);
+        rt.sizeDelta = new Vector2(cardW - 32f, 64f);  // FontSm=24, 2줄 = ~58px
         tmp.alignment = TextAlignmentOptions.Left;
+        tmp.enableWordWrapping = true;
+        tmp.overflowMode = TMPro.TextOverflowModes.Truncate;
         tmp.color = PassiveDescColor;
         return tmp;
     }

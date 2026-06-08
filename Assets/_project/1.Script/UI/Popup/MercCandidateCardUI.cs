@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -34,11 +34,12 @@ public class MercCandidateCardUI : MonoBehaviour
     [SerializeField] TextMeshProUGUI      _passive2DescText;
 
     [SerializeField] Button               _button;
+    [SerializeField] Button               _hireBtn;
     [SerializeField] Image                _highlightBorder;
 
     Texture2D _portraitTexture;
 
-    public void Setup(UnitEntry entry, Action onSelect)
+    public void Setup(UnitEntry entry, Action onSelect, Action onHire = null)
     {
         UnitJob        job    = UnitJobRoller.GetJob(entry.UnitName);
         HeroStatResult result = HeroStatResolver.Resolve(entry);
@@ -51,12 +52,16 @@ public class MercCandidateCardUI : MonoBehaviour
         if (_hpText      != null) _hpText.text      = $"체력 {result.Total(StatType.MaxHp):N0}";
         if (_atkText     != null) _atkText.text     = $"공격 {result.Total(StatType.Attack):N0}";
         if (_defText     != null) _defText.text     = $"방어 {StatDisplayHelper.EffectiveDefensePct(result.Total(StatType.Defense)):F1}%";
-        if (_soldierText != null) _soldierText.text = $"용병 {UnityEngine.Mathf.RoundToInt(result.Total(StatType.SoldierCount))}명";
+        if (_soldierText != null) _soldierText.text = $"용병 {Mathf.Max(0, Mathf.RoundToInt(result.Total(StatType.SoldierCount)))}명";
 
         FillSkills(job, entry);
 
         _button?.onClick.RemoveAllListeners();
         _button?.onClick.AddListener(() => onSelect?.Invoke());
+
+        _hireBtn?.onClick.RemoveAllListeners();
+        _hireBtn?.onClick.AddListener(() => onHire?.Invoke());
+        if (_hireBtn != null) _hireBtn.gameObject.SetActive(onHire != null);
 
         UnitPortraitHelper.Render(entry.UnitName, job, entry.Grade,
             _portraitBridge, _portraitBg, _portraitImg, ref _portraitTexture);
@@ -82,7 +87,7 @@ public class MercCandidateCardUI : MonoBehaviour
             {
                 var key = activeId.IconKey();
                 var sm  = SpriteManager.Instance;
-                var sp  = (key != null && sm != null) ? sm.GetGeneral(key) : null;
+                var sp  = (key != null && sm != null) ? sm.Get(key) : null;
                 _activeSkillIcon.sprite = sp;
                 _activeSkillIcon.color  = sp != null ? Color.white : new Color(0.25f, 0.30f, 0.48f);
             }

@@ -54,7 +54,7 @@ public class PassiveBloodPact : PassiveSkillData
             Delta      = stat.Base[StatType.Attack] * bonusRatio,
             Mode       = EffectMode.Add,
             Duration   = BloodPactMarker,
-            Remaining  = -1f,
+            Remaining  = float.MaxValue,   // Duration<0 이면 감소 안 하지만 Remaining<=0 이면 제거되므로 양수 필수
             SourceType = BuffSourceType.Passive,
             SourceId   = (int)Type,
         });

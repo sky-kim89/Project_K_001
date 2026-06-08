@@ -150,7 +150,7 @@ public class DisassemblePopup : PopupBase
             {
                 float  val  = equip.GetStatValue(entry, 0);
                 string name = GetStatLabel(entry.Stat);
-                sb.AppendLine($"{name}  +{EquipmentData.FormatStat(entry.Stat, val)}");
+                sb.AppendLine($"{name}  +{StatDisplayHelper.FormatStat(entry.Stat, val)}");
             }
             _selectedStatsText.text = sb.ToString().TrimEnd();
         }

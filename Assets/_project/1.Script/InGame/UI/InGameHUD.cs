@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Unity.Entities;
 using BattleGame.Units;
 using UnityEngine;
@@ -154,6 +154,6 @@ public class InGameHUD : MonoBehaviour
         int skillId = em.GetComponentData<GeneralActiveSkillComponent>(link.Entity).SkillId;
         var id      = (ActiveSkillId)skillId;
         var key     = id.IconKey();
-        return key != null ? SpriteManager.Instance?.GetGeneral(key) : null;
+        return key != null ? SpriteManager.Instance?.Get(key) : null;
     }
 }

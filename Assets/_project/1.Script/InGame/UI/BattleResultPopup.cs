@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -36,8 +36,6 @@ public class BattleResultPopup : PopupBase
     public override bool BlockBackgroundClose => true;
 
     [SerializeField] TextMeshProUGUI _resultText;
-    [SerializeField] TextMeshProUGUI _subText;
-    [SerializeField] TextMeshProUGUI _statsText;
     [SerializeField] Transform       _rewardArea;
     [SerializeField] RewardCardUI    _rewardCardPrefab;
     [SerializeField] TextMeshProUGUI _hintText;
@@ -88,7 +86,6 @@ public class BattleResultPopup : PopupBase
         _currentTab  = CombatStatTab.Damage;
 
         SetHeader(isVictory);
-        SetStats(isVictory, context, killCount);
         BuildExpRows(context);
         BuildRewardCards(isVictory, context);
         RefreshTabHighlight();
@@ -151,14 +148,6 @@ public class BattleResultPopup : PopupBase
                 ? new Color(1.00f, 0.85f, 0.10f, 1f)
                 : new Color(0.65f, 0.65f, 0.65f, 1f);
         }
-        if (_subText != null)
-            _subText.text = isVictory ? "모든 적을 물리쳤습니다!" : "아군이 전멸했습니다...";
-    }
-
-    void SetStats(bool isVictory, BattleContext context, int killCount)
-    {
-        if (_statsText == null || context == null) return;
-        _statsText.text = $"처치  {killCount}   |   웨이브  {context.CurrentWave} / {context.TotalWaves}";
     }
 
     void BuildExpRows(BattleContext context)
@@ -181,6 +170,7 @@ public class BattleResultPopup : PopupBase
             if (stats != null)
             {
                 row.SetStats(stats);
+                row.SetDPS(context.BattleElapsedSeconds);
                 row.RefreshTab(_currentTab, maxValue);
             }
 
@@ -214,7 +204,7 @@ public class BattleResultPopup : PopupBase
             }
             else
             {
-                var icon = SpriteManager.Instance?.GetItem(reward.Item.IconKey());
+                var icon = SpriteManager.Instance?.Get(reward.Item.IconKey());
                 card.SetupFixed(icon, GetItemColor(reward.Item),
                                 reward.Item.DisplayName(),
                                 $"+{reward.Amount}");

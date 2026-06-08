@@ -1,3 +1,4 @@
+using System.Text;
 using UnityEngine;
 using BattleGame.Units;
 
@@ -65,9 +66,43 @@ public static class AbilityUIHelper
         _                            => t.ToString()
     };
 
-    /// 스탯 값을 절대값/비율로 포맷 (예: +1 / +8%)
-    public static string FormatStatValue(StatType stat, float value) =>
-        AbilityApplier.IsAbsoluteStat(stat)
-            ? $"+{value:0}"
-            : $"+{value * 100f:0.#}%";
+    /// 어빌리티용 스탯 값 포맷 — 스탯 타입 기반 (IsPercent 없음).
+    /// Defense·CritChance·CDR 는 0~1 비율, SoldierCount·CommandPower 는 정수, 나머지는 ×100%.
+    public static string FormatStatValue(StatType stat, float value)
+    {
+        if (stat == StatType.SoldierCount || stat == StatType.CommandPower)
+            return $"+{Mathf.RoundToInt(value)}";
+        return $"+{value * 100f:0.#}%";
+    }
+
+    /// 특성·패시브용 스탯 값 포맷 — IsPercent 플래그 + 스탯 타입 동시 고려.
+    /// IsPercent=true  : 기본 스탯의 N% 가산 → ×100 표시.
+    /// IsPercent=false : 절대값 가산이지만 0~1 비율 스탯(방어율·치명타·쿨감)은 ×100 표시.
+    public static string FormatStatValue(StatType stat, float value, bool isPercent)
+    {
+        if (isPercent)
+            return $"+{value * 100f:0.#}%";
+        return stat switch
+        {
+            StatType.Defense             => $"+{value * 100f:0.#}%",
+            StatType.CritChance          => $"+{value * 100f:0.#}%",
+            StatType.SkillCooldownReduce => $"+{value * 100f:0.#}%",
+            StatType.SoldierCount        => $"+{Mathf.RoundToInt(value)}",
+            StatType.CommandPower        => $"+{Mathf.RoundToInt(value)}",
+            _                            => $"+{value:0.#}",
+        };
+    }
+
+    /// TraitData.Effects 배열을 여러 줄 스탯 텍스트로 변환.
+    public static string BuildStatText(TraitData.TraitStatEntry[] effects)
+    {
+        if (effects == null || effects.Length == 0) return "";
+        var sb = new StringBuilder();
+        foreach (var e in effects)
+        {
+            if (sb.Length > 0) sb.Append('\n');
+            sb.Append($"{StatLabel(e.Stat)} {FormatStatValue(e.Stat, e.Value, e.IsPercent)}");
+        }
+        return sb.ToString();
+    }
 }

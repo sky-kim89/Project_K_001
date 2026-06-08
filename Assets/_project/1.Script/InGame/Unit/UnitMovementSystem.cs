@@ -266,16 +266,33 @@ namespace BattleGame.Units
                 }
             }
 
-            // 공격 중이지만 타겟이 사망해 없어진 경우 → Idle 복귀
+            // 공격 상태 전환 처리
             if (unitState.Current == UnitState.Attacking)
             {
                 if (attack.HasTarget)
                 {
-                    movement.Velocity = float3.zero;
-                    movement.IsMoving = false;
-                    return;
+                    if (attack.AttackCooldown > 0f)
+                    {
+                        movement.Velocity = float3.zero;
+                        movement.IsMoving = false;
+                        return;
+                    }
+                    // 쿨다운 만료: 사거리 밖이면 즉시 추격 전환 (타겟 사망 후 새 타겟 배정 시 멈춤 방지)
+                    float atkRng      = stat.Final[StatType.AttackRange];
+                    float toTargetSq  = math.distancesq(transform.Position, attack.TargetPosition);
+                    if (toTargetSq > atkRng * atkRng)
+                        ChangeState(ref unitState, UnitState.Chasing);
+                    else
+                    {
+                        movement.Velocity = float3.zero;
+                        movement.IsMoving = false;
+                        return;
+                    }
                 }
-                ChangeState(ref unitState, UnitState.Idle);
+                else
+                {
+                    ChangeState(ref unitState, UnitState.Idle);
+                }
             }
 
             float moveSpeed = stat.Final[StatType.MoveSpeed];

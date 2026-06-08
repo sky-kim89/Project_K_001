@@ -1,4 +1,4 @@
-using Unity.Collections;
+﻿using Unity.Collections;
 using Unity.Entities;
 using BattleGame.Units;
 using UnityEngine;
@@ -288,7 +288,7 @@ public class GeneralPanelUI : MonoBehaviour
         string key = ((ActiveSkillId)skillId).IconKey();
         if (key == null) return null;
         var manager = SpriteManager.Instance;
-        return manager != null ? manager.GetGeneral(key) : null;
+        return manager != null ? manager.Get(key) : null;
     }
 
     Sprite GetPassiveIcon(int typeId)

@@ -127,6 +127,7 @@ public class UserDataManager : PureSingleton<UserDataManager>
         Get<EquipInventoryData>()?.SetDefaults();
         Get<DeploymentData>()?.SetDefaults();
         Get<RunAbilityData>()?.SetDefaults();
+        Get<RunTraitData>()?.SetDefaults();
 
         // 초기 장수 자동 배치
         AutoDeployFirstHeroIfNeeded();
@@ -147,6 +148,7 @@ public class UserDataManager : PureSingleton<UserDataManager>
         RegisterSection(new EquipInventoryData());
         RegisterSection(new DeploymentData());
         RegisterSection(new RunAbilityData());
+        RegisterSection(new RunTraitData());
         RegisterSection(new RelicInventoryData());
         RegisterSection(new ReincarnationData());
 

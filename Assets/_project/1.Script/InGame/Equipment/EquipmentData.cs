@@ -68,18 +68,6 @@ public class EquipmentData : ScriptableObject
     public int GetEnhanceStoneCost(int currentLevel) => BaseEnhanceStoneCost * (currentLevel + 1);
     public int GetEnhanceGoldCost(int currentLevel)  => BaseGoldCost         * (currentLevel + 1);
 
-    public static string FormatStat(StatType stat, float val) => stat switch
-    {
-        StatType.Defense      => $"{val * 100f:F1}%",
-        StatType.CritChance   => $"{val * 100f:F0}%",
-        StatType.CritDamage   => $"{val:F2}x",
-        StatType.AttackSpeed  => $"{val:F2}",
-        StatType.MoveSpeed    => $"{val:F1}",
-        StatType.AttackRange  => $"{val:F1}",
-        StatType.SoldierCount => $"{Mathf.RoundToInt(val)}명",
-        _                     => $"{val:N0}",
-    };
-
     // "공격 시 30% 확률: 체력 +피해량의 10%"  or  "피격 시 40% 확률: 공격 +250 (2초)"
     public static string FormatTriggerLine(EquipmentData equip, string triggerLabel, string statLabel)
     {
@@ -97,7 +85,7 @@ public class EquipmentData : ScriptableObject
         }
         else
         {
-            value = $"+{FormatStat(equip.TriggerStat, equip.TriggerValue)}";
+            value = $"+{StatDisplayHelper.FormatStat(equip.TriggerStat, equip.TriggerValue)}";
         }
         string duration = equip.TriggerDuration > 0f ? $" ({equip.TriggerDuration:F0}초)" : "";
         return $"{triggerLabel} {chance} 확률: {statLabel} {value}{duration}";

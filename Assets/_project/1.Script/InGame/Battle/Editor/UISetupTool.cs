@@ -360,10 +360,10 @@ public static class UISetupTool
               new Vector2(0f, 34f), new Vector2(0f, 24f));
 
         // 수량 텍스트
-        var amountTmp = MakeTMP(root, "AmountText", "+0", 14, FontStyle.Bold);
-        amountTmp.color = new Color(1f, 0.9f, 0.3f);
+        var amountTmp = MakeTMP(root, "AmountText", "+0", 24, FontStyle.Bold);
+        amountTmp.color = Color.white;
         SetRT(amountTmp.gameObject, new Vector2(0f, 0f), new Vector2(1f, 0f),
-              new Vector2(0f, 10f), new Vector2(0f, 22f));
+              new Vector2(0f, 8f), new Vector2(0f, 30f));
 
         // 미개봉 오버레이 ("?" 상태)
         var overlay = MakeRect(root, "RevealOverlay");

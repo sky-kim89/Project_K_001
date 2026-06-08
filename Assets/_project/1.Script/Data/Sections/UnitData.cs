@@ -82,6 +82,14 @@ public class UnitData : ISaveSection
         entry.RunEquipEnhance[slot] = enhanceLevel;
     }
 
+    /// <summary>기존 유닛을 모두 제거하고 newEntry 하나만 남긴다.
+    /// MainPanel에서 캐릭터 선택 확정 시 호출.</summary>
+    public void ReplaceAll(UnitEntry newEntry)
+    {
+        _raw.Units.Clear();
+        _raw.Units.Add(newEntry);
+    }
+
     public void AddSoldierBonus(string unitId, int amount)
     {
         var entry = GetUnit(unitId);
@@ -140,8 +148,6 @@ public class UnitData : ISaveSection
     public void SetDefaults()
     {
         _raw = new UnitRawData();
-        var name = s_namePool[UnityEngine.Random.Range(0, s_namePool.Length)];
-        _raw.Units.Add(new UnitEntry { UnitName = name, Level = 1, Exp = 0 });
     }
 
     static readonly string[] s_namePool =

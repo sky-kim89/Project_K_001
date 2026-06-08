@@ -1,3 +1,4 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -27,25 +28,28 @@ public class ExpRowUI : MonoBehaviour
     [SerializeField] StatBarUI            _statBar;
     [SerializeField] TextMeshProUGUI      _totalText;
     [SerializeField] TextMeshProUGUI      _legendText;
+    [SerializeField] TextMeshProUGUI      _dpsText;
 
     Texture2D        _portraitTexture;
     GeneralStatEntry _stats;
+    float            _elapsedSec;
 
     public void Setup(BattleContext.UnitExpGain gain)
     {
         if (_nameText  != null) _nameText.text  = gain.UnitName;
         if (_levelText != null) _levelText.text = $"Lv.{gain.NewLevel}";
-        if (_expText   != null) _expText.text   = $"exp+{gain.ExpGained}";
+        if (_expText   != null) _expText.text   = $"Exp {gain.ExpGained}";
 
+        StopAllCoroutines();
+        bool leveledUp = gain.LevelsGained > 0;
         if (_levelUpText != null)
         {
-            bool leveledUp = gain.LevelsGained > 0;
             _levelUpText.gameObject.SetActive(leveledUp);
             if (leveledUp)
-                _levelUpText.text = gain.LevelsGained == 1
-                    ? "▲ UP!"
-                    : $"▲{gain.LevelsGained}UP!";
+                _levelUpText.text = gain.LevelsGained == 1 ? "▲UP!" : $"▲{gain.LevelsGained}UP!";
         }
+        if (_levelText != null) _levelText.gameObject.SetActive(!leveledUp);
+        if (leveledUp) StartCoroutine(BlinkLevelUp());
 
         var unitData = UserDataManager.Instance?.Get<UnitData>();
         var entry    = unitData?.GetUnit(gain.UnitName);
@@ -66,10 +70,16 @@ public class ExpRowUI : MonoBehaviour
         _stats = stats;
     }
 
+    public void SetDPS(float elapsedSec)
+    {
+        _elapsedSec = elapsedSec;
+    }
+
     /// <summary>탭 전환 시 호출. 바와 총량 텍스트를 갱신한다.</summary>
     public void RefreshTab(CombatStatTab tab, float maxValue)
     {
         UpdateLegend(tab);
+        RefreshDpsText(tab);
 
         if (_statBar == null) return;
         if (_stats == null || maxValue <= 0f)
@@ -116,6 +126,18 @@ public class ExpRowUI : MonoBehaviour
         }
     }
 
+    void RefreshDpsText(CombatStatTab tab)
+    {
+        if (_dpsText == null) return;
+        if (tab != CombatStatTab.Damage || _stats == null || _elapsedSec <= 0f)
+        {
+            _dpsText.gameObject.SetActive(false);
+            return;
+        }
+        _dpsText.gameObject.SetActive(true);
+        _dpsText.text = $"DPS {FormatTotal(_stats.TotalDamageDealt / _elapsedSec)}";
+    }
+
     void UpdateLegend(CombatStatTab tab)
     {
         if (_legendText == null) return;
@@ -126,6 +148,18 @@ public class ExpRowUI : MonoBehaviour
             CombatStatTab.Heal   => "<color=#59D98C>■</color> 치유",
             _                    => "",
         };
+    }
+
+    IEnumerator BlinkLevelUp()
+    {
+        bool showLevelUp = true;
+        while (true)
+        {
+            if (_levelUpText != null) _levelUpText.gameObject.SetActive(showLevelUp);
+            if (_levelText   != null) _levelText.gameObject.SetActive(!showLevelUp);
+            showLevelUp = !showLevelUp;
+            yield return new WaitForSeconds(1f);
+        }
     }
 
     static string FormatTotal(float value)

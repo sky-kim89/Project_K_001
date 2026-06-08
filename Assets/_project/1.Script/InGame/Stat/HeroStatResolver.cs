@@ -19,6 +19,7 @@ public class HeroStatResult
     public Dictionary<StatType, float> PassiveBonuses  = new();
     public Dictionary<StatType, float> AbilityBonuses  = new();
     public Dictionary<StatType, float> RelicBonuses    = new();
+    public Dictionary<StatType, float> TraitBonuses    = new();
 
     public float Total(StatType stat)
     {
@@ -27,13 +28,15 @@ public class HeroStatResult
         float p = PassiveBonuses.TryGetValue(stat,  out var pv) ? pv : 0f;
         float a = AbilityBonuses.TryGetValue(stat,  out var av) ? av : 0f;
         float r = RelicBonuses.TryGetValue(stat,    out var rv) ? rv : 0f;
-        return b + e + p + a + r;
+        float t = TraitBonuses.TryGetValue(stat,    out var tv) ? tv : 0f;
+        return b + e + p + a + r + t;
     }
 
     public float GetEquip(StatType stat)   => EquipBonuses.TryGetValue(stat,  out var v) ? v : 0f;
     public float GetPassive(StatType stat) => PassiveBonuses.TryGetValue(stat, out var v) ? v : 0f;
     public float GetAbility(StatType stat) => AbilityBonuses.TryGetValue(stat, out var v) ? v : 0f;
     public float GetRelic(StatType stat)   => RelicBonuses.TryGetValue(stat,   out var v) ? v : 0f;
+    public float GetTrait(StatType stat)   => TraitBonuses.TryGetValue(stat,   out var v) ? v : 0f;
 }
 
 public static class HeroStatResolver
@@ -141,6 +144,24 @@ public static class HeroStatResolver
                 AccumulateRelicStat(result, data.Stat1, data.Value1PerLevel, level, data.IsAbsoluteValue);
                 if (data.HasStat2)
                     AccumulateRelicStat(result, data.Stat2, data.Value2PerLevel, level, data.IsAbsoluteValue);
+            }
+        }
+
+        // 6. 특성 보너스 (런 중 획득한 특성 — RunTraitData 기준)
+        var traitDb   = TraitDatabase.Current;
+        var traitData = UserDataManager.Instance?.Get<RunTraitData>();
+        if (traitDb != null && traitData != null)
+        {
+            foreach (var type in traitData.AcquiredTraits)
+            {
+                var td = traitDb.Get(type);
+                if (td == null) continue;
+                foreach (var fx in td.Effects)
+                {
+                    float delta = fx.IsPercent ? result.Base.Get(fx.Stat) * fx.Value : fx.Value;
+                    result.TraitBonuses[fx.Stat] =
+                        result.TraitBonuses.TryGetValue(fx.Stat, out var cur) ? cur + delta : delta;
+                }
             }
         }
 

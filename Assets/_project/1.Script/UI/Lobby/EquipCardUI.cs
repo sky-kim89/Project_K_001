@@ -53,7 +53,7 @@ public class EquipCardUI : MonoBehaviour
                 {
                     float val = data.GetStatValue(e, 0);
                     sb.Append(LocalizationManager.Instance.Get(e.Stat.ToString())).Append(" +");
-                    sb.AppendLine(FormatEquipStat(e.Stat, val));
+                    sb.AppendLine(StatDisplayHelper.FormatStat(e.Stat, val));
                 }
                 _statText.text = sb.ToString().TrimEnd();
             }
@@ -62,14 +62,4 @@ public class EquipCardUI : MonoBehaviour
         _button?.onClick.RemoveAllListeners();
         _button?.onClick.AddListener(() => _onSelect?.Invoke(_data));
     }
-
-    static string FormatEquipStat(StatType stat, float val) => stat switch
-    {
-        StatType.Defense      => $"{val * 100f:F1}%",
-        StatType.AttackSpeed  => $"{val:F2}",
-        StatType.MoveSpeed    => $"{val:F1}",
-        StatType.AttackRange  => $"{val:F1}",
-        StatType.SoldierCount => $"{Mathf.RoundToInt(val)}",
-        _                     => $"{val:N0}",
-    };
 }

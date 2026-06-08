@@ -21,7 +21,8 @@ public static class LobbyScenePatcher
 {
     const string PrefabBase = "Assets/_project/2.Prefabs/UI/Lobby/";
 
-    static readonly string[] PanelNames = { "ShopPanel", "HeroPanel", "BattlePanel", "RelicPanel", "ProfilePanel" };
+    // MainPanel은 index 5 — NavBar 버튼 없이 코드로만 전환 (RunInProgress 기반)
+    static readonly string[] PanelNames = { "ShopPanel", "HeroPanel", "BattlePanel", "RelicPanel", "ProfilePanel", "MainPanel" };
     static readonly string[] BtnNames   = { "NavBtn_상점", "NavBtn_영웅", "NavBtn_전투", "NavBtn_유물", "NavBtn_프로필" };
     static readonly string[] BtnLabels  = { "상점",        "영웅",        "전투",        "유물",        "프로필" };
 

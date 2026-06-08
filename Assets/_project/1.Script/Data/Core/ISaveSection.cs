@@ -23,6 +23,7 @@ public enum SaveKey
     RunAbility      = 6,
     RelicInventory  = 7,
     Reincarnation   = 8,
+    RunTrait        = 9,
 }
 
 public interface ISaveSection

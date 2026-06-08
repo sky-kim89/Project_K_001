@@ -21,10 +21,34 @@ public class StageData
     public Sprite         PreviewSprite;
     public List<WaveData> Waves = new();
 
+    public bool IsRunElite { get; private set; }
+
     public string DisplayName => Mode switch
     {
         BattleMode.Normal => $"일반 스테이지 {StageNumber}",
         BattleMode.Elite  => $"엘리트 스테이지 {StageNumber}",
         _                 => $"스테이지 {StageNumber}",
     };
+
+    /// <summary>런 엘리트 스테이지로 복제. 몬스터 스텟 ×1.1, 엘리트 출현 ×2.</summary>
+    public static StageData AsElite(StageData src)
+    {
+        var clone = new StageData
+        {
+            Mode            = src.Mode,
+            StageNumber     = src.StageNumber,
+            EnergyCost      = src.EnergyCost,
+            GoldReward      = (int)(src.GoldReward * 1.3f),
+            StoneReward     = src.StoneReward,
+            ExpReward       = src.ExpReward,
+            ShardReward     = src.ShardReward,
+            EquipBoxReward  = src.EquipBoxReward,
+            DailyClearLimit = src.DailyClearLimit,
+            PreviewSprite   = src.PreviewSprite,
+            IsRunElite      = true,
+        };
+        // 웨이브 복사 (깊은 복사 불필요 — EnemySpawner가 읽기만 함)
+        clone.Waves.AddRange(src.Waves);
+        return clone;
+    }
 }

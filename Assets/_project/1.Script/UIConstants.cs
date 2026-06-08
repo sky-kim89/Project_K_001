@@ -98,47 +98,41 @@ public static class StatDisplayHelper
         return Mathf.Min(effective, cap) * 100f;
     }
 
-    /// <summary>스탯 총합 표시 문자열 (HUD·StatPanel 기본값 표시용)</summary>
-    public static string FormatTotal(StatType stat, float value) => stat switch
-    {
-        StatType.Defense      => $"{EffectiveDefensePct(value):F1}%",
-        StatType.AttackSpeed  => $"{value:F2}/초",
-        StatType.MoveSpeed    => $"{value:F1}",
-        StatType.AttackRange  => $"{value:F1}",
-        StatType.SoldierCount          => $"{Mathf.RoundToInt(value)}명",
-        StatType.CritChance            => $"{value * 100f:F1}%",
-        StatType.CritDamage            => $"×{value:F2}",
-        // 체감 공식 적용값 표시. 원시값과 동일하면 단순 표시, 다르면 "(체감 X%)" 병기
-        StatType.SkillCooldownReduce   => FormatCDRTotal(value),
-        _                              => $"{value:N0}",
-    };
-
-    static string FormatCDRTotal(float rawCDR)
-    {
-        float maxCDR      = GameplayConfig.Current?.CooldownReduceMax ?? 0.9f;
-        float effectiveCDR = GeneralRuntimeBridge.CalcEffectiveCDR(rawCDR, maxCDR);
-        float diff         = Mathf.Abs(rawCDR - effectiveCDR);
-        if (diff < 0.001f)
-            return $"{rawCDR * 100f:F1}%";
-        return $"{effectiveCDR * 100f:F1}% <size=80%><color=#888888>(합산 {rawCDR * 100f:F1}%)</color></size>";
-    }
-
-    /// <summary>스탯 델타 문자열 (합산 상세 각 항목용, withSign = true 이면 +부호 포함)</summary>
-    public static string FormatDelta(StatType stat, float value, bool withSign)
+    /// <summary>
+    /// 스탯 값 문자열.
+    ///   isFinal=false (기본) : 원시 증감값 — withSign=true 이면 + 부호 포함 (장비·특성 보너스 표시용)
+    ///   isFinal=true         : 최종 합산값 — 소프트캡·CDR 체감 공식 적용 (HUD·StatPanel 표시용)
+    /// </summary>
+    public static string FormatStat(StatType stat, float value, bool withSign = false, bool isFinal = false)
     {
         string sign = (withSign && value >= 0f) ? "+" : "";
         return stat switch
         {
-            StatType.Defense      => $"{sign}{value * 100f:F1}%",  // 델타는 원시값 그대로 F1
-            StatType.AttackSpeed  => $"{sign}{value:F2}",
+            StatType.Defense => isFinal
+                ? $"{EffectiveDefensePct(value):F1}%"
+                : $"{sign}{value * 100f:F1}%",
+            StatType.AttackSpeed => isFinal
+                ? $"{value:F2}/초"
+                : $"{sign}{value:F2}",
             StatType.MoveSpeed    => $"{sign}{value:F1}",
             StatType.AttackRange  => $"{sign}{value:F1}",
-            StatType.SoldierCount          => $"{sign}{Mathf.RoundToInt(value)}명",
-            StatType.CritChance            => $"{sign}{value * 100f:F1}%",
-            StatType.CritDamage            => $"{sign}{value:F2}",
-            StatType.SkillCooldownReduce   => $"{sign}{value * 100f:F1}%",
-            _                              => $"{sign}{value:N0}",
+            StatType.SoldierCount => $"{sign}{Mathf.RoundToInt(value)}명",
+            StatType.CritChance   => $"{sign}{value * 100f:F1}%",
+            StatType.CritDamage   => isFinal ? $"×{value:F2}" : $"{sign}{value:F2}×",
+            StatType.SkillCooldownReduce => isFinal
+                ? FormatCDRFinal(value)
+                : $"{sign}{value * 100f:F1}%",
+            _ => $"{sign}{value:N0}",
         };
+    }
+
+    static string FormatCDRFinal(float rawCDR)
+    {
+        float maxCDR       = GameplayConfig.Current != null ? GameplayConfig.Current.CooldownReduceMax : 0.9f;
+        float effectiveCDR = GeneralRuntimeBridge.CalcEffectiveCDR(rawCDR, maxCDR);
+        if (Mathf.Abs(rawCDR - effectiveCDR) < 0.001f)
+            return $"{rawCDR * 100f:F1}%";
+        return $"{effectiveCDR * 100f:F1}% <size=80%><color=#888888>(합산 {rawCDR * 100f:F1}%)</color></size>";
     }
 
     /// <summary>
@@ -150,17 +144,17 @@ public static class StatDisplayHelper
         float baseVal, float equipVal, float passiveVal, float abilityVal, float relicVal = 0f)
     {
         var sb = new System.Text.StringBuilder();
-        sb.Append(FormatDelta(stat, baseVal, false));
-        if (equipVal   != 0f) sb.Append($"  <color=#{StatBonusColors.Equip}>{FormatDelta(stat, equipVal,   true)}</color>");
-        if (passiveVal != 0f) sb.Append($"  <color=#{StatBonusColors.Passive}>{FormatDelta(stat, passiveVal, true)}</color>");
-        if (abilityVal != 0f) sb.Append($"  <color=#{StatBonusColors.Ability}>{FormatDelta(stat, abilityVal, true)}</color>");
-        if (relicVal   != 0f) sb.Append($"  <color=#{StatBonusColors.Relic}>{FormatDelta(stat, relicVal,   true)}</color>");
+        sb.Append(FormatStat(stat, baseVal));
+        if (equipVal   != 0f) sb.Append($"  <color=#{StatBonusColors.Equip}>{FormatStat(stat, equipVal,   withSign: true)}</color>");
+        if (passiveVal != 0f) sb.Append($"  <color=#{StatBonusColors.Passive}>{FormatStat(stat, passiveVal, withSign: true)}</color>");
+        if (abilityVal != 0f) sb.Append($"  <color=#{StatBonusColors.Ability}>{FormatStat(stat, abilityVal, withSign: true)}</color>");
+        if (relicVal   != 0f) sb.Append($"  <color=#{StatBonusColors.Relic}>{FormatStat(stat, relicVal,   withSign: true)}</color>");
 
         // CDR·방어율은 체감 공식이 적용되므로 합산 후 실효값을 별도 표시
         if (stat == StatType.SkillCooldownReduce)
         {
             float rawTotal     = baseVal + equipVal + passiveVal + abilityVal + relicVal;
-            float maxCDR       = GameplayConfig.Current?.CooldownReduceMax ?? 0.9f;
+            float maxCDR       = GameplayConfig.Current != null ? GameplayConfig.Current.CooldownReduceMax : 0.9f;
             float effectiveCDR = GeneralRuntimeBridge.CalcEffectiveCDR(rawTotal, maxCDR);
             if (Mathf.Abs(rawTotal - effectiveCDR) > 0.001f)
                 sb.Append($"\n<color=#AAAAAA>→ 체감 {effectiveCDR * 100f:F1}%</color>");

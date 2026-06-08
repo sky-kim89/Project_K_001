@@ -65,7 +65,7 @@ public class RelicPanelUI : MonoBehaviour
         {
             _backBtn.onClick.RemoveAllListeners();
             _backBtn.onClick.AddListener(() =>
-                GetComponentInParent<LobbyNavUI>()?.Switch(2));
+                GetComponentInParent<LobbyNavUI>().Switch(5)); // MainPanel(5)
         }
 
         Refresh();

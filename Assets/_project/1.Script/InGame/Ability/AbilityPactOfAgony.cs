@@ -67,7 +67,7 @@ public class AbilityPactOfAgony : AbilityData
             buf.Add(new StatusEffectBufferElement
             {
                 Stat       = StatType.Attack,
-                Delta      = AttackBonus,
+                Delta      = 1f + AttackBonus,   // Multiply: Final *= Delta → 1.35 = +35%
                 Mode       = EffectMode.Multiply,
                 Duration   = InfiniteDuration,
                 Remaining  = InfiniteDuration,
@@ -79,7 +79,7 @@ public class AbilityPactOfAgony : AbilityData
             buf.Add(new StatusEffectBufferElement
             {
                 Stat       = StatType.AttackSpeed,
-                Delta      = AtkSpdBonus,
+                Delta      = 1f + AtkSpdBonus,   // Multiply: Final *= Delta → 1.20 = +20%
                 Mode       = EffectMode.Multiply,
                 Duration   = InfiniteDuration,
                 Remaining  = InfiniteDuration,

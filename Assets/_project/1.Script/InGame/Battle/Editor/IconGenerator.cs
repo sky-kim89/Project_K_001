@@ -7,14 +7,18 @@
 using System;
 using System.IO;
 using UnityEditor;
+using UnityEditor.U2D;
 using UnityEngine;
+using UnityEngine.U2D;
 
 public static class IconGenerator
 {
-    const string CLASS_PATH    = "Assets/_project/3.Textures/Icons/Classes";
-    const string SKILL_PATH    = "Assets/_project/3.Textures/Icons/Skills";
-    const string ABILITY_PATH  = "Assets/_project/3.Textures/Icons/Abilities";
-    const string LOBBY_BTN_PATH = "Assets/_project/3.Textures/Icons/LobbyBtns";
+    const string CLASS_PATH      = "Assets/_project/3.Textures/Icons/Classes";
+    const string SKILL_PATH      = "Assets/_project/3.Textures/Icons/Skills";
+    const string ABILITY_PATH    = "Assets/_project/3.Textures/Icons/Abilities";
+    const string LOBBY_BTN_PATH  = "Assets/_project/3.Textures/Icons/LobbyBtns";
+    const string TRAIT_PATH      = "Assets/_project/3.Textures/Icons/Traits";
+    const string STAGE_NODE_PATH = "Assets/_project/3.Textures/Icons/StageNodes";
 
     // ── 컬러 팔레트 ───────────────────────────────────────────
     static readonly Color32 Knight_BgDark  = Hex("1A0606"); static readonly Color32 Knight_BgMid   = Hex("4A1010");
@@ -44,6 +48,295 @@ public static class IconGenerator
     // ═══════════════════════════════════════════════════════
     //  어빌리티 아이콘 메뉴
     // ═══════════════════════════════════════════════════════
+
+    // ═══════════════════════════════════════════════════════
+    //  특성 아이콘 메뉴
+    // ═══════════════════════════════════════════════════════
+
+    // ═══════════════════════════════════════════════════════
+    //  스테이지 노드 아이콘 메뉴
+    // ═══════════════════════════════════════════════════════
+
+    [MenuItem("Tools/Project K/에셋/Generate Stage Node Icons")]
+    public static void GenerateStageNodeIcons()
+    {
+        EnsureDir(STAGE_NODE_PATH);
+        Save(48, 48, STAGE_NODE_PATH + "/stage_normal.png", DrawStageNormal);
+        Save(48, 48, STAGE_NODE_PATH + "/stage_elite.png",  DrawStageElite);
+        Save(48, 48, STAGE_NODE_PATH + "/stage_shop.png",   DrawStageShop);
+        Save(48, 48, STAGE_NODE_PATH + "/stage_event.png",  DrawStageEvent);
+        AssetDatabase.Refresh();
+        ApplySpriteImportSettings(STAGE_NODE_PATH, 48);
+        AssetDatabase.SaveAssets();
+        Debug.Log("[IconGenerator] 스테이지 노드 아이콘 4장 생성 완료.");
+    }
+
+    // ─────────────────────────────────────────────────────
+    //  ■ 스테이지 노드 아이콘 (48×48)
+    // ─────────────────────────────────────────────────────
+
+    // Normal — 검 (파란 계열): 가장 기본 전투
+    static void DrawStageNormal(P p)
+    {
+        p.BgGradient(Hex("0A0F1C"), Hex("182040"));
+        p.RoundedBorder(8, 2, Hex("3C4E7A"));
+
+        // 손잡이 끝 (pommel)
+        p.FillCircle(24, 4, 4, Hex("C8A440"));
+        p.FillCircleAlpha(23, 5, 2, new Color32(255, 255, 255, 110));
+
+        // 그립
+        p.FillRRect(21, 8, 6, 9, 1, Hex("7A4020"));
+        p.FillRect(22, 8, 2, 8, new Color32(255, 255, 255, 28));
+
+        // 가드 (크로스가드)
+        p.FillRRect(12, 17, 24, 5, 2, Hex("C8A440"));
+        p.FillRect(12, 20, 24, 2, new Color32(255, 255, 255, 40));
+
+        // 검날 몸체
+        p.FillRRect(21, 22, 6, 20, 1, Hex("B8C8E0"));
+        p.FillRect(22, 23, 2, 18, new Color32(255, 255, 255, 55));
+
+        // 검날 끝 (삼각)
+        p.FillTri(21, 42, 27, 42, 24, 47, Hex("B8C8E0"));
+    }
+
+    // Elite — 5각 별 (붉은 계열): 강화 전투
+    static void DrawStageElite(P p)
+    {
+        p.BgGradient(Hex("18080A"), Hex("38100C"));
+        p.RoundedBorder(8, 2, Hex("BB2222"));
+        p.FillCircleAlpha(24, 25, 20, new Color32(220, 120, 40, 32));
+
+        var gold  = Hex("D4A840");
+        var goldL = Hex("F0C860");
+        var goldD = Hex("8A6010");
+
+        // 5각 별 — outer points: top(24,44), ur(40,31), lr(35,10), ll(13,10), ul(8,31)
+        //          inner points: (28,31), (33,22), (24,17), (15,22), (20,31)
+        // 꼭짓점 5개
+        p.FillTri(24, 44, 20, 31, 28, 31, goldL);   // 위 꼭짓점
+        p.FillTri(40, 31, 28, 31, 33, 22, gold);     // 우상
+        p.FillTri(35, 10, 33, 22, 24, 17, goldD);    // 우하
+        p.FillTri(13, 10, 24, 17, 15, 22, goldD);    // 좌하
+        p.FillTri( 8, 31, 15, 22, 20, 31, gold);     // 좌상
+        // 중앙 오각형 (중심 24,24 기준 5 삼각형)
+        p.FillTri(20, 31, 28, 31, 24, 24, goldL);
+        p.FillTri(28, 31, 33, 22, 24, 24, gold);
+        p.FillTri(33, 22, 24, 17, 24, 24, goldD);
+        p.FillTri(24, 17, 15, 22, 24, 24, goldD);
+        p.FillTri(15, 22, 20, 31, 24, 24, gold);
+        // 하이라이트
+        p.FillCircleAlpha(23, 39, 3, new Color32(255, 248, 200, 130));
+    }
+
+    // Shop — 금화 (파란 계열): 상점
+    static void DrawStageShop(P p)
+    {
+        p.BgGradient(Hex("081422"), Hex("0E2040"));
+        p.RoundedBorder(8, 2, Hex("1E90C0"));
+
+        // 금화 (다층 원)
+        p.FillCircle(24, 24, 17, Hex("9A7010"));
+        p.FillCircle(24, 24, 15, Hex("D4A820"));
+        p.FillCircle(24, 24, 13, Hex("EAB830"));
+        p.FillCircle(24, 24, 11, Hex("F0C840"));
+
+        // 코인 테두리 하이라이트
+        p.DrawCircle(24, 24, 15, 1, Hex("F8D860"));
+        p.DrawCircle(24, 24, 17, 1, Hex("7A5808"));
+
+        // 코인 반사광
+        p.FillCircleAlpha(19, 30, 6, new Color32(255, 248, 200, 90));
+
+        // 코인 면 — "₩" 간략 표현 (세로줄 + 두 가로줄)
+        var mk = new Color32(100, 68, 0, 210);
+        p.FillRRect(22, 16, 4, 18, 1, mk);   // 세로 기둥
+        p.FillRRect(16, 28, 16, 3, 1, mk);   // 위 가로줄
+        p.FillRRect(16, 21, 16, 3, 1, mk);   // 아래 가로줄
+        // 사선 두 개 (₩ 형태)
+        p.DrawLine(16, 16, 22, 31, mk, 2);
+        p.DrawLine(32, 16, 26, 31, mk, 2);
+    }
+
+    // Event — 물음표 (보라 계열): 이벤트
+    static void DrawStageEvent(P p)
+    {
+        p.BgGradient(Hex("100618"), Hex("281038"));
+        p.RoundedBorder(8, 2, Hex("8833BB"));
+        p.FillCircleAlpha(24, 26, 18, new Color32(136, 68, 220, 28));
+
+        var c = Hex("DDD0FF");
+
+        // "?" 상단 원호 — 좌변/상변/우변만 그려 C자 + 우측 세로줄
+        p.FillRRect(16, 34, 5, 9, 2, c);    // 좌상 세로
+        p.FillRRect(16, 40, 16, 5, 2, c);   // 최상단 가로
+        p.FillRRect(27, 25, 5, 20, 2, c);   // 우측 세로 (전체)
+        p.FillRRect(16, 25, 16, 5, 2, c);   // 중간 연결 가로
+
+        // 꺾임 → 줄기
+        p.FillRRect(21, 18, 6, 10, 2, c);   // 줄기
+
+        // 점 (dot)
+        p.FillCircle(24, 11, 4, c);
+        p.FillCircleAlpha(23, 12, 2, new Color32(255, 255, 255, 140));
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  특성 아이콘 메뉴
+    // ═══════════════════════════════════════════════════════
+
+    [MenuItem("Tools/Project K/에셋/Generate Trait Icons")]
+    public static void GenerateTraitIcons()
+    {
+        EnsureDir(TRAIT_PATH);
+
+        Save(48, 48, TRAIT_PATH + "/trait_knight_command.png",   DrawTraitKnight);
+        Save(48, 48, TRAIT_PATH + "/trait_archer_precision.png", DrawTraitArcher);
+        Save(48, 48, TRAIT_PATH + "/trait_mage_arcane.png",      DrawTraitMage);
+        Save(48, 48, TRAIT_PATH + "/trait_shield_fortress.png",  DrawTraitShield);
+
+        AssetDatabase.Refresh();
+        ApplySpriteImportSettings(TRAIT_PATH, 48);
+        AssetDatabase.SaveAssets();
+        Debug.Log("[IconGenerator] 특성 아이콘 4장 생성 완료.");
+    }
+
+    // ─────────────────────────────────────────────────────
+    //  ■ 특성 아이콘 (48×48)
+    // ─────────────────────────────────────────────────────
+
+    // KnightCommand — 지휘관의 기질 (왕관 + 방패, 금-붉은)
+    static void DrawTraitKnight(P p)
+    {
+        p.BgGradient(Hex("1A0808"), Hex("3C1A10"));
+        p.RoundedBorder(8, 2, Hex("D4A840"));
+
+        // 방패 (하단, 배경)
+        FillShieldShape(p, 24, 28, 44, 10, Hex("2A1808"), Hex("4A2010"));
+        DrawShieldOutline(p, 24, 28, 44, 10, Hex("8B5A20"), 1);
+        // 방패 중앙 십자
+        p.FillRRect(22, 22, 4, 14, 1, new Color32(139, 90, 32, 160));
+        p.FillRRect(17, 27, 14, 4, 1, new Color32(139, 90, 32, 160));
+
+        // 왕관 (중상단, 금색)
+        p.FillRRect(12, 18, 24, 7, 1, Gold);      // 왕관 베이스
+        p.FillRect(12, 18, 24, 3, new Color32(255, 255, 255, 40));  // 상단 하이라이트
+        // 세 꼭짓점
+        p.FillTri(12, 18, 12, 8, 16, 18, Gold);
+        p.FillTri(21, 18, 24, 6, 27, 18, Hex("FFD060"));
+        p.FillTri(32, 18, 36, 8, 36, 18, Gold);
+        // 왕관 보석
+        p.FillCircle(12, 8,  3, Hex("EE4444"));
+        p.FillCircle(24, 6,  4, Hex("FFEE33"));
+        p.FillCircle(36, 8,  3, Hex("EE4444"));
+        p.FillCircleAlpha(23, 5, 2, new Color32(255, 255, 255, 160));
+
+        // 글로우
+        p.FillCircleAlpha(24, 14, 14, new Color32(212, 168, 64, 30));
+    }
+
+    // ArcherPrecision — 정밀 사수 (조준선 + 화살, 녹색)
+    static void DrawTraitArcher(P p)
+    {
+        p.BgGradient(Hex("020E02"), Hex("0E2A0E"));
+        p.RoundedBorder(8, 2, Hex("44AA22"));
+
+        // 외부 조준 원
+        p.DrawCircle(24, 26, 14, 2, Hex("44DD55"));
+        p.FillCircleAlpha(24, 26, 14, new Color32(68, 221, 85, 18));
+        // 십자선
+        p.DrawLine(24, 8,  24, 16, Hex("44DD55"), 2);
+        p.DrawLine(24, 36, 24, 44, Hex("44DD55"), 2);
+        p.DrawLine(6,  26, 14, 26, Hex("44DD55"), 2);
+        p.DrawLine(34, 26, 42, 26, Hex("44DD55"), 2);
+        // 내부 소원
+        p.DrawCircle(24, 26, 6, 1, new Color32(68, 221, 85, 140));
+
+        // 화살 (우상향 45도, 조준선 위로 강조)
+        p.DrawLine(10, 40, 36, 12, Gold, 3);
+        p.DrawLine(10, 40, 36, 12, Tint(Gold, White, 0.4f), 1);
+        p.FillTri(36, 12, 29, 14, 34, 19, Silver);   // 화살촉
+        p.FillTri(10, 40, 16, 38, 12, 44, Green);     // 깃 1
+        p.FillTri(10, 40, 14, 44, 8,  44, Tint(Green, Hex("000000"), 0.3f)); // 깃 2
+
+        // 중심 조준점
+        p.FillCircle(24, 26, 3, Hex("FFEE22"));
+        p.FillCircleAlpha(23, 25, 1, new Color32(255, 255, 255, 200));
+    }
+
+    // MageArcane — 마력 집중 (마법 구슬 + 번개, 보라)
+    static void DrawTraitMage(P p)
+    {
+        p.BgGradient(Hex("060220"), Hex("180A50"));
+        p.RoundedBorder(8, 2, Hex("9933FF"));
+
+        // 구슬 글로우
+        p.FillCircleAlpha(22, 26, 16, new Color32(102, 68, 255, 35));
+        // 구슬 본체
+        p.FillCircleGrad(22, 26, 11, Hex("AACCFF"), Hex("6644FF"), Hex("2211AA"));
+        // 구슬 하이라이트
+        p.FillCircleAlpha(17, 21, 4, new Color32(255, 255, 255, 90));
+        // 구슬 내부 마법선
+        p.DrawCircle(22, 26, 5, 1, new Color32(200, 170, 255, 90));
+        p.DrawLine(22, 16, 22, 36, new Color32(200, 170, 255, 70), 1);
+        p.DrawLine(12, 26, 32, 26, new Color32(200, 170, 255, 70), 1);
+
+        // 번개 (우상 → 좌하, 강조)
+        p.FillTri(36, 8,  30, 22, 38, 22, Hex("FFEE33"));
+        p.FillTri(34, 22, 42, 22, 36, 38, Hex("FFEE33"));
+        p.DrawLine(36, 8,  30, 22, Hex("FFFFFF"), 1);
+        p.DrawLine(42, 22, 36, 38, Hex("FFFFAA"), 1);
+
+        // 마법 파티클
+        p.FillCircle(8,  14, 2, new Color32(170, 136, 255, 190));
+        p.FillCircle(44, 34, 2, new Color32(136, 170, 255, 170));
+        p.FillCircle(6,  36, 2, new Color32(204, 136, 255, 150));
+        p.FillCircleAlpha(22, 26, 18, new Color32(102, 68, 255, 18));
+    }
+
+    // ShieldFortress — 강철 요새 (성벽 + 방패, 청록)
+    static void DrawTraitShield(P p)
+    {
+        p.BgGradient(Hex("021010"), Hex("083030"));
+        p.RoundedBorder(8, 2, Hex("22BBCC"));
+
+        var tc   = Hex("33DDEE");
+        var dark = Hex("0E2828");
+        var mid  = Hex("1A4A4A");
+
+        // 성벽 (상단 — 흉벽 3칸)
+        p.FillRRect(6, 8, 36, 18, 1, mid);
+        p.FillRect(6, 8, 36, 5, new Color32(255, 255, 255, 18));
+        // 흉벽 (톱니)
+        for (int i = 0; i < 3; i++)
+        {
+            int bx = 8 + i * 12;
+            p.FillRect(bx, 4, 8, 6, mid);
+            p.FillRect(bx, 4, 8, 2, new Color32(255, 255, 255, 18));
+        }
+        // 성벽 테두리
+        p.DrawLine(6,  26, 42, 26, tc, 1);
+        p.DrawLine(6,  8,  6,  26, tc, 1);
+        p.DrawLine(42, 8,  42, 26, tc, 1);
+
+        // 성문 (하단 중앙)
+        p.FillRRect(18, 18, 12, 10, 2, dark);
+        p.DrawLine(18, 18, 30, 18, tc, 1);
+        p.DrawLine(18, 18, 18, 28, tc, 1);
+        p.DrawLine(30, 18, 30, 28, tc, 1);
+
+        // 방패 (전면, 성벽 위에 겹침)
+        FillShieldShape(p, 24, 30, 46, 14, Hex("0E2020"), Hex("1A4040"));
+        DrawShieldOutline(p, 24, 30, 46, 14, tc, 2);
+        // 방패 내부 선
+        DrawShieldOutline(p, 24, 34, 44, 18, new Color32(51, 221, 238, 55), 1);
+        // 방패 중앙 십자
+        p.FillRRect(23, 26, 3, 16, 1, tc);
+        p.FillRRect(17, 32, 15, 3, 1, tc);
+        p.FillCircle(24, 34, 3, Hex("AACCDD"));
+        p.FillCircleAlpha(23, 33, 1, new Color32(255, 255, 255, 160));
+    }
 
     [MenuItem("Tools/Project K/에셋/Generate Ability Icons")]
     public static void GenerateAbilityIcons()

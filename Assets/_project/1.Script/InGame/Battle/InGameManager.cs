@@ -23,6 +23,8 @@ using UnityEngine;
 
 public class InGameManager : MonoBehaviour
 {
+    float _battleStartTime;
+
     [Header("배틀 설정")]
     [Tooltip("웨이브 구성 데이터 (WaveSetupData SO 할당)")]
     public WaveSetupData WaveSetup;
@@ -67,11 +69,12 @@ public class InGameManager : MonoBehaviour
 
     // ── 이벤트 핸들러 ─────────────────────────────────────────
 
-    /// <summary>장군 스폰 완료 → 로딩 팝업 닫기.</summary>
+    /// <summary>장군 스폰 완료 → 로딩 팝업 닫기 + 전투 타이머 시작.</summary>
     void HandleAlliesReady()
     {
         if (PopupManager.Instance != null)
             PopupManager.Instance.Close(PopupType.Loading);
+        _battleStartTime = Time.time;
     }
 
     /// <summary>전투 승리 → 스테이지 클리어 기록 후 결과 팝업 오픈.</summary>
@@ -119,6 +122,10 @@ public class InGameManager : MonoBehaviour
 
             UserDataManager.Instance.RequestSave();
         }
+
+        // 전투 경과 시간 기록
+        if (context != null)
+            context.BattleElapsedSeconds = Time.time - _battleStartTime;
 
         // 전투 통계 스냅샷
         if (context != null)
@@ -175,18 +182,31 @@ public class InGameManager : MonoBehaviour
         progress?.RecordClear(stage.Mode, stage.StageNumber);
     }
 
-    /// <summary>전투 패배 → 유닛 즉시 디스폰 후 결과 팝업 오픈.</summary>
+    /// <summary>전투 패배 → 통계 스냅샷 후 유닛 디스폰, 환생 팝업 오픈.</summary>
     void HandleDefeat()
     {
         // context/killCount 를 먼저 캡처 — DespawnAllUnits() 가 _context 를 null 로 초기화하기 때문
         var context   = BattleManager.Instance?.Context;
         int killCount = BattleManager.Instance?.EnemyKillCount ?? 0;
 
+        // 전투 경과 시간 기록
+        if (context != null)
+            context.BattleElapsedSeconds = Time.time - _battleStartTime;
+
+        // 전투 통계 스냅샷
+        if (context != null)
+        {
+            var tracker = BattleStatsTracker.Instance;
+            if (tracker != null)
+                foreach (var entry in tracker.GetAllEntries())
+                    context.CombatStats.Add(entry);
+        }
+
         BattleManager.Instance?.DespawnAllUnits();
 
         if (PopupManager.Instance == null) return;
-        var popup = PopupManager.Instance.Open<BattleResultPopup>(PopupType.BattleResult);
-        popup?.Setup(false, context, killCount);
+        var popup = PopupManager.Instance.Open<ReincarnationPopup>(PopupType.Reincarnation);
+        popup?.Setup(context, killCount);
     }
 
     // ── 배틀 시작 ────────────────────────────────────────────

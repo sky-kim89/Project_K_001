@@ -38,7 +38,8 @@ public class LocalizationManager : SingletonPure<LocalizationManager>
         { "CritChance",   "치명타율" },
         { "CritDamage",   "치명타배율" },
         { "SoldierCount", "용병수"   },
-        { "CommandPower", "지휘력"   },
+        { "CommandPower",        "지휘력"   },
+        { "SkillCooldownReduce", "쿨감소"   },
 
         // ── EquipmentTrigger ──────────────────────────────────
         { "OnAttack", "공격 시" },

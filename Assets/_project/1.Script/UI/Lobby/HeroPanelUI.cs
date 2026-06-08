@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -150,7 +150,7 @@ public class HeroPanelUI : MonoBehaviour
     static void ApplyCostIcon(Image img, eItem item)
     {
         if (img == null) return;
-        var sprite = SpriteManager.Instance?.GetItem(item.IconKey());
+        var sprite = SpriteManager.Instance?.Get(item.IconKey());
         if (sprite != null) { img.sprite = sprite; img.color = Color.white; }
     }
 
@@ -271,7 +271,7 @@ public class HeroPanelUI : MonoBehaviour
         if (_activeSkillIcon != null)
         {
             var key = rolledId.IconKey();
-            var sp  = key != null ? SpriteManager.Instance?.GetGeneral(key) : null;
+            var sp  = key != null ? SpriteManager.Instance?.Get(key) : null;
             _activeSkillIcon.sprite = sp;
             _activeSkillIcon.color  = sp != null ? Color.white : new Color(0.25f, 0.30f, 0.48f);
         }
@@ -356,7 +356,7 @@ public class HeroPanelUI : MonoBehaviour
             {
                 float val = equip.GetStatValue(e, enhance);
                 sb.Append(loc.Get(e.Stat.ToString())).Append(" +");
-                sb.AppendLine(EquipmentData.FormatStat(e.Stat, val));
+                sb.AppendLine(StatDisplayHelper.FormatStat(e.Stat, val));
             }
             if (equip.TriggerType != EquipmentTrigger.None)
                 sb.AppendLine(EquipmentData.FormatTriggerLine(equip,
@@ -737,7 +737,7 @@ public class HeroPanelUI : MonoBehaviour
         {
             row.ValueTmp.overflowMode     = TextOverflowModes.Ellipsis;
             row.ValueTmp.textWrappingMode = TextWrappingModes.NoWrap;
-            row.ValueTmp.text = StatDisplayHelper.FormatTotal(row.Type, total);
+            row.ValueTmp.text = StatDisplayHelper.FormatStat(row.Type, total, isFinal: true);
             if (row.LayoutEl != null) row.LayoutEl.preferredHeight = 50f;
         }
     }

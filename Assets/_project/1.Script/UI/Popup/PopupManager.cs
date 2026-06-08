@@ -51,11 +51,11 @@ public class PopupManager : Singleton<PopupManager>
 
     // ── 공개 API — 열기 ──────────────────────────────────────
 
-    public PopupBase Open(PopupType type, Action onClose = null)
-        => RegisterAndOpen(type, onClose);
+    public PopupBase Open(PopupType type, Action onClose = null, bool noBlocker = false)
+        => RegisterAndOpen(type, onClose, noBlocker);
 
-    public T Open<T>(PopupType type, Action onClose = null) where T : PopupBase
-        => RegisterAndOpen(type, onClose) as T;
+    public T Open<T>(PopupType type, Action onClose = null, bool noBlocker = false) where T : PopupBase
+        => RegisterAndOpen(type, onClose, noBlocker) as T;
 
     // ── 공개 API — 닫기 ──────────────────────────────────────
 
@@ -95,7 +95,7 @@ public class PopupManager : Singleton<PopupManager>
 
     // ── 내부 — 팝업 생성·등록 ────────────────────────────────
 
-    PopupBase RegisterAndOpen(PopupType type, Action onClose)
+    PopupBase RegisterAndOpen(PopupType type, Action onClose, bool noBlocker)
     {
         EnsurePopupRoot();
 
@@ -147,8 +147,8 @@ public class PopupManager : Singleton<PopupManager>
         // 항상 최상위 sibling으로 이동 (pool 재사용 시 blocker보다 아래에 위치하던 버그 방지)
         popup.transform.SetAsLastSibling();
 
-        // 블로커를 가장 아래 팝업 바로 아래에 배치
-        UpdateBlocker();
+        // noBlocker = true 이면 블로커 상태를 변경하지 않음
+        if (!noBlocker) UpdateBlocker();
 
         popup.OpenInternal(HandlePopupClosed, onClose);
         return popup;
@@ -182,8 +182,8 @@ public class PopupManager : Singleton<PopupManager>
         if (_blocker == null) _blocker = CreateBlocker();
         _blocker.SetActive(true);
 
-        // 스택 첫 번째(가장 아래) 팝업 바로 아래에 배치
-        int idx = _stack[0].transform.GetSiblingIndex();
+        // 스택 마지막(가장 위) 팝업 바로 아래에 배치 → 2번째 팝업 열릴 때 첫 팝업이 블로커 뒤에 위치
+        int idx = _stack[_stack.Count - 1].transform.GetSiblingIndex();
         _blocker.transform.SetSiblingIndex(Mathf.Max(0, idx - 1));
     }
 

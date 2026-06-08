@@ -36,6 +36,9 @@ public class BattleContext
     // ── 전투 통계 스냅샷 (결과 팝업 통계 탭용) ───────────────
     public System.Collections.Generic.List<GeneralStatEntry> CombatStats { get; } = new();
 
+    // ── 전투 경과 시간 (환생 팝업 DPS 계산용) ────────────────
+    public float BattleElapsedSeconds { get; set; }
+
     // ── 편의 프로퍼티 ─────────────────────────────────────────
     public bool IsLastWave      => CurrentWave >= TotalWaves;
     public bool IsEnemyClear    => AliveEnemyCount <= 0;

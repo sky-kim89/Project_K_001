@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text;
 using TMPro;
 using UnityEngine;
@@ -117,7 +117,6 @@ public class HeroDetailPopup : PopupBase
     [SerializeField] GameObject _growthRow;
 
     UnitEntry _entry;
-    int       _slotIndex;
     Texture2D _portraitTexture;
 
     HeroStatResult _statResult;
@@ -133,10 +132,9 @@ public class HeroDetailPopup : PopupBase
 
     // ── 공개 API ─────────────────────────────────────────────
 
-    public void Setup(UnitEntry entry, int slotIndex)
+    public void Setup(UnitEntry entry)
     {
         _entry             = entry;
-        _slotIndex         = slotIndex;
         _expandedStatIndex = -1;
 
         // 보유 영웅 모드 — SetupPreview에서 숨겼을 수 있으므로 복원
@@ -151,7 +149,7 @@ public class HeroDetailPopup : PopupBase
     // 용병 상점에서 호출 — EXP/레벨업/장비 탭 숨김
     public void SetupPreview(UnitEntry entry)
     {
-        Setup(entry, -1);
+        Setup(entry);
 
         _growthRow?.SetActive(false);
         _levelText?.gameObject.SetActive(false);
@@ -203,7 +201,7 @@ public class HeroDetailPopup : PopupBase
         if (img == null) return;
         var sm = SpriteManager.Instance;
         if (sm == null) return;
-        var sprite = sm.GetItem(item.IconKey());
+        var sprite = sm.Get(item.IconKey());
         if (sprite != null) { img.sprite = sprite; img.color = Color.white; }
     }
 
@@ -277,7 +275,7 @@ public class HeroDetailPopup : PopupBase
             {
                 var key = activeId.IconKey();
                 var sm  = SpriteManager.Instance;
-                var sp  = (key != null && sm != null) ? sm.GetGeneral(key) : null;
+                var sp  = (key != null && sm != null) ? sm.Get(key) : null;
                 _activeSkillIcon.sprite = sp;
                 _activeSkillIcon.color  = sp != null ? Color.white : new Color(0.25f, 0.30f, 0.48f);
             }
@@ -453,7 +451,7 @@ public class HeroDetailPopup : PopupBase
             {
                 float val = equip.GetStatValue(e, enhance);
                 sb.Append(loc.Get(e.Stat.ToString())).Append(" +");
-                sb.AppendLine(EquipmentData.FormatStat(e.Stat, val));
+                sb.AppendLine(StatDisplayHelper.FormatStat(e.Stat, val));
             }
             if (equip.TriggerType != EquipmentTrigger.None)
                 sb.AppendLine(EquipmentData.FormatTriggerLine(equip,
@@ -604,7 +602,7 @@ public class HeroDetailPopup : PopupBase
         {
             row.ValueTmp.overflowMode     = TextOverflowModes.Ellipsis;
             row.ValueTmp.textWrappingMode = TextWrappingModes.NoWrap;
-            row.ValueTmp.text = StatDisplayHelper.FormatTotal(row.Type, total);
+            row.ValueTmp.text = StatDisplayHelper.FormatStat(row.Type, total, isFinal: true);
             if (row.LayoutEl != null) row.LayoutEl.preferredHeight = 52f;
         }
     }

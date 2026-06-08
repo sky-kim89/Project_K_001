@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -60,7 +60,7 @@ public class MercenaryShopPopup : PopupBase
 
         if (_passShardIcon != null)
         {
-            var sp = SpriteManager.Instance?.GetItem(eItem.SoldierShard.IconKey());
+            var sp = SpriteManager.Instance?.Get(eItem.SoldierShard.IconKey());
             _passShardIcon.sprite = sp;
             _passShardIcon.color  = sp != null ? Color.white : new Color(0.45f, 0.70f, 1.00f);
         }
@@ -137,7 +137,8 @@ public class MercenaryShopPopup : PopupBase
                 int capturedIdx = i;
                 _candidateCards[i].gameObject.SetActive(true);
                 _candidateCards[i].Setup(_candidates[i],
-                    () => SelectCandidate(_candidates[capturedIdx], capturedIdx));
+                    () => SelectCandidate(_candidates[capturedIdx], capturedIdx),
+                    () => DirectHire(_candidates[capturedIdx]));
             }
             else
             {
@@ -179,6 +180,12 @@ public class MercenaryShopPopup : PopupBase
 
     // ── 후보 선택 + 하일라이트 ───────────────────────────────
 
+    void DirectHire(UnitEntry entry)
+    {
+        _selected = entry;
+        OnHire();
+    }
+
     void SelectCandidate(UnitEntry entry, int cardIdx)
     {
         _selected = entry;
@@ -213,7 +220,7 @@ public class MercenaryShopPopup : PopupBase
     void RefreshHireBar()
     {
         bool has     = _selected != null;
-        bool hasSlot = GetFirstEmptySlot() >= 0;
+        bool hasSlot = _targetSlot >= 0 || GetFirstEmptySlot() >= 0;
         _hireBtn?.gameObject.SetActive(has && hasSlot);
         _passBtn?.gameObject.SetActive(true);
     }

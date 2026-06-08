@@ -34,7 +34,7 @@ namespace BattleGame.Units
             _knockbackImmuneLookup = state.GetComponentLookup<KnockbackImmuneTag>(isReadOnly: true);
         }
 
-        [BurstCompile]
+        // [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _bossLookup.Update(ref state);
@@ -43,6 +43,8 @@ namespace BattleGame.Units
             _knockbackImmuneLookup.Update(ref state);
 
             var cfg = GameplayConfig.Current;
+            if (cfg == null) return;
+            
             float softCap      = cfg.DefenseMax;
             float overflowRate = cfg.DefenseOverflowRate;
             float effectiveCap = cfg.DefenseEffectiveCap;

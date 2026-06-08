@@ -24,23 +24,27 @@ using UnityEngine.UI;
 
 public static class BattlePanelCreator
 {
-    const string SavePath = "Assets/_project/2.Prefabs/UI/Lobby/BattlePanel.prefab";
+    const string SavePath             = "Assets/_project/2.Prefabs/UI/Lobby/BattlePanel.prefab";
+    const string StageNodePrefabPath  = "Assets/_project/2.Prefabs/UI/Lobby/StageNodeUI.prefab";
+    const string StageArrowPrefabPath = "Assets/_project/2.Prefabs/UI/Lobby/StageArrowUI.prefab";
 
-    const float TopBarH     = 180f;
-    const float NavBarH     = 160f;
-    const float DeployW     = 420f;   // 좌측 배치 슬롯 너비
-    const float SlotGap     = 8f;
-    const int   SlotCount   = 5;
-
-    const float HireBtnH = 80f;
+    const float TopBarH       = 180f;
+    const float NavBarH       = 160f;
+    const float DeployW       = 420f;
+    const float SlotGap       = 8f;
+    const int   SlotCount     = 5;
+    const float HireBtnH      = 80f;
+    const float TraitBarH     = 110f;  // 상단 특성 아이콘 바 높이
+    const float ProgressBarH  = 76f;   // 스테이지 진행바 높이
+    const int   TraitSlotMax  = 8;     // 특성 최대 슬롯 수
+    const float TraitIconSize = 90f;   // 특성 아이콘 크기
 
     static readonly Color BgDark      = new Color(0.07f, 0.07f, 0.13f, 1f);
     static readonly Color SlotBgEmpty = new Color(0.12f, 0.12f, 0.20f, 1f);
     static readonly Color ActionBg    = new Color(0.05f, 0.05f, 0.10f, 1f);
-    static readonly Color BattleBtnC   = new Color(0.11f, 0.72f, 0.58f, 1f);
-    static readonly Color AbilityBtnC  = new Color(0.18f, 0.25f, 0.45f, 1f);
-    static readonly Color HireBtnC     = new Color(0.45f, 0.25f, 0.18f, 1f);
-    static readonly Color RelicBtnC       = new Color(0.35f, 0.18f, 0.50f, 1f);
+    static readonly Color BattleBtnC     = new Color(0.11f, 0.72f, 0.58f, 1f);
+    static readonly Color AbilityBtnC    = new Color(0.18f, 0.25f, 0.45f, 1f);
+    static readonly Color HireBtnC       = new Color(0.45f, 0.25f, 0.18f, 1f);
     static readonly Color DisassembleBtnC = new Color(0.30f, 0.16f, 0.08f, 1f);
     static readonly Color MutedText    = new Color(0.55f, 0.55f, 0.60f);
 
@@ -72,7 +76,7 @@ public static class BattlePanelCreator
 
         var ui = panel.AddComponent<StageSelectUI>();
 
-        // ── DeployArea (좌측) ─────────────────────────────────
+        // ── DeployArea (좌측, 전체 높이) ──────────────────────
         var deployArea = MakeGo("DeployArea", panel);
         var deployRt   = deployArea.GetComponent<RectTransform>();
         deployRt.anchorMin = new Vector2(0, 0);
@@ -83,7 +87,6 @@ public static class BattlePanelCreator
         var deployBg = deployArea.AddComponent<Image>();
         deployBg.color = BgDark;
 
-        // VerticalLayoutGroup으로 5 슬롯을 균등 분할
         var vlg = deployArea.AddComponent<VerticalLayoutGroup>();
         vlg.childAlignment         = TextAnchor.UpperCenter;
         vlg.spacing                = SlotGap;
@@ -91,8 +94,7 @@ public static class BattlePanelCreator
         vlg.childForceExpandHeight = true;
         vlg.padding                = new RectOffset(4, 4, 4, 4);
 
-        float slotH = (UIScale.RefHeight - TopBarH
-                       - SlotGap * (SlotCount - 1) - 8f) / SlotCount;
+        float slotH = (UIScale.RefHeight - TopBarH - SlotGap * (SlotCount - 1) - 8f) / SlotCount;
 
         var slots = new DeploySlotUI[SlotCount];
         for (int i = 0; i < SlotCount; i++)
@@ -101,7 +103,7 @@ public static class BattlePanelCreator
             slots[i] = slot.GetComponent<DeploySlotUI>();
         }
 
-        // ── ActionArea (우측) ─────────────────────────────────
+        // ── ActionArea (우측, 전체 높이) ──────────────────────
         var actionArea = MakeGo("ActionArea", panel);
         var actionRt   = actionArea.GetComponent<RectTransform>();
         actionRt.anchorMin = new Vector2(0, 0);
@@ -112,35 +114,104 @@ public static class BattlePanelCreator
         var actionBg = actionArea.AddComponent<Image>();
         actionBg.color = ActionBg;
 
-        // 스테이지 텍스트 (상단 중앙)
+        // ── TraitBar (ActionArea 상단 — 빨간 박스 영역) ───────
+        var traitBar   = MakeGo("TraitBar", actionArea);
+        var traitBarRt = traitBar.GetComponent<RectTransform>();
+        traitBarRt.anchorMin = new Vector2(0f, 1f);
+        traitBarRt.anchorMax = new Vector2(1f, 1f);
+        traitBarRt.offsetMin = new Vector2(0f, -TraitBarH);
+        traitBarRt.offsetMax = Vector2.zero;
+        traitBar.AddComponent<Image>().color = new Color(0.10f, 0.06f, 0.10f, 0.95f);
+
+        var traitHlg = traitBar.AddComponent<HorizontalLayoutGroup>();
+        traitHlg.childAlignment        = TextAnchor.MiddleLeft;
+        traitHlg.spacing               = 12f;
+        traitHlg.padding               = new RectOffset(16, 16, 10, 10);
+        traitHlg.childForceExpandWidth  = false;
+        traitHlg.childForceExpandHeight = true;
+
+        var traitIcons = new TraitIconUI[TraitSlotMax];
+        for (int i = 0; i < TraitSlotMax; i++)
+            traitIcons[i] = BuildTraitIconSlot(traitBar, i);
+
+        // ── StageTypeIndicator (ActionArea 상단, TraitBar 바로 아래 — 초록 박스) ──
+        var progressBarGo = MakeGo("StageProgressBar", actionArea);
+        var progressBarUi = progressBarGo.AddComponent<StageProgressBarUI>();
+        {
+            var rt = progressBarGo.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(0.80f, 1f);
+            rt.offsetMin = new Vector2(12f, -(TraitBarH + ProgressBarH));
+            rt.offsetMax = new Vector2(-12f, -TraitBarH);
+        }
+        // 배경 (반투명 패널)
+        progressBarGo.AddComponent<Image>().color = new Color(0.07f, 0.08f, 0.14f, 0.80f);
+
+        // 노드 컨테이너 (HorizontalLayoutGroup — 아이콘 노드들을 수평 정렬)
+        var pbNodeContainer = MakeGo("Nodes", progressBarGo);
+        FullStretch(pbNodeContainer);
+        var pbHlg = pbNodeContainer.AddComponent<HorizontalLayoutGroup>();
+        pbHlg.childAlignment         = TextAnchor.MiddleCenter;
+        pbHlg.spacing                = 0f;
+        pbHlg.padding                = new RectOffset(16, 16, 8, 8);
+        pbHlg.childControlWidth      = true;   // LayoutElement.preferredWidth 적용
+        pbHlg.childControlHeight     = true;   // LayoutElement.preferredHeight 적용
+        pbHlg.childForceExpandWidth  = false;
+        pbHlg.childForceExpandHeight = false;
+
+        // 노드·화살표 프리팹 생성 (없으면 새로 저장)
+        var stageNodePrefab  = BuildStageNodePrefab();
+        var stageArrowPrefab = BuildStageArrowPrefab();
+
+        var pbSo = new SerializedObject(progressBarUi);
+        pbSo.Update();
+        SetObj(pbSo, "_nodeContainer", pbNodeContainer.transform);
+        SetObj(pbSo, "_nodePrefab",    stageNodePrefab);
+        SetObj(pbSo, "_arrowPrefab",   stageArrowPrefab);
+
+        pbSo.ApplyModifiedProperties();
+
+        // ── 스테이지 텍스트 (TraitBar + Indicator 아래) ───────
         var stageText = CreateTMP(actionArea, "StageText", "스테이지 1 도전",
             UIScale.FontLg, FontStyles.Bold);
         SetRect(stageText.GetComponent<RectTransform>(),
-            new Vector2(0, 220), new Vector2(1100, 80));
+            new Vector2(0, 80), new Vector2(1100, 80));
 
-        var progressText = CreateTMP(actionArea, "ProgressText", "첫 번째 스테이지",
+        var stageTypeText = CreateTMP(actionArea, "StageTypeText", "일반",
+            UIScale.FontMd, FontStyles.Bold);
+        SetRect(stageTypeText.GetComponent<RectTransform>(),
+            new Vector2(0, 10), new Vector2(600, 48));
+        stageTypeText.color = new Color(0.6f, 0.7f, 0.85f);
+
+        var progressText = CreateTMP(actionArea, "ProgressText", "0 / 30 스테이지",
             UIScale.FontMd, FontStyles.Normal);
         SetRect(progressText.GetComponent<RectTransform>(),
-            new Vector2(0, 150), new Vector2(1000, 56));
+            new Vector2(0, -55), new Vector2(1000, 46));
         progressText.color = MutedText;
 
-        // 세 개 정사각형 아이콘 버튼 — 우측 세로 배치
+        // ── 우측 아이콘 버튼 컬럼 ────────────────────────────
         const float IBtn = 170f;
         const float IGap =  20f;
-        // 중앙 기준 y 오프셋: 위(어빌리티) → 중(유물) → 아래(장비 분해)
         float iBtnStep = IBtn + IGap;
+
+        // 상점/이벤트 스테이지 타입 아이콘 (어빌리티 버튼 위)
+        var shopIcon  = CreateIconButton(actionArea, "ShopIcon",  "상점",   new Color(0.15f, 0.50f, 0.75f),
+            "Assets/_project/3.Textures/Icons/LobbyBtns/btn_ability.png");
+        SetRightColRect(shopIcon.GetComponent<RectTransform>(), iBtnStep * 1.5f, IBtn);
+        shopIcon.SetActive(false);
+
+        var eventIcon = CreateIconButton(actionArea, "EventIcon", "이벤트", new Color(0.50f, 0.20f, 0.65f),
+            "Assets/_project/3.Textures/Icons/LobbyBtns/btn_ability.png");
+        SetRightColRect(eventIcon.GetComponent<RectTransform>(), iBtnStep * 1.5f, IBtn);
+        eventIcon.SetActive(false);
 
         var abilityBtn = CreateIconButton(actionArea, "AbilityListBtn", "어빌리티", AbilityBtnC,
             "Assets/_project/3.Textures/Icons/LobbyBtns/btn_ability.png");
-        SetRightColRect(abilityBtn.GetComponent<RectTransform>(),  iBtnStep, IBtn);
-
-        var relicBtn = CreateIconButton(actionArea, "RelicBtn", "유물", RelicBtnC,
-            "Assets/_project/3.Textures/Icons/LobbyBtns/btn_relic.png");
-        SetRightColRect(relicBtn.GetComponent<RectTransform>(), 0f, IBtn);
+        SetRightColRect(abilityBtn.GetComponent<RectTransform>(), iBtnStep / 2f, IBtn);
 
         var disassembleBtn = CreateIconButton(actionArea, "DisassembleBtn", "장비 분해", DisassembleBtnC,
             "Assets/_project/3.Textures/Icons/LobbyBtns/btn_disassemble.png");
-        SetRightColRect(disassembleBtn.GetComponent<RectTransform>(), -iBtnStep, IBtn);
+        SetRightColRect(disassembleBtn.GetComponent<RectTransform>(), -iBtnStep / 2f, IBtn);
 
         // 전투 시작 버튼 (하단 — NavBar 제거로 80px 여유, 하단 마진 120px)
         var battleBtn   = CreateButton(actionArea, "BattleStartBtn", "전투 시작", BattleBtnC, UIScale.FontLg);
@@ -222,17 +293,116 @@ public static class BattlePanelCreator
                 slotsProp.GetArrayElementAtIndex(i).objectReferenceValue = slots[i];
         }
 
+        var traitsProp = so.FindProperty("_traitIcons");
+        if (traitsProp != null)
+        {
+            traitsProp.arraySize = traitIcons.Length;
+            for (int i = 0; i < traitIcons.Length; i++)
+                traitsProp.GetArrayElementAtIndex(i).objectReferenceValue = traitIcons[i];
+        }
+
         SetObj(so, "_stageText",      stageText);
+        SetObj(so, "_stageTypeText",  stageTypeText);
         SetObj(so, "_progressText",   progressText);
+        SetObj(so, "_progressBar",    progressBarUi);
+        SetObj(so, "_shopIcon",       shopIcon);
+        SetObj(so, "_eventIcon",      eventIcon);
         SetObj(so, "_abilityListBtn", abilityBtn.GetComponent<Button>());
         SetObj(so, "_hireBtn",        hireBtn.GetComponent<Button>());
         SetObj(so, "_hireCostText",   hireCostTmp);
-        SetObj(so, "_relicBtn",        relicBtn.GetComponent<Button>());
         SetObj(so, "_disassembleBtn", disassembleBtn.GetComponent<Button>());
         SetObj(so, "_battleStartBtn", battleBtn.GetComponent<Button>());
         so.ApplyModifiedProperties();
 
         return panel;
+    }
+
+    // ── 특성 아이콘 슬롯 생성 ────────────────────────────────
+
+    public static TraitIconUI BuildTraitIconSlot(GameObject parent, int index)
+    {
+        var go = new GameObject($"TraitSlot_{index}", typeof(RectTransform));
+        go.transform.SetParent(parent.transform, false);
+        var le = go.AddComponent<LayoutElement>();
+        le.minWidth = le.preferredWidth = TraitIconSize;
+
+        var ui = go.AddComponent<TraitIconUI>();
+
+        // 아이콘 버튼 (배경)
+        var btnGo = new GameObject("IconBtn", typeof(RectTransform), typeof(Image), typeof(Button));
+        btnGo.transform.SetParent(go.transform, false);
+        FullStretch(btnGo);
+        btnGo.GetComponent<Image>().color = new Color(0.15f, 0.10f, 0.18f);
+
+        // 아이콘 이미지 (inset)
+        var imgGo = new GameObject("IconImage", typeof(RectTransform), typeof(Image));
+        imgGo.transform.SetParent(btnGo.transform, false);
+        var imgRt = imgGo.GetComponent<RectTransform>();
+        imgRt.anchorMin = new Vector2(0.1f, 0.1f);
+        imgRt.anchorMax = new Vector2(0.9f, 0.9f);
+        imgRt.offsetMin = imgRt.offsetMax = Vector2.zero;
+        var iconImg = imgGo.GetComponent<Image>();
+        iconImg.preserveAspect = true;
+        iconImg.raycastTarget  = false;
+        iconImg.color = new Color(0.25f, 0.25f, 0.38f);
+
+        // 툴팁 패널 (비활성)
+        var tooltipGo = new GameObject("Tooltip", typeof(RectTransform), typeof(Image));
+        tooltipGo.transform.SetParent(go.transform, false);
+        tooltipGo.SetActive(false);
+        tooltipGo.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.12f, 0.96f);
+        {
+            var rt = tooltipGo.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
+            rt.pivot     = new Vector2(0f, 1f);
+            rt.anchoredPosition = new Vector2(0f, -4f);
+            rt.sizeDelta = new Vector2(300f, 0f);
+        }
+        var tvlg = tooltipGo.AddComponent<VerticalLayoutGroup>();
+        tvlg.padding = new RectOffset(10, 10, 10, 10); tvlg.spacing = 4f;
+        tvlg.childControlWidth = tvlg.childControlHeight = true;
+        tvlg.childForceExpandWidth = true; tvlg.childForceExpandHeight = false;
+        var tcsf = tooltipGo.AddComponent<ContentSizeFitter>();
+        tcsf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        var tName = new GameObject("TooltipName", typeof(RectTransform), typeof(TMPro.TextMeshProUGUI));
+        tName.transform.SetParent(tooltipGo.transform, false);
+        var tNameTmp = tName.GetComponent<TMPro.TextMeshProUGUI>();
+        tNameTmp.text = ""; tNameTmp.fontSize = UIScale.FontSm;
+        tNameTmp.fontStyle = FontStyles.Bold; tNameTmp.color = Color.white;
+        tNameTmp.alignment = TMPro.TextAlignmentOptions.Left;
+        tNameTmp.textWrappingMode = TMPro.TextWrappingModes.Normal;
+
+        var tDesc = new GameObject("TooltipDesc", typeof(RectTransform), typeof(TMPro.TextMeshProUGUI));
+        tDesc.transform.SetParent(tooltipGo.transform, false);
+        var tDescTmp = tDesc.GetComponent<TMPro.TextMeshProUGUI>();
+        tDescTmp.text = ""; tDescTmp.fontSize = UIScale.FontSm;
+        tDescTmp.color = new Color(0.55f, 0.57f, 0.72f);
+        tDescTmp.alignment = TMPro.TextAlignmentOptions.Left;
+        tDescTmp.textWrappingMode = TMPro.TextWrappingModes.Normal;
+
+        var tStat = new GameObject("TooltipStat", typeof(RectTransform), typeof(TMPro.TextMeshProUGUI));
+        tStat.transform.SetParent(tooltipGo.transform, false);
+        tStat.SetActive(false);
+        var tStatTmp = tStat.GetComponent<TMPro.TextMeshProUGUI>();
+        tStatTmp.text = ""; tStatTmp.fontSize = UIScale.FontSm;
+        tStatTmp.color = new Color(0.55f, 0.90f, 0.65f);
+        tStatTmp.alignment = TMPro.TextAlignmentOptions.Left;
+        tStatTmp.textWrappingMode = TMPro.TextWrappingModes.Normal;
+
+        // TraitIconUI 필드 연결
+        var tso = new SerializedObject(ui);
+        tso.Update();
+        SetObj(tso, "_iconImage",   iconImg);
+        SetObj(tso, "_iconBtn",     btnGo.GetComponent<Button>());
+        SetObj(tso, "_tooltip",     tooltipGo);
+        SetObj(tso, "_tooltipName", tNameTmp);
+        SetObj(tso, "_tooltipDesc", tDescTmp);
+        SetObj(tso, "_tooltipStat", tStatTmp);
+        tso.ApplyModifiedProperties();
+
+        go.SetActive(false);  // 처음엔 숨김 — RefreshTraitIcons에서 활성화
+        return ui;
     }
 
     // ── 슬롯 구성 ────────────────────────────────────────────
@@ -463,6 +633,104 @@ public static class BattlePanelCreator
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color     = Color.white;
         return go;
+    }
+
+    // ── 스테이지 노드 프리팹 생성 ────────────────────────────
+
+    static StageNodeUI BuildStageNodePrefab()
+    {
+        var go = new GameObject("StageNodeUI", typeof(RectTransform));
+        var le = go.AddComponent<LayoutElement>();
+        le.preferredWidth  = StageNodeUI.NodeSize;
+        le.preferredHeight = StageNodeUI.NodeSize;
+        le.flexibleWidth   = 0f;
+        var nodeUi = go.AddComponent<StageNodeUI>();
+
+        // 배경 이미지 (노드 크기를 채움)
+        var bgGo = new GameObject("Bg", typeof(RectTransform), typeof(Image));
+        bgGo.transform.SetParent(go.transform, false);
+        FullStretch(bgGo);
+        var bgImg = bgGo.GetComponent<Image>();
+        bgImg.color = new Color(0.30f, 0.33f, 0.46f);
+
+        // 스테이지 타입 아이콘 이미지 (내부 80%)
+        var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(Image));
+        iconGo.transform.SetParent(go.transform, false);
+        var iconRt = iconGo.GetComponent<RectTransform>();
+        iconRt.anchorMin = new Vector2(0.10f, 0.10f);
+        iconRt.anchorMax = new Vector2(0.90f, 0.90f);
+        iconRt.offsetMin = iconRt.offsetMax = Vector2.zero;
+        var iconImg = iconGo.GetComponent<Image>();
+        iconImg.preserveAspect = true;
+        iconImg.raycastTarget  = false;
+        iconImg.enabled        = false;   // 아이콘 없을 때 숨김
+
+        // 타입 라벨 (노드 바로 아래)
+        var labelGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+        labelGo.transform.SetParent(go.transform, false);
+        var labelRt = labelGo.GetComponent<RectTransform>();
+        labelRt.anchorMin        = labelRt.anchorMax = new Vector2(0.5f, 0f);
+        labelRt.pivot            = new Vector2(0.5f, 1f);
+        labelRt.anchoredPosition = new Vector2(0f, -4f);
+        labelRt.sizeDelta        = new Vector2(120f, 36f);
+        var labelTmp = labelGo.GetComponent<TextMeshProUGUI>();
+        labelTmp.text          = "";
+        labelTmp.fontSize      = UIScale.FontMd;
+        labelTmp.alignment     = TextAlignmentOptions.Center;
+        labelTmp.color         = new Color(0.55f, 0.58f, 0.70f);
+        labelTmp.raycastTarget = false;
+        labelGo.SetActive(false);
+
+        // ▲ 현재 위치 마커 (노드 바로 위)
+        var markerGo = new GameObject("Marker", typeof(RectTransform), typeof(TextMeshProUGUI));
+        markerGo.transform.SetParent(go.transform, false);
+        var markerRt = markerGo.GetComponent<RectTransform>();
+        markerRt.anchorMin        = markerRt.anchorMax = new Vector2(0.5f, 1f);
+        markerRt.pivot            = new Vector2(0.5f, 0f);
+        markerRt.anchoredPosition = new Vector2(0f, 4f);
+        markerRt.sizeDelta        = new Vector2(52f, 36f);
+        var markerTmp = markerGo.GetComponent<TextMeshProUGUI>();
+        markerTmp.text          = "▲";
+        markerTmp.fontSize      = UIScale.FontMd;
+        markerTmp.alignment     = TextAlignmentOptions.Center;
+        markerTmp.color         = new Color(1.00f, 0.85f, 0.15f);
+        markerTmp.raycastTarget = false;
+        markerGo.SetActive(false);
+
+        // 필드 연결
+        var so = new SerializedObject(nodeUi);
+        so.Update();
+        SetObj(so, "_bg",     bgImg);
+        SetObj(so, "_icon",   iconImg);
+        SetObj(so, "_label",  labelTmp);
+        SetObj(so, "_marker", markerGo);
+        SetObj(so, "_le",     le);
+        so.ApplyModifiedProperties();
+
+        var prefab = PrefabUtility.SaveAsPrefabAsset(go, StageNodePrefabPath);
+        Object.DestroyImmediate(go);
+        AssetDatabase.Refresh();
+        return prefab.GetComponent<StageNodeUI>();
+    }
+
+    static GameObject BuildStageArrowPrefab()
+    {
+        var go = new GameObject("StageArrowUI", typeof(RectTransform), typeof(LayoutElement), typeof(TextMeshProUGUI));
+        var le  = go.GetComponent<LayoutElement>();
+        le.preferredWidth  = 26f;
+        le.preferredHeight = StageNodeUI.NodeSize;
+        le.flexibleWidth   = 0f;
+        var tmp = go.GetComponent<TextMeshProUGUI>();
+        tmp.text          = "▶";
+        tmp.fontSize      = UIScale.FontMd;
+        tmp.alignment     = TextAlignmentOptions.Center;
+        tmp.color         = new Color(0.30f, 0.32f, 0.42f);
+        tmp.raycastTarget = false;
+
+        var prefab = PrefabUtility.SaveAsPrefabAsset(go, StageArrowPrefabPath);
+        Object.DestroyImmediate(go);
+        AssetDatabase.Refresh();
+        return prefab;
     }
 
     // ── RectTransform 헬퍼 ───────────────────────────────────

@@ -25,14 +25,25 @@ public class StageSelectUI : MonoBehaviour
     [SerializeField] DeploySlotUI[] _deploySlots;
 
     [Header("스테이지 정보")]
-    [SerializeField] TextMeshProUGUI _stageText;
-    [SerializeField] TextMeshProUGUI _progressText;
+    [SerializeField] TextMeshProUGUI   _stageText;
+    [SerializeField] TextMeshProUGUI   _progressText;
+    [SerializeField] TextMeshProUGUI   _stageTypeText;     // 현재 스테이지 타입 표시
+
+    [Header("런 진행바")]
+    [SerializeField] StageProgressBarUI _progressBar;
+
+    [Header("특성 아이콘 목록 (빨간 영역)")]
+    [SerializeField] TraitIconUI[]     _traitIcons;        // 보유 특성 표시 아이콘
+
+    [Header("스테이지 타입 아이콘 (우측)")]
+    [SerializeField] GameObject        _shopIcon;          // 상점 스테이지 아이콘
+    [SerializeField] GameObject        _eventIcon;         // 이벤트 스테이지 아이콘
 
     [Header("버튼")]
     [SerializeField] Button          _abilityListBtn;
+    [SerializeField] Button          _relicBtn;
     [SerializeField] Button          _hireBtn;
     [SerializeField] TextMeshProUGUI _hireCostText;
-    [SerializeField] Button          _relicBtn;
     [SerializeField] Button          _disassembleBtn;
     [SerializeField] Button          _battleStartBtn;
 
@@ -58,12 +69,12 @@ public class StageSelectUI : MonoBehaviour
         _abilityListBtn?.onClick.AddListener(() =>
             PopupManager.Instance?.Open<AbilityListPopup>(PopupType.AbilityList));
 
-        _hireBtn?.onClick.RemoveAllListeners();
-        _hireBtn?.onClick.AddListener(() => OpenMercenaryShop());
-
         _relicBtn?.onClick.RemoveAllListeners();
         _relicBtn?.onClick.AddListener(() =>
             GetComponentInParent<LobbyNavUI>()?.Switch(3));
+
+        _hireBtn?.onClick.RemoveAllListeners();
+        _hireBtn?.onClick.AddListener(() => OpenMercenaryShop());
 
         _disassembleBtn?.onClick.RemoveAllListeners();
         _disassembleBtn?.onClick.AddListener(() =>
@@ -71,6 +82,11 @@ public class StageSelectUI : MonoBehaviour
 
         _battleStartBtn?.onClick.RemoveAllListeners();
         _battleStartBtn?.onClick.AddListener(() => LobbyManager.Instance?.StartBattle());
+
+        // 상점 아이콘 → RunShopPopup 직접 오픈
+        _shopIcon?.GetComponent<Button>()?.onClick.RemoveAllListeners();
+        _shopIcon?.GetComponent<Button>()?.onClick.AddListener(() =>
+            PopupManager.Instance?.Open<RunShopPopup>(PopupType.RunShop));
     }
 
     // ── 전체 갱신 ─────────────────────────────────────────────
@@ -80,21 +96,64 @@ public class StageSelectUI : MonoBehaviour
         RefreshStageInfo();
         RefreshSlots();
         RefreshHireBtn();
+        RefreshTraitIcons();
     }
 
     void OnStageChanged(StageData _) => RefreshStageInfo();
 
     void RefreshStageInfo()
     {
-        var progress = UserDataManager.Instance?.Get<StageProgressData>();
-        int cleared  = progress?.ClearedNormalStages ?? 0;
-        int current  = cleared + 1;
-        int maxStage = StageConfig.Current.NormalStageCount;
+        var progress    = UserDataManager.Instance?.Get<StageProgressData>();
+        int stageIndex  = progress?.CurrentRunStage ?? 0;
+        int stageNum    = stageIndex + 1;
+        int maxStage    = StageConfig.Current?.NormalStageCount ?? 30;
+        var stageType   = progress?.CurrentStageType ?? RunStageType.Normal;
 
-        if (_stageText    != null) _stageText.text    = $"스테이지 {current} 도전";
-        if (_progressText != null) _progressText.text = cleared > 0
-            ? $"{cleared} / {maxStage} 스테이지 클리어"
-            : $"0 / {maxStage} 스테이지";
+        if (_stageText    != null) _stageText.text    = $"스테이지 {stageNum} 도전";
+        if (_progressText != null) _progressText.text = $"{stageIndex} / {maxStage} 스테이지";
+        if (_stageTypeText != null)
+        {
+            _stageTypeText.text = stageType switch
+            {
+                RunStageType.Elite => "★ 엘리트",
+                RunStageType.Shop  => "🛒 상점",
+                RunStageType.Event => "? 이벤트",
+                _                  => "일반",
+            };
+        }
+
+        // 런 진행바 갱신
+        var seq = progress?.GetRunSequence();
+        if (_progressBar != null && seq != null && seq.Length > 0)
+            _progressBar.Refresh(seq, stageIndex);
+
+        // 우측 스테이지 타입 아이콘 표시/숨김
+        _shopIcon?.SetActive(stageType == RunStageType.Shop);
+        _eventIcon?.SetActive(stageType == RunStageType.Event);
+
+        // 전투 시작 버튼 텍스트 변경
+        var label = _battleStartBtn?.GetComponentInChildren<TextMeshProUGUI>();
+        if (label != null) label.text = stageType == RunStageType.Shop ? "상점 입장" : "전투 시작";
+    }
+
+    void RefreshTraitIcons()
+    {
+        if (_traitIcons == null) return;
+        var traitData = UserDataManager.Instance?.Get<RunTraitData>();
+        int idx = 0;
+        if (traitData != null)
+        {
+            foreach (var t in traitData.AcquiredTraits)
+            {
+                if (idx >= _traitIcons.Length) break;
+                _traitIcons[idx]?.Setup(t);
+                _traitIcons[idx]?.gameObject.SetActive(true);
+                idx++;
+            }
+        }
+        // 남은 슬롯 숨김
+        for (; idx < _traitIcons.Length; idx++)
+            _traitIcons[idx]?.gameObject.SetActive(false);
     }
 
     void RefreshSlots()
@@ -161,6 +220,6 @@ public class StageSelectUI : MonoBehaviour
     {
         var popup = PopupManager.Instance.Open<HeroDetailPopup>(PopupType.HeroDetail);
         popup.SetOnClose(Refresh);
-        popup.Setup(entry, slot);
+        popup.Setup(entry);
     }
 }

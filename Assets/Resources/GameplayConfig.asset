@@ -13,6 +13,12 @@ MonoBehaviour:
   m_Name: GameplayConfig
   m_EditorClassIdentifier: 
   HireMercenaryCost: 500
+  RelicAcquireCostCommon: 1
+  RelicAcquireCostUncommon: 2
+  RelicAcquireCostRare: 3
+  RelicAcquireCostEpic: 4
+  RelicAcquireCostLegendary: 5
+  RelicLevelUpCostExponent: 2
   EnablePassiveLog: 1
   EnableActiveLog: 1
   EpicSlots: 3
@@ -31,6 +37,15 @@ MonoBehaviour:
   GradeChanceUnique: 0.1
   GradeChanceRare: 0.2
   GradeChanceUncommon: 0.3
+  MainPanelCandidates:
+  - Name: 
+    Grade: 4
+  - Name: 
+    Grade: 4
+  - Name: 
+    Grade: 4
+  - Name: 
+    Grade: 4
   EnemyRange:
     Hp:
       Min: 100

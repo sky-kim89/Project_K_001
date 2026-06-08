@@ -147,7 +147,7 @@ public class EquipComparePopup : PopupBase
             {
                 float val = equip.GetStatValue(e, enhance);
                 sb.Append(loc.Get(e.Stat.ToString())).Append(" +");
-                sb.AppendLine(EquipmentData.FormatStat(e.Stat, val));
+                sb.AppendLine(StatDisplayHelper.FormatStat(e.Stat, val));
             }
             if (equip.TriggerType != EquipmentTrigger.None)
                 sb.AppendLine(EquipmentData.FormatTriggerLine(equip,

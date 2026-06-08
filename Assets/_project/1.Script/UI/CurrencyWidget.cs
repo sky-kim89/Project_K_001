@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
@@ -54,7 +54,7 @@ public class CurrencyWidget : MonoBehaviour
     void ApplyIcon()
     {
         if (_icon == null) return;
-        var sprite = SpriteManager.Instance?.GetItem(_item.IconKey());
+        var sprite = SpriteManager.Instance?.Get(_item.IconKey());
         if (sprite == null) return;
 
         _icon.sprite = sprite;

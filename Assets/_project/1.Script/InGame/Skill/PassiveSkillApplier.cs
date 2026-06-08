@@ -51,6 +51,7 @@ public static class PassiveSkillApplier
         {
             var data = db.Get(passiveType);
             if (data == null) continue;
+            if (data.TriggerType != PassiveTrigger.None) continue;   // 트리거 패시브 스폰 시 적용 금지
 
             // 병사 수만큼 배율을 쌓는 패시브 여부
             bool scaleWithSoldiers = passiveType == PassiveSkillType.SoldierEmpowerGeneral
@@ -108,6 +109,7 @@ public static class PassiveSkillApplier
         {
             var data = db.Get(passiveType);
             if (data == null) continue;
+            if (data.TriggerType != PassiveTrigger.None) continue;   // 트리거 패시브 스폰 시 적용 금지
 
             foreach (var mod in data.StatModifiers)
             {

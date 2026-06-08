@@ -72,7 +72,31 @@ public class LobbyManager : Singleton<LobbyManager>
     void Start()
     {
         _currentIndex = GetLatestAvailableIndex(BattleMode.Normal);
+
+        // 진행바 표시를 위해 런 시퀀스를 OnStageChanged 발화 전에 미리 생성
+        var progress = UserDataManager.Instance?.Get<StageProgressData>();
+        if (progress != null && progress.GetRunSequence().Length == 0)
+        {
+            progress.SetRunSequence(RunSequenceGenerator.Generate());
+            UserDataManager.Instance.RequestSave();
+        }
+
         OnStageChanged?.Invoke(CurrentStage);
+        SelectInitialPanel();
+    }
+
+    // ── 초기 패널 결정 ────────────────────────────────────────
+
+    /// <summary>
+    /// 앱 시작 시 표시할 패널을 결정한다.
+    ///   - RunInProgress = true  → BattlePanel (index 2, 이어하기)
+    ///   - RunInProgress = false → MainPanel   (index 5, 장수 선택)
+    /// </summary>
+    void SelectInitialPanel()
+    {
+        var navUI    = FindObjectOfType<LobbyNavUI>();
+        bool runActive = UserDataManager.Instance?.Get<StageProgressData>()?.RunInProgress ?? false;
+        navUI?.Switch(runActive ? 2 : 5);
     }
 
 #if UNITY_EDITOR
@@ -120,6 +144,17 @@ public class LobbyManager : Singleton<LobbyManager>
     {
         if (_isBattleStarting) return;
 
+        var progress  = UserDataManager.Instance?.Get<StageProgressData>();
+
+        // 런 시퀀스가 없으면 최초 진입 — 시퀀스 생성
+        if (progress != null && (progress.GetRunSequence().Length == 0))
+        {
+            progress.SetRunSequence(RunSequenceGenerator.Generate());
+            UserDataManager.Instance.RequestSave();
+        }
+
+        var stageType = progress?.CurrentStageType ?? RunStageType.Normal;
+
         var stage = CurrentStage;
         if (stage == null)
         {
@@ -127,14 +162,26 @@ public class LobbyManager : Singleton<LobbyManager>
             return;
         }
 
+        // 엘리트 스테이지: 스테이지 데이터에 엘리트 플래그 전달
+        if (stageType == RunStageType.Elite)
+            stage = StageData.AsElite(stage);
+
         _isBattleStarting = true;
         GameSession.Instance.CurrentStage = stage;
-        Debug.Log($"[LobbyManager] 전투 시작 → {stage.DisplayName} (웨이브 {stage.Waves.Count}개)");
+        Debug.Log($"[LobbyManager] 전투 시작 → {stage.DisplayName} [{stageType}] (웨이브 {stage.Waves.Count}개)");
 
         if (ScenePreloader.IsInGameReady)
             StartCoroutine(TransitionToInGame());
         else
             StartCoroutine(LoadInGameFallback());
+    }
+
+    /// <summary>전투 클리어 후 호출. 런 스테이지를 다음으로 진행.</summary>
+    public void AdvanceRunStage()
+    {
+        var progress = UserDataManager.Instance?.Get<StageProgressData>();
+        progress?.AdvanceRunStage();
+        UserDataManager.Instance?.RequestSave();
     }
 
     /// <summary>

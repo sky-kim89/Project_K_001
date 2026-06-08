@@ -151,6 +151,14 @@ public class GameplayConfig : ScriptableObject
     // Normal = 나머지 50%
 
     // ──────────────────────────────────────────────────────────
+    // ■ 메인 패널 후보 장수
+    // ──────────────────────────────────────────────────────────
+
+    [Header("메인 패널 후보 장수 (슬롯 0=Knight · 1=Archer · 2=Mage · 3=ShieldBearer)")]
+    [Tooltip("이름을 비워두면 해당 슬롯은 직업별 랜덤 선택으로 대체됩니다.")]
+    public CandidatePreset[] MainPanelCandidates = new CandidatePreset[4];
+
+    // ──────────────────────────────────────────────────────────
     // ■ 적 스텟 범위
     // ──────────────────────────────────────────────────────────
 
@@ -332,6 +340,16 @@ public struct EnemyGradeStatRange
 
     [Tooltip("고정 크리티컬 데미지 배율 (등급 내 동일)")]
     public float CritDamage;
+}
+
+/// <summary>메인 패널 후보 장수 프리셋 1개.</summary>
+[Serializable]
+public struct CandidatePreset
+{
+    [Tooltip("후보 장수 이름 (직업은 이름 시드로 자동 결정, 비우면 직업별 랜덤)")]
+    public string    Name;
+    [Tooltip("표시 등급 — 이름의 태생 등급보다 낮으면 태생 등급이 유지됩니다")]
+    public UnitGrade Grade;
 }
 
 /// <summary>아군 직업별 스텟 범위.</summary>

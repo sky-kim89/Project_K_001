@@ -14,8 +14,8 @@
 
 public static class PassiveSkillRoller
 {
-    // PassiveSkillType 중 None(0) 을 제외한 최대 인덱스
-    const int PassiveTypeCount = 18;  // 1 ~ 18
+    // PassiveSkillType 중 None(0) 을 제외한 개수 — enum 추가 시 자동 반영
+    static readonly int PassiveTypeCount = System.Enum.GetValues(typeof(PassiveSkillType)).Length - 1;
 
     // ── 공개 API ──────────────────────────────────────────────
 
