@@ -527,4 +527,86 @@ namespace BattleGame.Units
     /// ProcessHitEventsJob 이 이 태그를 확인해 KnockbackVelocity / StunDuration 적용을 건너뛴다.
     /// </summary>
     public struct KnockbackImmuneTag : IComponentData { }
+
+    // ──────────────────────────────────────────
+    // 특성(Trait) 런타임 컴포넌트
+    // ──────────────────────────────────────────
+
+    /// <summary>
+    /// K4 전우의 분노 — 병사 사망마다 장군 MaxHp +1% 누적.
+    /// TraitSoldierRageSystem 이 SoldierDeathEvent 를 읽어 DeathCount 를 증가.
+    /// TraitFinalApplySystem 이 Base[MaxHp] × 0.01 × DeathCount 를 Final[MaxHp] 에 가산.
+    /// </summary>
+    public struct TraitSoldierRageComponent : IComponentData
+    {
+        public int DeathCount;
+    }
+
+    /// <summary>
+    /// K12 영웅의 귀환 — 최초 사망 시 1HP 생존 + 전체 병사 즉시 소환.
+    /// ProcessHitEventsJob 이 사망 직전에 HasActivated=false 이면 발동,
+    /// TraitRuntimeSystem 이 ShouldRespawnSoldiers=true 를 감지해 병사를 소환한다.
+    /// </summary>
+    public struct TraitHeroReturnComponent : IComponentData
+    {
+        public bool HasActivated;
+        public bool ShouldRespawnSoldiers;
+    }
+
+    /// <summary>
+    /// A7 퇴각 사격 — 적이 공격 사거리 절반 이내 접근 시 뒤로 후퇴하며 사격 유지.
+    /// MoveToDestinationJob 이 이 태그를 감지해 후퇴 이동을 적용한다.
+    /// </summary>
+    public struct TraitRetreatFireTag : IComponentData { }
+
+    /// <summary>
+    /// A4 폭우 사격 — 공격이 실제로 타겟에 닿았을 때(OnAttackLanded) 주변 적 2명 스플래시.
+    /// CombatTriggerSystem 이 AttackHitEvent 버퍼를 감지해 TraitRainFireHandler 를 발동한다.
+    /// </summary>
+    public struct TraitRainFireTag : IComponentData { }
+
+    /// <summary>
+    /// 장군의 기본 공격이 실제로 타겟에 닿았을 때 기록되는 이벤트.
+    /// 근거리: MeleeAttackJob(ECB) → 다음 프레임 CombatTriggerSystem 에서 처리.
+    /// 원거리: ProjectileHitJob(ECB) → 다음 프레임 CombatTriggerSystem 에서 처리.
+    /// OnAttackLanded 트리거 핸들러가 이 버퍼를 읽어 동작한다.
+    /// </summary>
+    public struct AttackHitEvent : IBufferElementData
+    {
+        public Entity TargetEntity; // 피격된 주 타겟
+        public float3 TargetPos;    // 착탄 위치 (이펙트 출발점 등에 사용)
+        public float  Damage;       // 가해진 피해량
+    }
+
+    /// <summary>
+    /// S2 반격의 달인 — 방어율로 흡수한 피해만큼 공격자에게 반사.
+    /// ProcessHitEventsJob 이 absorbed 값을 공격자 HitEventBuffer 에 Reflected 로 추가한다.
+    /// </summary>
+    public struct TraitCounterBlowTag : IComponentData { }
+
+    /// <summary>
+    /// S6 분노 축적 — 피격마다 공격력 +3% 누적 (최대 10스택 = +30%).
+    /// ProcessHitEventsJob 이 피해를 받은 프레임에 Stacks 를 증가.
+    /// TraitFinalApplySystem 이 Base[Attack] × 0.03 × Stacks 를 Final[Attack] 에 가산.
+    /// </summary>
+    public struct TraitRageBuildComponent : IComponentData
+    {
+        public int Stacks;
+    }
+
+    /// <summary>
+    /// M_new1 마법 집중 — 일반 공격 성공 시 스킬 쿨타임 1초 감소.
+    /// TraitAttackCdrSystem 이 AttackedThisFrame 감지 후 CooldownRemaining -= 1 적용.
+    /// </summary>
+    public struct TraitAttackCdrTag : IComponentData { }
+
+    /// <summary>
+    /// M_new2 연속 시전 — 스킬 사용 후 쿨타임 없이 1회 즉시 재발동, 재발동 피해 -40%.
+    /// TraitRuntimeSystem 이 SkillUseEvent 를 감지해 에코 발동 상태를 관리한다.
+    /// </summary>
+    public struct TraitEchoSkillComponent : IComponentData
+    {
+        public bool  IsEchoQueued;
+        public float SavedEffectValue;
+    }
 }

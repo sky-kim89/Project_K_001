@@ -45,13 +45,13 @@ public class TraitIconUI : MonoBehaviour
 
     // ── 공개 API ─────────────────────────────────────────────
 
-    public void Setup(TraitType type)
+    public void Setup(TraitType type, bool showStat = true)
     {
         var db   = TraitDatabase.Current;
-        Setup(db?.Get(type));
+        Setup(db?.Get(type), showStat);
     }
 
-    public void Setup(TraitData data)
+    public void Setup(TraitData data, bool showStat = true)
     {
         CloseTooltip();
 
@@ -74,9 +74,16 @@ public class TraitIconUI : MonoBehaviour
 
         if (_tooltipStat != null)
         {
-            string statText = AbilityUIHelper.BuildStatText(data != null ? data.Effects : null);
-            _tooltipStat.text = statText;
-            _tooltipStat.gameObject.SetActive(statText.Length > 0);
+            if (!showStat)
+            {
+                _tooltipStat.gameObject.SetActive(false);
+            }
+            else
+            {
+                string statText = AbilityUIHelper.BuildStatText(data != null ? data.Effects : null);
+                _tooltipStat.text = statText;
+                _tooltipStat.gameObject.SetActive(statText.Length > 0);
+            }
         }
     }
 
@@ -114,6 +121,5 @@ public class TraitIconUI : MonoBehaviour
             CloseTooltip();
         }
     }
-
 
 }

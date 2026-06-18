@@ -26,6 +26,13 @@ public class RunShopGeneralSlot : MonoBehaviour
     int                    _cost;
     Texture2D              _portraitTexture;
 
+    public void SetSoldOut()
+    {
+        if (_soldOut != null) _soldOut.SetActive(true);
+        if (_buyBtn  != null) _buyBtn.interactable = false;
+        if (_cardBtn != null) _cardBtn.interactable = false;
+    }
+
     public void Setup(UnitEntry entry, int cost, Action<UnitEntry, int> onHire)
     {
         _entry = entry; _cost = cost; _onHire = onHire;

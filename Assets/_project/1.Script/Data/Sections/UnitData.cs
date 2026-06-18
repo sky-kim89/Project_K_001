@@ -74,7 +74,7 @@ public class UnitData : ISaveSection
 
     public void SetEquipment(string unitId, int slot, string equipId, int enhanceLevel)
     {
-        if (slot < 0 || slot >= 2) return;
+        if (slot < 0 || slot >= 3) return;
         var entry = GetUnit(unitId);
         if (entry == null) return;
         entry.EnsureEquipArrays();
@@ -115,7 +115,7 @@ public class UnitData : ISaveSection
 
     public void RemoveEquipment(string unitId, int slot)
     {
-        if (slot < 0 || slot >= 2) return;
+        if (slot < 0 || slot >= 3) return;
         var entry = GetUnit(unitId);
         if (entry == null) return;
         entry.EnsureEquipArrays();
@@ -123,13 +123,14 @@ public class UnitData : ISaveSection
         entry.RunEquipEnhance[slot] = 0;
     }
 
-    /// <summary>회귀(런 종료) 시 모든 장군의 런 장비를 초기화.</summary>
+    /// <summary>회귀(런 종료) 시 모든 장군의 런 장비 + 특성 스택을 초기화.</summary>
     public void ClearAllEquipments()
     {
         foreach (var entry in _raw.Units)
         {
-            entry.RunEquipSlots   = new string[2];
-            entry.RunEquipEnhance = new int[2];
+            entry.RunEquipSlots   = new string[3];
+            entry.RunEquipEnhance = new int[3];
+            entry.ResetRunTraitStacks();
         }
     }
 
@@ -225,16 +226,65 @@ public class UnitEntry
     public int SoldierBonus = 0;
 
     // ── 런 장비 슬롯 (회귀 시 초기화) ─────────────────────────
-    /// <summary>슬롯 0~1 장착 중인 장비 ID. 비어있으면 "".</summary>
-    public string[] RunEquipSlots   = new string[2];
+    /// <summary>슬롯 0~2 장착 중인 장비 ID. 비어있으면 "".</summary>
+    public string[] RunEquipSlots   = new string[3];
     /// <summary>슬롯별 강화 레벨 (0 = 미강화).</summary>
-    public int[]    RunEquipEnhance = new int[2];
+    public int[]    RunEquipEnhance = new int[3];
 
     internal void EnsureEquipArrays()
     {
-        if (RunEquipSlots == null || RunEquipSlots.Length < 2)
-            RunEquipSlots = new string[2];
-        if (RunEquipEnhance == null || RunEquipEnhance.Length < 2)
-            RunEquipEnhance = new int[2];
+        if (RunEquipSlots == null || RunEquipSlots.Length < 3)
+        {
+            var prev = RunEquipSlots ?? System.Array.Empty<string>();
+            RunEquipSlots = new string[3];
+            for (int i = 0; i < prev.Length && i < 3; i++)
+                RunEquipSlots[i] = prev[i];
+        }
+        if (RunEquipEnhance == null || RunEquipEnhance.Length < 3)
+        {
+            var prev = RunEquipEnhance ?? System.Array.Empty<int>();
+            RunEquipEnhance = new int[3];
+            for (int i = 0; i < prev.Length && i < 3; i++)
+                RunEquipEnhance[i] = prev[i];
+        }
     }
+
+    // ── 런 특성 스택 (회귀 시 초기화) ───────────────────────────
+    // 이 장군이 런 도중 누적한 특성별 스택 수. TraitStackTrigger 로 쌓임.
+    public List<RunTraitStack> RunTraitStacks = new();
+
+    public int GetTraitStack(TraitType t)
+    {
+        if (RunTraitStacks == null) return 0;
+        var entry = RunTraitStacks.Find(e => (TraitType)e.traitType == t);
+        return entry?.stackCount ?? 0;
+    }
+
+    // delta만큼 스택 증가. maxStacks <= 0 이면 무제한. 실제 증가량 반환.
+    public int IncrementTraitStack(TraitType t, int delta, int maxStacks)
+    {
+        if (RunTraitStacks == null) RunTraitStacks = new();
+        var entry = RunTraitStacks.Find(e => (TraitType)e.traitType == t);
+        if (entry == null)
+        {
+            entry = new RunTraitStack { traitType = (int)t, stackCount = 0 };
+            RunTraitStacks.Add(entry);
+        }
+        int cap    = maxStacks > 0 ? maxStacks : int.MaxValue;
+        int after  = Mathf.Min(entry.stackCount + delta, cap);
+        int actual = after - entry.stackCount;
+        entry.stackCount = after;
+        return actual;
+    }
+
+    internal void ResetRunTraitStacks() => RunTraitStacks?.Clear();
+}
+
+// ── 특성 스택 저장 항목 ──────────────────────────────────────
+
+[Serializable]
+public class RunTraitStack
+{
+    public int traitType;
+    public int stackCount;
 }

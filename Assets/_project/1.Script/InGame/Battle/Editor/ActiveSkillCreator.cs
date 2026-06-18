@@ -42,15 +42,13 @@ public static class ActiveSkillCreator
             id          : ActiveSkillId.HeavyStrike,
             fileName    : "Active_HeavyStrike",
             skillName   : "강타",
-            description : "공격력 300% 단일 타격 + 강한 넉백.",
-            cooldown    : 15f,
+            description : "사정거리 내 적을 즉시 강타. 공격력 300% 단일 타격 + 강한 넉백.",
+            cooldown    : 4f,
             effectValue : 1f,
             radius      : 0f,
             duration    : 0f,
             jobs        : new[] { UnitJob.Knight, UnitJob.ShieldBearer });
         heavyStrike.DamageMultiplier = 3f;
-        heavyStrike.DashSpeed        = 20f;
-        heavyStrike.ReturnSpeed      = 12f;
         heavyStrike.KnockbackMult    = 5f;
         EditorUtility.SetDirty(heavyStrike);
 

@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Collections;
 using BattleGame.Units;
 
@@ -53,14 +53,14 @@ public class ActiveSacrificeSoldier : ActiveSkillData
         if (em.HasComponent<Unity.Transforms.LocalTransform>(sacrifice))
         {
             var tf = em.GetComponentData<Unity.Transforms.LocalTransform>(sacrifice);
-            SkillEffectHelper.SpawnTarget(TargetEffectKey,
+            SkillEffectHelper.Spawn(TargetEffectKey,
                 new UnityEngine.Vector3(tf.Position.x, tf.Position.y, tf.Position.z),
                 EffectDespawnDelay);
         }
 
         // 시전자 흡수 이펙트
         if (ctx.CasterTransform != null)
-            SkillEffectHelper.SpawnCaster(CasterEffectKey, ctx.CasterTransform.position, EffectDespawnDelay);
+            SkillEffectHelper.Spawn(CasterEffectKey, ctx.CasterTransform.position, EffectDespawnDelay);
 
         // ── 병사 공격력 흡수 (시전자에게 버프) ─────────────────
         float soldierAtk = em.GetComponentData<StatComponent>(sacrifice).Final[StatType.Attack];

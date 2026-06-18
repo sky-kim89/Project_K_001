@@ -264,6 +264,7 @@ public class MainPanelUI : MonoBehaviour
 
         deployData.Deploy(selected.UnitName, emptySlot);
         progress.RunInProgress = true;
+        JobSynergyEvaluator.Recalculate();
 
         // 직업 특성 배정
         TraitType jobTrait = UnitJobRoller.GetJob(selected.UnitName) switch

@@ -58,4 +58,22 @@ public class EquipmentDatabase : ScriptableObject
         }
         return pool[^1];
     }
+
+    /// <summary>결정론적 시드 기반 추출 (System.Random 사용).</summary>
+    public EquipmentData PickRandom(int stageLevel, System.Random rng)
+    {
+        var pool = GetDropPool(stageLevel);
+        if (pool.Count == 0) return null;
+
+        float totalWeight = pool.Sum(e => 1f / e.ItemLevel);
+        float roll        = (float)(rng.NextDouble() * totalWeight);
+        float cumulative  = 0f;
+
+        foreach (var equip in pool)
+        {
+            cumulative += 1f / equip.ItemLevel;
+            if (roll <= cumulative) return equip;
+        }
+        return pool[^1];
+    }
 }

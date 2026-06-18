@@ -31,11 +31,14 @@ namespace BattleGame.Units
     {
         // 일반 유닛 기준 반경 — 보스 크기 배율 계산 기준값
         const float ReferenceRadius = 0.5f;
+        // 부채꼴 AoE 반각 (cos 값) — cos(60°) = 0.5 → 총 120° 부채꼴
+        const float ConeCosHalfAngle = 0.5f;
 
         struct BossAttackInfo
         {
             public float3   BossPosition;
             public float3   TargetPosition;
+            public float3   FacingDir;            // 보스 → 타겟 방향 (부채꼴 기준 축)
             public Entity   TargetEntity;
             public float    Damage;
             public float    EffectiveAoeRadius;   // 크기 보정된 AoE 반경
@@ -140,6 +143,7 @@ namespace BattleGame.Units
                     {
                         BossPosition        = transform.Position,
                         TargetPosition      = targetPos,
+                        FacingDir           = math.normalizesafe(targetPos - transform.Position, new float3(-1f, 0f, 0f)),
                         TargetEntity        = attack.TargetEntity,
                         Damage              = damage,
                         EffectiveAoeRadius  = effectiveAoeRadius,
@@ -160,7 +164,7 @@ namespace BattleGame.Units
                 ApplyHit(info.TargetEntity, info.Damage, info.BossPosition, info.TargetPosition,
                          info.KnockbackForce, info.KnockbackDuration);
 
-                // AoE — 미리 수집된 후보 배열을 순회
+                // AoE 부채꼴 — 보스 기준 반경 + 전방 120° 이내 적 타격
                 if (info.EffectiveAoeRadius > 0f)
                 {
                     float sqr       = info.EffectiveAoeRadius * info.EffectiveAoeRadius;
@@ -171,7 +175,13 @@ namespace BattleGame.Units
                         AoeCandidate c = aoeCandidates[j];
                         if (c.Team == info.AttackerTeam) continue;
                         if (c.Entity == info.TargetEntity) continue;
-                        if (math.distancesq(c.Position, info.TargetPosition) > sqr) continue;
+
+                        // 보스 기준 반경 체크
+                        if (math.distancesq(c.Position, info.BossPosition) > sqr) continue;
+
+                        // 부채꼴 각도 체크 — 보스 전방 120° (반각 60°, cos=0.5) 이내만 피격
+                        float3 toC = math.normalizesafe(c.Position - info.BossPosition, float3.zero);
+                        if (math.dot(toC, info.FacingDir) < ConeCosHalfAngle) continue;
 
                         ApplyHit(c.Entity, aoeDamage, info.BossPosition, c.Position,
                                  info.KnockbackForce * 0.7f, info.KnockbackDuration * 0.7f);

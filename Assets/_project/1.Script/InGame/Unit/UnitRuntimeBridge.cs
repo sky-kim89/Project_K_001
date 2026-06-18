@@ -54,6 +54,9 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
     /// <summary>Entity 재사용 시 호출 — 타입 전용 컴포넌트 값을 리셋할 때 오버라이드.</summary>
     protected virtual void OnEntityReset(EntityManager em, Entity entity) { }
 
+    /// <summary>풀 반납(사망 또는 전투 종료) 직전 호출 — 사망 반응이 필요한 특성에서 오버라이드.</summary>
+    public virtual void OnBeforeDespawn() { }
+
     // ── Unity 생명주기 ────────────────────────────────────────
 
     protected virtual void OnEnable()

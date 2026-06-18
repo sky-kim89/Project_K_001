@@ -34,10 +34,12 @@ public static class BattlePanelCreator
     const float SlotGap       = 8f;
     const int   SlotCount     = 5;
     const float HireBtnH      = 80f;
-    const float TraitBarH     = 110f;  // 상단 특성 아이콘 바 높이
-    const float ProgressBarH  = 76f;   // 스테이지 진행바 높이
-    const int   TraitSlotMax  = 8;     // 특성 최대 슬롯 수
-    const float TraitIconSize = 90f;   // 특성 아이콘 크기
+    const float TraitBarH        = 150f;  // 상단 특성 아이콘 바 높이 (2행 × 64px + 여백)
+    const float ProgressBarH    = 76f;   // 스테이지 진행바 높이
+    const int   TraitSlotMax    = 20;    // 일반 특성 슬롯 (1행 × 20열)
+    const int   SynergySlotMax  = 14;   // 시너지 특성 슬롯
+    const float TraitIconSize   = 64f;  // 특성 아이콘 크기
+    const int   TraitColCount   = 20;   // GridLayout 열 수
 
     static readonly Color BgDark      = new Color(0.07f, 0.07f, 0.13f, 1f);
     static readonly Color SlotBgEmpty = new Color(0.12f, 0.12f, 0.20f, 1f);
@@ -114,7 +116,8 @@ public static class BattlePanelCreator
         var actionBg = actionArea.AddComponent<Image>();
         actionBg.color = ActionBg;
 
-        // ── TraitBar (ActionArea 상단 — 빨간 박스 영역) ───────
+        // ── TraitBar (ActionArea 상단) ─────────────────────────
+        // 1행: 일반 특성 / 2행: 직업 시너지 특성
         var traitBar   = MakeGo("TraitBar", actionArea);
         var traitBarRt = traitBar.GetComponent<RectTransform>();
         traitBarRt.anchorMin = new Vector2(0f, 1f);
@@ -123,16 +126,52 @@ public static class BattlePanelCreator
         traitBarRt.offsetMax = Vector2.zero;
         traitBar.AddComponent<Image>().color = new Color(0.10f, 0.06f, 0.10f, 0.95f);
 
-        var traitHlg = traitBar.AddComponent<HorizontalLayoutGroup>();
-        traitHlg.childAlignment        = TextAnchor.MiddleLeft;
-        traitHlg.spacing               = 12f;
-        traitHlg.padding               = new RectOffset(16, 16, 10, 10);
-        traitHlg.childForceExpandWidth  = false;
-        traitHlg.childForceExpandHeight = true;
+        var traitVlg = traitBar.AddComponent<VerticalLayoutGroup>();
+        traitVlg.childAlignment        = TextAnchor.UpperLeft;
+        traitVlg.spacing               = 0f;
+        traitVlg.padding               = new RectOffset(0, 0, 0, 0);
+        traitVlg.childControlWidth     = true;
+        traitVlg.childControlHeight    = false;
+        traitVlg.childForceExpandWidth = true;
+        traitVlg.childForceExpandHeight = false;
+
+        float rowH = TraitBarH / 2f;
+
+        // 1행: 일반 특성
+        var traitRowNormal = MakeGo("TraitRow_Normal", traitBar);
+        traitRowNormal.AddComponent<Image>().color = Color.clear;
+        var normalLe = traitRowNormal.AddComponent<LayoutElement>();
+        normalLe.preferredHeight = rowH;
+        normalLe.minHeight       = rowH;
+        var normalGlg = traitRowNormal.AddComponent<GridLayoutGroup>();
+        normalGlg.childAlignment  = TextAnchor.UpperLeft;
+        normalGlg.cellSize        = new Vector2(TraitIconSize, TraitIconSize);
+        normalGlg.spacing         = new Vector2(6f, 6f);
+        normalGlg.padding         = new RectOffset(8, 8, 4, 4);
+        normalGlg.constraint      = GridLayoutGroup.Constraint.FixedColumnCount;
+        normalGlg.constraintCount = TraitColCount;
 
         var traitIcons = new TraitIconUI[TraitSlotMax];
         for (int i = 0; i < TraitSlotMax; i++)
-            traitIcons[i] = BuildTraitIconSlot(traitBar, i);
+            traitIcons[i] = BuildTraitIconSlot(traitRowNormal, i);
+
+        // 2행: 시너지 특성
+        var traitRowSynergy = MakeGo("TraitRow_Synergy", traitBar);
+        traitRowSynergy.AddComponent<Image>().color = new Color(0.07f, 0.05f, 0.12f, 0.60f);
+        var synergyLe = traitRowSynergy.AddComponent<LayoutElement>();
+        synergyLe.preferredHeight = rowH;
+        synergyLe.minHeight       = rowH;
+        var synergyGlg = traitRowSynergy.AddComponent<GridLayoutGroup>();
+        synergyGlg.childAlignment  = TextAnchor.UpperLeft;
+        synergyGlg.cellSize        = new Vector2(TraitIconSize, TraitIconSize);
+        synergyGlg.spacing         = new Vector2(6f, 6f);
+        synergyGlg.padding         = new RectOffset(8, 8, 4, 4);
+        synergyGlg.constraint      = GridLayoutGroup.Constraint.FixedColumnCount;
+        synergyGlg.constraintCount = TraitColCount;
+
+        var synergyIcons = new TraitIconUI[SynergySlotMax];
+        for (int i = 0; i < SynergySlotMax; i++)
+            synergyIcons[i] = BuildTraitIconSlot(traitRowSynergy, i);
 
         // ── StageTypeIndicator (ActionArea 상단, TraitBar 바로 아래 — 초록 박스) ──
         var progressBarGo = MakeGo("StageProgressBar", actionArea);
@@ -299,6 +338,14 @@ public static class BattlePanelCreator
             traitsProp.arraySize = traitIcons.Length;
             for (int i = 0; i < traitIcons.Length; i++)
                 traitsProp.GetArrayElementAtIndex(i).objectReferenceValue = traitIcons[i];
+        }
+
+        var synergyProp = so.FindProperty("_synergyTraitIcons");
+        if (synergyProp != null)
+        {
+            synergyProp.arraySize = synergyIcons.Length;
+            for (int i = 0; i < synergyIcons.Length; i++)
+                synergyProp.GetArrayElementAtIndex(i).objectReferenceValue = synergyIcons[i];
         }
 
         SetObj(so, "_stageText",      stageText);
@@ -476,6 +523,27 @@ public static class BattlePanelCreator
         emptyCost.alignment = TextAlignmentOptions.Left;
         emptyCost.gameObject.AddComponent<LayoutElement>().preferredWidth = 75f;
 
+        // ── LockedGroup — 슬롯 잠금 표시 ─────────────────────
+        var lockedGo = MakeGo("LockedGroup", go);
+        FullStretch(lockedGo);
+        lockedGo.AddComponent<Image>().color = new Color(0.04f, 0.04f, 0.08f, 0.90f);
+        lockedGo.SetActive(false);
+
+        var lockedVlg = lockedGo.AddComponent<VerticalLayoutGroup>();
+        lockedVlg.childAlignment        = TextAnchor.MiddleCenter;
+        lockedVlg.childForceExpandWidth  = true;
+        lockedVlg.childForceExpandHeight = false;
+        lockedVlg.padding               = new RectOffset(8, 8, 8, 8);
+        lockedVlg.spacing               = 4f;
+
+        var lockTitle = CreateTMP(lockedGo, "LockLabel", "슬롯 잠금", UIScale.FontMd, FontStyles.Bold);
+        lockTitle.color = new Color(0.40f, 0.40f, 0.50f);
+        lockTitle.raycastTarget = false;
+
+        var lockDesc = CreateTMP(lockedGo, "LockDesc", "특성·유물로 슬롯 확장", UIScale.FontSm, FontStyles.Normal);
+        lockDesc.color = new Color(0.30f, 0.30f, 0.38f);
+        lockDesc.raycastTarget = false;
+
         // ── OccupiedGroup = HeroCard 프리팹 구조 ─────────────
         var cardGo = HeroPanelCreator.BuildCardPrefab();
         cardGo.name = "OccupiedGroup";
@@ -511,6 +579,7 @@ public static class BattlePanelCreator
         SetObj(so, "_button",         slotBtn);
         SetObj(so, "_emptyGroup",     emptyGo);
         SetObj(so, "_emptyLabel",     emptyLabel);
+        SetObj(so, "_lockedGroup",    lockedGo);
         SetObj(so, "_occupiedGroup",  cardGo);
         SetObj(so, "_gradeBorder",    FindChild<Image>(cardGo.transform, "GradeBorder"));
         SetObj(so, "_gradeBadge",     FindChild<Image>(cardGo.transform, "GradeBadge"));

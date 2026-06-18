@@ -45,6 +45,7 @@ public static class RelicIconGenerator
         (RelicId.R_ExpBonus,          "relic_r106", RelicRarity.Uncommon),
         (RelicId.R_EnemyHpDown,       "relic_r107", RelicRarity.Rare),
         (RelicId.R_EnemyAtkDown,      "relic_r108", RelicRarity.Rare),
+        (RelicId.R_GeneralSlotExpand, "relic_r109", RelicRarity.Epic),
         (RelicId.R_GeneralHp,         "relic_r201", RelicRarity.Common),
         (RelicId.R_GeneralAtk,        "relic_r202", RelicRarity.Common),
         (RelicId.R_GeneralDef,        "relic_r203", RelicRarity.Common),
@@ -72,6 +73,7 @@ public static class RelicIconGenerator
         {
             DrawR101, DrawR102, DrawR103,
             DrawR104, DrawR105, DrawR106, DrawR107, DrawR108,
+            DrawR109,
             DrawR201, DrawR202, DrawR203, DrawR204, DrawR205,
             DrawR206, DrawR207, DrawR208,
             DrawR211, DrawR212, DrawR213, DrawR214,
@@ -377,6 +379,50 @@ public static class RelicIconGenerator
         p.DrawLine(28, 37, 36, 37, Red, 2);
         p.DrawLine(30, 34, 35, 40, H("FF6644"), 1);
         Border(p, RelicRarity.Rare);
+    }
+
+    // R109 — 출병 명령 (Epic): 장수 슬롯 2개 + 신규 슬롯 (황금 테두리 + +기호)
+    static void DrawR109(P p)
+    {
+        Bg(p, RelicRarity.Epic);
+        Color32 slotBg  = H("221133");
+        Color32 slotBdr = H("8844CC");
+        Color32 newBdr  = H("FFD700");
+        Color32 figHead = H("CC99EE");
+        Color32 figBody = H("9966CC");
+
+        // 슬롯 1 (배치됨)
+        p.FillRRect( 4, 14, 16, 32, 3, slotBg);
+        p.DrawLine( 4, 14, 20, 14, slotBdr, 2);
+        p.DrawLine( 4, 14,  4, 46, slotBdr, 2);
+        p.DrawLine(20, 14, 20, 46, slotBdr, 2);
+        p.DrawLine( 4, 46, 20, 46, slotBdr, 2);
+        p.FillCircle(12, 38, 4, figHead);
+        p.FillRRect( 9, 24, 6, 12, 1, figBody);
+
+        // 슬롯 2 (배치됨)
+        p.FillRRect(24, 14, 16, 32, 3, slotBg);
+        p.DrawLine(24, 14, 40, 14, slotBdr, 2);
+        p.DrawLine(24, 14, 24, 46, slotBdr, 2);
+        p.DrawLine(40, 14, 40, 46, slotBdr, 2);
+        p.DrawLine(24, 46, 40, 46, slotBdr, 2);
+        p.FillCircle(32, 38, 4, figHead);
+        p.FillRRect(29, 24, 6, 12, 1, figBody);
+
+        // 슬롯 3 (신규 — 황금 테두리 + 빛 + +기호)
+        p.FillRRect(44, 14, 16, 32, 3, H("331144"));
+        p.FillCircle(52, 30, 12, new Color32(255, 215, 0, 20));
+        p.DrawLine(44, 14, 60, 14, newBdr, 2);
+        p.DrawLine(44, 14, 44, 46, newBdr, 2);
+        p.DrawLine(60, 14, 60, 46, newBdr, 2);
+        p.DrawLine(44, 46, 60, 46, newBdr, 2);
+        p.FillRRect(48, 29, 8, 2, 0, newBdr);
+        p.FillRRect(51, 26, 2, 8, 0, newBdr);
+
+        // 하단 구분선
+        p.DrawLine(4, 10, 60, 10, H("6633AA"), 1);
+
+        Border(p, RelicRarity.Epic);
     }
 
     // ═══════════════════════════════════════════════════════════

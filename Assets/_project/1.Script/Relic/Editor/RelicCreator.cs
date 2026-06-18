@@ -88,6 +88,10 @@ public static class RelicCreator
             RelicSystemEffect.EnemyMaxHpReduction,  0.05f, false);
         MakeSys(RelicId.R_EnemyAtkDown, "공포의 각인", RelicRarity.Rare, 4,
             RelicSystemEffect.EnemyAttackReduction, 0.04f, false);
+
+        // 장수 배치 슬롯
+        MakeSys(RelicId.R_GeneralSlotExpand, "출병 명령", RelicRarity.Epic, 2,
+            RelicSystemEffect.GeneralSlotBonus, 1f, true);  // Lv1=+1칸, Lv2=+2칸
     }
 
     // ── 장수 스탯 유물 (2xx) ─────────────────────────────────

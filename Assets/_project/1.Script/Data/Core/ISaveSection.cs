@@ -24,6 +24,7 @@ public enum SaveKey
     RelicInventory  = 7,
     Reincarnation   = 8,
     RunTrait        = 9,
+    RunShop         = 10,
 }
 
 public interface ISaveSection

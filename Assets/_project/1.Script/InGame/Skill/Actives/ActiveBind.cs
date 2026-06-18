@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using BattleGame.Units;
 
 // ============================================================
@@ -27,7 +27,7 @@ public class ActiveBind : ActiveSkillData
         if (em.HasComponent<Unity.Transforms.LocalTransform>(target))
         {
             var tf = em.GetComponentData<Unity.Transforms.LocalTransform>(target);
-            SkillEffectHelper.SpawnTarget(TargetEffectKey,
+            SkillEffectHelper.Spawn(TargetEffectKey,
                 new UnityEngine.Vector3(tf.Position.x, tf.Position.y, tf.Position.z),
                 EffectDespawnDelay);
         }

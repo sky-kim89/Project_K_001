@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.Collections;
@@ -56,7 +56,7 @@ public class ActiveShockwave : ActiveSkillData
         float fxScale  = (radius / 3f);   // 프리팹 기준 반경 3
 
         // 사용자 이펙트 (충격파 발사 연출 — 방향·크기 연동)
-        SkillEffectHelper.SpawnCaster(CasterEffectKey,
+        SkillEffectHelper.Spawn(CasterEffectKey,
             new UnityEngine.Vector3(casterPos.x, casterPos.y, casterPos.z),
             EffectDespawnDelay, fxRot, fxScale);
 

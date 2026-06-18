@@ -221,12 +221,14 @@ namespace BattleGame.Projectiles
     {
         ComponentLookup<LocalTransform>  _transformLookup;
         ComponentLookup<HealthComponent> _healthLookup;
+        BufferLookup<AttackHitEvent>     _attackHitLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _transformLookup = state.GetComponentLookup<LocalTransform>(isReadOnly: true);
-            _healthLookup    = state.GetComponentLookup<HealthComponent>(isReadOnly: true);
+            _transformLookup  = state.GetComponentLookup<LocalTransform>(isReadOnly: true);
+            _healthLookup     = state.GetComponentLookup<HealthComponent>(isReadOnly: true);
+            _attackHitLookup  = state.GetBufferLookup<AttackHitEvent>(isReadOnly: true);
         }
 
         [BurstCompile]
@@ -234,15 +236,17 @@ namespace BattleGame.Projectiles
         {
             _transformLookup.Update(ref state);
             _healthLookup.Update(ref state);
+            _attackHitLookup.Update(ref state);
 
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb          = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
             new ProjectileHitJob
             {
-                TransformLookup = _transformLookup,
-                HealthLookup    = _healthLookup,
-                Ecb             = ecb,
+                TransformLookup  = _transformLookup,
+                HealthLookup     = _healthLookup,
+                AttackHitLookup  = _attackHitLookup,
+                Ecb              = ecb,
             }.ScheduleParallel();
         }
     }
@@ -253,6 +257,7 @@ namespace BattleGame.Projectiles
     {
         [ReadOnly] public ComponentLookup<LocalTransform>  TransformLookup;
         [ReadOnly] public ComponentLookup<HealthComponent> HealthLookup;
+        [ReadOnly] public BufferLookup<AttackHitEvent>     AttackHitLookup;
         public EntityCommandBuffer.ParallelWriter          Ecb;
 
         const float HitRadiusSq = 0.5f * 0.5f;  // 타격 판정 반경
@@ -299,6 +304,16 @@ namespace BattleGame.Projectiles
                     AttackerEntity = proj.AttackerEntity,
                 });
             }
+
+            // 발사체 착탄 — OnAttackLanded 트리거용 (ECB → 다음 프레임 CombatTriggerSystem)
+            // 버퍼가 있는 엔티티(장군)에만 append — 병사 원거리 공격은 버퍼 없음
+            if (proj.AttackerEntity != Entity.Null && AttackHitLookup.HasBuffer(proj.AttackerEntity))
+                Ecb.AppendToBuffer(chunkIndex, proj.AttackerEntity, new AttackHitEvent
+                {
+                    TargetEntity = proj.TargetEntity,
+                    TargetPos    = targetPos,
+                    Damage       = proj.Damage,
+                });
 
             // 소멸 요청
             Ecb.AddComponent<ProjectileDestroyTag>(chunkIndex, entity);

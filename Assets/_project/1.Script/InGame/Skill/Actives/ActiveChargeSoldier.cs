@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Transforms;
 using UnityEngine;
 using BattleGame.Units;
@@ -6,16 +6,22 @@ using BattleGame.Units;
 // ============================================================
 //  ActiveChargeSoldier.cs — 돌격 병사 소환 (방패)
 //
-//  장수 후방에 임시 병사 3명을 소환해 전방으로 돌격시킨다.
-//  돌진 경로 위 반경(HitRadius) 안에 있는 적에게
-//  공격력×EffectValue 스킬 피해 + 뒤로 넉백.
-//  ChargeSoldierRunner 가 이동·충돌을 처리한다.
+//  장군 후방에 실제 병사 3명을 소환해 전방으로 돌격시킨다.
+//  돌진 경로 위 반경(HitRadius) 안의 적에게 데미지 + 넉백.
+//  돌진 완료 후 병사는 일반 전투 AI 로 전환해 계속 싸운다.
 // ============================================================
 
 [CreateAssetMenu(fileName = "Active_ChargeSoldier", menuName = "BattleGame/Actives/ChargeSoldier")]
 public class ActiveChargeSoldier : ActiveSkillData
 {
     [Header("돌격 병사 설정")]
+    [Tooltip("소환할 병사 풀 키 (PoolController 에 등록된 키)")]
+    public string SoldierPoolKey = "Soldier";
+
+    [Tooltip("병사 스텟 비율 (장군 스텟 대비). 예: 0.6 → 60%")]
+    [Range(0.1f, 1f)]
+    public float StatRatio = 0.6f;
+
     [Tooltip("돌격 이동 속도 (유닛/초)")]
     public float ChargeSpeed = 18f;
 
@@ -30,16 +36,25 @@ public class ActiveChargeSoldier : ActiveSkillData
 
     public override void Execute(ActiveSkillContext ctx)
     {
+        if (string.IsNullOrEmpty(SoldierPoolKey)) return;
+        if (PoolController.Instance == null) return;
+
         var em = ctx.EntityManager;
         em.CompleteAllTrackedJobs();
 
-        Vector3 casterPos = ctx.CasterTransform != null
-            ? ctx.CasterTransform.position
-            : Vector3.zero;
+        if (!ctx.CasterObject.TryGetComponent<GeneralRuntimeBridge>(out var generalBridge)) return;
+        UnitStat generalStat = generalBridge.GetRolledStat();
+        if (generalStat == null) return;
+
+        if (!em.HasComponent<UnitJobComponent>(ctx.CasterEntity)) return;
+        UnitJob generalJob = em.GetComponentData<UnitJobComponent>(ctx.CasterEntity).Job;
+
+        Vector3 casterPos = ctx.CasterTransform != null ? ctx.CasterTransform.position : Vector3.zero;
 
         // 돌진 방향: 타겟 방향, 없으면 +X (기본 전방)
         Vector3 chargeDir;
-        if (ctx.HasTarget && em.Exists(ctx.TargetEntity))
+        if (ctx.HasTarget && em.Exists(ctx.TargetEntity)
+            && em.HasComponent<LocalTransform>(ctx.TargetEntity))
         {
             var tf  = em.GetComponentData<LocalTransform>(ctx.TargetEntity);
             var raw = new Vector3(tf.Position.x - casterPos.x, tf.Position.y - casterPos.y, 0f);
@@ -50,22 +65,19 @@ public class ActiveChargeSoldier : ActiveSkillData
             chargeDir = Vector3.right;
         }
 
-        // 수직 방향 (2D)
         Vector3 perp = new Vector3(-chargeDir.y, chargeDir.x, 0f);
 
-        float baseDamage = em.GetComponentData<StatComponent>(ctx.CasterEntity).Final[StatType.Attack] * EffectValue;
-        var identity     = em.GetComponentData<UnitIdentityComponent>(ctx.CasterEntity);
+        var identity  = em.GetComponentData<UnitIdentityComponent>(ctx.CasterEntity);
+        float damage  = em.GetComponentData<StatComponent>(ctx.CasterEntity).Final[StatType.Attack] * EffectValue;
+
+        SkillEffectHelper.Spawn(CasterEffectKey, casterPos, EffectDespawnDelay);
 
         var fx = new SkillEffectConfig
         {
-            CasterEffectKey = CasterEffectKey,
             TargetEffectKey = TargetEffectKey,
             BaseEffectKey   = BaseEffectKey,
             DespawnDelay    = EffectDespawnDelay,
         };
-
-        if (ctx.CasterTransform != null)
-            SkillEffectHelper.SpawnCaster(CasterEffectKey, casterPos, EffectDespawnDelay);
 
         // 후방 기준점 + 좌·중·우 3명 배치
         Vector3   behindBase = casterPos - chargeDir * 1.5f;
@@ -74,19 +86,45 @@ public class ActiveChargeSoldier : ActiveSkillData
         for (int i = 0; i < 3; i++)
         {
             Vector3 spawnPos = behindBase + offsets[i];
-            var go           = new GameObject("ChargeSoldier_Temp");
-            go.transform.position = spawnPos;
+
+            SkillEffectHelper.Spawn(BaseEffectKey, spawnPos, EffectDespawnDelay);
+
+            GameObject go = PoolController.Instance.Spawn(
+                PoolType.Unit, SoldierPoolKey, spawnPos, Quaternion.identity);
+
+            if (go == null)
+            {
+                Debug.LogWarning($"[ActiveChargeSoldier] 풀 스폰 실패: '{SoldierPoolKey}'");
+                continue;
+            }
+
+            BattleManager.Instance?.OnUnitSpawned(TeamType.Ally);
+
+            Entity soldierEntity = Entity.Null;
+            if (go.TryGetComponent<SoldierRuntimeBridge>(out var bridge))
+            {
+                bridge.Initialize(SoldierPoolKey, generalStat, StatRatio,
+                    ctx.CasterEntity, generalJob, generalBridge.UnitName, UnitGrade.Normal);
+
+                if (go.TryGetComponent<EntityLink>(out var link))
+                    soldierEntity = link.Entity;
+
+                if (soldierEntity != Entity.Null)
+                    em.AddComponent<SummonedTag>(soldierEntity);
+            }
+
+            // 돌격 제어 — 병사 GO 에 런너 컴포넌트를 부착해 돌진 후 일반 전투로 전환
             var runner = go.AddComponent<ChargeSoldierRunner>();
             runner.Launch(
-                spawnPos:       spawnPos,
                 chargeDir:      chargeDir,
                 chargeSpeed:    ChargeSpeed,
                 hitRadius:      HitRadius,
                 maxDistance:    ChargeDistance,
-                damage:         baseDamage,
+                damage:         damage,
                 knockbackForce: KnockbackForce,
                 casterTeam:     identity.Team,
                 casterEntity:   ctx.CasterEntity,
+                soldierEntity:  soldierEntity,
                 em:             em,
                 fx:             fx);
         }

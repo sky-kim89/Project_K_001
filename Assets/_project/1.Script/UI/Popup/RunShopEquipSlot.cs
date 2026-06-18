@@ -17,6 +17,12 @@ public class RunShopEquipSlot : MonoBehaviour
     EquipmentData              _data;
     int                        _cost;
 
+    public void SetSoldOut()
+    {
+        if (_soldOut != null) _soldOut.SetActive(true);
+        if (_buyBtn  != null) _buyBtn.interactable = false;
+    }
+
     public void Setup(EquipmentData data, int cost, Action<EquipmentData, int> onBuy)
     {
         _data = data; _cost = cost; _onBuy = onBuy;
@@ -46,6 +52,10 @@ public class RunShopEquipSlot : MonoBehaviour
                 var sb  = new System.Text.StringBuilder();
                 foreach (var e in data.StatEntries)
                     sb.AppendLine($"{loc.Get(e.Stat.ToString())}  {StatDisplayHelper.FormatStat(e.Stat, data.GetStatValue(e, 0))}");
+                if (data.TriggerType != EquipmentTrigger.None)
+                    sb.AppendLine(EquipmentData.FormatTriggerLine(data,
+                        loc.Get(data.TriggerType.ToString()),
+                        loc.Get(data.TriggerStat.ToString())));
                 _statText.text = sb.ToString().TrimEnd();
             }
             else _statText.text = "";

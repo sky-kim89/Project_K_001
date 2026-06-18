@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using UnityEngine;
 using BattleGame.Units;
 
@@ -66,7 +66,7 @@ public class ActiveSummonElite : ActiveSkillData
             BattleManager.Instance?.OnUnitSpawned(TeamType.Ally);
 
             // 소환 위치 이펙트
-            SkillEffectHelper.SpawnBase(BaseEffectKey, spawnPos, EffectDespawnDelay);
+            SkillEffectHelper.Spawn(BaseEffectKey, spawnPos, EffectDespawnDelay);
 
             if (go.TryGetComponent<SoldierRuntimeBridge>(out var bridge))
             {

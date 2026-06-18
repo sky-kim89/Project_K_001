@@ -22,15 +22,14 @@ public static class RunShopPopupCreator
     // ── 레이아웃 상수 ─────────────────────────────────────────
     const float TitleH       = 80f;
     const float SecTitleH    = 36f;
-    // EquipBlock 높이: 36(title) + 2×EquipSlotH + 6(gap) + 12(padding) = 694px
+    // TopSection: EquipBlock(좌) | TraitBlock(우), 세로 꽉 참
     const float TopSectionH  = 694f;
     // 외각 여백 (panel VLG padding 좌우/상하)
     const int   OuterPadH    = 10;
     const int   OuterPadV    = 10;
 
-    // 장비 슬롯 고정 사이즈
+    // 장비 슬롯: 너비 고정, 높이는 ContentSizeFitter 자동
     const float EquipSlotW   = 400f;
-    const float EquipSlotH   = 320f;
     const float EquipGridGap = 6f;
     const float EquipGridPad = 6f;
     // EquipBlock 고정폭 = 400×2 + 6 + 12 = 818px
@@ -213,8 +212,11 @@ public static class RunShopPopupCreator
     {
         var go = MakeGo(name, parent, typeof(Image));
         go.GetComponent<Image>().color = SlotEquip;
-        // 고정 사이즈
-        AddLE(go, EquipSlotW, EquipSlotH);
+        // 너비 고정, 높이는 콘텐츠에 따라 자동 (CSF)
+        go.AddComponent<LayoutElement>().preferredWidth = EquipSlotW;
+        var csfSlot = go.AddComponent<ContentSizeFitter>();
+        csfSlot.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+        csfSlot.verticalFit   = ContentSizeFitter.FitMode.PreferredSize;
         var slot = go.AddComponent<RunShopEquipSlot>();
         SetVLG(go, new RectOffset(8, 8, 8, 8), 5f);
 
@@ -257,13 +259,12 @@ public static class RunShopPopupCreator
         // ── 구분선 ────────────────────────────────────────────
         AddDivider(go);
 
-        // ── 스텟 텍스트 (전설 장비 다중 옵션 대응) ───────────
+        // ── 스텟 텍스트 — 줄 넘김 허용, 슬롯 높이가 CSF로 자동 조정됨 ──
         var statTmp = MakeTMP(go, "StatText", "", UIScale.FontSm, FontStyles.Normal);
         statTmp.color = StatC; statTmp.alignment = TextAlignmentOptions.TopLeft;
-        statTmp.textWrappingMode = TextWrappingModes.Normal; statTmp.raycastTarget = false;
-        // 최소 120px 보장 (전설 5줄 대응), 남는 공간 모두 사용
-        var statLe = statTmp.gameObject.AddComponent<LayoutElement>();
-        statLe.minHeight = 120f; statLe.flexibleHeight = 1f;
+        statTmp.textWrappingMode = TextWrappingModes.Normal;
+        statTmp.overflowMode = TextOverflowModes.Overflow;
+        statTmp.raycastTarget = false;
 
         // ── 구매 버튼 (우측 하단, 소형 고정) — 44px로 키움 ──
         var buyRow = MakeGo("BuyRow", go);

@@ -133,11 +133,11 @@ public class AbilityListPopup : PopupBase
         // 등급
         var gradeTmp = go.transform.Find("GradeText")?.GetComponent<TextMeshProUGUI>();
         if (gradeTmp != null)
-        { gradeTmp.text = AbilityUIHelper.GradeLabel(data.Grade); gradeTmp.color = AbilityUIHelper.GradeColor(data.Grade); }
+        { gradeTmp.text = LocalizationManager.Instance.Get(data.Grade.ToString()); gradeTmp.color = AbilityUIHelper.GradeColor(data.Grade); }
 
         // 대상
         var targetTmp = go.transform.Find("TargetText")?.GetComponent<TextMeshProUGUI>();
-        if (targetTmp != null) targetTmp.text = AbilityUIHelper.TargetLabel(data.Target);
+        if (targetTmp != null) targetTmp.text = LocalizationManager.Instance.Get(data.Target.ToString());
 
         // Lv N/MaxN 레벨 뱃지
         var countGo  = go.transform.Find("CountBadge");
@@ -177,9 +177,9 @@ public class AbilityListPopup : PopupBase
 
         if (_infoIcon     != null) { _infoIcon.sprite = d.Icon; _infoIcon.enabled = d.Icon != null; }
         if (_infoGradeBar != null)   _infoGradeBar.color = gc;
-        if (_infoGradeTmp != null) { _infoGradeTmp.text = AbilityUIHelper.GradeLabel(d.Grade); _infoGradeTmp.color = gc; }
+        if (_infoGradeTmp != null) { _infoGradeTmp.text = LocalizationManager.Instance.Get(d.Grade.ToString()); _infoGradeTmp.color = gc; }
         if (_infoNameTmp  != null)   _infoNameTmp.text  = d.AbilityName;
-        if (_infoTargetTmp!= null)   _infoTargetTmp.text = AbilityUIHelper.TargetLabel(d.Target);
+        if (_infoTargetTmp!= null)   _infoTargetTmp.text = LocalizationManager.Instance.Get(d.Target.ToString());
 
         // 기존 스탯 행 제거
         foreach (var r in _infoRows) { if (r) Destroy(r); }
@@ -189,7 +189,7 @@ public class AbilityListPopup : PopupBase
 
         if (d.Grade == AbilityGrade.Special || d.Grade == AbilityGrade.Mastery)
         {
-            AddInfoRow($"<color=#888888>발동 조건</color>  {AbilityUIHelper.TriggerLabel(d.GetTriggerType())}", gc);
+            AddInfoRow($"<color=#888888>발동 조건</color>  {LocalizationManager.Instance.Get(d.GetTriggerType().ToString())}", gc);
             var desc = d.Description;
             if (!string.IsNullOrEmpty(desc))
                 AddInfoRow($"<color=#888888>효과</color>  {desc}", Color.white);
@@ -203,9 +203,9 @@ public class AbilityListPopup : PopupBase
             string LvTag() => lv > 0 ? $"  <color=#aaaaaa>Lv {lv}/{maxLv}</color>" : string.Empty;
             int    mult   = lv > 0 ? lv : 1;
 
-            AddInfoRow($"<color=#888888>{AbilityUIHelper.StatLabel(d.Stat1)}</color>  {AbilityUIHelper.FormatStatValue(d.Stat1, d.Value1 * mult)}{LvTag()}", Color.white);
+            AddInfoRow($"<color=#888888>{LocalizationManager.Instance.Get(d.Stat1.ToString())}</color>  {AbilityUIHelper.FormatStatValue(d.Stat1, d.Value1 * mult)}{LvTag()}", Color.white);
             if (d.HasStat2)
-                AddInfoRow($"<color=#888888>{AbilityUIHelper.StatLabel(d.Stat2)}</color>  {AbilityUIHelper.FormatStatValue(d.Stat2, d.Value2 * mult)}{LvTag()}", Color.white);
+                AddInfoRow($"<color=#888888>{LocalizationManager.Instance.Get(d.Stat2.ToString())}</color>  {AbilityUIHelper.FormatStatValue(d.Stat2, d.Value2 * mult)}{LvTag()}", Color.white);
         }
     }
 
@@ -261,7 +261,7 @@ public class AbilityListPopup : PopupBase
 
         foreach (var (key, total) in sorted)
         {
-            string label   = $"{AbilityUIHelper.StatLabel(key.stat)}({AbilityUIHelper.TargetLabel(key.target)})";
+            string label   = $"{LocalizationManager.Instance.Get(key.stat.ToString())}({LocalizationManager.Instance.Get(key.target.ToString())})";
             string valStr  = AbilityUIHelper.FormatStatValue(key.stat, total);
             var go  = Instantiate(_totalStatTemplate.gameObject, _totalStatContent);
             var tmp = go.GetComponent<TextMeshProUGUI>();

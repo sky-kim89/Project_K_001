@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using BattleGame.Units;
 
 // ============================================================
@@ -25,7 +25,7 @@ public class ActiveIronShield : ActiveSkillData
         float duration = EffectDuration > 0f ? EffectDuration : 8f;
 
         if (ctx.CasterTransform != null)
-            SkillEffectHelper.SpawnCaster(CasterEffectKey, ctx.CasterTransform.position, EffectDespawnDelay);
+            SkillEffectHelper.Spawn(CasterEffectKey, ctx.CasterTransform.position, EffectDespawnDelay);
 
         // 방어율 버프
         em.GetBuffer<StatusEffectBufferElement>(ctx.CasterEntity).Add(new StatusEffectBufferElement

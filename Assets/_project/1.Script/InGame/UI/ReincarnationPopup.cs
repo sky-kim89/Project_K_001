@@ -263,17 +263,35 @@ public class ReincarnationPopup : PopupBase
 
     void OnReincarnate()
     {
-        var reincarData = UserDataManager.Instance?.Get<ReincarnationData>();
-        var runAbility  = UserDataManager.Instance?.Get<RunAbilityData>();
+        var udm = UserDataManager.Instance;
 
+        // 영구 데이터 — 환생 포인트 적립
+        var reincarData = udm?.Get<ReincarnationData>();
         reincarData?.EarnPoints(_earnPoints);
         reincarData?.ResetOnReincarnation();
-        runAbility?.SetDefaults();
 
-        // 환생 후 로비로 복귀 시 MainPanel(장수 선택)으로 이동하도록 런 플래그 해제
-        UserDataManager.Instance?.Get<StageProgressData>()?.SetDefaults();
+        // 런 초기화 — 어빌리티·특성·스테이지 진행
+        udm?.Get<RunAbilityData>()?.SetDefaults();
+        udm?.Get<RunTraitData>()?.SetDefaults();
+        udm?.Get<StageProgressData>()?.SetDefaults();  // RunInProgress=false → MainPanel으로 이동
 
-        UserDataManager.Instance?.RequestSave();
+        // 장수 정보 초기화
+        udm?.Get<UnitData>()?.SetDefaults();
+        udm?.Get<DeploymentData>()?.SetDefaults();
+
+        // 런 장비 인벤토리 초기화 (런 중 획득한 장비는 환생 시 소멸)
+        udm?.Get<EquipInventoryData>()?.SetDefaults();
+
+        // 골드만 0으로 초기화 (젬 등 영구 재화는 유지)
+        var items = udm?.Get<ItemData>();
+        if (items != null)
+        {
+            int gold = items.Get(eItem.Gold);
+            if (gold > 0) items.Spend(eItem.Gold, gold);
+        }
+
+        // SaveAll: 씬 전환 전 즉시 저장 (RequestSave는 다음 프레임 실행 → 씬 전환 시 누락 가능)
+        udm?.SaveAll();
         Close(() => LobbyManager.Instance.ReturnToLobby());
     }
 

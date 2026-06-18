@@ -20,10 +20,10 @@ namespace BattleGame.Units
     [UpdateAfter(typeof(UnitAttackSystem))]
     public partial struct UnitHitSystem : ISystem
     {
-        ComponentLookup<BossComponent>         _bossLookup;
-        ComponentLookup<EliteComponent>        _eliteLookup;
-        ComponentLookup<MirrorArmorComponent>  _mirrorArmorLookup;
-        ComponentLookup<KnockbackImmuneTag>    _knockbackImmuneLookup;
+        ComponentLookup<BossComponent>        _bossLookup;
+        ComponentLookup<EliteComponent>       _eliteLookup;
+        ComponentLookup<MirrorArmorComponent> _mirrorArmorLookup;
+        ComponentLookup<KnockbackImmuneTag>   _knockbackImmuneLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -44,7 +44,7 @@ namespace BattleGame.Units
 
             var cfg = GameplayConfig.Current;
             if (cfg == null) return;
-            
+
             float softCap      = cfg.DefenseMax;
             float overflowRate = cfg.DefenseOverflowRate;
             float effectiveCap = cfg.DefenseEffectiveCap;
@@ -74,7 +74,7 @@ namespace BattleGame.Units
     [WithNone(typeof(DeadTag))]
     public partial struct ProcessHitEventsJob : IJobEntity
     {
-        public EntityCommandBuffer.ParallelWriter         Ecb;
+        public EntityCommandBuffer.ParallelWriter               Ecb;
         [ReadOnly] public ComponentLookup<BossComponent>        BossLookup;
         [ReadOnly] public ComponentLookup<EliteComponent>       EliteLookup;
         [ReadOnly] public ComponentLookup<MirrorArmorComponent> MirrorArmorLookup;
@@ -110,6 +110,8 @@ namespace BattleGame.Units
             bool  hasMirror   = MirrorArmorLookup.HasComponent(entity);
             float mirrorRatio = hasMirror ? MirrorArmorLookup[entity].ReflectRatio : 0f;
 
+            bool hasSkillKnockback = false;
+
             for (int i = 0; i < hitBuffer.Length; i++)
             {
                 HitEventBufferElement hit = hitBuffer[i];
@@ -123,12 +125,12 @@ namespace BattleGame.Units
 
                 if (hit.Type == HitType.Skill)
                 {
-                    // 스킬 직접 넉백 — HitDirection에 이미 힘이 담겨 있으므로 그대로 누적
                     totalKnockback += hit.HitDirection;
+                    if (math.lengthsq(hit.HitDirection) > 0f)
+                        hasSkillKnockback = true;
                 }
                 else
                 {
-                    // 일반/반사 공격 — 수백 마리 누적 방지: 프레임 내 최대 단일 타격만 적용
                     float kbMag = math.min(actualDamage * 0.05f, 6f);
                     if (kbMag > maxNormalKbMag)
                     {
@@ -151,22 +153,26 @@ namespace BattleGame.Units
                     });
                 }
 
-                // 통계 결과 기록 (BattleStatCollectorSystem 이 매 프레임 읽어 귀속)
                 resultBuffer.Add(new DamageResultElement
                 {
                     AttackerEntity = hit.AttackerEntity,
                     ActualDamage   = actualDamage,
                     AbsorbedDamage = absorbed,
-                    IsKill         = false,   // 사망 여부는 HP 판정 후 업데이트
+                    IsKill         = false,
                     Type           = hit.Type,
                 });
             }
 
             totalKnockback   += maxNormalKbVec;
+
+            // 스킬 넉백이 있으면 KnockbackJob이 적용할 수 있도록 최소 경직 시간 보장
+            // (KnockbackJob은 IsStunned=true 일 때만 KnockbackVelocity를 적용함)
+            if (hasSkillKnockback)
+                maxStun = math.max(maxStun, 0.3f);
+
             health.CurrentHp -= totalDamage;
             hitBuffer.Clear();
 
-            // ── 피격 플래시 요청 (스턴 여부와 무관하게 데미지가 발생하면 항상) ──
             hitReaction.NeedsFlash = true;
 
             // ── 사망 판정 ──

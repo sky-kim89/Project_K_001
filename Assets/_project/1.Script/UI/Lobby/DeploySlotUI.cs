@@ -21,6 +21,9 @@ public class DeploySlotUI : MonoBehaviour
     [SerializeField] GameObject      _emptyGroup;
     [SerializeField] TextMeshProUGUI _emptyLabel;
 
+    [Header("잠금 슬롯")]
+    [SerializeField] GameObject _lockedGroup;
+
     [Header("점유 슬롯")]
     [SerializeField] GameObject           _occupiedGroup;
     [SerializeField] Image                _gradeBorder;
@@ -45,7 +48,7 @@ public class DeploySlotUI : MonoBehaviour
 
     // ── 공개 API ─────────────────────────────────────────────
 
-    public void Setup(int slotIndex, Action onEmpty, Action<UnitEntry, int> onOccupied)
+    public void Setup(int slotIndex, bool locked, Action onEmpty, Action<UnitEntry, int> onOccupied)
     {
         _slotIndex  = slotIndex;
         _onEmpty    = onEmpty;
@@ -54,6 +57,17 @@ public class DeploySlotUI : MonoBehaviour
         _button?.onClick.RemoveAllListeners();
         _button?.onClick.AddListener(OnClicked);
 
+        if (locked)
+        {
+            if (_lockedGroup   != null) _lockedGroup  .SetActive(true);
+            if (_emptyGroup    != null) _emptyGroup   .SetActive(false);
+            if (_occupiedGroup != null) _occupiedGroup.SetActive(false);
+            if (_button        != null) _button.interactable = false;
+            return;
+        }
+
+        if (_lockedGroup != null) _lockedGroup.SetActive(false);
+        if (_button      != null) _button.interactable = true;
         Refresh();
     }
 

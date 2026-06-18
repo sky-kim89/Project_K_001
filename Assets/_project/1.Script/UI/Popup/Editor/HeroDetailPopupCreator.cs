@@ -623,6 +623,20 @@ public static class HeroDetailPopupCreator
         SetObj(so, "_equip1EnhanceCostText", enhCost1);
         SetObj(so, "_equip1EnhanceCostIcon", enhIcon1);
 
+        var (btn2, name2, bar2, icon2, stat2, lock2, enh2, enhCost2, enhIcon2) =
+            BuildEquipSlot(panel, "EquipSlot2", 364f, 165f);
+        btn2?.gameObject.SetActive(false); // 특성으로 잠금해제 전까지 숨김
+        SetObj(so, "_equip2SlotGo",          btn2?.gameObject);
+        SetObj(so, "_equip2Btn",             btn2);
+        SetObj(so, "_equip2NameText",        name2);
+        SetObj(so, "_equip2GradeBar",        bar2);
+        SetObj(so, "_equip2Icon",            icon2);
+        SetObj(so, "_equip2StatText",        stat2);
+        SetObj(so, "_equip2LockBadge",       lock2);
+        SetObj(so, "_equip2EnhanceBtn",      enh2);
+        SetObj(so, "_equip2EnhanceCostText", enhCost2);
+        SetObj(so, "_equip2EnhanceCostIcon", enhIcon2);
+
         return panel;
     }
 

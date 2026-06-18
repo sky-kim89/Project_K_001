@@ -721,16 +721,17 @@ public class HeroPanelUI : MonoBehaviour
         float passiveVal = _statResult?.GetPassive(row.Type)  ?? 0f;
         float abilityVal = _statResult?.GetAbility(row.Type)  ?? 0f;
         float relicVal   = _statResult?.GetRelic(row.Type)    ?? 0f;
-        float total      = baseVal + equipVal + passiveVal + abilityVal + relicVal;
+        float traitVal   = _statResult?.GetTrait(row.Type)    ?? 0f;
+        float total      = baseVal + equipVal + passiveVal + abilityVal + relicVal + traitVal;
         bool  expanded   = index == _expandedStatIndex;
-        bool  hasBonus   = equipVal != 0f || passiveVal != 0f || abilityVal != 0f || relicVal != 0f;
+        bool  hasBonus   = equipVal != 0f || passiveVal != 0f || abilityVal != 0f || relicVal != 0f || traitVal != 0f;
 
         if (expanded && hasBonus)
         {
-            // 합계 숨기고 합산 과정만 표시: "기본  +장비  +패시브  +어빌리티  +유물"
+            // 합계 숨기고 합산 과정만 표시: "기본  +장비  +패시브  +어빌리티  +유물  +특성"
             row.ValueTmp.overflowMode     = TextOverflowModes.Overflow;
             row.ValueTmp.textWrappingMode = TextWrappingModes.NoWrap;
-            row.ValueTmp.text = StatDisplayHelper.BuildBreakdown(row.Type, baseVal, equipVal, passiveVal, abilityVal, relicVal);
+            row.ValueTmp.text = StatDisplayHelper.BuildBreakdown(row.Type, baseVal, equipVal, passiveVal, abilityVal, relicVal, traitVal);
             if (row.LayoutEl != null) row.LayoutEl.preferredHeight = 50f;
         }
         else

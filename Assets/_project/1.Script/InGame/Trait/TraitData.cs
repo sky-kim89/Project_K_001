@@ -30,6 +30,14 @@ public class TraitData : ScriptableObject
     [Header("효과")]
     public TraitStatEntry[] Effects = Array.Empty<TraitStatEntry>();
 
+    [Header("누적 스택 보너스")]
+    [Tooltip("스택을 쌓는 트리거. None = 스택 없음.")]
+    public PassiveTrigger StackTrigger;
+    [Tooltip("최대 스택 수. 0 = 무제한.")]
+    public int MaxStacks;
+    [Tooltip("스택 1개당 적용되는 스탯 보너스.")]
+    public TraitStatEntry[] StackStatBonuses = Array.Empty<TraitStatEntry>();
+
     // ── 단일 스탯 수정자 ─────────────────────────────────────
 
     [Serializable]

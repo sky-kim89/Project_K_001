@@ -82,16 +82,24 @@ public class LobbyManager : Singleton<LobbyManager>
         }
 
         OnStageChanged?.Invoke(CurrentStage);
-        SelectInitialPanel();
+        StartCoroutine(SelectInitialPanelNextFrame());
     }
 
     // ── 초기 패널 결정 ────────────────────────────────────────
 
     /// <summary>
-    /// 앱 시작 시 표시할 패널을 결정한다.
+    /// 표시할 패널을 결정한다.
     ///   - RunInProgress = true  → BattlePanel (index 2, 이어하기)
     ///   - RunInProgress = false → MainPanel   (index 5, 장수 선택)
+    /// LobbyNavUI.Start()가 같은 프레임에 Switch(_defaultTab)을 호출하므로
+    /// 한 프레임 뒤에 실행해 덮어씌워지지 않도록 한다.
     /// </summary>
+    IEnumerator SelectInitialPanelNextFrame()
+    {
+        yield return null;
+        SelectInitialPanel();
+    }
+
     void SelectInitialPanel()
     {
         var navUI    = FindObjectOfType<LobbyNavUI>();
@@ -181,6 +189,7 @@ public class LobbyManager : Singleton<LobbyManager>
     {
         var progress = UserDataManager.Instance?.Get<StageProgressData>();
         progress?.AdvanceRunStage();
+        UserDataManager.Instance?.Get<RunShopData>()?.NewStage();
         UserDataManager.Instance?.RequestSave();
     }
 
@@ -197,7 +206,14 @@ public class LobbyManager : Singleton<LobbyManager>
         var ids = UserDataManager.Instance.Get<EquipInventoryData>().OwnedIds;
         Debug.Log($"[LobbyManager] 장비 인벤토리 ({ids.Count}개): {string.Join(", ", ids)}");
 
+        SceneManager.sceneLoaded += OnLobbySceneLoaded;
         SceneManager.LoadScene(_lobbySceneName);
+    }
+
+    void OnLobbySceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        SceneManager.sceneLoaded -= OnLobbySceneLoaded;
+        StartCoroutine(SelectInitialPanelNextFrame());
     }
 
     // ── InGame 씬 전환 코루틴 ─────────────────────────────────

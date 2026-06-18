@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
 using BattleGame.Units;
@@ -80,7 +80,7 @@ public class ActiveSummonSkeleton : ActiveSkillData
             Vector3 spawnPos = spawnPositions[i];
 
             // 사망 위치에 이펙트
-            SkillEffectHelper.SpawnBase(BaseEffectKey, spawnPos, EffectDespawnDelay);
+            SkillEffectHelper.Spawn(BaseEffectKey, spawnPos, EffectDespawnDelay);
 
             GameObject go = PoolController.Instance.Spawn(
                 PoolType.Unit, SkeletonPoolKey, spawnPos, Quaternion.identity);

@@ -102,14 +102,16 @@ namespace BattleGame.Units
             }.ScheduleParallel();
 
             // ③ 목적지 이동 ────────────────────────────────────────
-            var bossLookup = SystemAPI.GetComponentLookup<BossComponent>(isReadOnly: true);
+            var bossLookup         = SystemAPI.GetComponentLookup<BossComponent>(isReadOnly: true);
+            var retreatFireLookup  = SystemAPI.GetComponentLookup<TraitRetreatFireTag>(isReadOnly: true);
             new MoveToDestinationJob
             {
-                DeltaTime        = deltaTime,
-                AllyDefeated     = allyDefeated,
-                EnemyDefeated    = enemyDefeated,
-                AnyEnemyOnScreen = anyEnemyOnScreen,
-                BossLookup       = bossLookup,
+                DeltaTime          = deltaTime,
+                AllyDefeated       = allyDefeated,
+                EnemyDefeated      = enemyDefeated,
+                AnyEnemyOnScreen   = anyEnemyOnScreen,
+                BossLookup         = bossLookup,
+                RetreatFireLookup  = retreatFireLookup,
             }.ScheduleParallel();
 
             // ④ 넉백 ─────────────────────────────────────────────
@@ -215,7 +217,8 @@ namespace BattleGame.Units
         public bool  AllyDefeated;
         public bool  EnemyDefeated;
         public bool  AnyEnemyOnScreen;
-        [ReadOnly] public ComponentLookup<BossComponent> BossLookup;
+        [ReadOnly] public ComponentLookup<BossComponent>       BossLookup;
+        [ReadOnly] public ComponentLookup<TraitRetreatFireTag> RetreatFireLookup;
 
         public void Execute(
             Entity                     entity,
@@ -273,6 +276,20 @@ namespace BattleGame.Units
                 {
                     if (attack.AttackCooldown > 0f)
                     {
+                        // A7 퇴각 사격: 타겟이 사거리 절반 이내면 후퇴 이동 (공격 상태 유지)
+                        if (RetreatFireLookup.HasComponent(entity))
+                        {
+                            float r     = stat.Final[StatType.AttackRange];
+                            float halfSq = r * r * 0.25f;
+                            if (math.distancesq(transform.Position, attack.TargetPosition) < halfSq)
+                            {
+                                float3 retreatDir   = math.normalizesafe(transform.Position - attack.TargetPosition);
+                                movement.Velocity   = retreatDir * stat.Final[StatType.MoveSpeed];
+                                transform.Position += movement.Velocity * DeltaTime;
+                                movement.IsMoving   = true;
+                                return;
+                            }
+                        }
                         movement.Velocity = float3.zero;
                         movement.IsMoving = false;
                         return;

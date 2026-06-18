@@ -547,7 +547,7 @@ public static class MainPanelCreator
         var tipNameGo = new GameObject("TooltipName", typeof(RectTransform), typeof(TextMeshProUGUI));
         tipNameGo.transform.SetParent(tooltipGo.transform, false);
         var tipName = tipNameGo.GetComponent<TextMeshProUGUI>();
-        tipName.text = ""; tipName.fontSize = UIScale.FontSm;
+        tipName.text = ""; tipName.fontSize = UIScale.FontSm * 1.2f;
         tipName.fontStyle = FontStyles.Bold; tipName.color = Color.white;
         tipName.alignment = TextAlignmentOptions.Left; tipName.raycastTarget = false;
         tipName.textWrappingMode = TextWrappingModes.Normal;
@@ -556,7 +556,7 @@ public static class MainPanelCreator
         var tipDescGo = new GameObject("TooltipDesc", typeof(RectTransform), typeof(TextMeshProUGUI));
         tipDescGo.transform.SetParent(tooltipGo.transform, false);
         var tipDesc = tipDescGo.GetComponent<TextMeshProUGUI>();
-        tipDesc.text = ""; tipDesc.fontSize = UIScale.FontSm;
+        tipDesc.text = ""; tipDesc.fontSize = UIScale.FontSm * 1.2f;
         tipDesc.fontStyle = FontStyles.Normal; tipDesc.color = Muted;
         tipDesc.alignment = TextAlignmentOptions.Left; tipDesc.raycastTarget = false;
         tipDesc.textWrappingMode = TextWrappingModes.Normal;
@@ -566,7 +566,7 @@ public static class MainPanelCreator
         tipStatGo.transform.SetParent(tooltipGo.transform, false);
         tipStatGo.SetActive(false);
         var tipStat = tipStatGo.GetComponent<TextMeshProUGUI>();
-        tipStat.text = ""; tipStat.fontSize = UIScale.FontSm;
+        tipStat.text = ""; tipStat.fontSize = UIScale.FontSm * 1.2f;
         tipStat.fontStyle = FontStyles.Normal;
         tipStat.color = new Color(0.55f, 0.90f, 0.65f); // 연한 초록
         tipStat.alignment = TextAlignmentOptions.Left; tipStat.raycastTarget = false;

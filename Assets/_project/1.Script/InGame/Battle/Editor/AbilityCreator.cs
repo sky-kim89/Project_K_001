@@ -214,7 +214,7 @@ public static class AbilityCreator
 
         // C02 — 철갑 반응 (OnHit)
         var c02 = MakeSpecial<AbilityArmorReaction>(AbilityId.C02, "Ability_C02", "철갑 반응");
-        c02.DefenseBuff = 0.01f;
+        c02.DefenseBuff = 0.001f;
         EditorUtility.SetDirty(c02);
 
         // C03 — 처치 연쇄 (OnEnemyKill)

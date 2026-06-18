@@ -11,12 +11,14 @@ using UnityEngine;
 //    Soft, Slash, Spark, Smoke, Ring, Flame, Snowflake,
 //    Cross, Star, Diamond, Rune, Poison, Arrow, Line
 //  [신규 6종]
-//    Lightning — 지그재그 번개 볼트 + 가지
-//    Crystal   — 6각 크리스탈 + 내부 패싯
-//    Spiral    — 2아암 아르키메데스 나선
-//    Wisp      — 영혼 눈물방울 + 꼬리
-//    Petal     — 자연 꽃잎 (기울임)
-//    Shard     — 각진 파편 (회전 마름모)
+//    Lightning    — 지그재그 번개 볼트 + 가지
+//    Crystal      — 6각 크리스탈 + 내부 패싯
+//    Spiral       — 2아암 아르키메데스 나선
+//    Wisp         — 영혼 눈물방울 + 꼬리
+//    Petal        — 자연 꽃잎 (기울임)
+//    Shard        — 각진 파편 (회전 마름모)
+//  [추가 1종]
+//    ElectricBeam — LineRenderer 전용 전기 빔 (지그재그 코어 + 글로우 + 가지)
 // ============================================================
 
 public static class EffectTextureGenerator
@@ -48,12 +50,15 @@ public static class EffectTextureGenerator
         SavePng("TX_FX_Line",      GenLine());
 
         // ── 신규 6종 ───────────────────────────────────────────
-        SavePng("TX_FX_Lightning", GenLightning());
-        SavePng("TX_FX_Crystal",   GenCrystal());
-        SavePng("TX_FX_Spiral",    GenSpiral());
-        SavePng("TX_FX_Wisp",      GenWisp());
-        SavePng("TX_FX_Petal",     GenPetal());
-        SavePng("TX_FX_Shard",     GenShard());
+        SavePng("TX_FX_Lightning",    GenLightning());
+        SavePng("TX_FX_Crystal",      GenCrystal());
+        SavePng("TX_FX_Spiral",       GenSpiral());
+        SavePng("TX_FX_Wisp",         GenWisp());
+        SavePng("TX_FX_Petal",        GenPetal());
+        SavePng("TX_FX_Shard",        GenShard());
+
+        // ── 추가 1종 ───────────────────────────────────────────
+        SavePng("TX_FX_ElectricBeam", GenElectricBeam());
 
         AssetDatabase.Refresh();
         ConfigureTextureImports();
@@ -76,16 +81,19 @@ public static class EffectTextureGenerator
         MakeMat("MAT_FX_Line_Add",      "TX_FX_Line",      additive: true);
 
         // ── 신규 6종 머티리얼 ──────────────────────────────────
-        MakeMat("MAT_FX_Lightning_Add", "TX_FX_Lightning", additive: true);
-        MakeMat("MAT_FX_Crystal_Add",   "TX_FX_Crystal",   additive: true);
-        MakeMat("MAT_FX_Spiral_Add",    "TX_FX_Spiral",    additive: true);
-        MakeMat("MAT_FX_Wisp_Add",      "TX_FX_Wisp",      additive: true);
-        MakeMat("MAT_FX_Petal_Add",     "TX_FX_Petal",     additive: true);
-        MakeMat("MAT_FX_Shard_Add",     "TX_FX_Shard",     additive: true);
+        MakeMat("MAT_FX_Lightning_Add",    "TX_FX_Lightning",    additive: true);
+        MakeMat("MAT_FX_Crystal_Add",      "TX_FX_Crystal",      additive: true);
+        MakeMat("MAT_FX_Spiral_Add",       "TX_FX_Spiral",       additive: true);
+        MakeMat("MAT_FX_Wisp_Add",         "TX_FX_Wisp",         additive: true);
+        MakeMat("MAT_FX_Petal_Add",        "TX_FX_Petal",        additive: true);
+        MakeMat("MAT_FX_Shard_Add",        "TX_FX_Shard",        additive: true);
+
+        // ── 추가 1종 머티리얼 ──────────────────────────────────
+        MakeMat("MAT_FX_ElectricBeam_Add", "TX_FX_ElectricBeam", additive: true);
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("[EffectTextureGenerator] ✓ 20 textures + 21 materials generated.");
+        Debug.Log("[EffectTextureGenerator] ✓ 21 textures + 22 materials generated.");
     }
 
     // ── 공통 헬퍼 ───────────────────────────────────────────────────
@@ -403,6 +411,27 @@ public static class EffectTextureGenerator
         return body > 0.12f ? Mathf.Pow(body, 0.65f) : body;
     });
 
+    // LineRenderer 전용 전기 빔 (지그재그 코어 + 글로우 + 가지)
+    // cx = 선의 길이 방향(-0.5~0.5), cy = 선의 폭 방향 (-0.5~0.5, 중앙=0 이 코어)
+    static Texture2D GenElectricBeam() => BuildTex((cx, cy) =>
+    {
+        // 주 선: sin 두 개를 합성해 자연스러운 지그재그 중심선
+        float jitter = Mathf.Sin(cx * 52f) * 0.028f + Mathf.Sin(cx * 21f + 1.3f) * 0.013f;
+        float d = Mathf.Abs(cy - jitter);
+
+        float core  = Mathf.Max(0f, 1f - d / 0.016f);   // 날카로운 백색 코어
+        float inner = Mathf.Exp(-d * 32f) * 0.78f;       // 내부 글로우
+        float outer = Mathf.Exp(-d * 11f) * 0.38f;       // 외부 확산 글로우
+
+        // 가지: 메인 선에서 갈라지는 작은 전기 가지
+        float branchCenter = jitter * 2.2f + Mathf.Sin(cx * 78f + 1.9f) * 0.016f;
+        float branchD      = Mathf.Abs(cy - branchCenter);
+        float branchMask   = Mathf.Max(0f, Mathf.Sin(cx * 14f + 0.7f));
+        float branch       = Mathf.Exp(-branchD * 55f) * 0.28f * branchMask;
+
+        return Mathf.Clamp01(core + inner + outer + branch);
+    });
+
     // ── 텍스처 임포트 설정 ──────────────────────────────────────────────
 
     static readonly string[] kTexNames =
@@ -413,6 +442,7 @@ public static class EffectTextureGenerator
         "TX_FX_Arrow", "TX_FX_Line",
         "TX_FX_Lightning", "TX_FX_Crystal", "TX_FX_Spiral",
         "TX_FX_Wisp", "TX_FX_Petal", "TX_FX_Shard",
+        "TX_FX_ElectricBeam",
     };
 
     static void ConfigureTextureImports()

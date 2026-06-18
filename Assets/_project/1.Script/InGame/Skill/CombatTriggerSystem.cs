@@ -1,4 +1,5 @@
 using Unity.Entities;
+using Unity.Transforms;
 using UnityEngine;
 using BattleGame.Units;
 
@@ -19,6 +20,17 @@ namespace BattleGame.Units
     [UpdateBefore(typeof(UnitHitSystem))]
     public partial class CombatTriggerSystem : SystemBase
     {
+        EntityQuery _enemyQuery;
+
+        protected override void OnCreate()
+        {
+            _enemyQuery = GetEntityQuery(new EntityQueryDesc
+            {
+                All  = new ComponentType[] { ComponentType.ReadOnly<UnitIdentityComponent>(), ComponentType.ReadOnly<LocalTransform>() },
+                None = new ComponentType[] { typeof(DeadTag) },
+            });
+        }
+
         protected override void OnUpdate()
         {
             foreach (var (attack, health, entity) in
@@ -30,28 +42,31 @@ namespace BattleGame.Units
                 var trigSet = EntityManager.GetComponentObject<GeneralTriggerSetComponent>(entity);
                 if (trigSet == null) continue;
 
-                var hitBuf   = EntityManager.GetBuffer<HitEventBufferElement>(entity);
-                var killBuf  = EntityManager.GetBuffer<EnemyKillEvent>(entity);
-                var deathBuf = EntityManager.GetBuffer<SoldierDeathEvent>(entity);
-                var skillBuf = EntityManager.GetBuffer<SkillUseEvent>(entity);
+                var hitBuf       = EntityManager.GetBuffer<HitEventBufferElement>(entity);
+                var killBuf      = EntityManager.GetBuffer<EnemyKillEvent>(entity);
+                var deathBuf     = EntityManager.GetBuffer<SoldierDeathEvent>(entity);
+                var skillBuf     = EntityManager.GetBuffer<SkillUseEvent>(entity);
+                var attackHitBuf = EntityManager.GetBuffer<AttackHitEvent>(entity);
 
                 var ctx = new PassiveTriggerContext
                 {
                     GeneralEntity     = entity,
                     EntityManager     = EntityManager,
+                    EnemyQuery        = _enemyQuery,
                     Health            = health.ValueRO,
                     DamageDealt       = attack.ValueRO.LastDamageDealt,
                     SoldierDeathCount = deathBuf.Length,
                 };
 
-                bool doAttack       = attack.ValueRO.AttackedThisFrame;
-                bool doHit          = hitBuf.Length   > 0;
-                bool doKill         = killBuf.Length  > 0;
-                bool doSoldierDeath = deathBuf.Length > 0;
-                bool doSkill        = skillBuf.Length > 0;
+                bool doAttack        = attack.ValueRO.AttackedThisFrame;
+                bool doHit           = hitBuf.Length       > 0;
+                bool doKill          = killBuf.Length       > 0;
+                bool doSoldierDeath  = deathBuf.Length      > 0;
+                bool doSkill         = skillBuf.Length      > 0;
+                bool doAttackLanded  = attackHitBuf.Length  > 0;
 
                 // ── 장비 트리거 디스패치 ─────────────────────────
-                for (int s = 0; s < 2; s++)
+                for (int s = 0; s < trigSet.ActiveEquipSlots; s++)
                 {
                     var equip   = trigSet.EquipSlots[s];
                     int enhance = trigSet.EnhanceLevels[s];
@@ -80,16 +95,38 @@ namespace BattleGame.Units
 
                     bool fire = pt switch
                     {
-                        PassiveTrigger.OnAttack       => doAttack,
-                        PassiveTrigger.OnHit          => doHit,
-                        PassiveTrigger.OnEnemyKill    => doKill,
-                        PassiveTrigger.OnSoldierDeath => doSoldierDeath,
-                        PassiveTrigger.OnSkillUse     => doSkill,
-                        _                             => false,
+                        PassiveTrigger.OnAttack        => doAttack,
+                        PassiveTrigger.OnHit           => doHit,
+                        PassiveTrigger.OnEnemyKill     => doKill,
+                        PassiveTrigger.OnSoldierDeath  => doSoldierDeath,
+                        PassiveTrigger.OnSkillUse      => doSkill,
+                        PassiveTrigger.OnAttackLanded  => doAttackLanded,
+                        _                              => false,
                     };
                     if (!fire) continue;
                     ability.OnTrigger(ctx);
                 }
+
+                // ── 특성 트리거 디스패치 ──────────────────────────
+                foreach (var handler in trigSet.TraitTriggers)
+                {
+                    if (handler == null) continue;
+                    bool fire = handler.GetTriggerType() switch
+                    {
+                        PassiveTrigger.OnAttack        => doAttack,
+                        PassiveTrigger.OnHit           => doHit,
+                        PassiveTrigger.OnEnemyKill     => doKill,
+                        PassiveTrigger.OnSoldierDeath  => doSoldierDeath,
+                        PassiveTrigger.OnSkillUse      => doSkill,
+                        PassiveTrigger.OnAttackLanded  => doAttackLanded,
+                        _                              => false,
+                    };
+                    if (!fire) continue;
+                    handler.OnTrigger(ctx);
+                }
+
+                // OnAttackLanded 이벤트는 이 프레임에서 소비하고 클리어
+                if (doAttackLanded) attackHitBuf.Clear();
             }
         }
 

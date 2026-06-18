@@ -556,15 +556,24 @@ public static class PopupPrefabCreator
     }
 
     // ── AbilitySelectPopup ────────────────────────────────────
+    // 카드 최대 5장을 스크롤 없이 한 번에 표시.
+    // 팝업 너비는 5장 기준으로 고정; 3장 이하일 때는 HLG MiddleCenter 가 중앙 정렬.
 
     [MenuItem("Tools/Project K/Popup/Create AbilitySelectPopup Prefab")]
     static void CreateAbilitySelectPopup()
     {
-        const float popupW       = 920f;
-        const float popupH       = 840f;   // 새로고침 행 추가로 높이 증가
+        const int   maxCards     = 5;
         const float cardW        = 272f;
         const float cardH        = 580f;
+        const float cardSpacing  = 16f;
+        const float cardPadding  = 8f;   // HLG left+right 합계
+        const float sideMargin   = 40f;
         const float refreshRowH  = 64f;
+        const float popupH       = 840f;
+
+        // 팝업 너비 = 5장 전체 콘텐츠 + 좌우 여백
+        float contentW = maxCards * cardW + (maxCards - 1) * cardSpacing + cardPadding;
+        float popupW   = contentW + sideMargin;   // 1472f
 
         var root  = CreateRoot<AbilitySelectPopup>("AbilitySelectPopup", popupW, popupH);
         var popup = root.GetComponent<AbilitySelectPopup>();
@@ -573,13 +582,13 @@ public static class PopupPrefabCreator
 
         // 제목
         var titleTmp = AddTMP(root, "TitleText", "어빌리티 선택", UIScale.FontLg, FontStyles.Bold);
-        SetRect(titleTmp.rectTransform, new Vector2(0f, popupH / 2f - 60f), new Vector2(800f, 70f));
+        SetRect(titleTmp.rectTransform, new Vector2(0f, popupH / 2f - 60f), new Vector2(popupW - 80f, 70f));
 
         // ── 새로고침 행 ───────────────────────────────────────
         var refreshRow = new GameObject("RefreshRow", typeof(RectTransform));
         refreshRow.transform.SetParent(root.transform, false);
         SetRect(refreshRow.GetComponent<RectTransform>(),
-            new Vector2(0f, popupH / 2f - 130f), new Vector2(popupW - 40f, refreshRowH));
+            new Vector2(0f, popupH / 2f - 130f), new Vector2(contentW, refreshRowH));
 
         var refreshBtn = AddButton(refreshRow, "RefreshBtn", "새로고침",
             new Color(0.15f, 0.40f, 0.55f), UIScale.FontSm);
@@ -591,58 +600,32 @@ public static class PopupPrefabCreator
         refreshCountTmp.alignment = TextAlignmentOptions.Left;
         SetRect(refreshCountTmp.rectTransform, new Vector2(130f, 0f), new Vector2(380f, refreshRowH));
 
-        // ── 카드 스크롤뷰 (4~5장 초과 시 수평 스크롤) ─────────
-        var cardScroll = new GameObject("CardScrollView",
-            typeof(RectTransform), typeof(Image), typeof(ScrollRect));
-        cardScroll.transform.SetParent(root.transform, false);
-        cardScroll.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0f);
-        SetRect(cardScroll.GetComponent<RectTransform>(),
-            new Vector2(0f, -60f), new Vector2(popupW - 40f, cardH));
-
-        var cardVp = new GameObject("Viewport",
-            typeof(RectTransform), typeof(Image), typeof(Mask));
-        cardVp.transform.SetParent(cardScroll.transform, false);
-        cardVp.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.01f);
-        cardVp.GetComponent<Mask>().showMaskGraphic = false;
-        var cardVpRt = cardVp.GetComponent<RectTransform>();
-        cardVpRt.anchorMin = Vector2.zero; cardVpRt.anchorMax = Vector2.one;
-        cardVpRt.offsetMin = cardVpRt.offsetMax = Vector2.zero;
-
-        // 중앙 앵커 — 3장: 뷰포트 안에서 자동 가운데 정렬 / 4~5장: 좌우 스크롤
+        // ── 카드 영역 (스크롤 없음, 최대 5장 한 번에 표시) ────
         var cardArea = new GameObject("CardArea", typeof(RectTransform));
-        cardArea.transform.SetParent(cardVp.transform, false);
+        cardArea.transform.SetParent(root.transform, false);
         var cardAreaRt = cardArea.GetComponent<RectTransform>();
-        cardAreaRt.anchorMin        = new Vector2(0.5f, 0f);
-        cardAreaRt.anchorMax        = new Vector2(0.5f, 1f);
+        cardAreaRt.anchorMin        = new Vector2(0.5f, 0.5f);
+        cardAreaRt.anchorMax        = new Vector2(0.5f, 0.5f);
         cardAreaRt.pivot            = new Vector2(0.5f, 0.5f);
-        cardAreaRt.anchoredPosition = Vector2.zero;
-        cardAreaRt.sizeDelta        = new Vector2(0f, 0f);
+        cardAreaRt.anchoredPosition = new Vector2(0f, -60f);
+        cardAreaRt.sizeDelta        = new Vector2(contentW, cardH);
+
         var hlg = cardArea.AddComponent<HorizontalLayoutGroup>();
-        hlg.spacing              = 16f;
-        hlg.childAlignment       = TextAnchor.MiddleCenter;
-        hlg.childControlWidth    = false;
-        hlg.childControlHeight   = false;
+        hlg.spacing               = cardSpacing;
+        hlg.childAlignment        = TextAnchor.MiddleCenter;
+        hlg.childControlWidth     = false;
+        hlg.childControlHeight    = false;
         hlg.childForceExpandWidth  = false;
         hlg.childForceExpandHeight = false;
-        hlg.padding              = new RectOffset(4, 4, 0, 0);
-        cardArea.AddComponent<ContentSizeFitter>().horizontalFit =
-            ContentSizeFitter.FitMode.PreferredSize;
+        hlg.padding               = new RectOffset(4, 4, 0, 0);
 
-        var cardScrollRect = cardScroll.GetComponent<ScrollRect>();
-        cardScrollRect.horizontal   = true;
-        cardScrollRect.vertical     = false;
-        cardScrollRect.movementType = ScrollRect.MovementType.Elastic;
-        cardScrollRect.viewport     = cardVpRt;
-        cardScrollRect.content      = cardAreaRt;
-
-        // 카드 3장 생성
-        var cards = new AbilityCardUI[3];
-        for (int i = 0; i < 3; i++)
+        // 카드 5장 생성
+        var cards = new AbilityCardUI[maxCards];
+        for (int i = 0; i < maxCards; i++)
         {
-            var card = BuildAbilityCard($"Card{i}", cardW, cardH);
+            var card   = BuildAbilityCard($"Card{i}", cardW, cardH);
             card.transform.SetParent(cardArea.transform, false);
-            var cardRt = card.GetComponent<RectTransform>();
-            cardRt.sizeDelta = new Vector2(cardW, cardH);
+            card.GetComponent<RectTransform>().sizeDelta = new Vector2(cardW, cardH);
             cards[i] = card.GetComponent<AbilityCardUI>();
         }
 
@@ -654,8 +637,8 @@ public static class PopupPrefabCreator
         SetObj (so, "_refreshCountTmp", refreshCountTmp);
 
         var cardsProp = so.FindProperty("_cards");
-        cardsProp.arraySize = 3;
-        for (int i = 0; i < 3; i++)
+        cardsProp.arraySize = maxCards;
+        for (int i = 0; i < maxCards; i++)
             cardsProp.GetArrayElementAtIndex(i).objectReferenceValue = cards[i];
 
         so.ApplyModifiedProperties();
@@ -725,14 +708,16 @@ public static class PopupPrefabCreator
         div.GetComponent<Image>().color = new Color(0.30f, 0.30f, 0.38f, 0.80f);
         SetRect(div.GetComponent<RectTransform>(), new Vector2(0f, iconTopY - iconSz / 2f - 134f), new Vector2(w - 32f, 2f));
 
-        // 스탯 설명 텍스트
+        // 스탯 설명 텍스트 (높이 160 — Special/Mastery 긴 설명 수용)
         var descTmp = AddCardTMP(card, "DescTmp", "+0%", UIScale.FontSm, FontStyles.Normal);
-        SetRect(descTmp.rectTransform, new Vector2(0f, iconTopY - iconSz / 2f - 188f), new Vector2(w - 24f, 80f));
+        SetRect(descTmp.rectTransform, new Vector2(0f, iconTopY - iconSz / 2f - 228f), new Vector2(w - 24f, 160f));
         descTmp.color = new Color(0.85f, 0.85f, 0.90f);
+        descTmp.alignment = TextAlignmentOptions.Top;
+        descTmp.textWrappingMode = TextWrappingModes.Normal;
 
         // 레벨 텍스트 (descTmp 아래, MaxLevel>1 어빌리티에만 표시)
         var levelTmp = AddCardTMP(card, "LevelTmp", "Lv 1/3", UIScale.FontSm - 2f, FontStyles.Normal);
-        SetRect(levelTmp.rectTransform, new Vector2(0f, iconTopY - iconSz / 2f - 254f), new Vector2(w - 24f, 36f));
+        SetRect(levelTmp.rectTransform, new Vector2(0f, iconTopY - iconSz / 2f - 334f), new Vector2(w - 24f, 36f));
         levelTmp.color = new Color(0.55f, 0.80f, 1.00f);
         levelTmp.gameObject.SetActive(false);
 
@@ -778,7 +763,7 @@ public static class PopupPrefabCreator
         const float popupH   = 1060f;  // 1080p 화면에 맞게 (헤더·아이콘 잘림 방지)
         const float headerH  = 100f;
         const float leftW    = 360f;
-        const float detailH  = 420f;   // body=870 → detailH 420 + totalBox 450
+        const float detailH  = 560f;   // body=960 → detailH 560 + totalBox 400
 
         var root  = CreateRoot<AbilityListPopup>("AbilityListPopup", popupW, popupH);
         var popup = root.GetComponent<AbilityListPopup>();
@@ -874,19 +859,38 @@ public static class PopupPrefabCreator
         ddRt.pivot = new Vector2(0.5f, 1f);
         ddRt.anchoredPosition = new Vector2(0f, -divY); ddRt.sizeDelta = new Vector2(-20f, 1f);
 
-        // InfoStatContent (VLG + CSF, 나머지 공간 채움)
+        // InfoStatScrollView (ScrollRect — 긴 설명 텍스트 스크롤 지원)
         float statY = divY + 8f;
+        var infoStatScroll = new GameObject("InfoStatScrollView", typeof(RectTransform), typeof(ScrollRect));
+        infoStatScroll.transform.SetParent(detailBox.transform, false);
+        var issRt = infoStatScroll.GetComponent<RectTransform>();
+        issRt.anchorMin = Vector2.zero; issRt.anchorMax = Vector2.one;
+        issRt.offsetMin = new Vector2(10f, 0f); issRt.offsetMax = new Vector2(-10f, -statY);
+
+        var infoStatVp = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(Mask));
+        infoStatVp.transform.SetParent(infoStatScroll.transform, false);
+        infoStatVp.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.01f);
+        infoStatVp.GetComponent<Mask>().showMaskGraphic = false;
+        var isvpRt = infoStatVp.GetComponent<RectTransform>();
+        isvpRt.anchorMin = Vector2.zero; isvpRt.anchorMax = Vector2.one;
+        isvpRt.offsetMin = isvpRt.offsetMax = Vector2.zero;
+
         var infoStatContent = new GameObject("InfoStatContent",
             typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
-        infoStatContent.transform.SetParent(detailBox.transform, false);
+        infoStatContent.transform.SetParent(infoStatVp.transform, false);
         var iscRt = infoStatContent.GetComponent<RectTransform>();
-        iscRt.anchorMin = Vector2.zero; iscRt.anchorMax = Vector2.one;
-        iscRt.offsetMin = new Vector2(10f, 0f); iscRt.offsetMax = new Vector2(-10f, -statY);
+        iscRt.anchorMin = new Vector2(0f, 1f); iscRt.anchorMax = new Vector2(1f, 1f);
+        iscRt.pivot = new Vector2(0.5f, 1f); iscRt.offsetMin = iscRt.offsetMax = Vector2.zero;
         var iscVlg = infoStatContent.GetComponent<VerticalLayoutGroup>();
-        iscVlg.padding = new RectOffset(0, 0, 4, 4); iscVlg.spacing = 6f;
+        iscVlg.padding = new RectOffset(4, 4, 4, 4); iscVlg.spacing = 6f;
         iscVlg.childControlWidth = true; iscVlg.childForceExpandWidth = true;
-        iscVlg.childControlHeight = false; iscVlg.childForceExpandHeight = false;
+        iscVlg.childControlHeight = true; iscVlg.childForceExpandHeight = false;
         infoStatContent.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        var isScrollRect = infoStatScroll.GetComponent<ScrollRect>();
+        isScrollRect.content = iscRt; isScrollRect.viewport = isvpRt;
+        isScrollRect.horizontal = false; isScrollRect.vertical = true;
+        isScrollRect.movementType = ScrollRect.MovementType.Elastic;
 
         // InfoStatTemplate (팝업 루트에 배치, 비활성)
         var infoStatRow = new GameObject("InfoStatTemplate", typeof(RectTransform), typeof(TextMeshProUGUI));
@@ -894,7 +898,7 @@ public static class PopupPrefabCreator
         var infoRowTmp = infoStatRow.GetComponent<TextMeshProUGUI>();
         infoRowTmp.text = "<color=#AAAAAA>스탯</color>  +0%";
         infoRowTmp.fontSize = UIScale.FontSm; infoRowTmp.alignment = TextAlignmentOptions.Left;
-        infoRowTmp.color = Color.white;
+        infoRowTmp.color = Color.white; infoRowTmp.textWrappingMode = TextWrappingModes.Normal;
         infoStatRow.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, UIScale.FontSm + 10f);
         infoStatRow.SetActive(false);
 

@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Collections;
 using Unity.Mathematics;
 using BattleGame.Units;
@@ -67,7 +67,7 @@ public class ActiveHealAura : ActiveSkillData
 
         // ── 이펙트 (타겟 장군 위치) ──────────────────────────────
         if (ctx.CasterTransform != null)
-            SkillEffectHelper.SpawnCaster(CasterEffectKey, ctx.CasterTransform.position, EffectDespawnDelay);
+            SkillEffectHelper.Spawn(CasterEffectKey, ctx.CasterTransform.position, EffectDespawnDelay);
 
         // ── 장군 치유 ─────────────────────────────────────────────
         HealUnit(em, targetGeneral, ctx.CasterEntity);

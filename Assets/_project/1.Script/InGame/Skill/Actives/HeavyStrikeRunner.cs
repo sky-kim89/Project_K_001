@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
@@ -54,19 +54,24 @@ public class HeavyStrikeRunner : MonoBehaviour
         float           attackRange,
         SkillEffectConfig fx)
     {
-        Vector3 originPos = casterTransform.position;
+        Vector3    originPos  = casterTransform.position;
+        EntityLink entityLink = casterTransform.GetComponent<EntityLink>();
 
         // ── ① 출발 이펙트 ─────────────────────────────────────
-        SkillEffectHelper.SpawnBase(fx.BaseEffectKey, casterTransform.position, fx.DespawnDelay);
+        SkillEffectHelper.Spawn(fx.BaseEffectKey, casterTransform.position, fx.DespawnDelay);
 
-        // ── ② 돌진 ────────────────────────────────────────────
+        // ── ② 돌진 — EntityLink ECS 위치 덮어쓰기 중단 ─────────
+        // EntityLink.LateUpdate() 가 매 프레임 ECS LocalTransform → transform 을 덮어쓰므로
+        // 돌진 중 SyncPosition=false 로 전환해야 coroutine 이 transform 을 직접 제어할 수 있다.
+        if (entityLink != null) entityLink.SyncPosition = false;
         yield return MoveToward(casterTransform, targetPos, dashSpeed, stopDistance: attackRange);
 
         // ── ③ 타격 + 임팩트 이펙트 ───────────────────────────
         Vector3 hitPos = casterTransform.position;
-        SkillEffectHelper.SpawnCaster(fx.CasterEffectKey, hitPos, fx.DespawnDelay);
-        SkillEffectHelper.SpawnTarget(fx.TargetEffectKey, targetPos, fx.DespawnDelay);
+        SkillEffectHelper.Spawn(fx.CasterEffectKey, hitPos, fx.DespawnDelay);
+        SkillEffectHelper.Spawn(fx.TargetEffectKey, targetPos, fx.DespawnDelay);
 
+        em.CompleteAllTrackedJobs();
         if (em.Exists(targetEntity) && em.HasBuffer<HitEventBufferElement>(targetEntity))
         {
             float  damage  = casterStat.Final[StatType.Attack] * damageMultiplier;
@@ -83,6 +88,9 @@ public class HeavyStrikeRunner : MonoBehaviour
 
         // ── ④ 복귀 ────────────────────────────────────────────
         yield return MoveToward(casterTransform, originPos, returnSpeed, stopDistance: 0.1f);
+
+        // ── ⑤ ECS 위치 동기화 재개 ─────────────────────────────
+        if (entityLink != null) entityLink.SyncPosition = true;
 
         _current = null;
     }

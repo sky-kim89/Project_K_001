@@ -29,15 +29,15 @@ public class AbilityCardUI : MonoBehaviour
 
         if (_gradeTmp != null)
         {
-            _gradeTmp.text  = AbilityUIHelper.GradeLabel(data.Grade);
+            _gradeTmp.text  = LocalizationManager.Instance.Get(data.Grade.ToString());
             _gradeTmp.color = gradeColor;
         }
 
         if (_nameTmp   != null) _nameTmp.text   = data.AbilityName;
         if (_targetTmp != null)
             _targetTmp.text = (data.Grade == AbilityGrade.Special || data.Grade == AbilityGrade.Mastery)
-                ? $"발동: {AbilityUIHelper.TriggerLabel(data.GetTriggerType())}"
-                : AbilityUIHelper.TargetLabel(data.Target);
+                ? $"발동: {LocalizationManager.Instance.Get(data.GetTriggerType().ToString())}"
+                : LocalizationManager.Instance.Get(data.Target.ToString());
         if (_descTmp   != null) _descTmp.text   = BuildDesc(data);
 
         // 레벨 표시 — MaxLevel > 1 인 어빌리티만 (Normal/Advanced)
@@ -72,8 +72,8 @@ public class AbilityCardUI : MonoBehaviour
         if (data.Grade == AbilityGrade.Special || data.Grade == AbilityGrade.Mastery)
             return data.Description;
 
-        string d = $"{AbilityUIHelper.StatLabel(data.Stat1)} {AbilityUIHelper.FormatStatValue(data.Stat1, data.Value1)}";
-        if (data.HasStat2) d += $"\n{AbilityUIHelper.StatLabel(data.Stat2)} {AbilityUIHelper.FormatStatValue(data.Stat2, data.Value2)}";
+        string d = $"{LocalizationManager.Instance.Get(data.Stat1.ToString())} {AbilityUIHelper.FormatStatValue(data.Stat1, data.Value1)}";
+        if (data.HasStat2) d += $"\n{LocalizationManager.Instance.Get(data.Stat2.ToString())} {AbilityUIHelper.FormatStatValue(data.Stat2, data.Value2)}";
         return d;
     }
 }

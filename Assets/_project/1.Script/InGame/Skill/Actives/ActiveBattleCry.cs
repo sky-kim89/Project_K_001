@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.Collections;
@@ -29,7 +29,7 @@ public class ActiveBattleCry : ActiveSkillData
         float3 center      = new float3(casterTf.Position.x, casterTf.Position.y, 0f);
 
         // 사용자 이펙트 (함성 연출)
-        SkillEffectHelper.SpawnCaster(CasterEffectKey,
+        SkillEffectHelper.Spawn(CasterEffectKey,
             new UnityEngine.Vector3(casterTf.Position.x, casterTf.Position.y, casterTf.Position.z),
             EffectDespawnDelay);
 

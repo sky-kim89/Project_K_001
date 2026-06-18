@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -9,16 +9,21 @@ using BattleGame.Units;
 // ============================================================
 //  ChargeSoldierRunner.cs — 돌격 병사 이동·충돌 처리기
 //
+//  실제 병사 GO 에 AddComponent 로 부착되어 돌격 시퀀스를 제어한다.
+//
 //  ■ 동작 순서
-//    1. 스폰 위치에서 BaseEffect 재생
+//    1. EntityLink.SyncPosition = false — 돌진 중 MonoBehaviour 가 위치 직접 제어
 //    2. chargeDir 방향으로 chargeSpeed 로 이동
-//    3. 매 프레임 hitRadius 안의 적에게 스킬 피해 + 넉백 (적 1체당 1회)
-//    4. maxDistance 도달 시 자기 자신(GO) 파괴
+//    3. 매 프레임 ECS LocalTransform 을 GO 위치로 동기화 (UnitMovementSystem 덮어씀)
+//    4. hitRadius 내 적에게 데미지 + 넉백 (적 1체당 1회)
+//    5. maxDistance 도달 시 ECS 위치 최종 동기화 → SyncPosition 복원
+//       → 병사는 일반 전투 AI 로 전환, 이 컴포넌트만 제거
 // ============================================================
 
 public class ChargeSoldierRunner : MonoBehaviour
 {
     EntityQuery _query;
+    Entity      _soldierEntity;
 
     void OnDestroy()
     {
@@ -27,18 +32,20 @@ public class ChargeSoldierRunner : MonoBehaviour
     }
 
     public void Launch(
-        Vector3           spawnPos,
-        Vector3           chargeDir,
-        float             chargeSpeed,
-        float             hitRadius,
-        float             maxDistance,
-        float             damage,
-        float             knockbackForce,
-        TeamType          casterTeam,
-        Entity            casterEntity,
-        EntityManager     em,
+        Vector3       chargeDir,
+        float         chargeSpeed,
+        float         hitRadius,
+        float         maxDistance,
+        float         damage,
+        float         knockbackForce,
+        TeamType      casterTeam,
+        Entity        casterEntity,
+        Entity        soldierEntity,
+        EntityManager em,
         SkillEffectConfig fx)
     {
+        _soldierEntity = soldierEntity;
+
         _query = em.CreateEntityQuery(new EntityQueryDesc
         {
             All  = new ComponentType[]
@@ -49,26 +56,27 @@ public class ChargeSoldierRunner : MonoBehaviour
             None = new ComponentType[] { typeof(DeadTag) },
         });
 
+        // 돌진 중 EntityLink 가 ECS 위치를 GO 에 덮어쓰지 않도록 중단
+        if (TryGetComponent<EntityLink>(out var link))
+            link.SyncPosition = false;
+
         StartCoroutine(Sequence(
-            spawnPos, chargeDir, chargeSpeed, hitRadius, maxDistance,
+            chargeDir, chargeSpeed, hitRadius, maxDistance,
             damage, knockbackForce, casterTeam, casterEntity, em, fx));
     }
 
     IEnumerator Sequence(
-        Vector3           startPos,
-        Vector3           chargeDir,
-        float             chargeSpeed,
-        float             hitRadius,
-        float             maxDistance,
-        float             damage,
-        float             knockbackForce,
-        TeamType          casterTeam,
-        Entity            casterEntity,
-        EntityManager     em,
+        Vector3       chargeDir,
+        float         chargeSpeed,
+        float         hitRadius,
+        float         maxDistance,
+        float         damage,
+        float         knockbackForce,
+        TeamType      casterTeam,
+        Entity        casterEntity,
+        EntityManager em,
         SkillEffectConfig fx)
     {
-        SkillEffectHelper.SpawnBase(fx.BaseEffectKey, startPos, fx.DespawnDelay);
-
         var   hitSet    = new HashSet<Entity>();
         float traveled  = 0f;
         float radiusSq  = hitRadius * hitRadius;
@@ -81,6 +89,13 @@ public class ChargeSoldierRunner : MonoBehaviour
             traveled           += step;
 
             em.CompleteAllTrackedJobs();
+
+            // ECS LocalTransform 을 GO 위치로 동기화 — UnitMovementSystem 결과를 덮어씀
+            if (_soldierEntity != Entity.Null && em.Exists(_soldierEntity))
+            {
+                em.SetComponentData(_soldierEntity, LocalTransform.FromPosition(
+                    new float3(transform.position.x, transform.position.y, 0f)));
+            }
 
             // 반경 내 적 탐색
             var entities   = _query.ToEntityArray(Unity.Collections.Allocator.Temp);
@@ -110,7 +125,7 @@ public class ChargeSoldierRunner : MonoBehaviour
                     Type           = HitType.Skill,
                 });
 
-                SkillEffectHelper.SpawnTarget(
+                SkillEffectHelper.Spawn(
                     fx.TargetEffectKey,
                     new Vector3(transforms[i].Position.x, transforms[i].Position.y, 0f),
                     fx.DespawnDelay);
@@ -125,6 +140,18 @@ public class ChargeSoldierRunner : MonoBehaviour
             yield return null;
         }
 
-        Destroy(gameObject);
+        // 돌격 종료 — ECS 위치 최종 동기화 후 일반 전투 AI 에 제어권 반환
+        em.CompleteAllTrackedJobs();
+        if (_soldierEntity != Entity.Null && em.Exists(_soldierEntity))
+        {
+            em.SetComponentData(_soldierEntity, LocalTransform.FromPosition(
+                new float3(transform.position.x, transform.position.y, 0f)));
+        }
+
+        if (TryGetComponent<EntityLink>(out var link))
+            link.SyncPosition = true;
+
+        // 병사 GO 는 유지하고 이 컴포넌트만 제거
+        Destroy(this);
     }
 }

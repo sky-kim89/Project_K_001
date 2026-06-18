@@ -17,13 +17,19 @@ public class RunShopTraitSlot : MonoBehaviour
     TraitData              _data;
     int                    _cost;
 
+    public void SetSoldOut()
+    {
+        if (_soldOut != null) _soldOut.SetActive(true);
+        if (_buyBtn  != null) _buyBtn.interactable = false;
+    }
+
     public void Setup(TraitData data, int cost, Action<TraitData, int> onBuy)
     {
         _data = data; _cost = cost; _onBuy = onBuy;
         bool valid = data != null;
 
         if (_traitIcon != null) _traitIcon.Setup(data);
-        if (_nameText  != null) _nameText.text = data != null ? data.TraitName    : "";
+        if (_nameText  != null) _nameText.text = data != null ? data.TraitName : "";
         if (_descText  != null) _descText.text = data != null ? data.Description : "";
         if (_statsText != null) _statsText.text = BuildEffectsText(data);
         if (_costText  != null) _costText.text = valid ? $"{cost}" : "";

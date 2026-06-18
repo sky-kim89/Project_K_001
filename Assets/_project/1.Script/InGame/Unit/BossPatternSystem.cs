@@ -120,11 +120,11 @@ namespace BattleGame.Units
 
             if (!found) { boss.ChargePatternTimer = 2f; return; }
 
-            // 적 방향으로 직선 돌진 — 적 위치가 아닌 그 방향으로 50유닛 앞 지점을 목표로
+            // 적 위치를 30유닛 관통하는 몸통박치기 — 보스가 적을 지나치면서 타격
             float3 dir = math.normalizesafe(closestPos - position, new float3(-1f, 0f, 0f));
 
             boss.IsCharging   = true;
-            boss.ChargeTarget = position + dir * 50f;
+            boss.ChargeTarget = closestPos + dir * 30f;
             boss.ChargeTimer  = boss.ChargeDuration;
         }
     }

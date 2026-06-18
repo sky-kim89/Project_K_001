@@ -96,6 +96,18 @@ public class HeroDetailPopup : PopupBase
     [SerializeField] TextMeshProUGUI _equip1EnhanceCostText;
     [SerializeField] Image           _equip1EnhanceCostIcon;
 
+    [Header("장비 슬롯 2 (특성 잠금해제)")]
+    [SerializeField] GameObject      _equip2SlotGo;
+    [SerializeField] Button          _equip2Btn;
+    [SerializeField] TextMeshProUGUI _equip2NameText;
+    [SerializeField] Image           _equip2GradeBar;
+    [SerializeField] Image           _equip2Icon;
+    [SerializeField] TextMeshProUGUI _equip2StatText;
+    [SerializeField] GameObject      _equip2LockBadge;
+    [SerializeField] Button          _equip2EnhanceBtn;
+    [SerializeField] TextMeshProUGUI _equip2EnhanceCostText;
+    [SerializeField] Image           _equip2EnhanceCostIcon;
+
     [Header("스킬")]
     [SerializeField] Image           _activeSkillIcon;
     [SerializeField] TextMeshProUGUI _activeSkillText;
@@ -180,8 +192,10 @@ public class HeroDetailPopup : PopupBase
         _soldierUpBtn?.onClick.AddListener(OnSoldierUpClick);
         _equip0Btn   ?.onClick.AddListener(() => OnEquipSlotClick(0));
         _equip1Btn   ?.onClick.AddListener(() => OnEquipSlotClick(1));
+        _equip2Btn   ?.onClick.AddListener(() => OnEquipSlotClick(2));
         _equip0EnhanceBtn?.onClick.AddListener(() => OnEnhanceClick(0));
         _equip1EnhanceBtn?.onClick.AddListener(() => OnEnhanceClick(1));
+        _equip2EnhanceBtn?.onClick.AddListener(() => OnEnhanceClick(2));
         SetupStatClickHandlers();
     }
 
@@ -191,6 +205,7 @@ public class HeroDetailPopup : PopupBase
         ApplyCostIcon(_soldierUpCostIcon,  eItem.SoldierShard);
         ApplyCostIcon(_equip0EnhanceCostIcon, eItem.EquipUpgradeStone);
         ApplyCostIcon(_equip1EnhanceCostIcon, eItem.EquipUpgradeStone);
+        ApplyCostIcon(_equip2EnhanceCostIcon, eItem.EquipUpgradeStone);
 
         if (_entry != null) RefreshUI();
         SwitchTab(0);
@@ -409,6 +424,12 @@ public class HeroDetailPopup : PopupBase
         var db = EquipmentDatabase.Current;
         RefreshEquipSlot(0, db, _equip0NameText, _equip0GradeBar, _equip0Icon, _equip0StatText, _equip0LockBadge, _equip0EnhanceBtn, _equip0EnhanceCostText);
         RefreshEquipSlot(1, db, _equip1NameText, _equip1GradeBar, _equip1Icon, _equip1StatText, _equip1LockBadge, _equip1EnhanceBtn, _equip1EnhanceCostText);
+
+        bool slot2Unlocked = TraitApplier.GetEquipSlotBonus(
+            UserDataManager.Instance?.Get<RunTraitData>(), TraitDatabase.Current) > 0;
+        _equip2SlotGo?.SetActive(slot2Unlocked);
+        if (slot2Unlocked)
+            RefreshEquipSlot(2, db, _equip2NameText, _equip2GradeBar, _equip2Icon, _equip2StatText, _equip2LockBadge, _equip2EnhanceBtn, _equip2EnhanceCostText);
     }
 
     void RefreshEquipSlot(int slot, EquipmentDatabase db,
@@ -587,15 +608,16 @@ public class HeroDetailPopup : PopupBase
         float passiveVal = _statResult?.GetPassive(row.Type) ?? 0f;
         float abilityVal = _statResult?.GetAbility(row.Type) ?? 0f;
         float relicVal   = _statResult?.GetRelic(row.Type)   ?? 0f;
-        float total      = baseVal + equipVal + passiveVal + abilityVal + relicVal;
+        float traitVal   = _statResult?.GetTrait(row.Type)   ?? 0f;
+        float total      = baseVal + equipVal + passiveVal + abilityVal + relicVal + traitVal;
         bool  expanded   = index == _expandedStatIndex;
-        bool  hasBonus   = equipVal != 0f || passiveVal != 0f || abilityVal != 0f || relicVal != 0f;
+        bool  hasBonus   = equipVal != 0f || passiveVal != 0f || abilityVal != 0f || relicVal != 0f || traitVal != 0f;
 
         if (expanded && hasBonus)
         {
             row.ValueTmp.overflowMode     = TextOverflowModes.Overflow;
             row.ValueTmp.textWrappingMode = TextWrappingModes.NoWrap;
-            row.ValueTmp.text = StatDisplayHelper.BuildBreakdown(row.Type, baseVal, equipVal, passiveVal, abilityVal, relicVal);
+            row.ValueTmp.text = StatDisplayHelper.BuildBreakdown(row.Type, baseVal, equipVal, passiveVal, abilityVal, relicVal, traitVal);
             if (row.LayoutEl != null) row.LayoutEl.preferredHeight = 52f;
         }
         else

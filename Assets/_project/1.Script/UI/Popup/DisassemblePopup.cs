@@ -149,7 +149,7 @@ public class DisassemblePopup : PopupBase
             foreach (var entry in equip.StatEntries)
             {
                 float  val  = equip.GetStatValue(entry, 0);
-                string name = GetStatLabel(entry.Stat);
+                string name = LocalizationManager.Instance.Get(entry.Stat.ToString());
                 sb.AppendLine($"{name}  +{StatDisplayHelper.FormatStat(entry.Stat, val)}");
             }
             _selectedStatsText.text = sb.ToString().TrimEnd();
@@ -273,12 +273,21 @@ public class DisassemblePopup : PopupBase
         var equipDb  = EquipmentDatabase.Current;
         if (invData == null || itemData == null || equipDb == null) return;
 
+        // OwnedIds(List)에서 선택 등급 ID를 중복 포함해 모두 수집
+        // _bulkSelected(HashSet)으로 순회하면 같은 ID가 여러 개 있을 때 1개만 제거됨
+        var toRemove = new List<string>();
+        foreach (var id in invData.OwnedIds)
+        {
+            if (_bulkSelected.Contains(id))
+                toRemove.Add(id);
+        }
+
         int totalStones = 0;
-        foreach (var id in _bulkSelected)
+        foreach (var id in toRemove)
         {
             var equip = equipDb.Get(id);
-            if (equip == null) continue;
-            totalStones += equip.ItemLevel;
+            if (equip != null)
+                totalStones += equip.ItemLevel;
             invData.Remove(id);
         }
         itemData.Add(eItem.EquipUpgradeStone, totalStones);
@@ -303,19 +312,4 @@ public class DisassemblePopup : PopupBase
         _cellEquipIds.Clear();
     }
 
-    static string GetStatLabel(StatType stat) => stat switch
-    {
-        StatType.MaxHp               => "체력",
-        StatType.Defense             => "방어율",
-        StatType.Attack              => "공격력",
-        StatType.AttackRange         => "사거리",
-        StatType.AttackSpeed         => "공격속도",
-        StatType.MoveSpeed           => "이동속도",
-        StatType.CritChance          => "치명타 확률",
-        StatType.CritDamage          => "치명타 배율",
-        StatType.SoldierCount        => "병사 수",
-        StatType.CommandPower        => "지휘력",
-        StatType.SkillCooldownReduce => "쿨다운 감소",
-        _                            => stat.ToString(),
-    };
 }

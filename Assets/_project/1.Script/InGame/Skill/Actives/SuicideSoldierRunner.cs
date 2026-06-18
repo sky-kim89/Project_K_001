@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -59,7 +59,7 @@ public class SuicideSoldierRunner : MonoBehaviour
         float   duration = flightDuration > 0f ? flightDuration : 0.5f;
 
         // ── ① 발사 이펙트 ─────────────────────────────────────
-        SkillEffectHelper.SpawnBase(fx.BaseEffectKey, startPos, fx.DespawnDelay);
+        SkillEffectHelper.Spawn(fx.BaseEffectKey, startPos, fx.DespawnDelay);
 
         // ── ② 포물선 비행 ─────────────────────────────────────
         while (elapsed < duration)
@@ -86,7 +86,7 @@ public class SuicideSoldierRunner : MonoBehaviour
         soldierTransform.position = targetPos;
 
         // ── ③ 폭발 이펙트 + AoE ──────────────────────────────
-        SkillEffectHelper.SpawnTarget(fx.TargetEffectKey, targetPos, fx.DespawnDelay);
+        SkillEffectHelper.Spawn(fx.TargetEffectKey, targetPos, fx.DespawnDelay);
 
         em.CompleteAllTrackedJobs();
         float3 center = new float3(targetPos.x, targetPos.y, 0f);

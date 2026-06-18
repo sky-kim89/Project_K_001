@@ -23,9 +23,9 @@ public static class AbilityPicker
 
     static readonly float[] BaseGradeWeights =
     {
-        0.60f,  // Normal
+        0.68f,  // Normal
         0.30f,  // Advanced
-        0.10f,  // Special
+        0.02f,  // Special
     };
 
     // 달인 해금 조건 — Normal·Advanced 직업 어빌리티 2종을 모두 보유해야 등장

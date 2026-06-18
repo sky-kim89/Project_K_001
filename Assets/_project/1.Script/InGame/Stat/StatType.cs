@@ -20,6 +20,12 @@ public enum StatType
     SoldierCount         = 8,   // 장군이 지휘하는 병사 수
     CommandPower         = 9,   // 병사 지휘력 — 1포인트당 병사 스텟 1% 증가
     SkillCooldownReduce  = 10,  // 스킬 쿨다운 감소율 (0~1, 예: 0.1 = 10% 감소)
+
+    // ── 시스템 전용 스탯 (TraitData.Effects 에서만 사용) ──────
+    GeneralSlotBonus     = 11,  // 장수 배치 슬롯 추가 수 (NormalMode 에서 집계)
+    AllStatPenalty       = 12,  // 전체 능력치 패널티 비율 (TraitApplier 에서 집계 후 적용)
+    EquipSlotBonus       = 13,  // 장비 슬롯 추가 수 (TraitApplier 에서 집계)
+
     // 새 스텟은 여기에 순서대로 추가 — 다른 코드 수정 불필요 (최대 127개)
 }
 

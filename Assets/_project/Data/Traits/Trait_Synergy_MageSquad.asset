@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cadf0233cbf4ca744a6649911ca92877, type: 3}
+  m_Name: Trait_Synergy_MageSquad
+  m_EditorClassIdentifier: 
+  TraitType: 1033
+  TraitName: "\uBC95\uC0AC \uC18C\uB300"
+  Description: "\uC138 \uBC95\uC0AC\uC758 \uB9C8\uB825 \uC9D1\uC911. \uACF5\uACA9\uB825
+    +12%, \uC2A4\uD0AC \uCFE8\uD0C0\uC784 -5%."
+  RequiredJob: 255
+  Icon: {fileID: 21300000, guid: d33bfaf433eca03449f4b03b11f901e6, type: 3}
+  Effects:
+  - Stat: 2
+    Value: 0.12
+    IsPercent: 1
+  - Stat: 10
+    Value: 0.05
+    IsPercent: 0
+  StackTrigger: 0
+  MaxStacks: 0
+  StackStatBonuses: []

@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using BattleGame.Units;
@@ -25,7 +25,7 @@ public class ActiveVolleyFire : ActiveSkillData
         em.CompleteAllTrackedJobs();
 
         if (ctx.CasterTransform != null)
-            SkillEffectHelper.SpawnCaster(CasterEffectKey, ctx.CasterTransform.position, EffectDespawnDelay);
+            SkillEffectHelper.Spawn(CasterEffectKey, ctx.CasterTransform.position, EffectDespawnDelay);
 
         ForceAttack(em, ctx.CasterEntity, EffectValue);
 

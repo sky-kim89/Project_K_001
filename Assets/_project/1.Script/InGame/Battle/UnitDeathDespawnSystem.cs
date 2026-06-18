@@ -109,7 +109,7 @@ namespace BattleGame.Units
                 EntityManager.GetBuffer<SoldierDeathEvent>(generalEntity).Add(default);
             }
 
-            // ── ③ ForEach 완료 후 GO 반납 (이 시점은 Entity 순회 밖이므로 안전) ──
+            // ── ④ ForEach 완료 후 GO 반납 (이 시점은 Entity 순회 밖이므로 안전) ──
             foreach (var (obj, team, generalEntity) in _pending)
             {
                 // 아군 병사 사망 시 런 내 누적 카운터 갱신 (혼령 집결 어빌리티 참조)
@@ -120,6 +120,10 @@ namespace BattleGame.Units
                 BattleManager.Instance?.OnUnitDead(team);
 
                 if (obj == null) continue;
+
+                // 디스폰 직전 특성 사망 반응 처리 (K12 영웅의 귀환 등)
+                if (obj.TryGetComponent<UnitRuntimeBridge>(out var bridge))
+                    bridge.OnBeforeDespawn();
 
                 // UnitAnimationSync 가 있으면 사망 연출(날아가기 + 대기) 후 자체 디스폰.
                 // 없으면 즉시 디스폰.

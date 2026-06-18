@@ -9,7 +9,7 @@ using Unity.Mathematics;
 //    ① RangedAttackJob         — 원거리 공격 발생 시 자신의 ProjectileLaunchRequest 버퍼에 추가
 //    ② ProjectileSpawnSystem   — 버퍼를 읽어 GO 풀에서 꺼내고 ProjectileView.Launch() 호출
 //    ③ ProjectileMoveJob       — LocalTransform 갱신, 타겟 위치 추적 (Burst 병렬)
-//    ④ ProjectileHitJob        — 거리 체크 → HitEventBuffer append + DestroyTag 추가 (Burst 병렬)
+//    ④ ProjectileHitJob        — 거리 체크 → HitEventBuffer append + AttackHitEvent append + DestroyTag 추가
 //    ⑤ ProjectileDestroySystem — DestroyTag 감지 → PoolController 반납
 //                                → EntityLink.OnDisable → entity Disabled (기존 패턴 재사용)
 // ============================================================

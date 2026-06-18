@@ -82,6 +82,7 @@ public class DeploySlotRowUI : MonoBehaviour
         else
             _data.Deploy(_current.UnitName, slot);
 
+        JobSynergyEvaluator.Recalculate();
         UserDataManager.Instance.RequestSave();
         Refresh();
         OnDeployChanged?.Invoke();

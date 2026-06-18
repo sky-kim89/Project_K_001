@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Collections;
 using BattleGame.Units;
 
@@ -60,7 +60,7 @@ public class ActiveTargetHeal : ActiveSkillData
         if (em.HasComponent<Unity.Transforms.LocalTransform>(lowestEntity))
         {
             var tf = em.GetComponentData<Unity.Transforms.LocalTransform>(lowestEntity);
-            SkillEffectHelper.SpawnTarget(TargetEffectKey,
+            SkillEffectHelper.Spawn(TargetEffectKey,
                 new UnityEngine.Vector3(tf.Position.x, tf.Position.y, tf.Position.z),
                 EffectDespawnDelay);
         }

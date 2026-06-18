@@ -35,7 +35,9 @@ public static class EffectPrefabGenerator
         { "FX_Heal_Target",      new[] { "MAT_FX_Cross_Add",    "MAT_FX_Wisp_Add",      "MAT_FX_Soft_Add"      } },
         { "FX_Bind",             new[] { "MAT_FX_Spiral_Add",   "MAT_FX_Ring_Add",      "MAT_FX_Smoke_Alpha"   } },
         { "FX_Poison_Zone",      new[] { "MAT_FX_Smoke_Alpha",  "MAT_FX_Poison_Alpha",  "MAT_FX_Ring_Add"      } },
-        { "FX_Blizzard",         new[] { "MAT_FX_Snowflake_Add","MAT_FX_Crystal_Add",   "MAT_FX_Smoke_Alpha"   } },
+        { "FX_Blizzard",             new[] { "MAT_FX_Snowflake_Add","MAT_FX_Crystal_Add",   "MAT_FX_Smoke_Alpha"   } },
+        // c1=ImpactSparks, c2=RedGlow — Root LineRenderer 는 BuildRedLightningChain 에서 직접 설정
+        { "FX_RedLightning_Chain",   new[] { "MAT_FX_Spark_Add",   "MAT_FX_Soft_Add"                                } },
     };
 
     [MenuItem("BattleGame/Generate Effect Prefabs")]
@@ -66,7 +68,8 @@ public static class EffectPrefabGenerator
         n += Save("FX_Heal_Target",     BuildHealTarget());
         n += Save("FX_Bind",            BuildBind());
         n += Save("FX_Poison_Zone",     BuildPoisonZone());
-        n += Save("FX_Blizzard",        BuildBlizzard());
+        n += Save("FX_Blizzard",           BuildBlizzard());
+        n += Save("FX_RedLightning_Chain", BuildRedLightningChain());
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
@@ -1681,6 +1684,79 @@ public static class EffectPrefabGenerator
                 new[] { (0f, 0.45f), (0.5f, 0.3f), (1f, 0f) }));
             var sz = ps.sizeOverLifetime; sz.enabled = true;
             sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.2f, 0.5f, 1.4f, 0.4f));
+        }
+
+        return go;
+    }
+
+    // ── FX_RedLightning_Chain ────────────────────────────────────────
+    // 폭우 사격 특성 — 주 타겟 A → 스플래시 타겟 B 붉은 전기 체인
+    // Root : LineRenderer + MAT_FX_ElectricBeam_Add (붉은 전기 선)
+    // c1   : ImpactSparks — B 위치 붉은 스파크 버스트   (MAT_FX_Spark_Add)
+    // c2   : RedGlow      — B 위치 붉은 플래시 글로우   (MAT_FX_Soft_Add)
+    // SpawnLine() 이 런타임에 LineRenderer 양 끝점과 c1/c2 월드 위치를 설정.
+    static GameObject BuildRedLightningChain()
+    {
+        var go = NewGO();
+
+        // Root — LineRenderer: A→B 전기 체인 선
+        var lr = go.AddComponent<LineRenderer>();
+        lr.positionCount       = 2;
+        lr.SetPosition(0, Vector3.zero);
+        lr.SetPosition(1, Vector3.right * 2f);  // SpawnLine() 이 런타임에 덮어씀
+        lr.startWidth          = 0.18f;
+        lr.endWidth            = 0.06f;
+        lr.useWorldSpace       = true;
+        lr.textureMode         = LineTextureMode.Tile;
+        lr.sortingLayerName    = "Effect";
+        lr.sortingOrder        = 5;
+        lr.generateLightingData = false;
+        var lrMat = AssetDatabase.LoadAssetAtPath<Material>($"{kMatPath}/MAT_FX_ElectricBeam_Add.mat");
+        if (lrMat != null)
+        {
+            lr.material   = lrMat;
+            lr.startColor = new Color(1f, 0.08f, 0.08f, 1f);
+            lr.endColor   = new Color(0.6f, 0f, 0f, 0f);
+        }
+
+        // c1 — B 위치 충격 스파크 (MAT_FX_Spark_Add, 단발)
+        var c1 = new GameObject("ImpactSparks"); c1.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration      = 0.2f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.1f, 0.25f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(3f, 9f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(0.06f, 0.2f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 80, 80), C(180, 0, 0));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 20;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 14) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.12f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(1f, 0.5f, 0.5f)), (1f, new Color(0.5f, 0f, 0f)) },
+                new[] { (0f, 1f), (1f, 0f) }));
+        }
+
+        // c2 — B 위치 붉은 플래시 글로우 (MAT_FX_Soft_Add, 단발)
+        var c2 = new GameObject("RedGlow"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration      = 0.15f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.1f, 0.22f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(0f, 0.5f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(0.6f, 1.6f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 60, 60, 200), C(200, 0, 0, 120));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 4;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 3) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.08f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(1f, 0.3f, 0.3f)), (1f, new Color(0.5f, 0f, 0f)) },
+                new[] { (0f, 0.75f), (1f, 0f) }));
         }
 
         return go;

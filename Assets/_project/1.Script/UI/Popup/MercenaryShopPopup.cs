@@ -234,6 +234,7 @@ public class MercenaryShopPopup : PopupBase
 
         deployData?.Undeploy(entry.UnitName);
         unitData?.RemoveUnit(entry.UnitName);
+        JobSynergyEvaluator.Recalculate();
 
         _selected = null;
         ClearHighlights();
@@ -253,6 +254,7 @@ public class MercenaryShopPopup : PopupBase
         var deployData = UserDataManager.Instance?.Get<DeploymentData>();
         unitData?.AddUnit(_selected);
         deployData?.Deploy(_selected.UnitName, slot);
+        JobSynergyEvaluator.Recalculate();
 
         var pm = PopupManager.Instance;
         if (pm != null && pm.IsOpen(PopupType.HeroDetail))

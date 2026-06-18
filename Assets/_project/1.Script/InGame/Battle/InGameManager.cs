@@ -180,6 +180,8 @@ public class InGameManager : MonoBehaviour
         var stage    = GameSession.Instance.CurrentStage;
         var progress = UserDataManager.Instance?.Get<StageProgressData>();
         progress?.RecordClear(stage.Mode, stage.StageNumber);
+        progress?.AdvanceRunStage();
+        UserDataManager.Instance?.Get<RunShopData>()?.NewStage();
     }
 
     /// <summary>전투 패배 → 통계 스냅샷 후 유닛 디스폰, 환생 팝업 오픈.</summary>

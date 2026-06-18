@@ -60,8 +60,19 @@ public class StageProgressData : ISaveSection
         _raw.CurrentRunStage = 0;
     }
 
+    /// <summary>스테이지가 클리어됐으면 true — 다음 상점 오픈 시 새 상품을 생성한다.</summary>
+    public bool IsStageCleared
+    {
+        get => _raw.IsStageCleared;
+        set => _raw.IsStageCleared = value;
+    }
+
     /// <summary>스테이지 클리어 후 다음 스테이지로 진행.</summary>
-    public void AdvanceRunStage() => _raw.CurrentRunStage++;
+    public void AdvanceRunStage()
+    {
+        _raw.CurrentRunStage++;
+        _raw.IsStageCleared = true;
+    }
 
     // ── 내부 직렬화 데이터 ───────────────────────────────────
 
@@ -106,5 +117,6 @@ public class StageProgressData : ISaveSection
         public bool RunInProgress    = false;
         public int[] RunSequence     = System.Array.Empty<int>();
         public int   CurrentRunStage = 0;
+        public bool  IsStageCleared  = true;  // 새 런 = 클리어 상태로 시작 → 첫 상점에서 새 상품 생성
     }
 }

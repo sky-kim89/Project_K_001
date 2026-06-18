@@ -186,6 +186,7 @@ public class BattleManager : Singleton<BattleManager>
             // 실제 지급은 BattleResultPopup 에서 RewardOpener 를 통해 처리
             if (isLastWave)
             {
+                ApplyStageClearTraitStacks();
                 _mode.ApplyStageClearReward();
                 _context.State = BattleState.BattleVictory;
                 LogBattleStats("승리");
@@ -246,6 +247,49 @@ public class BattleManager : Singleton<BattleManager>
     }
 
     // ── 내부 ─────────────────────────────────────────────────
+
+    // StageClear 트리거를 가진 특성의 스택을 장군별 UnitEntry 에 기록한다.
+    // 실제 StatusEffect 적용은 다음 스테이지 시작 시 GeneralRuntimeBridge.OnEntityReset 에서 처리.
+    void ApplyStageClearTraitStacks()
+    {
+        var runData = UserDataManager.Instance?.Get<RunTraitData>();
+        if (runData == null) return;
+
+        var traitDb = TraitDatabase.Current;
+        var unitData = UserDataManager.Instance.Get<UnitData>();
+
+        // StageClear 트리거 특성 목록 수집
+        var stageClearTraits = new System.Collections.Generic.List<(TraitType type, int maxStacks)>();
+        foreach (var t in runData.AcquiredTraits)
+        {
+            var td = traitDb?.Get(t);
+            if (td?.StackTrigger == PassiveTrigger.StageClear)
+                stageClearTraits.Add((t, td.MaxStacks));
+        }
+        if (stageClearTraits.Count == 0) return;
+
+        // 배치된 각 장군의 UnitEntry 에 스택 추가
+        var world = World.DefaultGameObjectInjectionWorld;
+        if (world == null || !world.IsCreated) return;
+        var em    = world.EntityManager;
+        var query = em.CreateEntityQuery(ComponentType.ReadOnly<BattleGame.Units.GeneralComponent>());
+        using var entities = query.ToEntityArray(Unity.Collections.Allocator.Temp);
+        query.Dispose();
+
+        bool changed = false;
+        foreach (var entity in entities)
+        {
+            if (!em.HasComponent<BattleGame.Units.UnitPoolLinkComponent>(entity)) continue;
+            var link = em.GetComponentObject<BattleGame.Units.UnitPoolLinkComponent>(entity);
+            var entry = unitData?.GetUnit(link?.PoolKey);
+            if (entry == null) continue;
+
+            foreach (var (t, maxStacks) in stageClearTraits)
+                changed |= entry.IncrementTraitStack(t, 1, maxStacks) > 0;
+        }
+
+        if (changed) UserDataManager.Instance.RequestSave();
+    }
 
     // OnBattleStart 트리거를 보유한 모든 장군의 어빌리티·패시브를 일괄 발동한다.
     // 특정 타입을 직접 참조하지 않으므로 새 OnBattleStart 스킬 추가 시 자동 지원.

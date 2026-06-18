@@ -140,6 +140,25 @@ public static class RelicApplier
     public static int GetSystemInt(RelicSystemEffect effect, RelicInventoryData inventory, RelicDatabase db)
         => Mathf.RoundToInt(GetSystemValue(effect, inventory, db));
 
+    /// <summary>
+    /// 현재 활성 장수 배치 슬롯 수. 기본 1칸 + 유물 보너스.
+    /// </summary>
+    public static int GetActiveGeneralSlots(RelicInventoryData inventory, RelicDatabase db)
+        => 1 + GetSystemInt(RelicSystemEffect.GeneralSlotBonus, inventory, db);
+
+    /// <summary>
+    /// 유물 + 특성 보너스를 합산한 최종 장수 슬롯 수 (최대 5).
+    /// 슬롯 관련 UI·로직에서 이 메서드 하나만 호출할 것.
+    /// </summary>
+    public static int GetTotalActiveGeneralSlots()
+    {
+        var udm = UserDataManager.Instance;
+        return Mathf.Min(
+            GetActiveGeneralSlots(udm?.Get<RelicInventoryData>(), RelicDatabase.Current)
+            + TraitApplier.GetGeneralSlotBonus(udm?.Get<RunTraitData>(), TraitDatabase.Current),
+            5);
+    }
+
     // ── 내부 ──────────────────────────────────────────────────
 
     static void ApplyStatLine(UnitStat stat, StatType type, float valuePerLevel, int level, bool isAbsolute)

@@ -119,17 +119,32 @@ namespace BattleGame.Units
         public int              StackCount;
     }
 
-    // ── 장비·어빌리티 트리거 세트 (managed) ──────────────────
+    // ── 특성 트리거 인터페이스 ────────────────────────────────
 
     /// <summary>
-    /// 장군이 장착한 장비 레퍼런스와 Special 등급 트리거 어빌리티 목록.
+    /// 특성 효과 중 트리거 기반으로 동작하는 것의 공통 인터페이스.
+    /// GeneralTriggerSetComponent.TraitTriggers 에 등록하면
+    /// CombatTriggerSystem 이 PassiveTrigger 이벤트 발생 시 OnTrigger() 를 호출한다.
+    /// </summary>
+    public interface ITraitTriggerHandler
+    {
+        PassiveTrigger GetTriggerType();
+        void OnTrigger(PassiveTriggerContext ctx);
+    }
+
+    // ── 장비·어빌리티·특성 트리거 세트 (managed) ─────────────
+
+    /// <summary>
+    /// 장군이 장착한 장비 레퍼런스, Special 등급 어빌리티, 특성 트리거 목록.
     /// GeneralRuntimeBridge 가 스폰 시 빌드, CombatTriggerSystem 이 읽는다.
     /// </summary>
     public class GeneralTriggerSetComponent : Unity.Entities.IComponentData
     {
-        public EquipmentData[] EquipSlots    = new EquipmentData[2];
-        public int[]           EnhanceLevels = new int[2];
-        public System.Collections.Generic.List<AbilityData> TriggerAbilities = new();
+        public EquipmentData[] EquipSlots       = new EquipmentData[3];
+        public int[]           EnhanceLevels   = new int[3];
+        public int             ActiveEquipSlots = 2;   // 스폰 시 1회 계산 (기본 2, 특성으로 확장)
+        public System.Collections.Generic.List<AbilityData>         TriggerAbilities = new();
+        public System.Collections.Generic.List<ITraitTriggerHandler> TraitTriggers   = new();
     }
 
     // ── 스켈레톤 소환용 병사 사망 위치 버퍼 ─────────────────

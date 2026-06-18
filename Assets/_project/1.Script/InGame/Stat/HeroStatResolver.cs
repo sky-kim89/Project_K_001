@@ -74,10 +74,12 @@ public static class HeroStatResolver
         }
 
         // 3. 장비 보너스
+        int equipSlotCount = 2 + TraitApplier.GetEquipSlotBonus(
+            UserDataManager.Instance?.Get<RunTraitData>(), TraitDatabase.Current);
         var equipDb = EquipmentDatabase.Current;
         if (equipDb != null && entry.RunEquipSlots != null)
         {
-            for (int s = 0; s < 2; s++)
+            for (int s = 0; s < equipSlotCount; s++)
             {
                 string eid = s < entry.RunEquipSlots.Length ? entry.RunEquipSlots[s] : "";
                 if (string.IsNullOrEmpty(eid)) continue;
@@ -152,15 +154,35 @@ public static class HeroStatResolver
         var traitData = UserDataManager.Instance?.Get<RunTraitData>();
         if (traitDb != null && traitData != null)
         {
+            float allStatPenalty = 0f;
             foreach (var type in traitData.AcquiredTraits)
             {
                 var td = traitDb.Get(type);
                 if (td == null) continue;
                 foreach (var fx in td.Effects)
                 {
+                    if (fx.Stat == StatType.GeneralSlotBonus) continue;
+                    if (fx.Stat == StatType.EquipSlotBonus)   continue;
+                    if (fx.Stat == StatType.AllStatPenalty)
+                    {
+                        allStatPenalty += fx.Value;
+                        continue;
+                    }
                     float delta = fx.IsPercent ? result.Base.Get(fx.Stat) * fx.Value : fx.Value;
                     result.TraitBonuses[fx.Stat] =
                         result.TraitBonuses.TryGetValue(fx.Stat, out var cur) ? cur + delta : delta;
+                }
+            }
+            if (allStatPenalty > 0f)
+            {
+                foreach (StatType s in System.Enum.GetValues(typeof(StatType)))
+                {
+                    if (s == StatType.AllStatPenalty || s == StatType.GeneralSlotBonus || s == StatType.EquipSlotBonus) continue;
+                    float total = result.Total(s);
+                    if (total <= 0f) continue;
+                    float penalty = -total * allStatPenalty;
+                    result.TraitBonuses[s] =
+                        result.TraitBonuses.TryGetValue(s, out var cur) ? cur + penalty : penalty;
                 }
             }
         }

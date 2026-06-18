@@ -79,24 +79,13 @@ public class RelicData : ScriptableObject
         return $"[{target}]\n{s}";
     }
 
-    public string GetTargetLabel() => Target switch
-    {
-        AbilityTarget.All              => "전체",
-        AbilityTarget.Job_Knight       => "기사",
-        AbilityTarget.Job_Archer       => "궁수",
-        AbilityTarget.Job_Mage         => "마법사",
-        AbilityTarget.Job_ShieldBearer => "방패병",
-        AbilityTarget.Range_Melee      => "근거리",
-        AbilityTarget.Range_Ranged     => "원거리",
-        AbilityTarget.Unit_General     => "장군",
-        AbilityTarget.Unit_Soldier     => "병사",
-        _                              => "전체",
-    };
+    public string GetTargetLabel()
+        => LocalizationManager.Instance.Get(Target.ToString());
 
     string BuildStatLine(StatType stat, float valuePerLevel, int level)
     {
         float total = valuePerLevel * level;
-        string label = StatLabel(stat);
+        string label = LocalizationManager.Instance.Get(stat.ToString());
         if (IsAbsoluteValue)
         {
             if (stat == StatType.SoldierCount)
@@ -121,23 +110,9 @@ public class RelicData : ScriptableObject
             RelicSystemEffect.ExpGainBonus          => $"경험치 획득량 +{v * 100f:0}%",
             RelicSystemEffect.EnemyMaxHpReduction   => $"적 최대 체력 -{v * 100f:0}%",
             RelicSystemEffect.EnemyAttackReduction  => $"적 공격력 -{v * 100f:0}%",
+            RelicSystemEffect.GeneralSlotBonus      => $"장수 배치 슬롯 +{Mathf.RoundToInt(v)}칸",
             _ => string.Empty,
         };
     }
 
-    static string StatLabel(StatType s) => s switch
-    {
-        StatType.MaxHp               => "최대 체력",
-        StatType.Attack              => "공격력",
-        StatType.Defense             => "방어율",
-        StatType.MoveSpeed           => "이동속도",
-        StatType.AttackSpeed         => "공격속도",
-        StatType.AttackRange         => "공격 사거리",
-        StatType.CritChance          => "치명타 확률",
-        StatType.CritDamage          => "치명타 데미지",
-        StatType.SoldierCount        => "기본 병사 수",
-        StatType.CommandPower        => "지휘력",
-        StatType.SkillCooldownReduce => "스킬 쿨감",
-        _ => s.ToString(),
-    };
 }

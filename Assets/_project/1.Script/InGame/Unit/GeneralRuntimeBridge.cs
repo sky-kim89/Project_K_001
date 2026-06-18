@@ -98,6 +98,12 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         if (relicDb != null && relicInventory != null)
             RelicApplier.ApplyToGeneralStat(_stat, _job, relicInventory, relicDb);
 
+        // ── 특성 스텟 적용 (런 획득 특성) ─────────────────────
+        TraitApplier.ApplyToGeneralStat(
+            _stat,
+            UserDataManager.Instance?.Get<RunTraitData>(),
+            TraitDatabase.Current);
+
         // ── 방어율 소프트캡 실전 적용 (UI·전투 일치) ─────────────
         // UI(EffectiveDefensePct)와 전투(StatComponent.Final)가 같은 값을 사용하도록
         // 모든 스탯 계산이 끝난 뒤 원시 방어율을 소프트캡 공식으로 덮어씀
@@ -212,9 +218,10 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         if (needsStatusBuf && !em.HasBuffer<StatusEffectBufferElement>(entity))
             em.AddBuffer<StatusEffectBufferElement>(entity);
 
-        // ── 적 처치 / 스킬 사용 이벤트 버퍼 ── 모든 장군에 추가
+        // ── 적 처치 / 스킬 사용 / 착탄 이벤트 버퍼 ── 모든 장군에 추가
         em.AddBuffer<EnemyKillEvent>(entity);
         em.AddBuffer<SkillUseEvent>(entity);
+        em.AddBuffer<AttackHitEvent>(entity);   // OnAttackLanded 트리거용 — 모든 장군 공통
 
         // SoldierDeathEvent — OnSoldierDeath 트리거 패시브 또는 기존 SoldierDeathEmpower 가 없어도 추가
         // (CombatTriggerSystem 의 OnSoldierDeath 감지를 위해 항상 필요)
@@ -223,10 +230,12 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
 
         // ── GeneralTriggerSetComponent 빌드 (장비 + 특수 어빌리티) ──
         var trigSet  = new GeneralTriggerSetComponent();
+        trigSet.ActiveEquipSlots = 2 + TraitApplier.GetEquipSlotBonus(
+            UserDataManager.Instance?.Get<RunTraitData>(), TraitDatabase.Current);
         var equipDb  = EquipmentDatabase.Current;
         if (equipDb != null && _unitEntry?.RunEquipSlots != null)
         {
-            for (int i = 0; i < 2 && i < _unitEntry.RunEquipSlots.Length; i++)
+            for (int i = 0; i < 3 && i < _unitEntry.RunEquipSlots.Length; i++)
             {
                 string id = _unitEntry.RunEquipSlots[i];
                 if (string.IsNullOrEmpty(id)) continue;
@@ -247,6 +256,55 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
                     trigSet.TriggerAbilities.Add(data);
             }
         }
+        // ── 특성 컴포넌트 + 트리거 핸들러 ────────────────────────
+        var traitData = UserDataManager.Instance?.Get<RunTraitData>();
+        if (traitData != null)
+        {
+            // 행동 기반 특성 (스택 없음, 고유 핸들러)
+            if (traitData.HasTrait(TraitType.KnightHeroReturn))
+                em.AddComponentData(entity, new TraitHeroReturnComponent());
+            if (traitData.HasTrait(TraitType.ArcherRetreatFire))
+                em.AddComponent<TraitRetreatFireTag>(entity);
+            if (traitData.HasTrait(TraitType.ArcherRainFire))
+            {
+                em.AddComponent<TraitRainFireTag>(entity);
+                trigSet.TraitTriggers.Add(new TraitRainFireHandler());
+            }
+            if (traitData.HasTrait(TraitType.ShieldCounterBlow))
+            {
+                em.AddComponent<TraitCounterBlowTag>(entity);
+                em.AddComponentData(entity, new MirrorArmorComponent { ReflectRatio = 1.0f });
+            }
+            if (traitData.HasTrait(TraitType.MageAttackCdr))
+            {
+                em.AddComponent<TraitAttackCdrTag>(entity);
+                trigSet.TraitTriggers.Add(new TraitAttackCdrHandler());
+                Debug.Log($"[MageAttackCdr] 핸들러 등록 완료 — {_unitName}");
+            }
+            else
+            {
+                Debug.Log($"[MageAttackCdr] 특성 없음 — {_unitName} (HasTrait={traitData?.HasTrait(TraitType.MageAttackCdr)})");
+            }
+            if (traitData.HasTrait(TraitType.MageEchoSkill))
+            {
+                em.AddComponentData(entity, new TraitEchoSkillComponent());
+                trigSet.TraitTriggers.Add(new TraitEchoSkillHandler());
+            }
+
+            // 스택 누적 특성 → TraitStackHandler 범용 등록
+            var traitDb = TraitDatabase.Current;
+            foreach (var acquired in traitData.AcquiredTraits)
+            {
+                var td = traitDb?.Get(acquired);
+                if (td == null || td.StackTrigger == PassiveTrigger.None) continue;
+                if (td.StackTrigger == PassiveTrigger.StageClear) continue; // BattleManager 처리
+                trigSet.TraitTriggers.Add(new TraitStackHandler(acquired, td.StackTrigger));
+            }
+        }
+
+        // 이미 누적된 스택 보너스 적용 (런 중간에 재스폰되는 경우 대비)
+        ApplyAccumulatedTraitStacks(em, entity);
+
         em.AddComponentObject(entity, trigSet);
     }
 
@@ -271,6 +329,9 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
 
         if (em.HasBuffer<CombatStackElement>(entity))
             em.GetBuffer<CombatStackElement>(entity).Clear();
+
+        if (em.HasBuffer<AttackHitEvent>(entity))
+            em.GetBuffer<AttackHitEvent>(entity).Clear();
 
         // ── 상태 컴포넌트 초기화 ─────────────────────────────────
         if (em.HasComponent<SoldierDeathEmpowerState>(entity))
@@ -307,6 +368,15 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
 
         if (em.HasComponent<TauntTag>(entity)) em.RemoveComponent<TauntTag>(entity);
 
+        // ── 특성 컴포넌트 상태 초기화 ───────────────────────────────
+        if (em.HasComponent<TraitHeroReturnComponent>(entity))
+            em.SetComponentData(entity, new TraitHeroReturnComponent());
+        if (em.HasComponent<TraitEchoSkillComponent>(entity))
+            em.SetComponentData(entity, new TraitEchoSkillComponent());
+
+        // 스테이지 시작마다 누적 스택 보너스 재적용 (StatusEffectBuffer 클리어 이후 실행)
+        ApplyAccumulatedTraitStacks(em, entity);
+
         // ── 패시브 슬롯 갱신 ─────────────────────────────────────
         em.SetComponentData(entity, new GeneralPassiveSetComponent
         {
@@ -338,14 +408,19 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         {
             trigSet.EquipSlots[0]    = null;
             trigSet.EquipSlots[1]    = null;
+            trigSet.EquipSlots[2]    = null;
             trigSet.EnhanceLevels[0] = 0;
             trigSet.EnhanceLevels[1] = 0;
+            trigSet.EnhanceLevels[2] = 0;
+            trigSet.ActiveEquipSlots = 2 + TraitApplier.GetEquipSlotBonus(
+                UserDataManager.Instance?.Get<RunTraitData>(), TraitDatabase.Current);
             trigSet.TriggerAbilities.Clear();
+            trigSet.TraitTriggers.Clear();
 
             var equipDb = EquipmentDatabase.Current;
             if (equipDb != null && _unitEntry?.RunEquipSlots != null)
             {
-                for (int i = 0; i < 2 && i < _unitEntry.RunEquipSlots.Length; i++)
+                for (int i = 0; i < 3 && i < _unitEntry.RunEquipSlots.Length; i++)
                 {
                     string id = _unitEntry.RunEquipSlots[i];
                     if (string.IsNullOrEmpty(id)) continue;
@@ -366,12 +441,76 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
                         trigSet.TriggerAbilities.Add(data);
                 }
             }
+
+            // ── 특성 트리거 핸들러 재등록 ─────────────────────────
+            var traitData2 = UserDataManager.Instance?.Get<RunTraitData>();
+            if (traitData2 != null)
+            {
+                // 행동 기반
+                if (traitData2.HasTrait(TraitType.ArcherRainFire))
+                    trigSet.TraitTriggers.Add(new TraitRainFireHandler());
+                if (traitData2.HasTrait(TraitType.MageAttackCdr))
+                    trigSet.TraitTriggers.Add(new TraitAttackCdrHandler());
+                if (traitData2.HasTrait(TraitType.MageEchoSkill))
+                    trigSet.TraitTriggers.Add(new TraitEchoSkillHandler());
+
+                // 스택 누적 특성 → 범용 재등록
+                var traitDb2 = TraitDatabase.Current;
+                foreach (var acquired in traitData2.AcquiredTraits)
+                {
+                    var td = traitDb2?.Get(acquired);
+                    if (td == null || td.StackTrigger == PassiveTrigger.None) continue;
+                    if (td.StackTrigger == PassiveTrigger.StageClear) continue;
+                    trigSet.TraitTriggers.Add(new TraitStackHandler(acquired, td.StackTrigger));
+                }
+            }
+        }
+    }
+
+    // ── 스택 누적 보너스 재적용 ──────────────────────────────────
+    // StatusEffectBuffer 클리어 후 호출. 누적 스택 × StackStatBonuses 를 Duration=-1 로 추가.
+    // 이 장군의 UnitEntry 에서 스택을 읽어 이 장군에게만 적용 (장군별 독립).
+    void ApplyAccumulatedTraitStacks(EntityManager em, Entity entity)
+    {
+        if (_unitEntry == null) return;
+        if (!em.HasBuffer<StatusEffectBufferElement>(entity)) return;
+        if (!em.HasComponent<StatComponent>(entity)) return;
+
+        var runData  = UserDataManager.Instance?.Get<RunTraitData>();
+        if (runData == null) return;
+
+        var traitDb  = TraitDatabase.Current;
+        var stat     = em.GetComponentData<StatComponent>(entity);
+        var buf      = em.GetBuffer<StatusEffectBufferElement>(entity);
+
+        foreach (var traitType in runData.AcquiredTraits)
+        {
+            int stacks = _unitEntry.GetTraitStack(traitType);
+            if (stacks <= 0) continue;
+
+            var td = traitDb?.Get(traitType);
+            if (td == null || td.StackStatBonuses == null || td.StackStatBonuses.Length == 0) continue;
+
+            foreach (var entry in td.StackStatBonuses)
+            {
+                float bonusPer = entry.IsPercent ? stat.Base[entry.Stat] * entry.Value : entry.Value;
+                buf.Add(new StatusEffectBufferElement
+                {
+                    Stat       = entry.Stat,
+                    Delta      = bonusPer * stacks,
+                    Mode       = EffectMode.Add,
+                    Duration   = -1f,
+                    Remaining  = -1f,
+                    SourceType = BuffSourceType.Passive,
+                    SourceId   = (int)traitType,
+                });
+            }
         }
     }
 
     // ── 병사 스폰 ─────────────────────────────────────────────
 
-    void SpawnSoldiers()
+    public void SpawnSoldiers()
     {
         if (string.IsNullOrEmpty(_soldierPoolKey)) return;
 

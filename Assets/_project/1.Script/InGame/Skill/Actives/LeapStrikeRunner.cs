@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -66,7 +66,7 @@ public class LeapStrikeRunner : MonoBehaviour
         }
 
         // ── ① 도약 시작 이펙트 ────────────────────────────────
-        SkillEffectHelper.SpawnBase(fx.BaseEffectKey, casterTransform.position, fx.DespawnDelay);
+        SkillEffectHelper.Spawn(fx.BaseEffectKey, casterTransform.position, fx.DespawnDelay);
 
         // ── ② 도약 ────────────────────────────────────────────
         yield return MoveToward(casterTransform, targetPos, leapSpeed, stopDistance: 1.0f);
@@ -74,7 +74,7 @@ public class LeapStrikeRunner : MonoBehaviour
         // ── ③ 착지 이펙트 + AoE 타격 ─────────────────────────
         Vector3 landPos3D = casterTransform.position;
         float fxScale = aoeRadius / 2f;  // FX_Leap_Land 프리팹 기준 반경 2
-        SkillEffectHelper.SpawnCaster(fx.CasterEffectKey, landPos3D, fx.DespawnDelay, scale: fxScale);
+        SkillEffectHelper.Spawn(fx.CasterEffectKey, landPos3D, fx.DespawnDelay, scale: fxScale);
 
         em.CompleteAllTrackedJobs();
         float3 landPos = new float3(landPos3D.x, landPos3D.y, 0f);
@@ -99,7 +99,7 @@ public class LeapStrikeRunner : MonoBehaviour
 
             if (!em.HasBuffer<HitEventBufferElement>(entities[i])) continue;
 
-            SkillEffectHelper.SpawnTarget(fx.TargetEffectKey,
+            SkillEffectHelper.Spawn(fx.TargetEffectKey,
                 new Vector3(transforms[i].Position.x, transforms[i].Position.y, transforms[i].Position.z),
                 fx.DespawnDelay);
 

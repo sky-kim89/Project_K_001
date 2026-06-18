@@ -21,6 +21,7 @@ namespace BattleGame.Units
         ComponentLookup<HealthComponent>      _healthLookup;
         ComponentLookup<DoubleStrikeTag>      _doubleStrikeLookup;
         ComponentLookup<KnightChargeComponent> _chargeLookup;
+        ComponentLookup<GeneralComponent>     _generalLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -29,6 +30,7 @@ namespace BattleGame.Units
             _healthLookup       = state.GetComponentLookup<HealthComponent>(isReadOnly: true);
             _doubleStrikeLookup = state.GetComponentLookup<DoubleStrikeTag>(isReadOnly: true);
             _chargeLookup       = state.GetComponentLookup<KnightChargeComponent>(isReadOnly: true);
+            _generalLookup      = state.GetComponentLookup<GeneralComponent>(isReadOnly: true);
         }
 
         [BurstCompile]
@@ -40,6 +42,7 @@ namespace BattleGame.Units
             _healthLookup.Update(ref state);
             _doubleStrikeLookup.Update(ref state);
             _chargeLookup.Update(ref state);
+            _generalLookup.Update(ref state);
 
             // ① 쿨다운 감소 (병렬, 근거리 + 원거리 + 기사 돌진)
             new CooldownTickJob { DeltaTime = deltaTime }.ScheduleParallel();
@@ -48,13 +51,14 @@ namespace BattleGame.Units
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb          = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
-            // ② 근거리 공격 — 타겟 HitEventBuffer 에 직접 추가
+            // ② 근거리 공격 — 타겟 HitEventBuffer + (장군이면) AttackHitEvent 에 직접 추가
             new MeleeAttackJob
             {
                 TransformLookup    = _transformLookup,
                 HealthLookup       = _healthLookup,
                 DoubleStrikeLookup = _doubleStrikeLookup,
                 ChargeLookup       = _chargeLookup,
+                GeneralLookup      = _generalLookup,
                 Ecb                = ecb,
             }.ScheduleParallel();
 
@@ -115,11 +119,12 @@ namespace BattleGame.Units
     [WithNone(typeof(DeadTag), typeof(RangedTag), typeof(BossComponent))]
     public partial struct MeleeAttackJob : IJobEntity
     {
-        [ReadOnly] public ComponentLookup<LocalTransform>       TransformLookup;
-        [ReadOnly] public ComponentLookup<HealthComponent>      HealthLookup;
-        [ReadOnly] public ComponentLookup<DoubleStrikeTag>      DoubleStrikeLookup;
+        [ReadOnly] public ComponentLookup<LocalTransform>        TransformLookup;
+        [ReadOnly] public ComponentLookup<HealthComponent>       HealthLookup;
+        [ReadOnly] public ComponentLookup<DoubleStrikeTag>       DoubleStrikeLookup;
         [ReadOnly] public ComponentLookup<KnightChargeComponent> ChargeLookup;
-        public EntityCommandBuffer.ParallelWriter                Ecb;
+        [ReadOnly] public ComponentLookup<GeneralComponent>      GeneralLookup;
+        public EntityCommandBuffer.ParallelWriter                 Ecb;
 
         public void Execute(
             [ChunkIndexInQuery] int chunkIndex,
@@ -176,6 +181,15 @@ namespace BattleGame.Units
                     Damage         = finalDamage,
                     HitDirection   = hitDir,
                     AttackerEntity = entity,
+                });
+
+            // 장군의 근거리 공격 착탄 — OnAttackLanded 트리거용 (ECB → 다음 프레임 CombatTriggerSystem)
+            if (GeneralLookup.HasComponent(entity))
+                Ecb.AppendToBuffer(chunkIndex, entity, new AttackHitEvent
+                {
+                    TargetEntity = attack.TargetEntity,
+                    TargetPos    = targetPos,
+                    Damage       = finalDamage,
                 });
         }
 

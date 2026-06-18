@@ -37,13 +37,38 @@ public class LocalizationManager : SingletonPure<LocalizationManager>
         { "AttackRange",  "사거리"   },
         { "CritChance",   "치명타율" },
         { "CritDamage",   "치명타배율" },
-        { "SoldierCount", "용병수"   },
-        { "CommandPower",        "지휘력"   },
-        { "SkillCooldownReduce", "쿨감소"   },
+        { "SoldierCount",        "용병수"     },
+        { "CommandPower",        "지휘력"     },
+        { "SkillCooldownReduce", "쿨감소"     },
+        { "GeneralSlotBonus",    "장수슬롯"   },
+        { "AllStatPenalty",      "전체스텟감소" },
+        { "EquipSlotBonus",      "장비슬롯"   },
 
-        // ── EquipmentTrigger ──────────────────────────────────
-        { "OnAttack", "공격 시" },
-        { "OnHit",    "피격 시" },
+        // ── AbilityGrade ──────────────────────────────────────
+        { "Advanced", "고급"  },
+        { "Special",  "특수"  },
+        { "Mastery",  "달인"  },
+
+        // ── AbilityTarget ─────────────────────────────────────
+        { "All",              "전체"   },
+        { "Job_Knight",       "기사"   },
+        { "Job_Archer",       "궁수"   },
+        { "Job_Mage",         "마법사" },
+        { "Job_ShieldBearer", "방패병" },
+        { "Range_Melee",      "근거리" },
+        { "Range_Ranged",     "원거리" },
+        { "Unit_General",     "장군"   },
+        { "Unit_Soldier",     "병사"   },
+
+        // ── PassiveTrigger ────────────────────────────────────
+        { "None",           "즉시"           },
+        { "OnAttack",       "공격 시"        },
+        { "OnHit",          "피격 시"        },
+        { "OnEnemyKill",    "처치 시"        },
+        { "OnSoldierDeath", "병사 사망 시"   },
+        { "OnSkillUse",     "스킬 사용 시"   },
+        { "OnBattleStart",  "전투 시작 시"   },
+        { "StageClear",     "스테이지 클리어 시" },
 
         // ── ActiveSkillId ─────────────────────────────────────
         { "HeavyStrike",      "강타"          },

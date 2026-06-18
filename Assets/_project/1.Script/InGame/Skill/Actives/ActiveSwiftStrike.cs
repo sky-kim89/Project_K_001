@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Collections;
 using BattleGame.Units;
 
@@ -22,7 +22,7 @@ public class ActiveSwiftStrike : ActiveSkillData
 
         // 사용자 이펙트 (속도 버프 연출)
         if (ctx.CasterTransform != null)
-            SkillEffectHelper.SpawnCaster(CasterEffectKey, ctx.CasterTransform.position, EffectDespawnDelay);
+            SkillEffectHelper.Spawn(CasterEffectKey, ctx.CasterTransform.position, EffectDespawnDelay);
 
         ApplyBuff(em, ctx.CasterEntity, duration);
 

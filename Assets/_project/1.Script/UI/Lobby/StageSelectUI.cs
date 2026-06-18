@@ -32,8 +32,11 @@ public class StageSelectUI : MonoBehaviour
     [Header("런 진행바")]
     [SerializeField] StageProgressBarUI _progressBar;
 
-    [Header("특성 아이콘 목록 (빨간 영역)")]
-    [SerializeField] TraitIconUI[]     _traitIcons;        // 보유 특성 표시 아이콘
+    [Header("특성 아이콘 목록 (1행 — 일반 특성)")]
+    [SerializeField] TraitIconUI[]     _traitIcons;
+
+    [Header("시너지 특성 아이콘 (2행 — 직업 시너지)")]
+    [SerializeField] TraitIconUI[]     _synergyTraitIcons;
 
     [Header("스테이지 타입 아이콘 (우측)")]
     [SerializeField] GameObject        _shopIcon;          // 상점 스테이지 아이콘
@@ -52,6 +55,7 @@ public class StageSelectUI : MonoBehaviour
     void OnEnable()
     {
         LobbyManager.OnStageChanged += OnStageChanged;
+        JobSynergyEvaluator.OnSynergiesChanged += RefreshSynergyIcons;
         BindButtons();
         Refresh();
     }
@@ -59,6 +63,7 @@ public class StageSelectUI : MonoBehaviour
     void OnDisable()
     {
         LobbyManager.OnStageChanged -= OnStageChanged;
+        JobSynergyEvaluator.OnSynergiesChanged -= RefreshSynergyIcons;
     }
 
     // ── 버튼 연결 ─────────────────────────────────────────────
@@ -86,7 +91,10 @@ public class StageSelectUI : MonoBehaviour
         // 상점 아이콘 → RunShopPopup 직접 오픈
         _shopIcon?.GetComponent<Button>()?.onClick.RemoveAllListeners();
         _shopIcon?.GetComponent<Button>()?.onClick.AddListener(() =>
-            PopupManager.Instance?.Open<RunShopPopup>(PopupType.RunShop));
+        {
+            var p = PopupManager.Instance?.Open<RunShopPopup>(PopupType.RunShop);
+            p?.SetOnClose(Refresh);
+        });
     }
 
     // ── 전체 갱신 ─────────────────────────────────────────────
@@ -97,13 +105,22 @@ public class StageSelectUI : MonoBehaviour
         RefreshSlots();
         RefreshHireBtn();
         RefreshTraitIcons();
+        RefreshSynergyIcons();
     }
 
     void OnStageChanged(StageData _) => RefreshStageInfo();
 
     void RefreshStageInfo()
     {
-        var progress    = UserDataManager.Instance?.Get<StageProgressData>();
+        var progress = UserDataManager.Instance?.Get<StageProgressData>();
+
+        // 시퀀스가 없으면(환생 후 씬 미리로드 케이스) 즉시 생성
+        if (progress != null && progress.GetRunSequence().Length == 0)
+        {
+            progress.SetRunSequence(RunSequenceGenerator.Generate());
+            UserDataManager.Instance.RequestSave();
+        }
+
         int stageIndex  = progress?.CurrentRunStage ?? 0;
         int stageNum    = stageIndex + 1;
         int maxStage    = StageConfig.Current?.NormalStageCount ?? 30;
@@ -145,24 +162,42 @@ public class StageSelectUI : MonoBehaviour
         {
             foreach (var t in traitData.AcquiredTraits)
             {
+                if ((int)t >= 1000) continue;   // 시너지 특성은 2행으로 분리
                 if (idx >= _traitIcons.Length) break;
                 _traitIcons[idx]?.Setup(t);
                 _traitIcons[idx]?.gameObject.SetActive(true);
                 idx++;
             }
         }
-        // 남은 슬롯 숨김
         for (; idx < _traitIcons.Length; idx++)
             _traitIcons[idx]?.gameObject.SetActive(false);
+    }
+
+    void RefreshSynergyIcons()
+    {
+        if (_synergyTraitIcons == null) return;
+        var synergies = JobSynergyEvaluator.GetActiveSynergies();
+        int idx = 0;
+        foreach (var t in synergies)
+        {
+            if (idx >= _synergyTraitIcons.Length) break;
+            _synergyTraitIcons[idx]?.Setup(t, showStat: false);
+            _synergyTraitIcons[idx]?.gameObject.SetActive(true);
+            idx++;
+        }
+        for (; idx < _synergyTraitIcons.Length; idx++)
+            _synergyTraitIcons[idx]?.gameObject.SetActive(false);
     }
 
     void RefreshSlots()
     {
         if (_deploySlots == null) return;
+        int activeSlots = RelicApplier.GetTotalActiveGeneralSlots();
         for (int i = 0; i < _deploySlots.Length; i++)
         {
             int capturedIdx = i;
             _deploySlots[i]?.Setup(capturedIdx,
+                locked:     i >= activeSlots,
                 onEmpty:    () => OpenMercenaryShop(capturedIdx),
                 onOccupied: (entry, slot) => OpenHeroDetail(entry, slot));
         }
@@ -192,10 +227,11 @@ public class StageSelectUI : MonoBehaviour
 
     bool AreAllSlotsFull()
     {
-        var deployData = UserDataManager.Instance?.Get<DeploymentData>();
-        if (deployData == null) return false;
-        for (int i = 0; i < 5; i++)
-            if (string.IsNullOrEmpty(deployData.GetUnitAt(i))) return false;
+        var deploy = UserDataManager.Instance?.Get<DeploymentData>();
+        if (deploy == null) return false;
+        int activeSlots = RelicApplier.GetTotalActiveGeneralSlots();
+        for (int i = 0; i < activeSlots; i++)
+            if (string.IsNullOrEmpty(deploy.GetUnitAt(i))) return false;
         return true;
     }
 
