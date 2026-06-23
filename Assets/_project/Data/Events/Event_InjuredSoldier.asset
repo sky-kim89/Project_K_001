@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8e01cea01c8b9704d935c7d725fd2b3f, type: 3}
+  m_Name: Event_InjuredSoldier
+  m_EditorClassIdentifier: 
+  EventId: InjuredSoldier
+  Title: "\uBD80\uC0C1\uB2F9\uD55C \uBCD1\uC0AC"
+  Body: "\uC544\uAD70 \uBCD1\uC0AC \uD558\uB098\uAC00 \uAE4A\uC740 \uC0C1\uCC98\uB97C
+    \uC785\uACE0 \uB9C9\uC0AC \uADC0\uD241\uC774\uC5D0\uC11C \uC2E0\uC74C\uD558\uACE0
+    \uC788\uC2B5\uB2C8\uB2E4.\n\uCC98\uCE58 \uACE4\uB780\uD55C \uC0C1\uD669, \uC5B4\uB5BB\uAC8C
+    \uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?"
+  Illustration: {fileID: 0}
+  Choices:
+  - Label: "\uC804\uC120\uC5D0 \uB0B4\uBCF4\uB0B8\uB2E4"
+    ResultText: "\uBCD1\uC0AC\uB97C \uC804\uC120\uC5D0 \uBC30\uCE58\uD588\uC2B5\uB2C8\uB2E4.
+      \uADF8\uB294 \uC7A5\uB82C\uD788 \uC2F8\uC6B0\uB2E4 \uC4F0\uB7EC\uC84C\uC2B5\uB2C8\uB2E4.\n[\uBCD1\uC0AC
+      1\uBA85 \uC601\uAD6C \uAC10\uC18C]"
+    SuccessRate: 1
+    SuccessRewards:
+    - Type: 5
+      Item: -1
+      IntValue: 1
+      FloatValue: 0
+      Description: "\uBCD1\uC0AC -1 (\uC601\uAD6C)"
+    FailRewards: []
+    CostHint: 
+  - Label: "\uCE58\uB8CC\uC2DC\uD0A8\uB2E4"
+    ResultText: "\uBCD1\uC0AC\uB97C \uC815\uC131\uAECF \uB3CC\uBD24\uC2B5\uB2C8\uB2E4.
+      \uC0C1\uCC98\uAC00 \uC544\uBB3C\uBA70 \uB2E4\uC2DC \uC77C\uC5B4\uC130\uC2B5\uB2C8\uB2E4.\n[\uBCD1\uC0AC
+      1\uBA85 \uC601\uAD6C \uD68D\uB4DD]"
+    SuccessRate: 1
+    SuccessRewards:
+    - Type: 4
+      Item: -1
+      IntValue: 1
+      FloatValue: 0
+      Description: "\uBCD1\uC0AC +1 (\uC601\uAD6C)"
+    FailRewards: []
+    CostHint: 
+  - Label: "\uADF8\uB0E5 \uC9C0\uB098\uCE5C\uB2E4"
+    ResultText: "\uC678\uBA74\uD558\uACE0 \uC790\uB9AC\uB97C \uB5B4\uC2B5\uB2C8\uB2E4.
+      \uBCD1\uC0AC\uC758 \uC2E0\uC74C \uC18C\uB9AC\uAC00 \uADD3\uAC00\uC5D0 \uB0A8\uC2B5\uB2C8\uB2E4."
+    SuccessRate: 1
+    SuccessRewards: []
+    FailRewards: []
+    CostHint: 
+  InstantRewards: []
+  InstantResultText: 

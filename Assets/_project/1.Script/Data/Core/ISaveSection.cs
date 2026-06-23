@@ -25,6 +25,7 @@ public enum SaveKey
     Reincarnation   = 8,
     RunTrait        = 9,
     RunShop         = 10,
+    RunEventBonus   = 11,  // 이벤트 런 스코프 보너스 (병사 수 + 직접 스탯)
 }
 
 public interface ISaveSection

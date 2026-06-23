@@ -313,6 +313,7 @@ namespace BattleGame.Units
         Attacking = 3,  // 공격 중
         Hit       = 4,  // 피격 경직
         Dead      = 5,
+        Charging  = 6,  // 기사 달인 돌진 중
     }
 
     // ──────────────────────────────────────────
@@ -501,13 +502,16 @@ namespace BattleGame.Units
 
     /// <summary>
     /// 기사 달인 — 주기적 돌진 공격 상태 관리.
-    /// MeleeAttackJob 이 CooldownTimer &lt;= 0 일 때 공격 피해를 300%로 적용하고 타이머를 리셋한다.
-    /// KnightChargeCooldownJob 이 매 프레임 타이머를 감소시킨다.
+    /// CooldownTimer <= 0 이 되면 KnightChargeJob 이 IsCharging = true 로 돌진을 개시한다.
+    /// 타겟에 도달하면 MeleeAttackJob 이 300% 피해를 적용하고 타이머를 리셋한다.
     /// </summary>
     public struct KnightChargeComponent : IComponentData
     {
-        public float CooldownTimer;  // 남은 대기 시간 (0 이하 = 돌진 준비)
-        public float CooldownMax;    // 재충전 시간 (기본 6초)
+        public float  CooldownTimer;    // 남은 대기 시간 (0 이하 = 돌진 준비)
+        public float  CooldownMax;      // 재충전 시간 (기본 6초)
+        public bool   IsCharging;       // 현재 돌진 이동 중
+        public Entity ChargeTarget;     // 돌진 타겟 엔티티
+        public float3 ChargeTargetPos;  // InitiateJob 이 매 프레임 갱신 → MoveJob 이 lookup 없이 사용
     }
 
     /// <summary>

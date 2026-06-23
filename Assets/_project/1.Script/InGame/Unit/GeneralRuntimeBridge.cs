@@ -252,7 +252,7 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
             foreach (var aid in heldAbilities2)
             {
                 var data = abilityDb2.Get(aid);
-                if (data != null && data.Grade == AbilityGrade.Special && data.GetTriggerType() != PassiveTrigger.None)
+                if (data != null && (data.Grade == AbilityGrade.Special || data.Grade == AbilityGrade.Mastery) && data.GetTriggerType() != PassiveTrigger.None)
                     trigSet.TriggerAbilities.Add(data);
             }
         }
@@ -437,7 +437,7 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
                 foreach (var aid in heldAbilities2)
                 {
                     var data = abilityDb2.Get(aid);
-                    if (data != null && data.Grade == AbilityGrade.Special && data.GetTriggerType() != PassiveTrigger.None)
+                    if (data != null && (data.Grade == AbilityGrade.Special || data.Grade == AbilityGrade.Mastery) && data.GetTriggerType() != PassiveTrigger.None)
                         trigSet.TriggerAbilities.Add(data);
                 }
             }

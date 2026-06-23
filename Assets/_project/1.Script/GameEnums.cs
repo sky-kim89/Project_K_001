@@ -49,6 +49,7 @@ public enum PopupType
     HeroDetail      = 12,  // 배치 장수 상세 + 해고
     Reincarnation   = 13,  // 환생 전용 팝업 (패배 시)
     RunShop         = 14,  // 런 중간 상점 (장비·특성·장수 구매)
+    Event           = 15,  // 이벤트 팝업
 }
 
 // ── 런 스테이지 타입 ──────────────────────────────────────────
@@ -85,6 +86,18 @@ public enum TraitType
     CommonSoldierSupply = 15,  // 병사 지원령  (슬롯 +1, 병사 +5)
     CommonForcedLevy    = 16,  // 무리한 징집  (슬롯 +1, 이동속도 -15%)
     CommonEquipExpand   = 17,  // 장비 확장    (장비 슬롯 +1)
+
+    // ── 이벤트 전용 특성 (500~599) ──────────────────────────────
+    // 이벤트 팝업을 통해 획득/부여되는 런 스코프 특성.
+    // TraitApplier 에서 각 특성의 스탯 효과를 등록해야 한다.
+    Event_BattleWill      = 500,  // 전투 의지     : 공격력 +5%  (부상병 이벤트)
+    Event_PotionBuff      = 501,  // 활력의 묘약   : 최대체력 +8%  (약장수 이득)
+    Event_PotionDebuff    = 502,  // 부작용        : 이동속도 -8%  (약장수 디버프)
+    Event_BloodPact       = 503,  // 피의 계약     : 최대체력 -15%  (제단 피 바침)
+    Event_AltarCurse      = 504,  // 제단의 저주   : 방어율 -10%  (제단 부수기 실패)
+    Event_ExecutionMorale = 505,  // 처형의 사기   : 공격력 +8%  (첩자 처형)
+    Event_SpyInfo         = 506,  // 첩자 정보     : 경험치 획득 +20%  (첩자 정보 수집)
+    Event_VeteranHeritage = 507,  // 노병의 유산   : 이동속도 +10%  (방랑 노병)
 
     // ── 직업 시너지 특성 (1000~) ─────────────────────────────────
     // 상점·이벤트에 등장하지 않음. JobSynergyEvaluator 가 배치 구성에 따라 자동 부여·제거.

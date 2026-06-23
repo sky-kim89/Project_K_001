@@ -239,6 +239,7 @@ public class UnitAnimationSync : MonoBehaviour
 
             case UnitState.Moving:
             case UnitState.Chasing:
+            case UnitState.Charging:
                 SetBool("Run");
                 break;
 

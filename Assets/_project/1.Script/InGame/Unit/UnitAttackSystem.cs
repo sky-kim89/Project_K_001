@@ -135,7 +135,8 @@ namespace BattleGame.Units
             in  StatComponent       stat)
         {
             if (!attack.HasTarget || attack.AttackCooldown > 0f) return;
-            if (unitState.Current == UnitState.Hit) return;
+            if (unitState.Current == UnitState.Hit)      return;
+            if (unitState.Current == UnitState.Charging) return;  // KnightChargeJob 이 이동 담당
             if (!TransformLookup.HasComponent(attack.TargetEntity)) return;
             if (!HealthLookup.HasComponent(attack.TargetEntity))    return;
             if (HealthLookup[attack.TargetEntity].CurrentHp <= 0f) { attack.HasTarget = false; return; }
@@ -156,16 +157,21 @@ namespace BattleGame.Units
 
             float finalDamage = RollDamage(ref attack, in stat);
 
-            // 기사 달인 — 돌진 준비됐으면 300% 피해, 쿨다운 리셋
-            bool chargeReady = ChargeLookup.HasComponent(entity) && ChargeLookup[entity].CooldownTimer <= 0f;
+            // 기사 달인 — 돌진 완료(타이머=0, 비돌진 상태) 이면 300% 피해, 쿨다운 리셋
+            bool chargeReady = ChargeLookup.HasComponent(entity)
+                            && ChargeLookup[entity].CooldownTimer <= 0f
+                            && !ChargeLookup[entity].IsCharging;
             if (chargeReady)
             {
                 finalDamage *= 3f;
                 var chargeData = ChargeLookup[entity];
                 Ecb.SetComponent(chunkIndex, entity, new KnightChargeComponent
                 {
-                    CooldownTimer = chargeData.CooldownMax,
-                    CooldownMax   = chargeData.CooldownMax,
+                    CooldownTimer    = chargeData.CooldownMax,
+                    CooldownMax      = chargeData.CooldownMax,
+                    IsCharging       = false,
+                    ChargeTarget     = Entity.Null,
+                    ChargeTargetPos  = float3.zero,
                 });
             }
 

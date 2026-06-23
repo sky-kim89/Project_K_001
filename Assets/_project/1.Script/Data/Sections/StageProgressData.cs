@@ -60,6 +60,15 @@ public class StageProgressData : ISaveSection
         _raw.CurrentRunStage = 0;
     }
 
+    /// <summary>다음 스테이지를 Elite 로 강제 변경 (갈림길의 첩자 — 풀어준다 선택).</summary>
+    public void ForceNextStageElite()
+    {
+        if (_raw.RunSequence == null) return;
+        int next = _raw.CurrentRunStage + 1;
+        if (next < _raw.RunSequence.Length)
+            _raw.RunSequence[next] = (int)RunStageType.Elite;
+    }
+
     /// <summary>스테이지가 클리어됐으면 true — 다음 상점 오픈 시 새 상품을 생성한다.</summary>
     public bool IsStageCleared
     {

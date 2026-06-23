@@ -11,11 +11,13 @@ using Unity.Collections;
 //  분리 대상: 팀 무관 — 아군/적군 모두 포함 (공격 중 겹침 방지)
 //
 //  실행 순서 (매 프레임):
-//    ① BuildSepGridJob      — 전체 유닛 위치를 셀 맵에 등록 (병렬)
-//       Complete()          — 맵 완성 보장
-//    ② SeparationJob       — 겹친 유닛끼리 서로 밀어냄 (병렬)
-//    ③ MoveToDestinationJob — 목적지로 이동 (병렬)
-//    ④ KnockbackJob        — 넉백 처리 (병렬)
+//    ① BuildSepGridJob          — 전체 유닛 위치를 셀 맵에 등록 (병렬)
+//       Complete()              — 맵 완성 보장
+//    ② SeparationJob           — 겹친 유닛끼리 서로 밀어냄 (병렬)
+//    ③ KnightChargeInitiateJob — 돌진 개시/취소/사거리 판정 (병렬, LocalTransform read-only)
+//    ④ KnightChargeMoveJob     — 돌진 고속 이동 (병렬, LocalTransform writeable)
+//    ⑤ MoveToDestinationJob    — 목적지로 이동 (병렬)
+//    ⑥ KnockbackJob            — 넉백 처리 (병렬)
 //
 //  분리 성능:
 //    셀 크기 1.0f, 3×3 인접 셀 탐색 → 유닛당 평균 비교 4~8회
@@ -39,13 +41,13 @@ namespace BattleGame.Units
     {
         NativeParallelMultiHashMap<int2, SeparationEntry> _sepGrid;
 
-        const float SepCellSize = 1.0f;  // 그리드 셀 크기
-        const float SepStrength = 3.0f;  // 밀어내는 힘
+        const float SepCellSize     = 1.0f;  // 그리드 셀 크기
+        const float SepStrength     = 3.0f;  // 밀어내는 힘
+        const float ChargeSpeedMult = 6.0f;  // 돌진 이동속도 배율
 
         public void OnCreate(ref SystemState state)
         {
-            _sepGrid = new NativeParallelMultiHashMap<int2, SeparationEntry>(
-                1024, Allocator.Persistent);
+            _sepGrid = new NativeParallelMultiHashMap<int2, SeparationEntry>(1024, Allocator.Persistent);
         }
 
         public void OnDestroy(ref SystemState state)
@@ -101,7 +103,21 @@ namespace BattleGame.Units
                 Strength  = SepStrength,
             }.ScheduleParallel();
 
-            // ③ 목적지 이동 ────────────────────────────────────────
+            // ③ 기사 달인 돌진 개시/판정 (LocalTransform read-only → lookup aliasing 없음)
+            new KnightChargeInitiateJob
+            {
+                TransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(isReadOnly: true),
+                HealthLookup    = SystemAPI.GetComponentLookup<HealthComponent>(isReadOnly: true),
+            }.ScheduleParallel();
+
+            // ④ 기사 달인 돌진 이동 (LocalTransform writeable → lookup 없이 ChargeTargetPos 사용)
+            new KnightChargeMoveJob
+            {
+                DeltaTime       = deltaTime,
+                ChargeSpeedMult = ChargeSpeedMult,
+            }.ScheduleParallel();
+
+            // ⑤ 목적지 이동 ────────────────────────────────────────
             var bossLookup         = SystemAPI.GetComponentLookup<BossComponent>(isReadOnly: true);
             var retreatFireLookup  = SystemAPI.GetComponentLookup<TraitRetreatFireTag>(isReadOnly: true);
             new MoveToDestinationJob
@@ -114,8 +130,130 @@ namespace BattleGame.Units
                 RetreatFireLookup  = retreatFireLookup,
             }.ScheduleParallel();
 
-            // ④ 넉백 ─────────────────────────────────────────────
+            // ⑥ 넉백 ─────────────────────────────────────────────
             new KnockbackJob { DeltaTime = deltaTime }.ScheduleParallel();
+        }
+    }
+
+    // ──────────────────────────────────────────
+    // 기사 달인 돌진 — ① 개시/취소/사거리 판정 Job
+    // ──────────────────────────────────────────
+
+    /// <summary>
+    /// LocalTransform 을 읽기 전용(in)으로만 사용하므로 ComponentLookup&lt;LocalTransform&gt; 과 aliasing 없음.
+    /// 타겟 위치를 ChargeTargetPos 에 기록 → KnightChargeMoveJob 이 lookup 없이 이동에 활용.
+    /// </summary>
+    [BurstCompile]
+    [WithNone(typeof(DeadTag))]
+    public partial struct KnightChargeInitiateJob : IJobEntity
+    {
+        [ReadOnly] public ComponentLookup<LocalTransform>  TransformLookup;
+        [ReadOnly] public ComponentLookup<HealthComponent> HealthLookup;
+
+        public void Execute(
+            ref KnightChargeComponent charge,
+            ref AttackComponent       attack,
+            ref MovementComponent     movement,
+            ref UnitStateComponent    unitState,
+            in  LocalTransform        transform,   // read-only → aliasing 없음
+            in  StatComponent         stat)
+        {
+            // 피격/사망 중 돌진 억제
+            if (unitState.Current == UnitState.Hit || unitState.Current == UnitState.Dead)
+            {
+                if (charge.IsCharging)
+                    CancelCharge(ref charge, ref unitState, ref movement);
+                return;
+            }
+
+            // ① 돌진 개시
+            if (!charge.IsCharging && charge.CooldownTimer <= 0f
+                && attack.HasTarget
+                && HealthLookup.HasComponent(attack.TargetEntity)
+                && HealthLookup[attack.TargetEntity].CurrentHp > 0f)
+            {
+                charge.IsCharging   = true;
+                charge.ChargeTarget = attack.TargetEntity;
+                ChangeState(ref unitState, UnitState.Charging);
+            }
+
+            if (!charge.IsCharging) return;
+
+            // ② 타겟 생존 + 위치 갱신 (MoveJob 이 lookup 없이 읽는다)
+            if (!HealthLookup.HasComponent(charge.ChargeTarget)
+                || HealthLookup[charge.ChargeTarget].CurrentHp <= 0f
+                || !TransformLookup.HasComponent(charge.ChargeTarget))
+            {
+                CancelCharge(ref charge, ref unitState, ref movement);
+                return;
+            }
+
+            charge.ChargeTargetPos = TransformLookup[charge.ChargeTarget].Position;
+
+            // ③ 사거리 도달 → 돌진 완료, MeleeAttackJob 이 3배 피해 적용
+            float3 toTarget = charge.ChargeTargetPos - transform.Position;
+            float  dist     = math.length(toTarget);
+            float  atkRange = stat.Final[StatType.AttackRange];
+
+            if (dist <= atkRange)
+            {
+                charge.IsCharging     = false;
+                attack.AttackCooldown = 0f;  // 즉시 공격 강제 — 남은 쿨다운이 있으면 재돌진이 먼저 들어가 3배 피해 누락됨
+                ChangeState(ref unitState, UnitState.Attacking);
+                movement.Velocity = float3.zero;
+                movement.IsMoving = false;
+            }
+        }
+
+        static void CancelCharge(
+            ref KnightChargeComponent charge,
+            ref UnitStateComponent    unitState,
+            ref MovementComponent     movement)
+        {
+            charge.IsCharging    = false;
+            charge.ChargeTarget  = Entity.Null;
+            charge.CooldownTimer = charge.CooldownMax;
+            ChangeState(ref unitState, UnitState.Idle);
+            movement.Velocity = float3.zero;
+            movement.IsMoving = false;
+        }
+
+        static void ChangeState(ref UnitStateComponent s, UnitState next)
+        { s.Previous = s.Current; s.Current = next; s.StateTimer = 0f; }
+    }
+
+    // ──────────────────────────────────────────
+    // 기사 달인 돌진 — ② 고속 이동 Job
+    // ──────────────────────────────────────────
+
+    /// <summary>
+    /// LocalTransform 을 쓰기(ref)로 사용하므로 ComponentLookup&lt;LocalTransform&gt; 보유 불가.
+    /// InitiateJob 이 기록한 ChargeTargetPos 를 읽어 lookup 없이 이동한다.
+    /// </summary>
+    [BurstCompile]
+    [WithNone(typeof(DeadTag))]
+    public partial struct KnightChargeMoveJob : IJobEntity
+    {
+        public float DeltaTime;
+        public float ChargeSpeedMult;
+
+        public void Execute(
+            in  KnightChargeComponent charge,
+            ref MovementComponent     movement,
+            ref LocalTransform        transform,   // writeable → ComponentLookup<LocalTransform> 보유 불가
+            in  StatComponent         stat)
+        {
+            if (!charge.IsCharging) return;
+
+            float3 toTarget = charge.ChargeTargetPos - transform.Position;
+            float  dist     = math.length(toTarget);
+            if (dist < 0.01f) return;
+
+            float  speed = stat.Final[StatType.MoveSpeed] * ChargeSpeedMult;
+            float3 dir   = toTarget / dist;
+            movement.Velocity   = dir * speed;
+            transform.Position += movement.Velocity * DeltaTime;
+            movement.IsMoving   = true;
         }
     }
 
@@ -199,7 +337,10 @@ namespace BattleGame.Units
 
             if (math.lengthsq(push) > 0f)
             {
-                float scale = unitState.Current == UnitState.Attacking ? AttackingSepScale : 1f;
+                // 공격 중·돌진 중 밀림 감쇠 — 돌진 궤도 유지
+                bool reduceSep = unitState.Current == UnitState.Attacking
+                              || unitState.Current == UnitState.Charging;
+                float scale = reduceSep ? AttackingSepScale : 1f;
                 transform.Position += push * (DeltaTime * scale);
             }
         }
@@ -246,6 +387,9 @@ namespace BattleGame.Units
                 movement.IsMoving = false;
                 return;
             }
+
+            // 돌진 중 — KnightChargeJob 이 이동·속도 담당
+            if (unitState.Current == UnitState.Charging) return;
 
             // 보스 돌진 패턴 — ChargeTarget 방향으로 ChargeSpeedMult 배 이동
             if (BossLookup.HasComponent(entity))
