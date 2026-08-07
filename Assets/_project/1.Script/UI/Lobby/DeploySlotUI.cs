@@ -7,9 +7,13 @@ using UnityEngine.UI;
 //  DeploySlotUI.cs
 //  BattlePanel 좌측 배치 슬롯 1칸.
 //
-//  빈 슬롯: EmptyGroup 표시, 클릭 → onEmpty 콜백
+//  빈 슬롯: EmptyGroup("빈 자리") 표시. 누를 수 없다.
 //  점유 슬롯: OccupiedGroup 표시 (초상화·이름·직업·HP·ATK),
 //            클릭 → onOccupied(entry, slotIndex) 콜백
+//  잠긴 슬롯: 슬롯 자체를 비활성화 (안내 문구를 띄우지 않는다)
+//
+//  ⚠ 빈 슬롯을 눌러 용병을 고용하던 경로는 없앴다.
+//    용병 고용은 런 상점(RunShopPopup)에서만 한다.
 // ============================================================
 
 public class DeploySlotUI : MonoBehaviour
@@ -18,11 +22,7 @@ public class DeploySlotUI : MonoBehaviour
     [SerializeField] Button _button;
 
     [Header("빈 슬롯")]
-    [SerializeField] GameObject      _emptyGroup;
-    [SerializeField] TextMeshProUGUI _emptyLabel;
-
-    [Header("잠금 슬롯")]
-    [SerializeField] GameObject _lockedGroup;
+    [SerializeField] GameObject _emptyGroup;
 
     [Header("점유 슬롯")]
     [SerializeField] GameObject           _occupiedGroup;
@@ -40,34 +40,25 @@ public class DeploySlotUI : MonoBehaviour
     [SerializeField] Image                _gradeBadge;
     [SerializeField] TextMeshProUGUI      _gradeText;
 
-    int                   _slotIndex;
-    UnitEntry             _entry;
-    Action                _onEmpty;
+    int                    _slotIndex;
+    UnitEntry              _entry;
     Action<UnitEntry, int> _onOccupied;
-    Texture2D             _portraitTexture;
+    Texture2D              _portraitTexture;
 
     // ── 공개 API ─────────────────────────────────────────────
 
-    public void Setup(int slotIndex, bool locked, Action onEmpty, Action<UnitEntry, int> onOccupied)
+    public void Setup(int slotIndex, bool locked, Action<UnitEntry, int> onOccupied)
     {
         _slotIndex  = slotIndex;
-        _onEmpty    = onEmpty;
         _onOccupied = onOccupied;
 
         _button?.onClick.RemoveAllListeners();
         _button?.onClick.AddListener(OnClicked);
 
-        if (locked)
-        {
-            if (_lockedGroup   != null) _lockedGroup  .SetActive(true);
-            if (_emptyGroup    != null) _emptyGroup   .SetActive(false);
-            if (_occupiedGroup != null) _occupiedGroup.SetActive(false);
-            if (_button        != null) _button.interactable = false;
-            return;
-        }
+        // 잠긴 슬롯은 통째로 숨긴다 — 빈 칸도 남기지 않는다.
+        gameObject.SetActive(!locked);
+        if (locked) return;
 
-        if (_lockedGroup != null) _lockedGroup.SetActive(false);
-        if (_button      != null) _button.interactable = true;
         Refresh();
     }
 
@@ -82,6 +73,9 @@ public class DeploySlotUI : MonoBehaviour
         bool occupied = _entry != null;
         if (_emptyGroup    != null) _emptyGroup   .SetActive(!occupied);
         if (_occupiedGroup != null) _occupiedGroup.SetActive(occupied);
+
+        // 빈 자리는 누를 것이 없다 — 호버·클릭 반응까지 꺼서 버튼처럼 보이지 않게 한다
+        if (_button != null) _button.interactable = occupied;
 
         if (occupied) FillOccupied(_entry);
     }
@@ -111,7 +105,6 @@ public class DeploySlotUI : MonoBehaviour
 
     void OnClicked()
     {
-        if (_entry == null) _onEmpty?.Invoke();
-        else                _onOccupied?.Invoke(_entry, _slotIndex);
+        if (_entry != null) _onOccupied?.Invoke(_entry, _slotIndex);
     }
 }

@@ -118,21 +118,24 @@ public class SoldierRuntimeBridge : UnitRuntimeBridge
         var scaled = new UnitStat();
         foreach (StatType type in System.Enum.GetValues(typeof(StatType)))
         {
-            if (type == StatType.AttackRange || type == StatType.MoveSpeed || type == StatType.AttackSpeed)
-            {
-                // 배율 미적용 스텟
-                float value = generalStat.Get(type);
-                if (value != 0f)
-                    scaled.Set(type, value);
-                continue;
-            }
-            else
-            {
-                float value = generalStat.Get(type);
-                if (value != 0f)
-                    scaled.Set(type, value * ratio);
-            }   
+            float value = generalStat.Get(type);
+            if (value == 0f) continue;
+            scaled.Set(type, IsUnscaled(type) ? value : value * ratio);
         }
         return scaled;
     }
+
+    // ── 병사 스탯 환산 규칙 (공용) ────────────────────────────
+    //  HeroDetailPopup 의 "용병" 탭이 같은 공식을 써서 미리 보여 준다.
+    //  ⚠ 여기를 고치면 그 화면 표시도 자동으로 따라간다 — 각자 계산하지 말 것.
+
+    /// <summary>병사 스탯 배율 — 기본 40% + 지휘력 1포인트당 1% (최대 100%).</summary>
+    public static float StatRatio(float commandPower)
+        => Mathf.Clamp01(0.4f + commandPower * 0.01f);
+
+    /// <summary>배율이 적용되지 않는 스탯 — 사거리·이동속도·공격속도는 장군과 같다.</summary>
+    public static bool IsUnscaled(StatType type)
+        => type == StatType.AttackRange
+        || type == StatType.MoveSpeed
+        || type == StatType.AttackSpeed;
 }

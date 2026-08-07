@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEditor;
 
 // ============================================================
@@ -18,7 +18,7 @@ public static class TraitCreator
     const string TraitDir = "Assets/_project/Data/Traits";
     const string DBPath   = "Assets/Resources/TraitDatabase.asset";
 
-    [MenuItem("BattleGame/데이터 생성/특성 전체 생성")]
+    [MenuItem(ProjectKMenu.Data + "특성", priority = ProjectKMenu.DataPrio + 13)]
     public static void CreateAllTraits()
     {
         EnsureFolder();
@@ -92,7 +92,7 @@ public static class TraitCreator
         {
             type = TraitType.KnightCommand,
             name = "지휘관의 기질",
-            desc = "전장을 호령하는 기사의 타고난 통솔력. 체력과 병사 지휘력이 강화된다.",
+            desc = "전장을 호령하는 기사의 타고난 통솔력.",
             job  = UnitJob.Knight,
             fx   = new[]
             {
@@ -124,7 +124,7 @@ public static class TraitCreator
         {
             type = TraitType.ArcherPrecision,
             name = "정밀 사수",
-            desc = "숨을 죽이고 조준하는 궁수의 집중력. 공격력·사거리·공격속도가 강화된다.",
+            desc = "숨을 죽이고 조준하는 궁수의 집중력.",
             job  = UnitJob.Archer,
             fx   = new[]
             {
@@ -153,7 +153,7 @@ public static class TraitCreator
         {
             type = TraitType.MageArcane,
             name = "마력 집중",
-            desc = "내면의 마력을 극한까지 끌어올린 마법사의 각성. 공격력과 스킬 쿨다운이 강화된다.",
+            desc = "내면의 마력을 극한까지 끌어올린 마법사의 각성.",
             job  = UnitJob.Mage,
             fx   = new[]
             {
@@ -181,7 +181,7 @@ public static class TraitCreator
         {
             type = TraitType.ShieldFortress,
             name = "강철 요새",
-            desc = "흔들리지 않는 방패병의 육체. 체력과 방어율이 대폭 강화된다.",
+            desc = "흔들리지 않는 방패병의 육체.",
             job  = UnitJob.ShieldBearer,
             fx   = new[]
             {
@@ -214,7 +214,7 @@ public static class TraitCreator
         {
             type = TraitType.CommonExpedition,
             name = "원정 편성",
-            desc = "장수 배치 슬롯이 1칸 증가한다. 최대 5칸까지 늘어난다.",
+            desc = "원정을 편성해 더 많은 장수를 전장에 내보낸다. 배치 슬롯은 최대 5칸까지 늘어난다.",
             job  = (UnitJob)255,  // 공통 — 직업 자동 배정 없음
             fx   = new[] { (StatType.GeneralSlotBonus, 1f, false) },
         },
@@ -222,7 +222,7 @@ public static class TraitCreator
         {
             type = TraitType.CommonMassMobilize,
             name = "대규모 동원",
-            desc = "장수 배치 슬롯이 2칸 증가하지만, 모든 장수의 능력치가 10% 감소한다. 최대 5칸까지 늘어난다.",
+            desc = "머릿수로 밀어붙이는 총동원령. 배치 슬롯은 최대 5칸까지 늘어난다.",
             job  = (UnitJob)255,
             fx   = new[]
             {
@@ -234,7 +234,7 @@ public static class TraitCreator
         {
             type = TraitType.CommonSoldierSupply,
             name = "병사 지원령",
-            desc = "장수 배치 슬롯이 1칸 증가하고, 모든 장수의 병사 수가 5명 증가한다. 최대 5칸까지 늘어난다.",
+            desc = "본국에서 병력을 추가로 보내온다. 배치 슬롯은 최대 5칸까지 늘어난다.",
             job  = (UnitJob)255,
             fx   = new[]
             {
@@ -246,7 +246,7 @@ public static class TraitCreator
         {
             type = TraitType.CommonForcedLevy,
             name = "무리한 징집",
-            desc = "장수 배치 슬롯이 1칸 증가하지만, 모든 장수의 이동속도가 15% 감소한다. 최대 5칸까지 늘어난다.",
+            desc = "머릿수는 채웠지만 훈련이 부족하다. 배치 슬롯은 최대 5칸까지 늘어난다.",
             job  = (UnitJob)255,
             fx   = new[]
             {
@@ -258,9 +258,78 @@ public static class TraitCreator
         {
             type = TraitType.CommonEquipExpand,
             name = "중무장 편성",
-            desc = "모든 장수의 장비 슬롯이 1칸 증가한다. 더 많은 장비를 착용할 수 있다.",
+            desc = "보급 마차를 늘려 장비를 더 챙겨 다닌다.",
             job  = (UnitJob)255,
             fx   = new[] { (StatType.EquipSlotBonus, 1f, false) },
+        },
+
+        // ── 이벤트 전용 특성 (EventRewardHandler 가 부여) ────────
+        //  SO 가 없으면 TraitDatabase.Get 이 null 을 돌려주고,
+        //  특성 바에 회색 빈칸으로 뜨는 데다 TraitApplier 가 효과를 건너뛴다.
+        //  → 이벤트로 얻은 특성이 아무 일도 하지 않는다. 반드시 여기 등록할 것.
+        new Def
+        {
+            type = TraitType.Event_BattleWill,
+            name = "전투 의지",
+            desc = "구해준 부상병이 전한 각오가 부대에 번진다.",
+            job  = (UnitJob)255,
+            fx   = new[] { (StatType.Attack, 0.05f, true) },
+        },
+        new Def
+        {
+            type = TraitType.Event_PotionBuff,
+            name = "활력의 묘약",
+            desc = "약장수의 묘약이 몸에 잘 맞았다.",
+            job  = (UnitJob)255,
+            fx   = new[] { (StatType.MaxHp, 0.08f, true) },
+        },
+        new Def
+        {
+            type = TraitType.Event_PotionDebuff,
+            name = "부작용",
+            desc = "묘약의 부작용으로 몸이 무겁다.",
+            job  = (UnitJob)255,
+            fx   = new[] { (StatType.MoveSpeed, -0.08f, true) },
+        },
+        new Def
+        {
+            type = TraitType.Event_BloodPact,
+            name = "피의 계약",
+            desc = "제단에 피를 바쳐 힘을 얻었다. 그 대가는 자신의 생명력이었다.",
+            job  = (UnitJob)255,
+            fx   = new[] { (StatType.MaxHp, -0.15f, true) },
+        },
+        new Def
+        {
+            type = TraitType.Event_AltarCurse,
+            name = "제단의 저주",
+            desc = "제단을 부수려다 저주를 뒤집어썼다.",
+            job  = (UnitJob)255,
+            fx   = new[] { (StatType.Defense, -0.10f, false) },
+        },
+        new Def
+        {
+            type = TraitType.Event_ExecutionMorale,
+            name = "처형의 사기",
+            desc = "첩자를 처형해 군율을 다시 세웠다.",
+            job  = (UnitJob)255,
+            fx   = new[] { (StatType.Attack, 0.08f, true) },
+        },
+        new Def
+        {
+            type = TraitType.Event_SpyInfo,
+            name = "첩자 정보",
+            desc = "첩자에게서 적진의 정보를 얻어냈다.",
+            job  = (UnitJob)255,
+            fx   = new[] { (StatType.ExpGainBonus, 0.20f, false) },
+        },
+        new Def
+        {
+            type = TraitType.Event_VeteranHeritage,
+            name = "노병의 유산",
+            desc = "방랑 노병이 남긴 행군 요령.",
+            job  = (UnitJob)255,
+            fx   = new[] { (StatType.MoveSpeed, 0.10f, true) },
         },
 
         // ── 직업 시너지 (자동 부여 — 상점·이벤트 비등장) ─────────
@@ -268,7 +337,7 @@ public static class TraitCreator
         {
             type = TraitType.Synergy_VanguardCross,
             name = "선봉대",
-            desc = "기사와 궁수가 함께하면 전진 속도와 화력이 맞물려 공격력이 상승한다.",
+            desc = "기사와 궁수가 함께 전진하며 화력을 맞물린다.",
             job  = (UnitJob)255,
             fx   = new[] { (StatType.Attack, 0.10f, true) },
         },
@@ -276,7 +345,7 @@ public static class TraitCreator
         {
             type = TraitType.Synergy_MagicShield,
             name = "마법 방패",
-            desc = "기사의 방어선 뒤에서 법사가 마법을 펼치며 공격력과 체력이 상승한다.",
+            desc = "기사의 방어선 뒤에서 법사가 마법을 펼친다.",
             job  = (UnitJob)255,
             fx   = new[] { (StatType.Attack, 0.05f, true), (StatType.MaxHp, 0.05f, true) },
         },
@@ -284,7 +353,7 @@ public static class TraitCreator
         {
             type = TraitType.Synergy_IronWallLine,
             name = "철벽진",
-            desc = "기사와 방패병이 이중 방어선을 형성해 방어율과 체력이 상승한다.",
+            desc = "기사와 방패병이 이중 방어선을 형성한다.",
             job  = (UnitJob)255,
             fx   = new[] { (StatType.MaxHp, 0.10f, true), (StatType.Defense, 0.05f, false) },
         },
@@ -292,7 +361,7 @@ public static class TraitCreator
         {
             type = TraitType.Synergy_BalancedHost,
             name = "균형의 군세",
-            desc = "네 직업이 모두 갖춰진 완전한 군대. 모든 스탯이 5% 상승한다.",
+            desc = "네 직업이 모두 갖춰진 완전한 군대.",
             job  = (UnitJob)255,
             fx   = new[]
             {
@@ -307,7 +376,7 @@ public static class TraitCreator
         {
             type = TraitType.Synergy_KnightOrder,
             name = "기사단",
-            desc = "다섯 기사의 창이 하나로 모인다. 공격력 +30%, 이동속도 +20%.",
+            desc = "다섯 기사의 창이 하나로 모인다.",
             job  = (UnitJob)255,
             fx   = new[] { (StatType.Attack, 0.30f, true), (StatType.MoveSpeed, 0.20f, true) },
         },
@@ -315,7 +384,7 @@ public static class TraitCreator
         {
             type = TraitType.Synergy_ArrowLegion,
             name = "화살의 군단",
-            desc = "하늘을 가리는 화살의 비. 공격력 +30%, 공격속도 +20%.",
+            desc = "하늘을 가리는 화살의 비.",
             job  = (UnitJob)255,
             fx   = new[] { (StatType.Attack, 0.30f, true), (StatType.AttackSpeed, 0.20f, true) },
         },
@@ -323,7 +392,7 @@ public static class TraitCreator
         {
             type = TraitType.Synergy_GreatMageCorp,
             name = "대법사단",
-            desc = "다섯 법사의 마력이 공명한다. 공격력 +35%, 스킬 쿨타임 -15%.",
+            desc = "다섯 법사의 마력이 공명한다.",
             job  = (UnitJob)255,
             fx   = new[] { (StatType.Attack, 0.35f, true), (StatType.SkillCooldownReduce, 0.15f, false) },
         },
@@ -331,7 +400,7 @@ public static class TraitCreator
         {
             type = TraitType.Synergy_Ironclad,
             name = "철옹성",
-            desc = "무너지지 않는 철벽. 최대체력 +40%, 방어율 +15%.",
+            desc = "무너지지 않는 철벽.",
             job  = (UnitJob)255,
             fx   = new[] { (StatType.MaxHp, 0.40f, true), (StatType.Defense, 0.15f, false) },
         },
@@ -339,7 +408,7 @@ public static class TraitCreator
         {
             type = TraitType.Synergy_RangedFirenet,
             name = "원거리 화망",
-            desc = "궁수와 법사가 원거리 화망을 펼친다. 공격력 +20%, 사거리 +10%.",
+            desc = "궁수와 법사가 원거리 화망을 펼친다.",
             job  = (UnitJob)255,
             fx   = new[] { (StatType.Attack, 0.20f, true), (StatType.AttackRange, 0.10f, true) },
         },
@@ -347,7 +416,7 @@ public static class TraitCreator
         {
             type = TraitType.Synergy_IronVanguard,
             name = "철벽 전위대",
-            desc = "기사와 방패병이 함께 전선을 지킨다. 최대체력 +30%, 방어율 +10%.",
+            desc = "기사와 방패병이 함께 전선을 지킨다.",
             job  = (UnitJob)255,
             fx   = new[] { (StatType.MaxHp, 0.30f, true), (StatType.Defense, 0.10f, false) },
         },
@@ -355,7 +424,7 @@ public static class TraitCreator
         {
             type = TraitType.Synergy_KnightSquad,
             name = "기사 소대",
-            desc = "세 기사의 연대. 공격력 +10%, 이동속도 +6%.",
+            desc = "세 기사가 대열을 이룬다.",
             job  = (UnitJob)255,
             fx   = new[] { (StatType.Attack, 0.10f, true), (StatType.MoveSpeed, 0.06f, true) },
         },
@@ -363,7 +432,7 @@ public static class TraitCreator
         {
             type = TraitType.Synergy_ArcherSquad,
             name = "궁수 소대",
-            desc = "세 궁수의 일제 사격. 공격력 +10%, 공격속도 +6%.",
+            desc = "세 궁수가 일제히 사격한다.",
             job  = (UnitJob)255,
             fx   = new[] { (StatType.Attack, 0.10f, true), (StatType.AttackSpeed, 0.06f, true) },
         },
@@ -371,7 +440,7 @@ public static class TraitCreator
         {
             type = TraitType.Synergy_MageSquad,
             name = "법사 소대",
-            desc = "세 법사의 마력 집중. 공격력 +12%, 스킬 쿨타임 -5%.",
+            desc = "세 법사가 마력을 모은다.",
             job  = (UnitJob)255,
             fx   = new[] { (StatType.Attack, 0.12f, true), (StatType.SkillCooldownReduce, 0.05f, false) },
         },
@@ -379,7 +448,7 @@ public static class TraitCreator
         {
             type = TraitType.Synergy_ShieldSquad,
             name = "방패병 소대",
-            desc = "세 방패병의 굳건한 방어. 최대체력 +13%, 방어율 +5%.",
+            desc = "세 방패병이 방패를 맞댄다.",
             job  = (UnitJob)255,
             fx   = new[] { (StatType.MaxHp, 0.13f, true), (StatType.Defense, 0.05f, false) },
         },
@@ -406,6 +475,15 @@ public static class TraitCreator
         (TraitType.CommonSoldierSupply,  "Assets/_project/3.Textures/Icons/Traits/trait_common_soldier_supply.png"),
         (TraitType.CommonForcedLevy,     "Assets/_project/3.Textures/Icons/Traits/trait_common_forced_levy.png"),
         (TraitType.CommonEquipExpand,    "Assets/_project/3.Textures/Icons/Traits/trait_common_equip_expand.png"),
+        // 이벤트 전용
+        (TraitType.Event_BattleWill,      "Assets/_project/3.Textures/Icons/Traits/trait_event_battle_will.png"),
+        (TraitType.Event_PotionBuff,      "Assets/_project/3.Textures/Icons/Traits/trait_event_potion_buff.png"),
+        (TraitType.Event_PotionDebuff,    "Assets/_project/3.Textures/Icons/Traits/trait_event_potion_debuff.png"),
+        (TraitType.Event_BloodPact,       "Assets/_project/3.Textures/Icons/Traits/trait_event_blood_pact.png"),
+        (TraitType.Event_AltarCurse,      "Assets/_project/3.Textures/Icons/Traits/trait_event_altar_curse.png"),
+        (TraitType.Event_ExecutionMorale, "Assets/_project/3.Textures/Icons/Traits/trait_event_execution_morale.png"),
+        (TraitType.Event_SpyInfo,         "Assets/_project/3.Textures/Icons/Traits/trait_event_spy_info.png"),
+        (TraitType.Event_VeteranHeritage, "Assets/_project/3.Textures/Icons/Traits/trait_event_veteran_heritage.png"),
         // 시너지
         (TraitType.Synergy_VanguardCross, "Assets/_project/3.Textures/Icons/Traits/trait_synergy_vanguard.png"),
         (TraitType.Synergy_MagicShield,   "Assets/_project/3.Textures/Icons/Traits/trait_synergy_magic_shield.png"),

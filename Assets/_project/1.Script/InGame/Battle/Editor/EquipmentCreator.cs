@@ -32,7 +32,7 @@ public static class EquipmentCreator
     const string EquipDir = "Assets/_project/Data/Equipments";
     const string DBPath   = "Assets/Resources/EquipmentDatabase.asset";
 
-    [MenuItem("BattleGame/데이터 생성/장비 전체 생성")]
+    [MenuItem(ProjectKMenu.Data + "장비", priority = ProjectKMenu.DataPrio + 17)]
     public static void CreateAllEquipments()
     {
         // ── 폴더 준비 ─────────────────────────────────────────

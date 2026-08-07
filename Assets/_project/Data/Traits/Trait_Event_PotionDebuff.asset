@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cadf0233cbf4ca744a6649911ca92877, type: 3}
+  m_Name: Trait_Event_PotionDebuff
+  m_EditorClassIdentifier: 
+  TraitType: 502
+  TraitName: "\uBD80\uC791\uC6A9"
+  Description: "\uBB18\uC57D\uC758 \uBD80\uC791\uC6A9\uC73C\uB85C \uBAB8\uC774 \uBB34\uAC81\uB2E4."
+  RequiredJob: 255
+  Icon: {fileID: 21300000, guid: e502c0d544ce87446a7daca6bb63c780, type: 3}
+  Effects:
+  - Stat: 5
+    Value: -0.08
+    IsPercent: 1
+  StackTrigger: 0
+  MaxStacks: 0
+  StackStatBonuses: []

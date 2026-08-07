@@ -1,9 +1,19 @@
-// ============================================================
+﻿// ============================================================
 //  ItemIconGenerator.cs  [Editor Only]
-//  Tools > Project K > 에셋 > Generate Item Icons
+//  Tools > Project K > 아이콘·텍스처 > 아이템 아이콘
 //
-//  eItem 열거형 항목별 48×48 PNG 아이콘 생성.
+//  eItem 열거형 항목별 PNG 아이콘 생성.
 //  저장 경로: Assets/_project/3.Textures/Icons/Items/
+//
+//  ■ 해상도
+//    그리기 코드는 48 격자 좌표를 그대로 쓰지만, Painter 가 P.S 배(=4)
+//    버퍼에 그려 실제 출력은 192×192 다. 확대가 아니라 원·선을 그 해상도에서
+//    다시 계산하므로 경계가 매끄럽다 (픽셀당 3×3 서브샘플 AA).
+//    보상 카드가 128px 로 띄우기 때문에 48px 원본은 뭉개져 보였다.
+//
+//  ■ 새 아이콘 추가
+//    Draw* 함수를 만들고 GenerateAll() 에 Save() 한 줄 추가.
+//    좌표는 계속 0~47 기준으로 잡으면 된다.
 // ============================================================
 using System;
 using System.IO;
@@ -33,7 +43,7 @@ public static class ItemIconGenerator
     //  진입점
     // ═══════════════════════════════════════════════════════
 
-    [MenuItem("Tools/Project K/에셋/Generate Item Icons")]
+    [MenuItem(ProjectKMenu.Icon + "아이템 아이콘", priority = ProjectKMenu.IconPrio + 15)]
     public static void GenerateAll()
     {
         EnsureDir(ITEM_PATH);
@@ -53,9 +63,9 @@ public static class ItemIconGenerator
         Save("item_reincarnation_point.png",  DrawReincarnationPoint);
 
         AssetDatabase.Refresh();
-        ApplySpriteImport(ITEM_PATH, 48);
+        ApplySpriteImport(ITEM_PATH);
         AssetDatabase.SaveAssets();
-        Debug.Log("[ItemIconGenerator] 아이템 아이콘 13종 생성 완료.");
+        Debug.Log($"[ItemIconGenerator] 아이템 아이콘 13종 생성 완료 ({48 * P.S}×{48 * P.S}).");
     }
 
     // ═══════════════════════════════════════════════════════
@@ -474,8 +484,12 @@ public static class ItemIconGenerator
         Directory.CreateDirectory(full);
     }
 
-    static void ApplySpriteImport(string folder, int size)
+    static void ApplySpriteImport(string folder)
     {
+        // maxTextureSize 를 원본(192)보다 작게 두면 임포트 단계에서 다시 줄어들어
+        // 애써 올린 해상도가 그대로 날아간다. 원본 크기 이상으로 잡을 것.
+        int maxSize = Mathf.NextPowerOfTwo(48 * P.S);   // 192 → 256
+
         var guids = AssetDatabase.FindAssets("t:Texture2D", new[] { folder });
         foreach (var guid in guids)
         {
@@ -487,8 +501,9 @@ public static class ItemIconGenerator
             importer.spriteImportMode    = SpriteImportMode.Single;
             importer.spritePivot         = new Vector2(0.5f, 0.5f);
             importer.filterMode          = FilterMode.Bilinear;
+            importer.mipmapEnabled       = false;   // UI 는 밉맵이 없어야 선명하다
             importer.textureCompression  = TextureImporterCompression.Uncompressed;
-            importer.maxTextureSize      = 128;
+            importer.maxTextureSize      = maxSize;
             importer.alphaIsTransparency = true;
             importer.SaveAndReimport();
         }
@@ -499,16 +514,32 @@ public static class ItemIconGenerator
     // ═══════════════════════════════════════════════════════
     class P
     {
-        public readonly int W, H;
+        // 슈퍼샘플 배율. 그리기 좌표는 그대로 48 격자를 쓰고,
+        // 실제 버퍼만 S 배로 잡아 도형을 그 해상도에서 계산한다.
+        // → 단순 확대가 아니라 원·선이 실제로 매끄러워진다.
+        public const int S = 4;
+
+        // 픽셀당 서브샘플 수 (AA×AA). 경계 커버리지를 알파로 환산한다.
+        const int AA = 3;
+
+        public readonly int W, H;      // 논리 크기 (48×48)
+        readonly int _dw, _dh;         // 실제 픽셀 (192×192)
         readonly Color32[] _px;
 
-        public P(int w, int h) { W = w; H = h; _px = new Color32[w * h]; }
-
-        int Idx(int x, int y) => (H - 1 - y) * W + x;
-
-        public void BlendPixel(int x, int y, Color32 c)
+        public P(int w, int h)
         {
-            if (x < 0 || x >= W || y < 0 || y >= H) return;
+            W = w; H = h;
+            _dw = w * S; _dh = h * S;
+            _px = new Color32[_dw * _dh];
+        }
+
+        // ── 실제 픽셀 단위 ────────────────────────────────────
+
+        int Idx(int x, int y) => (_dh - 1 - y) * _dw + x;
+
+        void Dev(int x, int y, Color32 c)
+        {
+            if (x < 0 || x >= _dw || y < 0 || y >= _dh || c.a == 0) return;
             int i = Idx(x, y);
             if (c.a == 255) { _px[i] = c; return; }
             float a = c.a / 255f, ea = _px[i].a / 255f;
@@ -521,71 +552,124 @@ public static class ItemIconGenerator
                 (byte)Mathf.RoundToInt(oa * 255));
         }
 
+        /// <summary>
+        /// inside(x,y) 판정을 픽셀당 AA×AA 로 샘플링해 커버리지만큼 알파를 낮춰 칠한다.
+        /// 원·선·삼각형의 경계가 계단지지 않게 하는 공용 경로.
+        /// </summary>
+        void FillShape(float minX, float minY, float maxX, float maxY,
+                       Func<float, float, bool> inside, Color32 c)
+        {
+            int x0 = Mathf.Max(0, Mathf.FloorToInt(minX));
+            int x1 = Mathf.Min(_dw - 1, Mathf.CeilToInt(maxX));
+            int y0 = Mathf.Max(0, Mathf.FloorToInt(minY));
+            int y1 = Mathf.Min(_dh - 1, Mathf.CeilToInt(maxY));
+
+            const float Inv = 1f / AA;
+            for (int y = y0; y <= y1; y++)
+            for (int x = x0; x <= x1; x++)
+            {
+                int hit = 0;
+                for (int sy = 0; sy < AA; sy++)
+                for (int sx = 0; sx < AA; sx++)
+                    if (inside(x + (sx + 0.5f) * Inv, y + (sy + 0.5f) * Inv)) hit++;
+
+                if (hit == 0) continue;
+                var cc = c;
+                cc.a = (byte)Mathf.RoundToInt(c.a * hit / (float)(AA * AA));
+                Dev(x, y, cc);
+            }
+        }
+
+        // 논리 좌표 → 실제 좌표 (해당 논리 픽셀의 중심)
+        static float Dx(int v) => (v + 0.5f) * S;
+
+        // ── 논리 좌표 API (그리기 코드는 48 격자 그대로 쓴다) ──
+
+        /// <summary>논리 픽셀 1칸을 칠한다 (S×S 블록).</summary>
+        public void BlendPixel(int x, int y, Color32 c)
+        {
+            for (int dy = 0; dy < S; dy++)
+            for (int dx = 0; dx < S; dx++)
+                Dev(x * S + dx, y * S + dy, c);
+        }
+
         public void BgGrad(Color32 dark, Color32 mid)
         {
-            int cx = W / 2, cy = H / 2;
+            float cx = _dw * 0.5f, cy = _dh * 0.5f;
             float maxD = Mathf.Sqrt(cx * cx + cy * cy);
-            const int R = 10;
-            for (int y = 0; y < H; y++)
-            for (int x = 0; x < W; x++)
+            float r = 10f * S;
+
+            for (int y = 0; y < _dh; y++)
+            for (int x = 0; x < _dw; x++)
             {
-                int dx = 0, dy = 0;
-                if (x < R && y < R)             { dx = R - x; dy = R - y; }
-                else if (x >= W - R && y < R)   { dx = x - (W - R - 1); dy = R - y; }
-                else if (x < R && y >= H - R)   { dx = R - x; dy = y - (H - R - 1); }
-                else if (x >= W - R && y >= H - R) { dx = x - (W - R - 1); dy = y - (H - R - 1); }
-                if (dx * dx + dy * dy > R * R && (dx > 0 || dy > 0)) continue;
-                float t = Mathf.Clamp01(Mathf.Sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)) / maxD);
-                BlendPixel(x, y, Color32.Lerp(mid, dark, t * t));
+                if (!InRoundedCanvas(x + 0.5f, y + 0.5f, r)) continue;
+                float d = Mathf.Sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy));
+                float t = Mathf.Clamp01(d / maxD);
+                Dev(x, y, Color32.Lerp(mid, dark, t * t));
             }
+        }
+
+        // 모서리가 둥근 캔버스 안쪽인지
+        bool InRoundedCanvas(float x, float y, float r)
+        {
+            float dx = 0f, dy = 0f;
+            if (x < r)            dx = r - x;
+            else if (x > _dw - r) dx = x - (_dw - r);
+            if (y < r)            dy = r - y;
+            else if (y > _dh - r) dy = y - (_dh - r);
+            return dx * dx + dy * dy <= r * r;
         }
 
         public void RoundedBorder(int radius, int thick, Color32 c)
         {
-            for (int y = 0; y < H; y++)
-            for (int x = 0; x < W; x++)
-            {
-                int dx = 0, dy = 0;
-                if (x < radius && y < radius)               { dx = radius - x - 1; dy = radius - y - 1; }
-                else if (x >= W - radius && y < radius)     { dx = x - (W - radius); dy = radius - y - 1; }
-                else if (x < radius && y >= H - radius)     { dx = radius - x - 1; dy = y - (H - radius); }
-                else if (x >= W - radius && y >= H - radius){ dx = x - (W - radius); dy = y - (H - radius); }
+            float r  = radius * S;
+            float th = thick  * S;
+            FillShape(0, 0, _dw, _dh,
+                (x, y) => InRoundedCanvas(x, y, r) && !InsetRounded(x, y, r, th), c);
+        }
 
-                bool onEdge = (dx > 0 || dy > 0)
-                    ? (dx * dx + dy * dy >= (radius - thick) * (radius - thick) && dx * dx + dy * dy <= radius * radius)
-                    : (x < thick || x >= W - thick || y < thick || y >= H - thick);
-                if (onEdge) BlendPixel(x, y, c);
-            }
+        // 테두리 두께만큼 안쪽으로 들어간 영역인지 (테두리 링 계산용)
+        bool InsetRounded(float x, float y, float r, float th)
+        {
+            if (x < th || x > _dw - th || y < th || y > _dh - th) return false;
+            float ir = Mathf.Max(0f, r - th);
+            float dx = 0f, dy = 0f;
+            if (x < th + ir)            dx = (th + ir) - x;
+            else if (x > _dw - th - ir) dx = x - (_dw - th - ir);
+            if (y < th + ir)            dy = (th + ir) - y;
+            else if (y > _dh - th - ir) dy = y - (_dh - th - ir);
+            return dx * dx + dy * dy <= ir * ir;
         }
 
         public void FillRect(int x, int y, int w, int h, Color32 c)
         {
-            for (int fy = y; fy < y + h; fy++)
-            for (int fx = x; fx < x + w; fx++)
-                BlendPixel(fx, fy, c);
+            // 사각형은 격자에 딱 맞으므로 AA 없이 채운다 (경계가 흐려지지 않게)
+            for (int fy = y * S; fy < (y + h) * S; fy++)
+            for (int fx = x * S; fx < (x + w) * S; fx++)
+                Dev(fx, fy, c);
         }
 
         public void FillRRect(int x, int y, int w, int h, int r, Color32 c)
         {
-            for (int fy = y; fy < y + h; fy++)
-            for (int fx = x; fx < x + w; fx++)
+            float x0 = x * S, y0 = y * S, x1 = (x + w) * S, y1 = (y + h) * S;
+            float rr = r * S;
+            FillShape(x0, y0, x1, y1, (px, py) =>
             {
-                int dx = 0, dy = 0;
-                if (fx < x + r && fy < y + r)           { dx = fx - (x + r); dy = fy - (y + r); }
-                else if (fx >= x + w - r && fy < y + r) { dx = fx - (x + w - r - 1); dy = fy - (y + r); }
-                else if (fx < x + r && fy >= y + h - r) { dx = fx - (x + r); dy = fy - (y + h - r - 1); }
-                else if (fx >= x+w-r && fy >= y+h-r)    { dx = fx - (x+w-r-1); dy = fy - (y+h-r-1); }
-                if (dx * dx + dy * dy <= r * r || (dx == 0 && dy == 0))
-                    BlendPixel(fx, fy, c);
-            }
+                if (px < x0 || px > x1 || py < y0 || py > y1) return false;
+                float dx = 0f, dy = 0f;
+                if (px < x0 + rr)      dx = (x0 + rr) - px;
+                else if (px > x1 - rr) dx = px - (x1 - rr);
+                if (py < y0 + rr)      dy = (y0 + rr) - py;
+                else if (py > y1 - rr) dy = py - (y1 - rr);
+                return dx * dx + dy * dy <= rr * rr;
+            }, c);
         }
 
         public void FillCircle(int cx, int cy, int r, Color32 c)
         {
-            for (int y = cy - r; y <= cy + r; y++)
-            for (int x = cx - r; x <= cx + r; x++)
-                if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= r * r)
-                    BlendPixel(x, y, c);
+            float ccx = Dx(cx), ccy = Dx(cy), rr = (r + 0.5f) * S;
+            FillShape(ccx - rr - 1, ccy - rr - 1, ccx + rr + 1, ccy + rr + 1,
+                (x, y) => (x - ccx) * (x - ccx) + (y - ccy) * (y - ccy) <= rr * rr, c);
         }
 
         public void FillCircleAlpha(int cx, int cy, int r, Color32 c)
@@ -593,55 +677,59 @@ public static class ItemIconGenerator
 
         public void DrawCircle(int cx, int cy, int r, int thick, Color32 c)
         {
-            for (int y = cy - r - thick; y <= cy + r + thick; y++)
-            for (int x = cx - r - thick; x <= cx + r + thick; x++)
+            float ccx = Dx(cx), ccy = Dx(cy);
+            float ro = (r + thick + 0.5f) * S;
+            float ri = Mathf.Max(0f, (r - thick + 0.5f) * S);
+            FillShape(ccx - ro - 1, ccy - ro - 1, ccx + ro + 1, ccy + ro + 1, (x, y) =>
             {
-                int d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
-                int r0 = r - thick, r1 = r + thick;
-                if (d2 >= r0 * r0 && d2 <= r1 * r1) BlendPixel(x, y, c);
-            }
+                float d2 = (x - ccx) * (x - ccx) + (y - ccy) * (y - ccy);
+                return d2 <= ro * ro && d2 >= ri * ri;
+            }, c);
         }
 
         public void DrawLine(int x0, int y0, int x1, int y1, Color32 c, int thick)
         {
-            int dx = Mathf.Abs(x1 - x0), dy = Mathf.Abs(y1 - y0);
-            int sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
-            int err = dx - dy, x = x0, y = y0;
-            while (true)
+            float ax = Dx(x0), ay = Dx(y0), bx = Dx(x1), by = Dx(y1);
+            float half = (thick + 1) * S * 0.5f;   // 예전 박스 스탬프와 같은 굵기
+            float vx = bx - ax, vy = by - ay;
+            float len2 = vx * vx + vy * vy;
+
+            FillShape(Mathf.Min(ax, bx) - half - 1, Mathf.Min(ay, by) - half - 1,
+                      Mathf.Max(ax, bx) + half + 1, Mathf.Max(ay, by) + half + 1, (px, py) =>
             {
-                for (int ty = -thick / 2; ty <= thick / 2; ty++)
-                for (int tx = -thick / 2; tx <= thick / 2; tx++)
-                    BlendPixel(x + tx, y + ty, c);
-                if (x == x1 && y == y1) break;
-                int e2 = 2 * err;
-                if (e2 > -dy) { err -= dy; x += sx; }
-                if (e2 <  dx) { err += dx; y += sy; }
-            }
+                float t = len2 > 0f
+                    ? Mathf.Clamp01(((px - ax) * vx + (py - ay) * vy) / len2)
+                    : 0f;
+                float dx = px - (ax + vx * t), dy = py - (ay + vy * t);
+                return dx * dx + dy * dy <= half * half;
+            }, c);
         }
 
         public void FillTri(int x0, int y0, int x1, int y1, int x2, int y2, Color32 c)
         {
-            int minX = Mathf.Min(x0, Mathf.Min(x1, x2));
-            int maxX = Mathf.Max(x0, Mathf.Max(x1, x2));
-            int minY = Mathf.Min(y0, Mathf.Min(y1, y2));
-            int maxY = Mathf.Max(y0, Mathf.Max(y1, y2));
-            for (int y = minY; y <= maxY; y++)
-            for (int x = minX; x <= maxX; x++)
-            {
-                float d0 = Sign(x, y, x0, y0, x1, y1);
-                float d1 = Sign(x, y, x1, y1, x2, y2);
-                float d2 = Sign(x, y, x2, y2, x0, y0);
-                bool hasNeg = d0 < 0 || d1 < 0 || d2 < 0;
-                bool hasPos = d0 > 0 || d1 > 0 || d2 > 0;
-                if (!(hasNeg && hasPos)) BlendPixel(x, y, c);
-            }
+            float ax = Dx(x0), ay = Dx(y0);
+            float bx = Dx(x1), by = Dx(y1);
+            float cx2 = Dx(x2), cy2 = Dx(y2);
+
+            FillShape(Mathf.Min(ax, Mathf.Min(bx, cx2)) - 1, Mathf.Min(ay, Mathf.Min(by, cy2)) - 1,
+                      Mathf.Max(ax, Mathf.Max(bx, cx2)) + 1, Mathf.Max(ay, Mathf.Max(by, cy2)) + 1,
+                (px, py) =>
+                {
+                    float d0 = Sign(px, py, ax, ay, bx, by);
+                    float d1 = Sign(px, py, bx, by, cx2, cy2);
+                    float d2 = Sign(px, py, cx2, cy2, ax, ay);
+                    bool hasNeg = d0 < 0 || d1 < 0 || d2 < 0;
+                    bool hasPos = d0 > 0 || d1 > 0 || d2 > 0;
+                    return !(hasNeg && hasPos);
+                }, c);
         }
-        static float Sign(int px, int py, int ax, int ay, int bx, int by)
+
+        static float Sign(float px, float py, float ax, float ay, float bx, float by)
             => (px - bx) * (ay - by) - (ax - bx) * (py - by);
 
         public void Save(string assetPath)
         {
-            var tex = new Texture2D(W, H, TextureFormat.RGBA32, false);
+            var tex = new Texture2D(_dw, _dh, TextureFormat.RGBA32, false);
             tex.SetPixels32(_px);
             tex.Apply();
             string full = Path.Combine(Application.dataPath, "..", assetPath);

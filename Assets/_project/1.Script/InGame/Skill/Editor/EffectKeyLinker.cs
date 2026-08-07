@@ -25,7 +25,7 @@ public static class EffectKeyLinker
 {
     const string kDataPath = "Assets/_project/Data/Actives";
 
-    [MenuItem("BattleGame/Link Effect Keys to Skills")]
+    [MenuItem(ProjectKMenu.Tool + "스킬 SO 에 이펙트 키 연결", priority = ProjectKMenu.ToolPrio + 1)]
     public static void LinkAll()
     {
         // Link(assetName, baseKey, casterKey, targetKey, despawnDelay)

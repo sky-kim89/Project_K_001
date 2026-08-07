@@ -41,15 +41,35 @@ public class HeroStatResult
 
 public static class HeroStatResolver
 {
+    /// <summary>
+    /// 기본 스탯 = 등급·레벨 롤 + 장수별 용병 강화(SoldierBonus) + 이벤트 병사 보너스.
+    ///
+    /// ⚠ 전투(GeneralRuntimeBridge.Initialize)도 반드시 이 함수를 쓴다.
+    ///   한쪽에만 항목을 더하면 로비 표시와 실제 소환 수가 어긋난다.
+    /// </summary>
+    public static UnitStat RollBase(UnitEntry entry)
+    {
+        var stat = GeneralStatRoller.Roll(entry.UnitName, entry.Level, entry.Grade);
+
+        if (entry.SoldierBonus > 0)
+            stat.Add(StatType.SoldierCount, entry.SoldierBonus, "bonus");
+
+        // 이벤트로 얻은 런 영구 병사 (RunEventBonusData) — 예전엔 저장만 되고
+        // 어느 쪽에서도 읽지 않아 "병사 +1" 보상이 아무 효과가 없었다.
+        int eventSoldiers = UserDataManager.Instance?.Get<RunEventBonusData>()?.ExtraSoldiers ?? 0;
+        if (eventSoldiers != 0)
+            stat.Add(StatType.SoldierCount, eventSoldiers, "event");
+
+        return stat;
+    }
+
     /// <summary>UnitEntry 를 받아 기본·패시브·장비 보너스를 모두 계산한 결과를 반환.</summary>
     public static HeroStatResult Resolve(UnitEntry entry)
     {
         var result = new HeroStatResult();
 
-        // 1. 기본 스탯 + 용병 업그레이드 보너스
-        UnitStat stat = GeneralStatRoller.Roll(entry.UnitName, entry.Level, entry.Grade);
-        if (entry.SoldierBonus > 0)
-            stat.Add(StatType.SoldierCount, entry.SoldierBonus, "bonus");
+        // 1. 기본 스탯 (전투와 같은 함수 — RollBase 참고)
+        UnitStat stat = RollBase(entry);
         result.Base = stat;
 
         // 2. 패시브 보너스 (TriggerType == None & Target == General 만 적용)
@@ -73,9 +93,8 @@ public static class HeroStatResolver
             }
         }
 
-        // 3. 장비 보너스
-        int equipSlotCount = 2 + TraitApplier.GetEquipSlotBonus(
-            UserDataManager.Instance?.Get<RunTraitData>(), TraitDatabase.Current);
+        // 3. 장비 보너스 (열린 슬롯 수는 EquipmentApplier 가 소유한다)
+        int equipSlotCount = EquipmentApplier.ActiveSlotCount;
         var equipDb = EquipmentDatabase.Current;
         if (equipDb != null && entry.RunEquipSlots != null)
         {

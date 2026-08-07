@@ -36,8 +36,12 @@ public enum eItem
     EquipBox = 200,  // 장비 랜덤 박스 — 개봉 시 EquipmentDatabase.PickRandom()
 
     // ── 특수 위임 (Special) ─────────────────── 900~
+    //  수량을 저장하지 않는다. SpecificId 로 "무엇을" 주는지 지정하고
+    //  RewardOpener 가 해당 데이터 섹션에 직접 넣는다.
     General   = 900,   // 장군 지급 → GeneralManager 위임
-    Equipment = 901,   // 장비 지급 → EquipmentManager 위임
+    Equipment = 901,   // 장비 지급 → SpecificId = EquipmentId
+    Trait     = 902,   // 특성 지급 → SpecificId = TraitType 이름 (예: "Event_BattleWill")
+    Ability   = 903,   // 어빌리티 지급 → SpecificId = AbilityId 이름
 }
 
 // ── 재화 카테고리 ─────────────────────────────────────────────
@@ -71,11 +75,45 @@ public static class ItemExtensions
         eItem.EquipBox            => "장비 박스",
         eItem.General             => "장군",
         eItem.Equipment           => "장비",
+        eItem.Trait               => "특성",
+        eItem.Ability             => "어빌리티",
         _                         => item.ToString(),
     };
 
     /// <summary>랜덤 박스 타입 여부. RewardOpener 분기·팝업 UI 에 사용.</summary>
     public static bool IsBoxType(this eItem item) => (int)item >= 200 && (int)item <= 299;
+
+    /// <summary>
+    /// Special 아이템 여부 (900~). 수량을 저장하지 않고 SpecificId 로 대상을 지정한다.
+    /// 지급 처리는 RewardOpener 가 담당한다.
+    /// </summary>
+    public static bool IsSpecialType(this eItem item) => (int)item >= 900;
+
+    /// <summary>
+    /// "이 재화가 어디에 쓰이는가" 한 줄 설명. 보상 카드 툴팁에 표시된다.
+    /// 실제 소비처 기준으로 적을 것 — 새 소비처가 생기면 여기도 갱신한다.
+    /// </summary>
+    public static string UsageDesc(this eItem item) => item switch
+    {
+        eItem.Gold                => "용병 고용, 장수 레벨업, 장비 강화, 환생에 쓰인다.",
+        eItem.Gem                 => "상점의 특별 상품을 구매할 때 쓰인다.",
+        eItem.Energy              => "스테이지에 입장할 때 소모된다.",
+        eItem.Stamina             => "반복 콘텐츠 입장에 소모된다.",
+        eItem.Honor               => "PvP 콘텐츠 보상 교환에 쓰인다.",
+        eItem.ReincarnationPoint  => "환생 후 유물을 강화할 때 쓰인다.",
+        eItem.ExpBook             => "장수에게 사용해 경험치를 올린다.",
+        eItem.BattleStone         => "스테이지 클리어 보상. 성장 재료로 쓰인다.",
+        eItem.SkillScroll         => "장수의 잠긴 스킬을 해제할 때 쓰인다.",
+        eItem.GeneralUpgradeStone => "장수를 강화할 때 쓰인다.",
+        eItem.EquipUpgradeStone   => "장비를 강화할 때 쓰인다.",
+        eItem.SoldierShard        => "장수가 지휘하는 용병 수를 늘릴 때 쓰인다.",
+        eItem.EquipBox            => "열면 무작위 장비가 하나 나온다.",
+        eItem.General             => "새 장수가 부대에 합류한다.",
+        eItem.Equipment           => "장비 인벤토리에 추가된다.",
+        eItem.Trait               => "이번 런 동안 유지되는 특성이다.",
+        eItem.Ability             => "이번 런 동안 유지되는 어빌리티다.",
+        _                         => "",
+    };
 
     /// <summary>SpriteManager 조회용 스프라이트 이름 (PNG 파일명 기준).</summary>
     public static string IconKey(this eItem item) => item switch

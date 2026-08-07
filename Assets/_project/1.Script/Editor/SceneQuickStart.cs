@@ -28,13 +28,13 @@ public static class SceneQuickStart
     const string Lobby  = "Lobby";
     const string InGame = "InGame";
 
-    [MenuItem("Tools/Project K/씬 이동/Splash 로드    %#&1", priority = 0)]
+    [MenuItem(ProjectKMenu.Scene + "Splash 로드    %#&1", priority = ProjectKMenu.ScenePrio)]
     public static void LoadSplash() => Load(Splash);
 
-    [MenuItem("Tools/Project K/씬 이동/Lobby 로드     %#&2", priority = 1)]
+    [MenuItem(ProjectKMenu.Scene + "Lobby 로드     %#&2", priority = ProjectKMenu.ScenePrio + 1)]
     public static void LoadLobby() => Load(Lobby);
 
-    [MenuItem("Tools/Project K/씬 이동/InGame 로드    %#&3", priority = 2)]
+    [MenuItem(ProjectKMenu.Scene + "InGame 로드    %#&3", priority = ProjectKMenu.ScenePrio + 2)]
     public static void LoadInGame() => Load(InGame);
 
     // ── 내부 ──────────────────────────────────────────────────

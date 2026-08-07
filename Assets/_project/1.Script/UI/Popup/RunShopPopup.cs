@@ -6,151 +6,167 @@ using UnityEngine.UI;
 
 // ============================================================
 //  RunShopPopup.cs
-//  런 중간 상점 팝업.
+//  런 중간 상점 팝업 — "행상인의 좌판".
 //
-//  상점 상태는 RunShopData(저장 섹션)에 보관한다.
-//    ShopSeed     : 장비·장수 픽업 결정론적 시드
-//    RefreshCount : 새로고침 횟수 (비용 계산 + 시드 오프셋)
-//    PurchasedEquip / PurchasedGeneral : 구매 완료 슬롯
+//  열리는 경로: 상점 스테이지 → EventPopup(TravelingMerchant)
+//               → "상품을 본다" → 이 팝업.
+//               (StageSelectUI 가 직접 열지 않는다)
 //
-//  상점 갱신 시점:
-//    - 스테이지 클리어 → InGameManager가 RunShopData.NewStage() 호출
-//    - 팝업 오픈 시   → 시드로 결정론적 재생성 + 구매 플래그 복원
-//    - 새로고침 버튼  → RefreshCount++ 후 재생성
+//  ■ 화면 구성
+//    상품 6칸 — 장비 4 + 특성 2. 전부 RunShopGoodsSlot(= RewardCard) 하나로
+//               그린다. 이름·가격만 칸에 두고 상세는 카드를 눌러 툴팁으로 본다.
+//    용병 5칸 — RunShopGeneralSlot (HeroCard + 고용 버튼).
 //
-//  특성 슬롯: 시드로 생성하되, 구매 여부는 RunTraitData.HasTrait()
-//             로 판단하므로 별도 플래그 없음.
+//  ■ 상점 상태는 RunShopData(저장 섹션)에 보관한다.
+//    ShopSeed       : 장비·장수 픽업 결정론적 시드
+//    RefreshCount   : 새로고침 횟수 (비용 계산 + 시드 오프셋)
+//    PurchasedEquip / PurchasedGeneral / PurchasedTrait : 구매 완료 슬롯
+//
+//  ■ 상점 갱신 시점
+//    - 스테이지 클리어 → InGameManager 가 RunShopData.NewStage() 호출
+//    - 팝업 오픈 시     → 시드로 결정론적 재생성 + 구매 플래그 복원
+//    - 새로고침 버튼    → RefreshCount++ 후 재생성
 // ============================================================
 
 public class RunShopPopup : PopupBase
 {
     public override bool BlockBackgroundClose => true;
 
-    [Header("장비 슬롯 (4종)")]
-    [SerializeField] RunShopEquipSlot[] _equipSlots;
+    [Header("상품 슬롯 (앞 4칸 = 장비, 뒤 2칸 = 특성)")]
+    [SerializeField] RunShopGoodsSlot[] _goodsSlots;
 
-    [Header("특성 슬롯 (2종)")]
-    [SerializeField] RunShopTraitSlot[] _traitSlots;
-
-    [Header("장수 슬롯 (5종)")]
+    [Header("용병 슬롯 (5종)")]
     [SerializeField] RunShopGeneralSlot[] _generalSlots;
 
-    [Header("UI")]
+    [Header("헤더")]
+    [SerializeField] TextMeshProUGUI _goldText;
     [SerializeField] Button          _refreshBtn;
     [SerializeField] TextMeshProUGUI _refreshCostText;
     [SerializeField] Button          _closeBtn;
 
+    const int EquipSlots      = RunShopData.EquipSlots;     // 4
+    const int TraitSlots      = RunShopData.TraitSlots;     // 2
+    const int TraitCost       = 400;
     const int RefreshBaseCost = 100;
     const int SeedPrime       = 7919;   // 새로고침별 시드 오프셋용 소수
+
+    /// <summary>상점 장비 등급 하한 — 일반·고급은 전투 보상으로만 나온다.</summary>
+    const UnitGrade MinEquipGrade = UnitGrade.Rare;
 
     // ── 생명주기 ──────────────────────────────────────────────
 
     protected override void Awake()
     {
         base.Awake();
-        _closeBtn?.onClick.AddListener(() => Close());
-        _refreshBtn?.onClick.AddListener(OnRefresh);
+        _closeBtn.onClick.AddListener(() => Close());
+        _refreshBtn.onClick.AddListener(OnRefresh);
     }
 
-    protected override void OnAfterOpen()
-    {
-        // 시드로 결정론적 재생성 → 구매 플래그 복원
-        GenerateShop();
-    }
+    protected override void OnAfterOpen() => GenerateShop();
 
     // ── 상점 생성 ─────────────────────────────────────────────
 
     void GenerateShop()
     {
-        var shopData = UserDataManager.Instance?.Get<RunShopData>();
-        var rng      = new System.Random((shopData?.ShopSeed ?? 0) + (shopData?.RefreshCount ?? 0) * SeedPrime);
+        var shopData = UserDataManager.Instance.Get<RunShopData>();
+        var rng      = new System.Random(shopData.ShopSeed + shopData.RefreshCount * SeedPrime);
 
         SetupEquipSlots(rng, shopData);
-        SetupTraitSlots(rng);
+        SetupTraitSlots(rng, shopData);
         SetupGeneralSlots(rng, shopData);
-        RefreshRefreshBtn();
+        RefreshHeader();
     }
 
     void SetupEquipSlots(System.Random rng, RunShopData shopData)
     {
-        var db = EquipmentDatabase.Current;
-        if (_equipSlots == null) return;
-
-        int stageLevel = (UserDataManager.Instance?.Get<StageProgressData>()?.CurrentRunStage ?? 0) + 1;
+        var db         = EquipmentDatabase.Current;
+        int stageLevel = UserDataManager.Instance.Get<StageProgressData>().CurrentRunStage + 1;
         var usedIds    = new HashSet<string>();
 
-        for (int i = 0; i < _equipSlots.Length; i++)
+        for (int i = 0; i < EquipSlots; i++)
         {
-            EquipmentData data = null;
-            for (int retry = 0; retry < 30; retry++)
-            {
-                var candidate = db?.PickRandom(stageLevel, rng);
-                if (candidate == null) break;
-                if (usedIds.Add(candidate.EquipmentId)) { data = candidate; break; }
-            }
-            if (data == null) data = db?.PickRandom(stageLevel, rng);
+            var slot = _goodsSlots[i];
+            var data = PickUniqueEquipment(db, stageLevel, rng, usedIds);
+
+            if (data == null) { slot.SetEmpty(); continue; }
 
             int idx = i;
-            _equipSlots[i]?.Setup(data, data != null ? CalcEquipCost(data) : 0,
-                (d, c) => OnBuyEquip(d, c, idx));
+            slot.SetupEquipment(data, CalcEquipCost(data),
+                                () => OnBuyEquip(data, CalcEquipCost(data), idx));
 
-            if (shopData != null && shopData.IsPurchasedEquip(i))
-                _equipSlots[i]?.SetSoldOut();
+            if (shopData.IsPurchasedEquip(i)) slot.SetSoldOut("구매 완료");
         }
     }
 
-    void SetupTraitSlots(System.Random rng)
+    static EquipmentData PickUniqueEquipment(EquipmentDatabase db, int stageLevel,
+                                             System.Random rng, HashSet<string> usedIds)
+    {
+        for (int retry = 0; retry < 30; retry++)
+        {
+            var candidate = db.PickRandom(stageLevel, rng, MinEquipGrade);
+            if (candidate == null) return null;
+            if (usedIds.Add(candidate.EquipmentId)) return candidate;
+        }
+        // 중복이라도 하나는 내놓는다 (풀이 슬롯 수보다 작은 초반 상점)
+        return db.PickRandom(stageLevel, rng, MinEquipGrade);
+    }
+
+    // 추첨 풀은 "아직 없는 특성" 으로만 채운다.
+    // 이미 산 슬롯은 풀을 건드리지 않고 저장된 특성을 그대로 품절로 보여준다
+    // — 그러지 않으면 다시 열 때마다 새 특성이 올라와 공짜 새로고침이 된다.
+    void SetupTraitSlots(System.Random rng, RunShopData shopData)
     {
         var db    = TraitDatabase.Current;
-        var owned = UserDataManager.Instance?.Get<RunTraitData>();
-        if (_traitSlots == null) return;
+        var owned = UserDataManager.Instance.Get<RunTraitData>();
 
         var pool = new List<TraitData>();
         foreach (TraitType t in Enum.GetValues(typeof(TraitType)))
         {
             if (t == TraitType.None) continue;
-            if ((int)t >= 1000) continue; // 직업 시너지 — 상점 비등장
-            var td = db?.Get(t);
+            if ((int)t >= 1000) continue;                  // 직업 시너지 — 상점 비등장
+            if (owned.HasTrait(t)) continue;
+            var td = db.Get(t);
             if (td != null) pool.Add(td);
         }
         ShuffleSeeded(pool, rng);
 
-        // 소유 특성은 품절 표시, 미소유 특성은 구매 가능
         int poolIdx = 0;
-        for (int i = 0; i < _traitSlots.Length; i++)
+        for (int i = 0; i < TraitSlots; i++)
         {
-            // 미소유 특성 중 다음 후보 탐색
-            TraitData data = null;
-            while (poolIdx < pool.Count)
+            var slot     = _goodsSlots[EquipSlots + i];
+            var purchase = shopData.GetPurchasedTrait(i);
+            int idx      = i;
+
+            // 이미 산 슬롯 — 저장된 특성을 그대로 다시 그리고 품절 처리
+            if (purchase != TraitType.None)
             {
-                var candidate = pool[poolIdx++];
-                if (owned == null || !owned.HasTrait(candidate.TraitType))
-                {
-                    data = candidate;
-                    break;
-                }
+                var bought = db.Get(purchase);
+                slot.SetupTrait(bought, TraitCost, () => OnBuyTrait(bought, TraitCost, idx));
+                slot.SetSoldOut("구매 완료");
+                continue;
             }
 
-            _traitSlots[i]?.Setup(data, 400, OnBuyTrait);
+            if (poolIdx >= pool.Count) { slot.SetEmpty(); continue; }
+
+            var data = pool[poolIdx++];
+            slot.SetupTrait(data, TraitCost, () => OnBuyTrait(data, TraitCost, idx));
         }
     }
 
     void SetupGeneralSlots(System.Random rng, RunShopData shopData)
     {
-        if (_generalSlots == null) return;
+        int cost        = GameplayConfig.Current.HireMercenaryCost;
+        int activeSlots = RelicApplier.GetTotalActiveGeneralSlots();
+        int deployed    = UserDataManager.Instance.Get<DeploymentData>().GetDeployedUnits().Count;
+        bool slotsFull  = deployed >= activeSlots;
 
-        int cost         = GameplayConfig.Current.HireMercenaryCost;
-        int activeSlots  = RelicApplier.GetTotalActiveGeneralSlots();
-        int deployed     = UserDataManager.Instance?.Get<DeploymentData>()?.GetDeployedUnits().Count ?? 0;
-        bool slotsFull   = deployed >= activeSlots;
-
-        var allNames = UserDataManager.Instance?.Get<UnitData>()?.GetAvailableNames();
+        var allNames = UserDataManager.Instance.Get<UnitData>().GetAvailableNames();
         var used     = new HashSet<string>();
 
         for (int i = 0; i < _generalSlots.Length; i++)
         {
             UnitEntry entry = null;
-            if (!slotsFull && allNames != null && allNames.Count > 0)
+            if (!slotsFull && allNames.Count > 0)
             {
                 string chosen = null;
                 for (int retry = 0; retry < 20; retry++)
@@ -158,7 +174,7 @@ public class RunShopPopup : PopupBase
                     string nm = allNames[rng.Next(allNames.Count)];
                     if (used.Add(nm)) { chosen = nm; break; }
                 }
-                if (chosen == null) chosen = allNames[i % allNames.Count];
+                chosen ??= allNames[i % allNames.Count];
                 entry = new UnitEntry
                 {
                     UnitName     = chosen,
@@ -169,83 +185,99 @@ public class RunShopPopup : PopupBase
             }
 
             int idx = i;
-            _generalSlots[i]?.Setup(entry, cost, (e, c) => OnHireGeneral(e, c, idx));
+            _generalSlots[i].Setup(entry, cost, (e, c) => OnHireGeneral(e, c, idx));
 
-            if (shopData != null && shopData.IsPurchasedGeneral(i))
-                _generalSlots[i]?.SetSoldOut();
+            if (shopData.IsPurchasedGeneral(i)) _generalSlots[i].SetSoldOut();
         }
     }
 
-    void RefreshRefreshBtn()
+    // ── 헤더 (보유 골드 · 새로고침 비용 · 구매 가능 여부) ─────
+
+    void RefreshHeader()
     {
-        var shopData = UserDataManager.Instance?.Get<RunShopData>();
-        int cost = RefreshBaseCost * ((shopData?.RefreshCount ?? 0) + 1);
-        if (_refreshCostText != null) _refreshCostText.text = $"{cost}";
-        int gold = UserDataManager.Instance?.Get<ItemData>()?.Get(eItem.Gold) ?? 0;
-        if (_refreshBtn != null) _refreshBtn.interactable = gold >= cost;
+        int gold = UserDataManager.Instance.Get<ItemData>().Get(eItem.Gold);
+        int cost = RefreshCost();
+
+        _goldText.text        = $"{gold:N0}";
+        _refreshCostText.text = $"{cost:N0}";
+        _refreshBtn.interactable = gold >= cost;
+
+        // 살 수 없는 상품은 버튼을 잠가 둔다 — 눌러 보고 아무 일도 안 일어나면
+        // 무엇이 문제인지 알 수 없다.
+        foreach (var slot in _goodsSlots)
+            slot.SetAffordable(gold >= slot.Cost);
+
+        foreach (var slot in _generalSlots)
+            slot.SetAffordable(gold >= GameplayConfig.Current.HireMercenaryCost);
     }
+
+    int RefreshCost()
+        => RefreshBaseCost * (UserDataManager.Instance.Get<RunShopData>().RefreshCount + 1);
 
     // ── 구매 처리 ─────────────────────────────────────────────
+    //  ⚠ 골드 차감은 반드시 ItemData.Spend() 로 한다.
+    //    Add() 는 첫 줄이 `if (amount <= 0) return;` 이라 음수를 넣으면
+    //    조용히 아무 일도 안 일어난다 — 전부 공짜로 사지던 원인이었다.
+    //    Spend() 는 잔액 검사 + 차감을 한 번에 하고 성공 여부를 돌려준다.
 
-    void OnBuyEquip(EquipmentData data, int cost, int slotIdx)
+    bool OnBuyEquip(EquipmentData data, int cost, int slotIdx)
     {
-        var items = UserDataManager.Instance?.Get<ItemData>();
-        if (items == null || items.Get(eItem.Gold) < cost) return;
+        var items = UserDataManager.Instance.Get<ItemData>();
+        if (!items.Spend(eItem.Gold, cost)) return false;
 
-        items.Add(eItem.Gold, -cost);
-        UserDataManager.Instance?.Get<EquipInventoryData>()?.Add(data.EquipmentId);
-        UserDataManager.Instance?.Get<RunShopData>()?.SetPurchasedEquip(slotIdx);
-        UserDataManager.Instance?.RequestSave();
-        RefreshRefreshBtn();
+        UserDataManager.Instance.Get<EquipInventoryData>().Add(data.EquipmentId);
+        UserDataManager.Instance.Get<RunShopData>().SetPurchasedEquip(slotIdx);
+        UserDataManager.Instance.RequestSave();
+        RefreshHeader();
+        return true;
     }
 
-    void OnBuyTrait(TraitData data, int cost)
+    bool OnBuyTrait(TraitData data, int cost, int slotIdx)
     {
-        var items = UserDataManager.Instance?.Get<ItemData>();
-        if (items == null || items.Get(eItem.Gold) < cost) return;
+        var items = UserDataManager.Instance.Get<ItemData>();
+        if (!items.Spend(eItem.Gold, cost)) return false;
 
-        items.Add(eItem.Gold, -cost);
-        UserDataManager.Instance?.Get<RunTraitData>()?.AddTrait(data.TraitType);
-        UserDataManager.Instance?.RequestSave();
-        RefreshRefreshBtn();
-        // 슬롯 UI의 품절 표시는 Setup() 내 onClick 리스너가 처리
+        UserDataManager.Instance.Get<RunTraitData>().AddTrait(data.TraitType);
+        UserDataManager.Instance.Get<RunShopData>().SetPurchasedTrait(slotIdx, data.TraitType);
+        UserDataManager.Instance.RequestSave();
+        RefreshHeader();
+        return true;
     }
 
-    void OnHireGeneral(UnitEntry entry, int cost, int slotIdx)
+    bool OnHireGeneral(UnitEntry entry, int cost, int slotIdx)
     {
-        var items  = UserDataManager.Instance?.Get<ItemData>();
-        var deploy = UserDataManager.Instance?.Get<DeploymentData>();
-        var units  = UserDataManager.Instance?.Get<UnitData>();
-        if (items == null || deploy == null || items.Get(eItem.Gold) < cost) return;
+        var items  = UserDataManager.Instance.Get<ItemData>();
+        var deploy = UserDataManager.Instance.Get<DeploymentData>();
+        var units  = UserDataManager.Instance.Get<UnitData>();
 
         int slot = -1;
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < RunShopData.GeneralSlots; i++)
         {
             if (string.IsNullOrEmpty(deploy.GetUnitAt(i))) { slot = i; break; }
         }
-        if (slot < 0) return;
+        if (slot < 0) return false;
 
-        items.Add(eItem.Gold, -cost);
+        // 빈 슬롯을 확인한 뒤에 차감한다 — 순서를 바꾸면 배치 실패 시 골드만 날아간다
+        if (!items.Spend(eItem.Gold, cost)) return false;
+
         if (!units.HasUnit(entry.UnitName))
             units.AddUnit(new UnitEntry { UnitName = entry.UnitName, Level = 1, GradeUpCount = entry.GradeUpCount });
         deploy.Deploy(entry.UnitName, slot);
-        UserDataManager.Instance?.Get<RunShopData>()?.SetPurchasedGeneral(slotIdx);
+        UserDataManager.Instance.Get<RunShopData>().SetPurchasedGeneral(slotIdx);
         JobSynergyEvaluator.Recalculate();
-        UserDataManager.Instance?.RequestSave();
-        RefreshRefreshBtn();
+        UserDataManager.Instance.RequestSave();
+        RefreshHeader();
+        return true;
     }
 
     void OnRefresh()
     {
-        var shopData = UserDataManager.Instance?.Get<RunShopData>();
-        int cost     = RefreshBaseCost * ((shopData?.RefreshCount ?? 0) + 1);
-        var items    = UserDataManager.Instance?.Get<ItemData>();
-        if (items == null || items.Get(eItem.Gold) < cost) return;
+        var items = UserDataManager.Instance.Get<ItemData>();
+        if (!items.Spend(eItem.Gold, RefreshCost())) return;
 
-        items.Add(eItem.Gold, -cost);
-        shopData?.IncrementRefresh();
+        UserDataManager.Instance.Get<RunShopData>().IncrementRefresh();
         GenerateShop();
-        UserDataManager.Instance?.RequestSave();
+        UserDataManager.Instance.RequestSave();
     }
 
     // ── 유틸 ─────────────────────────────────────────────────
@@ -269,6 +301,3 @@ public class RunShopPopup : PopupBase
         }
     }
 }
-
-// 슬롯 컴포넌트는 각 별도 파일로 분리:
-//   RunShopEquipSlot.cs / RunShopTraitSlot.cs / RunShopGeneralSlot.cs

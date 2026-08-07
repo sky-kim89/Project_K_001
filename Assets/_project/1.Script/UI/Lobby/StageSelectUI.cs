@@ -1,3 +1,4 @@
+﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -6,15 +7,27 @@ using TMPro;
 //  StageSelectUI.cs
 //  BattlePanel 전체 컨트롤러.
 //
-//  좌측: 용병 구매 버튼(상단) + 5개 DeploySlotUI (배치 슬롯)
-//  우측: 스테이지 정보 + 어빌리티 목록 버튼 + 유물 버튼 + 전투 시작 버튼
+//  좌측: 5개 DeploySlotUI (배치 슬롯 — 점유 칸을 누르면 장수 상세)
+//        빈 칸은 "빈 자리" 표시만 하고 눌리지 않는다.
+//        용병 고용은 런 상점(RunShopPopup)에서만 한다.
+//  우측: 스테이지 정보 + 어빌리티 목록 버튼 + 장비 분해 버튼 + 전투 시작 버튼
+//
+//  특성 아이콘 목록은 여기 없다 — TopBar 의 TraitBarUI 가 담당한다.
+//
+//  상점·이벤트는 버튼이 없다. 해당 스테이지에 도착하면(=이 패널이 켜지면)
+//  팝업이 자동으로 뜬다 — 스테이지당 한 번만. TryAutoOpenStagePopup() 참고.
+//
+//  상점 스테이지도 EventPopup 으로 연다. 상점 팝업이 예고 없이 뜨면
+//  무슨 상황인지 읽히지 않아, "행상인의 좌판" 이벤트를 거쳐
+//  '상품을 본다' 를 골랐을 때 RunShopPopup 이 열리게 했다.
+//  (1스테이지는 RunSequenceGenerator 가 항상 일반으로 고정하므로
+//   런 시작·환생 직후에는 여기서 아무것도 뜨지 않는다)
 //
 //  Inspector 연결:
 //    _deploySlots[0~4] : DeploySlotUI 컴포넌트
 //    _stageText        : "스테이지 N 도전" TMP
 //    _progressText     : "N 스테이지 클리어" TMP
 //    _abilityListBtn   : 어빌리티 목록 버튼
-//    _hireBtn          : 용병 구매 버튼 (DeployArea 상단)
 //    _relicBtn         : 유물 탭 이동 버튼 (ActionArea)
 //    _battleStartBtn   : 전투 시작 버튼
 // ============================================================
@@ -32,21 +45,9 @@ public class StageSelectUI : MonoBehaviour
     [Header("런 진행바")]
     [SerializeField] StageProgressBarUI _progressBar;
 
-    [Header("특성 아이콘 목록 (1행 — 일반 특성)")]
-    [SerializeField] TraitIconUI[]     _traitIcons;
-
-    [Header("시너지 특성 아이콘 (2행 — 직업 시너지)")]
-    [SerializeField] TraitIconUI[]     _synergyTraitIcons;
-
-    [Header("스테이지 타입 아이콘 (우측)")]
-    [SerializeField] GameObject        _shopIcon;          // 상점 스테이지 아이콘
-    [SerializeField] GameObject        _eventIcon;         // 이벤트 스테이지 아이콘
-
     [Header("버튼")]
     [SerializeField] Button          _abilityListBtn;
     [SerializeField] Button          _relicBtn;
-    [SerializeField] Button          _hireBtn;
-    [SerializeField] TextMeshProUGUI _hireCostText;
     [SerializeField] Button          _disassembleBtn;
     [SerializeField] Button          _battleStartBtn;
 
@@ -55,15 +56,14 @@ public class StageSelectUI : MonoBehaviour
     void OnEnable()
     {
         LobbyManager.OnStageChanged += OnStageChanged;
-        JobSynergyEvaluator.OnSynergiesChanged += RefreshSynergyIcons;
         BindButtons();
         Refresh();
+        StartCoroutine(AutoOpenStagePopupNextFrame());
     }
 
     void OnDisable()
     {
         LobbyManager.OnStageChanged -= OnStageChanged;
-        JobSynergyEvaluator.OnSynergiesChanged -= RefreshSynergyIcons;
     }
 
     // ── 버튼 연결 ─────────────────────────────────────────────
@@ -78,23 +78,42 @@ public class StageSelectUI : MonoBehaviour
         _relicBtn?.onClick.AddListener(() =>
             GetComponentInParent<LobbyNavUI>()?.Switch(3));
 
-        _hireBtn?.onClick.RemoveAllListeners();
-        _hireBtn?.onClick.AddListener(() => OpenMercenaryShop());
-
         _disassembleBtn?.onClick.RemoveAllListeners();
         _disassembleBtn?.onClick.AddListener(() =>
             PopupManager.Instance?.Open<DisassemblePopup>(PopupType.Disassemble));
 
         _battleStartBtn?.onClick.RemoveAllListeners();
         _battleStartBtn?.onClick.AddListener(() => LobbyManager.Instance?.StartBattle());
+    }
 
-        // 상점 아이콘 → RunShopPopup 직접 오픈
-        _shopIcon?.GetComponent<Button>()?.onClick.RemoveAllListeners();
-        _shopIcon?.GetComponent<Button>()?.onClick.AddListener(() =>
-        {
-            var p = PopupManager.Instance?.Open<RunShopPopup>(PopupType.RunShop);
-            p?.SetOnClose(Refresh);
-        });
+    // ── 상점·이벤트 자동 오픈 ─────────────────────────────────
+
+    /// <summary>
+    /// 로비에 도착했을 때 현재 스테이지가 상점/이벤트면 팝업을 자동으로 띄운다.
+    /// 한 프레임 미루는 이유: 이 패널은 LobbyNavUI.Switch() 가 켜므로
+    /// OnEnable 시점엔 PopupManager 초기화가 끝나지 않았을 수 있다.
+    /// </summary>
+    IEnumerator AutoOpenStagePopupNextFrame()
+    {
+        yield return null;
+        TryAutoOpenStagePopup();
+    }
+
+    void TryAutoOpenStagePopup()
+    {
+        var progress = UserDataManager.Instance.Get<StageProgressData>();
+        var type     = progress.CurrentStageType;
+        if (type != RunStageType.Shop && type != RunStageType.Event) return;
+
+        // 스테이지당 한 번만 — 탭을 오갈 때마다 다시 뜨면 안 된다.
+        if (progress.AutoPopupShownStage == progress.CurrentRunStage) return;
+        progress.AutoPopupShownStage = progress.CurrentRunStage;
+        UserDataManager.Instance.RequestSave();
+
+        var db = EventDatabase.Current;
+        OpenEventPopup(type == RunStageType.Shop
+            ? db.Get(EventDatabase.ShopEventId)
+            : db.GetRandom());
     }
 
     // ── 전체 갱신 ─────────────────────────────────────────────
@@ -103,9 +122,6 @@ public class StageSelectUI : MonoBehaviour
     {
         RefreshStageInfo();
         RefreshSlots();
-        RefreshHireBtn();
-        RefreshTraitIcons();
-        RefreshSynergyIcons();
     }
 
     void OnStageChanged(StageData _) => RefreshStageInfo();
@@ -114,79 +130,27 @@ public class StageSelectUI : MonoBehaviour
     {
         var progress = UserDataManager.Instance?.Get<StageProgressData>();
 
-        // 시퀀스가 없으면(환생 후 씬 미리로드 케이스) 즉시 생성
-        if (progress != null && progress.GetRunSequence().Length == 0)
-        {
-            progress.SetRunSequence(RunSequenceGenerator.Generate());
+        // 시퀀스가 없거나(환생 후 씬 미리로드) 규칙에 어긋나면 즉시 다시 뽑는다
+        if (progress != null && progress.EnsureRunSequence())
             UserDataManager.Instance.RequestSave();
-        }
 
-        int stageIndex  = progress?.CurrentRunStage ?? 0;
-        int stageNum    = stageIndex + 1;
-        int maxStage    = StageConfig.Current?.NormalStageCount ?? 30;
-        var stageType   = progress?.CurrentStageType ?? RunStageType.Normal;
+        int stageIndex = progress?.CurrentRunStage ?? 0;
 
-        if (_stageText    != null) _stageText.text    = $"스테이지 {stageNum} 도전";
-        if (_progressText != null) _progressText.text = $"{stageIndex} / {maxStage} 스테이지";
-        if (_stageTypeText != null)
-        {
-            _stageTypeText.text = stageType switch
-            {
-                RunStageType.Elite => "★ 엘리트",
-                RunStageType.Shop  => "🛒 상점",
-                RunStageType.Event => "? 이벤트",
-                _                  => "일반",
-            };
-        }
+        // 스테이지 번호만 남긴다.
+        // "도전"·스테이지 타입·"N / 30 스테이지" 는 전부 진행바가 이미 보여 주는
+        // 정보라 중복이었다 — 화면 가운데를 비워 두는 쪽이 읽기 쉽다.
+        if (_stageText     != null) _stageText.text = $"스테이지 {stageIndex + 1}";
+        if (_progressText  != null) _progressText.gameObject.SetActive(false);
+        if (_stageTypeText != null) _stageTypeText.gameObject.SetActive(false);
 
         // 런 진행바 갱신
         var seq = progress?.GetRunSequence();
         if (_progressBar != null && seq != null && seq.Length > 0)
             _progressBar.Refresh(seq, stageIndex);
 
-        // 우측 스테이지 타입 아이콘 표시/숨김
-        _shopIcon?.SetActive(stageType == RunStageType.Shop);
-        _eventIcon?.SetActive(stageType == RunStageType.Event);
-
-        // 전투 시작 버튼 텍스트 변경
+        // 상점은 자동으로 열리므로 이 버튼은 항상 "전투 시작" 이다.
         var label = _battleStartBtn?.GetComponentInChildren<TextMeshProUGUI>();
-        if (label != null) label.text = stageType == RunStageType.Shop ? "상점 입장" : "전투 시작";
-    }
-
-    void RefreshTraitIcons()
-    {
-        if (_traitIcons == null) return;
-        var traitData = UserDataManager.Instance?.Get<RunTraitData>();
-        int idx = 0;
-        if (traitData != null)
-        {
-            foreach (var t in traitData.AcquiredTraits)
-            {
-                if ((int)t >= 1000) continue;   // 시너지 특성은 2행으로 분리
-                if (idx >= _traitIcons.Length) break;
-                _traitIcons[idx]?.Setup(t);
-                _traitIcons[idx]?.gameObject.SetActive(true);
-                idx++;
-            }
-        }
-        for (; idx < _traitIcons.Length; idx++)
-            _traitIcons[idx]?.gameObject.SetActive(false);
-    }
-
-    void RefreshSynergyIcons()
-    {
-        if (_synergyTraitIcons == null) return;
-        var synergies = JobSynergyEvaluator.GetActiveSynergies();
-        int idx = 0;
-        foreach (var t in synergies)
-        {
-            if (idx >= _synergyTraitIcons.Length) break;
-            _synergyTraitIcons[idx]?.Setup(t, showStat: false);
-            _synergyTraitIcons[idx]?.gameObject.SetActive(true);
-            idx++;
-        }
-        for (; idx < _synergyTraitIcons.Length; idx++)
-            _synergyTraitIcons[idx]?.gameObject.SetActive(false);
+        if (label != null) label.text = "전투 시작";
     }
 
     void RefreshSlots()
@@ -195,67 +159,38 @@ public class StageSelectUI : MonoBehaviour
         int activeSlots = RelicApplier.GetTotalActiveGeneralSlots();
         for (int i = 0; i < _deploySlots.Length; i++)
         {
-            int capturedIdx = i;
-            _deploySlots[i]?.Setup(capturedIdx,
+            _deploySlots[i]?.Setup(i,
                 locked:     i >= activeSlots,
-                onEmpty:    () => OpenMercenaryShop(capturedIdx),
                 onOccupied: (entry, slot) => OpenHeroDetail(entry, slot));
         }
     }
 
     // ── 팝업 열기 ─────────────────────────────────────────────
 
-    void RefreshHireBtn()
-    {
-        if (_hireBtn == null) return;
-
-        // 빈 슬롯이 있으면 슬롯 자체가 고용 버튼 — 모두 찼을 때만 HireBtn 표시
-        bool allFull = AreAllSlotsFull();
-        _hireBtn.gameObject.SetActive(allFull);
-        if (!allFull) return;
-
-        int  cost   = GameplayConfig.Current.HireMercenaryCost;
-        int  gold   = UserDataManager.Instance.Get<ItemData>().Get(eItem.Gold);
-        bool canUse = gold >= cost;
-
-        _hireBtn.interactable = canUse;
-        if (_hireCostText != null)
-            _hireCostText.color = canUse
-                ? new Color(1f, 0.85f, 0.20f)
-                : new Color(0.55f, 0.45f, 0.10f);
-    }
-
-    bool AreAllSlotsFull()
-    {
-        var deploy = UserDataManager.Instance?.Get<DeploymentData>();
-        if (deploy == null) return false;
-        int activeSlots = RelicApplier.GetTotalActiveGeneralSlots();
-        for (int i = 0; i < activeSlots; i++)
-            if (string.IsNullOrEmpty(deploy.GetUnitAt(i))) return false;
-        return true;
-    }
-
-    // targetSlot: 클릭한 빈 슬롯 인덱스(-1이면 HireBtn에서 열림 = SlotFullView 경유)
-    void OpenMercenaryShop(int targetSlot = -1)
-    {
-        int cost = GameplayConfig.Current.HireMercenaryCost;
-        int gold = UserDataManager.Instance?.Get<ItemData>()?.Get(eItem.Gold) ?? 0;
-        if (gold < cost)
-        {
-            // 토스트 팝업 노출
-            Debug.Log("골드가 부족합니다!");      
-            return;
-        }
-
-        var popup = PopupManager.Instance.Open<MercenaryShopPopup>(PopupType.MercenaryShop);
-        popup.SetOnClose(Refresh);
-        popup.Setup(targetSlot);
-    }
-
     void OpenHeroDetail(UnitEntry entry, int slot)
     {
         var popup = PopupManager.Instance.Open<HeroDetailPopup>(PopupType.HeroDetail);
         popup.SetOnClose(Refresh);
         popup.Setup(entry);
+    }
+
+    void OpenEventPopup(EventData evt)
+    {
+        if (evt == null)
+        {
+            Debug.LogError("[StageSelectUI] 이벤트를 찾지 못했습니다 — " +
+                           "Tools > Project K > 데이터 생성 > 이벤트 를 실행하세요.");
+            return;
+        }
+
+        var popup = PopupManager.Instance.Open<EventPopup>(PopupType.Event);
+        popup.SetOnClose(Refresh);   // 이벤트 보상이 특성·슬롯을 바꾸므로 닫히면 갱신
+        popup.Setup(evt)
+             .SetupAbilityResources(
+                 AbilityDatabase.Current,
+                 UserDataManager.Instance.Get<RunAbilityData>(),
+                 UserDataManager.Instance.Get<RelicInventoryData>(),
+                 RelicDatabase.Current,
+                 UserDataManager.Instance.Get<ReincarnationData>());
     }
 }

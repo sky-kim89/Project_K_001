@@ -57,7 +57,7 @@ public static class IconGenerator
     //  스테이지 노드 아이콘 메뉴
     // ═══════════════════════════════════════════════════════
 
-    [MenuItem("Tools/Project K/에셋/Generate Stage Node Icons")]
+    [MenuItem(ProjectKMenu.Icon + "스테이지 노드 아이콘", priority = ProjectKMenu.IconPrio + 17)]
     public static void GenerateStageNodeIcons()
     {
         EnsureDir(STAGE_NODE_PATH);
@@ -186,7 +186,7 @@ public static class IconGenerator
     //  특성 아이콘 메뉴
     // ═══════════════════════════════════════════════════════
 
-    [MenuItem("Tools/Project K/에셋/Generate Trait Icons")]
+    [MenuItem(ProjectKMenu.Icon + "특성 아이콘", priority = ProjectKMenu.IconPrio + 12)]
     public static void GenerateTraitIcons()
     {
         EnsureDir(TRAIT_PATH);
@@ -210,6 +210,16 @@ public static class IconGenerator
         Save(48, 48, TRAIT_PATH + "/trait_common_forced_levy.png",      DrawTraitCommonForcedLevy);
         Save(48, 48, TRAIT_PATH + "/trait_common_equip_expand.png",     DrawTraitCommonEquipExpand);
 
+        // ── 이벤트 전용 특성 아이콘 ─────────────────────────────
+        Save(48, 48, TRAIT_PATH + "/trait_event_battle_will.png",       DrawEventBattleWill);
+        Save(48, 48, TRAIT_PATH + "/trait_event_potion_buff.png",       DrawEventPotionBuff);
+        Save(48, 48, TRAIT_PATH + "/trait_event_potion_debuff.png",     DrawEventPotionDebuff);
+        Save(48, 48, TRAIT_PATH + "/trait_event_blood_pact.png",        DrawEventBloodPact);
+        Save(48, 48, TRAIT_PATH + "/trait_event_altar_curse.png",       DrawEventAltarCurse);
+        Save(48, 48, TRAIT_PATH + "/trait_event_execution_morale.png",  DrawEventExecutionMorale);
+        Save(48, 48, TRAIT_PATH + "/trait_event_spy_info.png",          DrawEventSpyInfo);
+        Save(48, 48, TRAIT_PATH + "/trait_event_veteran_heritage.png",  DrawEventVeteranHeritage);
+
         // ── 직업 시너지 아이콘 ──────────────────────────────────
         Save(48, 48, TRAIT_PATH + "/trait_synergy_vanguard.png",        DrawSynergyVanguardCross);
         Save(48, 48, TRAIT_PATH + "/trait_synergy_magic_shield.png",    DrawSynergyMagicShield);
@@ -229,7 +239,133 @@ public static class IconGenerator
         AssetDatabase.Refresh();
         ApplySpriteImportSettings(TRAIT_PATH, 48);
         AssetDatabase.SaveAssets();
-        Debug.Log("[IconGenerator] 특성 아이콘 31장 생성 완료.");
+        Debug.Log("[IconGenerator] 특성 아이콘 39장 생성 완료.");
+    }
+
+    // ─────────────────────────────────────────────────────
+    //  ■ 이벤트 전용 특성 아이콘
+    //    버프 = 청록/금 계열, 디버프 = 자주/검붉은 계열로 구분한다.
+    // ─────────────────────────────────────────────────────
+
+    // Event_BattleWill — 전투 의지 (불끈 쥔 주먹 + 상승 화살, 주황)
+    static void DrawEventBattleWill(P p)
+    {
+        p.BgGradient(Hex("140A03"), Hex("2A1406"));
+        p.RoundedBorder(8, 2, Hex("D2761E"));
+        var c = new Color32(240, 160, 60, 235);
+        // 주먹 (뭉툭한 사각 + 손가락 마디)
+        p.FillRRect(15, 22, 18, 15, 4, new Color32(190, 118, 44, 240));
+        for (int i = 0; i < 3; i++)
+            p.DrawLine(18 + i * 5, 24, 18 + i * 5, 30, new Color32(120, 70, 24, 200), 1);
+        // 상승 화살
+        p.DrawLine(24, 20, 24, 9, c, 3);
+        p.FillTri(24, 5, 18, 13, 30, 13, c);
+    }
+
+    // Event_PotionBuff — 활력의 묘약 (플라스크 + 초록 액체 + 기포)
+    static void DrawEventPotionBuff(P p)
+    {
+        p.BgGradient(Hex("03140A"), Hex("062A16"));
+        p.RoundedBorder(8, 2, Hex("2ECC71"));
+        // 병목
+        p.FillRRect(21, 8, 6, 7, 1, new Color32(190, 215, 205, 200));
+        // 병 몸통
+        p.FillRRect(14, 15, 20, 24, 7, new Color32(30, 60, 48, 235));
+        // 액체
+        p.FillRRect(16, 24, 16, 13, 5, new Color32(46, 204, 113, 235));
+        // 기포
+        p.FillCircle(21, 30, 2, new Color32(180, 255, 210, 200));
+        p.FillCircle(27, 33, 1, new Color32(180, 255, 210, 180));
+        p.FillCircleAlpha(24, 20, 6, new Color32(46, 204, 113, 60));
+    }
+
+    // Event_PotionDebuff — 부작용 (엎어진 플라스크 + 하강 화살, 탁한 보라)
+    static void DrawEventPotionDebuff(P p)
+    {
+        p.BgGradient(Hex("120616"), Hex("24102C"));
+        p.RoundedBorder(8, 2, Hex("8E44AD"));
+        p.FillRRect(21, 8, 6, 7, 1, new Color32(170, 150, 190, 190));
+        p.FillRRect(14, 15, 20, 22, 7, new Color32(52, 34, 62, 235));
+        p.FillRRect(16, 24, 16, 11, 5, new Color32(142, 68, 173, 225));
+        // 하강 화살
+        var c = new Color32(200, 120, 230, 235);
+        p.DrawLine(38, 26, 38, 36, c, 3);
+        p.FillTri(38, 42, 33, 34, 43, 34, c);
+    }
+
+    // Event_BloodPact — 피의 계약 (제단 + 핏방울, 검붉은)
+    static void DrawEventBloodPact(P p)
+    {
+        p.BgGradient(Hex("160404"), Hex("2C0808"));
+        p.RoundedBorder(8, 2, Hex("C0392B"));
+        // 제단 (사다리꼴 느낌의 2단)
+        p.FillRRect(12, 32, 24, 8, 2, new Color32(70, 40, 40, 240));
+        p.FillRRect(16, 26, 16, 7, 2, new Color32(96, 54, 54, 240));
+        // 핏방울
+        var b = new Color32(200, 45, 40, 240);
+        p.FillCircle(24, 18, 6, b);
+        p.FillTri(24, 6, 19, 18, 29, 18, b);
+        p.FillCircle(22, 16, 2, new Color32(255, 150, 140, 180));
+    }
+
+    // Event_AltarCurse — 제단의 저주 (금 간 방패 + 저주 기운, 자주)
+    static void DrawEventAltarCurse(P p)
+    {
+        p.BgGradient(Hex("120414"), Hex("240826"));
+        p.RoundedBorder(8, 2, Hex("9B59B6"));
+        FillShieldShape(p, 24, 28, 42, 10, Hex("2A1030"), Hex("3E1A46"));
+        DrawShieldOutline(p, 24, 28, 42, 10, new Color32(155, 89, 182, 230), 2);
+        // 균열
+        var crack = new Color32(220, 140, 240, 235);
+        p.DrawLine(24, 12, 19, 22, crack, 2);
+        p.DrawLine(19, 22, 27, 28, crack, 2);
+        p.DrawLine(27, 28, 22, 38, crack, 2);
+    }
+
+    // Event_ExecutionMorale — 처형의 사기 (도끼날 + 사기 상승 광채, 금-적)
+    static void DrawEventExecutionMorale(P p)
+    {
+        p.BgGradient(Hex("160A03"), Hex("2C1606"));
+        p.RoundedBorder(8, 2, Hex("E67E22"));
+        // 자루
+        p.FillRRect(22, 10, 4, 30, 1, new Color32(120, 78, 40, 240));
+        // 도끼날 (좌우 대칭 삼각)
+        var blade = new Color32(225, 225, 235, 240);
+        p.FillTri(22, 12, 22, 26, 8, 19, blade);
+        p.FillTri(26, 12, 26, 26, 40, 19, blade);
+        // 사기 광채
+        p.FillCircleAlpha(24, 19, 15, new Color32(230, 126, 34, 55));
+    }
+
+    // Event_SpyInfo — 첩자 정보 (두루마리 + 눈, 청록)
+    static void DrawEventSpyInfo(P p)
+    {
+        p.BgGradient(Hex("03121A"), Hex("062633"));
+        p.RoundedBorder(8, 2, Hex("1ABC9C"));
+        // 두루마리
+        p.FillRRect(10, 14, 28, 20, 3, new Color32(210, 200, 170, 235));
+        p.FillRRect(8,  12, 6, 24, 3, new Color32(150, 140, 115, 240));
+        p.FillRRect(34, 12, 6, 24, 3, new Color32(150, 140, 115, 240));
+        // 눈 (정보)
+        p.FillEllipse(24, 24, 9, 5, new Color32(20, 60, 60, 230));
+        p.FillCircle(24, 24, 3, new Color32(26, 188, 156, 245));
+        p.FillCircle(23, 23, 1, new Color32(220, 255, 250, 220));
+    }
+
+    // Event_VeteranHeritage — 노병의 유산 (군화 + 속도선, 청회)
+    static void DrawEventVeteranHeritage(P p)
+    {
+        p.BgGradient(Hex("0A1016"), Hex("14202C"));
+        p.RoundedBorder(8, 2, Hex("5DADE2"));
+        // 군화
+        p.FillRRect(20, 12, 10, 18, 3, new Color32(90, 110, 130, 240));
+        p.FillRRect(16, 28, 20, 8, 3, new Color32(60, 78, 96, 240));
+        p.FillRRect(16, 34, 22, 4, 2, new Color32(40, 54, 70, 245));
+        // 속도선
+        var s = new Color32(93, 173, 226, 210);
+        p.DrawLine(4, 16, 15, 16, s, 2);
+        p.DrawLine(2, 23, 13, 23, s, 2);
+        p.DrawLine(5, 30, 14, 30, s, 2);
     }
 
     // ─────────────────────────────────────────────────────
@@ -1111,7 +1247,7 @@ public static class IconGenerator
         p.DrawLine(10, 38, 38, 38, new Color32(50, 180, 180, 60), 1);
     }
 
-    [MenuItem("Tools/Project K/에셋/Generate Ability Icons")]
+    [MenuItem(ProjectKMenu.Icon + "어빌리티 아이콘", priority = ProjectKMenu.IconPrio + 13)]
     public static void GenerateAbilityIcons()
     {
         EnsureDir(ABILITY_PATH);
@@ -1790,7 +1926,7 @@ public static class IconGenerator
         p.FillCircleAlpha(13, 13, 1, new Color32(255, 255, 255, 130));
     }
 
-    [MenuItem("Tools/Project K/에셋/Generate Icons")]
+    [MenuItem(ProjectKMenu.Icon + "직업·스킬 아이콘", priority = ProjectKMenu.IconPrio + 11)]
     public static void GenerateAllIcons()
     {
         EnsureDir(CLASS_PATH);
@@ -2667,7 +2803,7 @@ public static class IconGenerator
     //  로비 버튼 아이콘
     // ═══════════════════════════════════════════════════════
 
-    [MenuItem("Tools/Project K/에셋/Generate Lobby Button Icons")]
+    [MenuItem(ProjectKMenu.Icon + "로비 버튼 아이콘", priority = ProjectKMenu.IconPrio + 18)]
     public static void GenerateLobbyButtonIcons()
     {
         EnsureDir(LOBBY_BTN_PATH);

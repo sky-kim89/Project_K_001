@@ -1,4 +1,4 @@
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -14,8 +14,25 @@ public static class PopupPrefabCreator
 {
     const string SavePath = "Assets/_project/2.Prefabs/UI";
 
-    [MenuItem("Tools/Project K/Popup/Create Popup Prefabs")]
-    static void CreateAll()
+    // ── BattleResultPopup 팔레트 ──────────────────────────────
+    //  EventPopup 과 같은 계열 — 어두운 남색 패널 + 강조선 + 섹션 라벨.
+    //  승패 색(BrVictory/BrDefeat)만 런타임에 교체된다.
+    static readonly Color BrPanelBg      = new Color(0.070f, 0.075f, 0.130f, 1f);
+    static readonly Color BrPanelBorder  = new Color(0.24f,  0.30f,  0.52f,  1f);
+    static readonly Color BrHeaderBg     = new Color(0.095f, 0.110f, 0.200f, 1f);
+    static readonly Color BrTitleShadow  = new Color(0.02f,  0.02f,  0.06f,  0.85f);
+    static readonly Color BrVictory      = new Color(1.00f,  0.82f,  0.22f,  1f);
+    static readonly Color BrDefeat       = new Color(0.62f,  0.64f,  0.72f,  1f);
+    static readonly Color BrSectionLabel = new Color(0.66f,  0.70f,  0.86f,  1f);
+    static readonly Color BrDivider      = new Color(0.26f,  0.29f,  0.44f,  0.85f);
+    static readonly Color BrSlotBg       = new Color(0.105f, 0.115f, 0.190f, 1f);
+    static readonly Color BrHint         = new Color(0.82f,  0.74f,  0.44f,  1f);
+    static readonly Color BrTabActive    = new Color(0.24f,  0.40f,  0.74f,  1f);
+    static readonly Color BrTabInactive  = new Color(0.155f, 0.175f, 0.275f, 1f);
+    static readonly Color BrConfirm      = new Color(0.16f,  0.58f,  0.36f,  1f);
+
+    [MenuItem(ProjectKMenu.Popup + "▶ 팝업 전체", priority = ProjectKMenu.PrefabPrio + 20)]
+    public static void CreateAll()
     {
         CreateExpRowPrefab();
         CreateBattleResultPopup();
@@ -33,7 +50,6 @@ public static class PopupPrefabCreator
     //   LEFT  : [Portrait] [이름  ▲UP!] / [Lv.x  Exp N]
     //   RIGHT : [StatBar ████░░] [Total] / [Legend...] [DPS]
 
-    [MenuItem("Tools/Project K/Popup/Create ExpRow Prefab")]
     static void CreateExpRowPrefab()
     {
         const float rowH      = 100f;
@@ -70,7 +86,7 @@ public static class PopupPrefabCreator
         bridgeGo.AddComponent<Assets.PixelFantasy.PixelHeroes.Common.Scripts.CharacterScripts.CharacterBuilder>();
 
         // ── 이름 (좌상) ──────────────────────────────────────────
-        var nameText = AddTMP(root, "NameText", "영웅 이름", 38f, FontStyles.Bold);
+        var nameText = AddTMP(root, "NameText", "영웅 이름", UIScale.FontMd, FontStyles.Bold);
         nameText.alignment        = TextAlignmentOptions.MidlineLeft;
         nameText.overflowMode     = TextOverflowModes.Ellipsis;
         nameText.enableAutoSizing = true;
@@ -84,7 +100,8 @@ public static class PopupPrefabCreator
 
         // ── 레벨업 뱃지 (LevelText 동일 위치, 기본 비활성) ──────
         // 레벨업 시 LevelText를 대체하여 먼저 표시, 1초 후 LevelText로 교체
-        var lvupText = AddTMP(root, "LevelUpText", "▲UP!", 28f, FontStyles.Bold);
+        // ▲ 는 폰트에 없다 (□ 로 렌더됨)
+        var lvupText = AddTMP(root, "LevelUpText", "UP!", UIScale.FontSm, FontStyles.Bold);
         lvupText.alignment          = TextAlignmentOptions.MidlineLeft;
         lvupText.color              = new Color(1.00f, 0.85f, 0.15f);
         lvupText.enableWordWrapping = false;
@@ -96,7 +113,7 @@ public static class PopupPrefabCreator
         lvupText.gameObject.SetActive(false);
 
         // ── 레벨 (좌하) ──────────────────────────────────────────
-        var levelText = AddTMP(root, "LevelText", "Lv.1", 28f, FontStyles.Normal);
+        var levelText = AddTMP(root, "LevelText", "Lv.1", UIScale.FontSm, FontStyles.Normal);
         levelText.alignment          = TextAlignmentOptions.MidlineLeft;
         levelText.color              = new Color(0.55f, 0.57f, 0.72f);
         levelText.textWrappingMode   = TextWrappingModes.NoWrap;
@@ -108,7 +125,7 @@ public static class PopupPrefabCreator
         levelRt.sizeDelta = new Vector2(90f, 36f);
 
         // ── Exp (레벨 오른쪽) ─────────────────────────────────────
-        var expText = AddTMP(root, "ExpText", "Exp 0", 28f, FontStyles.Normal);
+        var expText = AddTMP(root, "ExpText", "Exp 0", UIScale.FontSm, FontStyles.Normal);
         expText.alignment = TextAlignmentOptions.MidlineLeft;
         expText.color     = new Color(0.45f, 0.80f, 0.50f);
         var expRt = expText.rectTransform;
@@ -161,7 +178,7 @@ public static class PopupPrefabCreator
         legendRt.sizeDelta = new Vector2(-(leftEnd + rightSize), 26f);
 
         // ── TotalText (우측 상단, 우측정렬) ──────────────────────
-        var totalText = AddTMP(root, "TotalText", "", 28f, FontStyles.Bold);
+        var totalText = AddTMP(root, "TotalText", "", UIScale.FontSm, FontStyles.Bold);
         totalText.alignment          = TextAlignmentOptions.MidlineRight;
         totalText.enableWordWrapping = false;
         totalText.color              = new Color(0.78f, 0.82f, 1.00f, 1f);
@@ -172,7 +189,7 @@ public static class PopupPrefabCreator
         totalRt.sizeDelta = new Vector2(120f, 34f);
 
         // ── DPS 텍스트 (우측 하단, 딜탭만 표시) ──────────────────
-        var dpsText = AddTMP(root, "DPSText", "", 26f, FontStyles.Normal);
+        var dpsText = AddTMP(root, "DPSText", "", UIScale.FontSm - 2f, FontStyles.Normal);
         dpsText.alignment          = TextAlignmentOptions.MidlineRight;
         dpsText.enableWordWrapping = false;
         dpsText.color              = new Color(0.55f, 0.65f, 0.85f);
@@ -209,194 +226,317 @@ public static class PopupPrefabCreator
         le.flexibleWidth  = 0f;
     }
 
-    static void StretchRT(GameObject go)
-    {
-        var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
-        rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
-    }
+    static void StretchRT(GameObject go) => EditorUIBuilder.Stretch(go);
 
     // ── BattleResultPopup ─────────────────────────────────────
+    //  EventPopup 과 같은 시각 언어로 맞췄다.
+    //    · 헤더 밴드 + 다이아 태그 + 그림자 깔린 타이틀
+    //    · 강조선 → 섹션 라벨(좌우 라인) → 내용 카드
+    //    · 탭·확인 버튼은 음각 입체 버튼 (UI 규칙 1)
+    //
+    //  레이아웃 (W=1000, H=1000 / 위에서 아래로)
+    //    Header        Y=  0  H=136   승패 배지 + 타이틀
+    //    AccentLine    Y=136  H=  3   승패 색 (런타임 교체)
+    //    RewardLabel   Y=158  H= 40   "획득 보상"
+    //    RewardBox     Y=204  H=176   카드 가로 스크롤
+    //    HintText      Y=384  H= 34
+    //    StatLabel     Y=424  H= 40   "전투 기록"
+    //    TabBar        Y=470  H= 92   딜 / 탱 / 힐
+    //    ExpArea       Y=574  → 확인 버튼 위까지
+    //    ConfirmButton 하단 28
 
-    [MenuItem("Tools/Project K/Popup/Rebuild BattleResult Popup")]
+    [MenuItem(ProjectKMenu.Popup + "BattleResult", priority = ProjectKMenu.PrefabPrio + 31)]
     public static void CreateBattleResultPopup()
     {
         // ExpRow 프리팹이 없으면 먼저 생성
         if (AssetDatabase.LoadAssetAtPath<GameObject>($"{SavePath}/ExpRow.prefab") == null)
             CreateExpRowPrefab();
 
-        // 레이아웃 (위 → 아래):
-        //   승리! → 보상 카드(스크롤) → 서브/스탯(스크롤 위 렌더) → 힌트 → 구분선 → 탭바 → EXP 행 목록 → 확인 버튼
-        // H=1080: 레퍼런스 해상도 1080×1920 상한값.
-        // SubText·StatsText는 스크롤 생성 후 추가 → 카드보다 위에 렌더링.
-        var root  = CreateRoot<BattleResultPopup>("BattleResultPopup", 1000, 1080);
+        const float PW      = 1000f;
+        const float PH      = UIScale.PopupMaxH;
+        const float SidePad = 40f;
+        const float ContentW = PW - SidePad * 2f;
+
+        const float HeaderH   = 136f;
+        const float AccentH   = 3f;
+        const float RewardY   = 158f;
+        const float RewardBoxY = 204f;
+        const float RewardBoxH = 176f;
+        const float HintY     = 384f;
+        const float StatY     = 424f;
+        const float TabY      = 470f;
+        const float TabH      = 92f;
+        const float ExpY      = 574f;
+
+        var root  = CreateRoot<BattleResultPopup>("BattleResultPopup", PW, PH);
         var popup = root.GetComponent<BattleResultPopup>();
 
-        AddBgPanel(root, new Color(0.08f, 0.10f, 0.16f, 0.96f));
+        // 테두리는 패널의 "앞 형제" 로 둔다 (UI 규칙 3 — 자식으로 두면 위에 덮인다)
+        var border = MakeGo("Border", root);
+        border.AddComponent<Image>().color = BrPanelBorder;
+        StretchWith(border, -3f);
 
-        // ResultText: 스크롤 top(Y=410)보다 위에 배치 → 스크롤 생성 전에 추가해도 무방
-        var resultText = AddTMP(root, "ResultText", "승리!", UIScale.FontXl, FontStyles.Bold);
-        SetRect(resultText.rectTransform, new Vector2(0, 490), new Vector2(900, 80));
+        var panel = MakeGo("Panel", root);
+        panel.AddComponent<Image>().color = BrPanelBg;
+        StretchWith(panel, 0f);
 
-        // ── 보상 카드 스크롤뷰 (5개 이상 카드를 수평 스크롤로 지원) ──
-        var rewardScroll = new GameObject("RewardScrollView",
-            typeof(RectTransform), typeof(Image), typeof(ScrollRect));
-        rewardScroll.transform.SetParent(root.transform, false);
-        rewardScroll.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0f);
-        SetRect(rewardScroll.GetComponent<RectTransform>(), new Vector2(0f, 365f), new Vector2(960f, 200f));
+        // ── 헤더 밴드 ────────────────────────────────────────
+        var header = MakeGo("Header", panel);
+        var headerImg = header.AddComponent<Image>();
+        headerImg.color = BrHeaderBg;
+        AnchorTopBand(header, 0f, HeaderH);
 
-        var rewardVp = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(Mask));
-        rewardVp.transform.SetParent(rewardScroll.transform, false);
-        rewardVp.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.01f);
-        rewardVp.GetComponent<Mask>().showMaskGraphic = false;
+        // 승패를 상징하는 다이아 태그 (색은 런타임 교체)
+        var badge = EditorUIBuilder.Diamond(header, "Badge", 30f, BrVictory);
+        {
+            var rt = badge.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot     = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = new Vector2(0f, 38f);
+        }
+        var badgeImg = badge.GetComponent<Image>();
+
+        // 타이틀 — 그림자 사본을 먼저 깔고 그 위에 본문
+        var titleShadow = AddTMP(header, "TitleShadow", "승  리", UIScale.FontXl, FontStyles.Bold);
+        titleShadow.color         = BrTitleShadow;
+        titleShadow.alignment     = TextAlignmentOptions.Center;
+        titleShadow.raycastTarget = false;
+        SetRect(titleShadow.rectTransform, new Vector2(3f, -18f), new Vector2(ContentW, 84f));
+
+        var resultText = AddTMP(header, "ResultText", "승  리", UIScale.FontXl, FontStyles.Bold);
+        resultText.color         = BrVictory;
+        resultText.alignment     = TextAlignmentOptions.Center;
+        resultText.raycastTarget = false;
+        SetRect(resultText.rectTransform, new Vector2(0f, -15f), new Vector2(ContentW, 84f));
+
+        // 헤더 아래 강조선 (승패 색)
+        var accentLine = MakeGo("AccentLine", panel);
+        var accentImg  = accentLine.AddComponent<Image>();
+        accentImg.color         = BrVictory;
+        accentImg.raycastTarget = false;
+        AnchorTopBand(accentLine, HeaderH, AccentH);
+
+        // ── "획득 보상" 섹션 ─────────────────────────────────
+        BuildSectionLabel(panel, "획득 보상", RewardY, ContentW);
+
+        // 보상 카드 가로 스크롤 (카드가 많아도 잘리지 않게)
+        var rewardBox = MakeGo("RewardBox", panel);
+        var rewardBoxImg = rewardBox.AddComponent<Image>();
+        rewardBoxImg.color = BrSlotBg;
+        AnchorTopBand(rewardBox, RewardBoxY, RewardBoxH, SidePad);
+
+        var rewardScroll = rewardBox.AddComponent<ScrollRect>();
+
+        var rewardVp = MakeGo("Viewport", rewardBox);
+        var rewardVpImg = rewardVp.AddComponent<Image>();
+        rewardVpImg.color = new Color(0f, 0f, 0f, 0.01f);
+        rewardVp.AddComponent<Mask>().showMaskGraphic = false;
         var rewardVpRt = rewardVp.GetComponent<RectTransform>();
         rewardVpRt.anchorMin = Vector2.zero; rewardVpRt.anchorMax = Vector2.one;
-        rewardVpRt.offsetMin = rewardVpRt.offsetMax = Vector2.zero;
+        rewardVpRt.offsetMin = new Vector2(8f, 8f); rewardVpRt.offsetMax = new Vector2(-8f, -8f);
 
-        var rewardArea = new GameObject("RewardArea", typeof(RectTransform));
-        rewardArea.transform.SetParent(rewardVp.transform, false);
+        var rewardArea = MakeGo("RewardArea", rewardVp);
         var rewardRt = rewardArea.GetComponent<RectTransform>();
         rewardRt.anchorMin        = new Vector2(0f, 0f);
         rewardRt.anchorMax        = new Vector2(0f, 1f);
         rewardRt.pivot            = new Vector2(0f, 0.5f);
         rewardRt.anchoredPosition = Vector2.zero;
-        rewardRt.sizeDelta        = new Vector2(0f, 0f);
+        rewardRt.sizeDelta        = Vector2.zero;
+
         var rewardHlg = rewardArea.AddComponent<HorizontalLayoutGroup>();
-        rewardHlg.spacing              = 8f;
-        rewardHlg.childAlignment       = TextAnchor.MiddleCenter;
-        rewardHlg.childControlWidth    = false;
-        rewardHlg.childControlHeight   = false;
+        rewardHlg.spacing                = 14f;
+        rewardHlg.childAlignment         = TextAnchor.MiddleLeft;
+        rewardHlg.childControlWidth      = false;
+        rewardHlg.childControlHeight     = false;
         rewardHlg.childForceExpandWidth  = false;
         rewardHlg.childForceExpandHeight = false;
-        rewardHlg.padding              = new RectOffset(4, 4, 0, 0);
+        rewardHlg.padding                = new RectOffset(8, 8, 0, 0);
         rewardArea.AddComponent<ContentSizeFitter>().horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-        var rewardScrollRect = rewardScroll.GetComponent<ScrollRect>();
-        rewardScrollRect.horizontal   = true;
-        rewardScrollRect.vertical     = false;
-        rewardScrollRect.movementType = ScrollRect.MovementType.Elastic;
-        rewardScrollRect.viewport     = rewardVpRt;
-        rewardScrollRect.content      = rewardRt;
+        rewardScroll.horizontal   = true;
+        rewardScroll.vertical     = false;
+        rewardScroll.movementType = ScrollRect.MovementType.Elastic;
+        rewardScroll.viewport     = rewardVpRt;
+        rewardScroll.content      = rewardRt;
 
-        // 힌트 텍스트
-        var hintText = AddTMP(root, "HintText", "카드를 탭하면 개봉합니다", UIScale.FontSm, FontStyles.Italic);
-        hintText.color = new Color(0.70f, 0.70f, 0.50f);
-        SetRect(hintText.rectTransform, new Vector2(0, 260f), new Vector2(900f, 36f));
+        // 박스 개봉 안내
+        var hintText = AddTMP(panel, "HintText", "카드를 눌러 개봉하세요", UIScale.FontSm, FontStyles.Normal);
+        hintText.color         = BrHint;
+        hintText.alignment     = TextAlignmentOptions.Center;
+        hintText.raycastTarget = false;
+        AnchorTopBand(hintText.gameObject, HintY, 34f, SidePad);
         hintText.gameObject.SetActive(false);
 
-        // ── 구분선 ──────────────────────────────────────────────
-        var divider = new GameObject("Divider", typeof(RectTransform), typeof(Image));
-        divider.transform.SetParent(root.transform, false);
-        divider.GetComponent<Image>().color = new Color(0.30f, 0.30f, 0.35f, 0.80f);
-        SetRect(divider.GetComponent<RectTransform>(), new Vector2(0f, 220f), new Vector2(940f, 2f));
+        // ── "전투 기록" 섹션 ─────────────────────────────────
+        BuildSectionLabel(panel, "전투 기록", StatY, ContentW);
 
-        // ── 탭 바 (딜 / 탱 / 힐) ──────────────────────────────────
-        var tabBar = new GameObject("TabBar", typeof(RectTransform));
-        tabBar.transform.SetParent(root.transform, false);
-        SetRect(tabBar.GetComponent<RectTransform>(), new Vector2(0f, 170f), new Vector2(940f, 54f));
+        var tabBar = MakeGo("TabBar", panel);
+        AnchorTopBand(tabBar, TabY, TabH, SidePad);
 
         var tabHlg = tabBar.AddComponent<HorizontalLayoutGroup>();
-        tabHlg.spacing              = 6f;
-        tabHlg.childAlignment       = TextAnchor.MiddleCenter;
-        tabHlg.childControlWidth    = true;
-        tabHlg.childControlHeight   = true;
+        tabHlg.spacing                = 10f;
+        tabHlg.childAlignment         = TextAnchor.MiddleCenter;
+        tabHlg.childControlWidth      = true;
+        tabHlg.childControlHeight     = true;
         tabHlg.childForceExpandWidth  = true;
         tabHlg.childForceExpandHeight = true;
 
-        string[] tabLabels   = { "딜", "탱", "힐" };
+        string[] tabLabels = { "딜", "탱", "힐" };
         var tabButtons   = new Button[3];
         var tabButtonBgs = new Image[3];
 
         for (int i = 0; i < 3; i++)
         {
-            var tabBtnGo = new GameObject($"TabBtn{i}", typeof(RectTransform), typeof(Image), typeof(Button));
-            tabBtnGo.transform.SetParent(tabBar.transform, false);
-            var tabImg = tabBtnGo.GetComponent<Image>();
-            tabImg.color = i == 0
-                ? new Color(0.25f, 0.45f, 0.85f)
-                : new Color(0.15f, 0.18f, 0.28f);
+            // UI 규칙 1 — 누를 수 있는 요소는 음각 입체 버튼으로.
+            //
+            // 세 탭 모두 같은 면 색으로 만든다. RaisedBtnOn 이 TopEdge/BottomEdge
+            // 색을 면 색에서 구워 넣기 때문에, 런타임에 Body 색만 바꾸면
+            // 모서리 색이 따라오지 않아 어긋난다.
+            // → 활성 표시는 하단 강조바(ActiveBar)로 한다.
+            var tabGo = MakeGo($"TabBtn{i}", tabBar);
+            var btn   = EditorUIBuilder.RaisedBtnOn(tabGo, BrTabInactive, out var body);
 
-            var tabLabelGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-            tabLabelGo.transform.SetParent(tabBtnGo.transform, false);
-            var tabLabelRt = tabLabelGo.GetComponent<RectTransform>();
-            tabLabelRt.anchorMin = Vector2.zero;
-            tabLabelRt.anchorMax = Vector2.one;
-            tabLabelRt.offsetMin = Vector2.zero;
-            tabLabelRt.offsetMax = Vector2.zero;
-            var tabTmp = tabLabelGo.GetComponent<TextMeshProUGUI>();
-            tabTmp.text      = tabLabels[i];
-            tabTmp.fontSize  = 36f;
-            tabTmp.fontStyle = FontStyles.Bold;
-            tabTmp.alignment = TextAlignmentOptions.Center;
-            tabTmp.color     = Color.white;
+            var label = AddTMP(body, "Label", tabLabels[i], UIScale.FontMd, FontStyles.Bold);
+            label.alignment     = TextAlignmentOptions.Center;
+            label.color         = Color.white;
+            label.raycastTarget = false;
+            EditorUIBuilder.Stretch(label.gameObject);
 
-            tabButtons[i]   = tabBtnGo.GetComponent<Button>();
-            tabButtonBgs[i] = tabImg;
+            var bar    = MakeGo("ActiveBar", body);
+            var barImg = bar.AddComponent<Image>();
+            barImg.color         = i == 0 ? BrTabActive : Color.clear;
+            barImg.raycastTarget = false;
+            {
+                var rt = bar.GetComponent<RectTransform>();
+                rt.anchorMin        = new Vector2(0.08f, 0f);
+                rt.anchorMax        = new Vector2(0.92f, 0f);
+                rt.pivot            = new Vector2(0.5f, 0f);
+                rt.anchoredPosition = new Vector2(0f, 5f);   // BottomEdge(4px) 바로 위
+                rt.sizeDelta        = new Vector2(0f, 5f);
+            }
+
+            tabButtons[i]   = btn;
+            tabButtonBgs[i] = barImg;   // 활성 표시용 그래픽
         }
 
-        // ── EXP 행 목록 (승리 시 영웅별 경험치 + 전투 통계 표시) ──────
-        var expArea = new GameObject("ExpArea", typeof(RectTransform));
-        expArea.transform.SetParent(root.transform, false);
-        var expAreaRt = expArea.GetComponent<RectTransform>();
-        expAreaRt.anchorMin        = new Vector2(0f, 1f);
-        expAreaRt.anchorMax        = new Vector2(1f, 1f);
-        expAreaRt.pivot            = new Vector2(0.5f, 1f);
-        expAreaRt.anchoredPosition = new Vector2(0f, -420f);
-        expAreaRt.sizeDelta        = new Vector2(0f, 536f);
+        // ── EXP 행 목록 ──────────────────────────────────────
+        var expArea = MakeGo("ExpArea", panel);
+        {
+            var rt = expArea.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.offsetMin = new Vector2(SidePad, UIScale.BtnMd + 52f);
+            rt.offsetMax = new Vector2(-SidePad, -ExpY);
+        }
         var expVlg = expArea.AddComponent<VerticalLayoutGroup>();
-        expVlg.spacing              = 5f;
-        expVlg.padding              = new RectOffset(8, 8, 8, 8);
-        expVlg.childControlWidth    = true;
-        expVlg.childControlHeight   = false;
+        expVlg.spacing                = 6f;
+        expVlg.padding                = new RectOffset(0, 0, 0, 0);
+        expVlg.childControlWidth      = true;
+        expVlg.childControlHeight     = false;
         expVlg.childForceExpandWidth  = true;
         expVlg.childForceExpandHeight = false;
-        expVlg.childAlignment       = TextAnchor.UpperCenter;
-        expArea.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        expVlg.childAlignment         = TextAnchor.UpperCenter;
 
-        // 확인 버튼
-        var confirmBtn = AddButton(root, "ConfirmButton", "확인", new Color(0.20f, 0.55f, 0.20f), UIScale.FontLg);
-        SetRect(confirmBtn.GetComponent<RectTransform>(), new Vector2(0, -466f), new Vector2(500f, 90f));
+        // 확인 버튼 (하단 고정)
+        var confirmBtn = EditorUIBuilder
+            .RaisedTextBtn(panel, "ConfirmButton", "확  인", UIScale.FontLg, BrConfirm)
+            .gameObject;
+        {
+            var rt = confirmBtn.GetComponent<RectTransform>();
+            rt.anchorMin        = new Vector2(0.5f, 0f);
+            rt.anchorMax        = new Vector2(0.5f, 0f);
+            rt.pivot            = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(0f, 28f);
+            rt.sizeDelta        = new Vector2(520f, UIScale.BtnMd);
+        }
 
-        // 프리팹 로드 및 연결
+        // ── 직렬화 필드 연결 ─────────────────────────────────
         var rewardCardPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{SavePath}/RewardCard.prefab");
         var expRowPrefab     = AssetDatabase.LoadAssetAtPath<GameObject>($"{SavePath}/ExpRow.prefab");
 
         var so = new SerializedObject(popup);
         SetEnum(so, "_popupType",       (int)PopupType.BattleResult);
         SetObj (so, "_resultText",      resultText);
-        SetObj (so, "_rewardArea",      rewardArea.GetComponent<Transform>());
+        SetObj (so, "_titleShadowText", titleShadow);
+        SetObj (so, "_headerBadge",     badgeImg);
+        SetObj (so, "_accentLine",      accentImg);
+        SetObj (so, "_rewardArea",      rewardArea.transform);
         SetObj (so, "_hintText",        hintText);
-        SetObj (so, "_expArea",         expArea.GetComponent<Transform>());
+        SetObj (so, "_expArea",         expArea.transform);
         SetObj (so, "_confirmButton",   confirmBtn.GetComponent<Button>());
+
         if (rewardCardPrefab != null)
             SetObj(so, "_rewardCardPrefab", rewardCardPrefab.GetComponent<RewardCardUI>());
+        else
+            Debug.LogWarning("[PopupPrefabCreator] RewardCard.prefab 이 없습니다 — " +
+                             "Tools > Project K > 프리팹 생성 > 인게임 > RewardCard 를 먼저 실행하세요.");
+
         if (expRowPrefab != null)
-            SetObj(so, "_expRowPrefab",   expRowPrefab.GetComponent<ExpRowUI>());
+            SetObj(so, "_expRowPrefab", expRowPrefab.GetComponent<ExpRowUI>());
 
-        var tabButtonsProp = so.FindProperty("_tabButtons");
-        if (tabButtonsProp != null)
-        {
-            tabButtonsProp.arraySize = 3;
-            for (int i = 0; i < 3; i++)
-                tabButtonsProp.GetArrayElementAtIndex(i).objectReferenceValue = tabButtons[i];
-        }
-
-        var tabButtonBgsProp = so.FindProperty("_tabButtonBgs");
-        if (tabButtonBgsProp != null)
-        {
-            tabButtonBgsProp.arraySize = 3;
-            for (int i = 0; i < 3; i++)
-                tabButtonBgsProp.GetArrayElementAtIndex(i).objectReferenceValue = tabButtonBgs[i];
-        }
+        SetObjArray(so, "_tabButtons",   System.Array.ConvertAll(tabButtons,   b => (Object)b));
+        SetObjArray(so, "_tabButtonBgs", System.Array.ConvertAll(tabButtonBgs, b => (Object)b));
 
         so.ApplyModifiedProperties();
 
         Save(root, "BattleResultPopup");
     }
 
+    // 섹션 라벨 — 가운데 글자 + 좌우 라인 (EventPopup 의 "선 택" 과 같은 형태)
+    static void BuildSectionLabel(GameObject panel, string text, float yFromTop, float contentW)
+    {
+        const float H = 40f;
+        const float LabelW = 200f;
+
+        var row = MakeGo($"Section_{text}", panel);
+        AnchorTopBand(row, yFromTop, H, (1000f - contentW) * 0.5f);
+
+        var label = AddTMP(row, "Label", text, UIScale.FontSm, FontStyles.Bold);
+        label.color         = BrSectionLabel;
+        label.alignment     = TextAlignmentOptions.Center;
+        label.raycastTarget = false;
+        SetRect(label.rectTransform, Vector2.zero, new Vector2(LabelW, H));
+
+        // 좌우 라인
+        for (int side = 0; side < 2; side++)
+        {
+            var line = MakeGo(side == 0 ? "LineL" : "LineR", row);
+            var img  = line.AddComponent<Image>();
+            img.color         = BrDivider;
+            img.raycastTarget = false;
+            var rt = line.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(side == 0 ? 0f : 1f, 0.5f);
+            rt.anchorMax = new Vector2(side == 0 ? 0f : 1f, 0.5f);
+            rt.pivot     = new Vector2(side == 0 ? 0f : 1f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = new Vector2((contentW - LabelW) * 0.5f - 16f, 2f);
+        }
+    }
+
+    // 상단에서 yFromTop 만큼 내려온 높이 h 의 가로 밴드
+    static void AnchorTopBand(GameObject go, float yFromTop, float h, float sidePad = 0f)
+    {
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0f, 1f);
+        rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot     = new Vector2(0.5f, 1f);
+        rt.offsetMin = new Vector2(sidePad,  -(yFromTop + h));
+        rt.offsetMax = new Vector2(-sidePad, -yFromTop);
+    }
+
+    static void StretchWith(GameObject go, float outset)
+    {
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = new Vector2(outset, outset);
+        rt.offsetMax = new Vector2(-outset, -outset);
+    }
+
     // ── PausePopup ────────────────────────────────────────────
 
-    static void CreatePausePopup()
+    [MenuItem(ProjectKMenu.Popup + "Pause", priority = ProjectKMenu.PrefabPrio + 32)]
+    public static void CreatePausePopup()
     {
         // 버튼 3개 + 여백 기준으로 높이 산출
         float btnH   = UIScale.BtnSm;
@@ -438,7 +578,8 @@ public static class PopupPrefabCreator
 
     // ── LoadingPopup ──────────────────────────────────────────
 
-    static void CreateLoadingPopup()
+    [MenuItem(ProjectKMenu.Popup + "Loading", priority = ProjectKMenu.PrefabPrio + 33)]
+    public static void CreateLoadingPopup()
     {
         var root = new GameObject("LoadingPopup", typeof(RectTransform));
         root.AddComponent<CanvasGroup>();
@@ -487,79 +628,34 @@ public static class PopupPrefabCreator
     }
 
     static void AddBgPanel(GameObject parent, Color color)
-    {
-        var go = new GameObject("BgPanel", typeof(RectTransform), typeof(Image));
-        go.transform.SetParent(parent.transform, false);
-        go.transform.SetAsFirstSibling();
-        var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = Vector2.zero;
-        rt.anchorMax = Vector2.one;
-        rt.offsetMin = Vector2.zero;
-        rt.offsetMax = Vector2.zero;
-        go.GetComponent<Image>().color = color;
-    }
+        => EditorUIBuilder.BgPanel(parent, color);
 
     static TextMeshProUGUI AddTMP(GameObject parent, string name, string text, float size, FontStyles style)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
-        go.transform.SetParent(parent.transform, false);
-        var tmp = go.GetComponent<TextMeshProUGUI>();
-        tmp.text      = text;
-        tmp.fontSize  = size;
-        tmp.fontStyle = style;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.color     = Color.white;
-        return tmp;
-    }
+        => EditorUIBuilder.TMP(parent, name, text, size, style);
 
     static GameObject AddButton(GameObject parent, string objName, string label, Color bgColor, float fontSize)
-    {
-        var go = new GameObject(objName, typeof(RectTransform), typeof(Image), typeof(Button));
-        go.transform.SetParent(parent.transform, false);
-        go.GetComponent<Image>().color = bgColor;
-
-        var labelGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-        labelGo.transform.SetParent(go.transform, false);
-        var labelRt = labelGo.GetComponent<RectTransform>();
-        labelRt.anchorMin = Vector2.zero;
-        labelRt.anchorMax = Vector2.one;
-        labelRt.offsetMin = Vector2.zero;
-        labelRt.offsetMax = Vector2.zero;
-        var tmp = labelGo.GetComponent<TextMeshProUGUI>();
-        tmp.text      = label;
-        tmp.fontSize  = fontSize;
-        tmp.fontStyle = FontStyles.Bold;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.color     = Color.white;
-        return go;
-    }
+        => EditorUIBuilder.Btn(parent, objName, label, bgColor, fontSize, boldLabel: true);
 
     static void SetRect(RectTransform rt, Vector2 pos, Vector2 size)
-    {
-        rt.anchorMin        = new Vector2(0.5f, 0.5f);
-        rt.anchorMax        = new Vector2(0.5f, 0.5f);
-        rt.pivot            = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = pos;
-        rt.sizeDelta        = size;
-    }
+        => EditorUIBuilder.Center(rt, pos, size);
 
     static void SetEnum(SerializedObject so, string field, int value)
-    {
-        var prop = so.FindProperty(field);
-        if (prop != null) prop.intValue = value;
-    }
+        => EditorUIBuilder.SetEnum(so, field, value, "PopupPrefabCreator");
+
+    static GameObject MakeGo(string name, GameObject parent)
+        => EditorUIBuilder.Go(name, parent);
+
+    static void SetObjArray(SerializedObject so, string field, Object[] objs)
+        => EditorUIBuilder.SetObjArray(so, field, objs, "PopupPrefabCreator");
 
     static void SetObj(SerializedObject so, string field, Object obj)
-    {
-        var prop = so.FindProperty(field);
-        if (prop != null) prop.objectReferenceValue = obj;
-    }
+        => EditorUIBuilder.SetObj(so, field, obj, "PopupPrefabCreator");
 
     // ── AbilitySelectPopup ────────────────────────────────────
     // 카드 최대 5장을 스크롤 없이 한 번에 표시.
     // 팝업 너비는 5장 기준으로 고정; 3장 이하일 때는 HLG MiddleCenter 가 중앙 정렬.
 
-    [MenuItem("Tools/Project K/Popup/Create AbilitySelectPopup Prefab")]
+    [MenuItem(ProjectKMenu.Popup + "AbilitySelect", priority = ProjectKMenu.PrefabPrio + 34)]
     static void CreateAbilitySelectPopup()
     {
         const int   maxCards     = 5;
@@ -568,7 +664,7 @@ public static class PopupPrefabCreator
         const float cardSpacing  = 16f;
         const float cardPadding  = 8f;   // HLG left+right 합계
         const float sideMargin   = 40f;
-        const float refreshRowH  = 64f;
+        float refreshRowH = UIScale.BtnFor(UIScale.FontSm);   // 64 → 58
         const float popupH       = 840f;
 
         // 팝업 너비 = 5장 전체 콘텐츠 + 좌우 여백
@@ -756,12 +852,12 @@ public static class PopupPrefabCreator
     // ── AbilityListPopup ──────────────────────────────────────
     //  레이아웃: 좌(선택 상세 + 총 스탯 합산) / 우(보유 목록 스크롤)
 
-    [MenuItem("Tools/Project K/Popup/Create AbilityList Popup Prefab")]
+    [MenuItem(ProjectKMenu.Popup + "AbilityList", priority = ProjectKMenu.PrefabPrio + 35)]
     static void CreateAbilityListPopup()
     {
         const float popupW   = 980f;
-        const float popupH   = 1060f;  // 1080p 화면에 맞게 (헤더·아이콘 잘림 방지)
-        const float headerH  = 100f;
+        float popupH = UIScale.PopupMaxH;   // 1060 → 1000 (위아래 40 여백 확보)
+        float headerH = UIScale.BtnFor(UIScale.FontLg);   // 100 → 96
         const float leftW    = 360f;
         const float detailH  = 560f;   // body=960 → detailH 560 + totalBox 400
 
@@ -782,7 +878,8 @@ public static class PopupPrefabCreator
         headerCountTmp.color = new Color(0.50f, 0.55f, 0.70f);
         SetRect(headerCountTmp.rectTransform, new Vector2(popupW * 0.25f - 60f, 0f), new Vector2(180f, headerH - 30f));
 
-        var closeBtn = AddButton(header, "CloseBtn", "✕", new Color(0.55f, 0.18f, 0.18f, 1f), UIScale.FontMd);
+        var closeBtn = AddButton(header, "CloseBtn", "", new Color(0.55f, 0.18f, 0.18f, 1f), UIScale.FontMd);
+        EditorUIBuilder.XMark(closeBtn, "Mark", UIScale.FontMd, Color.white);
         SetRect(closeBtn.GetComponent<RectTransform>(), new Vector2(popupW * 0.5f - 50f, 0f), new Vector2(80f, 70f));
 
         // ── Body (header 아래 ~ 하단, stretch) ──────────────

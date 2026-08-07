@@ -58,11 +58,10 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         // 등급 업그레이드 횟수 반영 (unitEntry 없으면 태생 등급 사용)
         _grade     = unitEntry != null ? unitEntry.Grade : UnitJobRoller.GetBirthGrade(unitName);
         _job      = UnitJobRoller.GetJob(unitName);
-        _stat     = GeneralStatRoller.Roll(unitName, _level, _grade);
-
-        // 용병 업그레이드 보너스 (HeroStatResolver와 동일하게 base 스탯 직후 적용)
-        if (unitEntry?.SoldierBonus > 0)
-            _stat.Add(StatType.SoldierCount, unitEntry.SoldierBonus, "bonus");
+        // 기본 스탯 조립은 HeroStatResolver 가 소유한다 — 로비 표시와 같은 값이어야 한다
+        _stat     = unitEntry != null
+                    ? HeroStatResolver.RollBase(unitEntry)
+                    : GeneralStatRoller.Roll(unitName, _level, _grade);
 
         // ── 패시브 스킬 결정 ──────────────────────────────────
         (_passive0, _passive1, _passive2) = PassiveSkillRoller.Roll(_unitName);
@@ -230,8 +229,7 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
 
         // ── GeneralTriggerSetComponent 빌드 (장비 + 특수 어빌리티) ──
         var trigSet  = new GeneralTriggerSetComponent();
-        trigSet.ActiveEquipSlots = 2 + TraitApplier.GetEquipSlotBonus(
-            UserDataManager.Instance?.Get<RunTraitData>(), TraitDatabase.Current);
+        trigSet.ActiveEquipSlots = EquipmentApplier.ActiveSlotCount;
         var equipDb  = EquipmentDatabase.Current;
         if (equipDb != null && _unitEntry?.RunEquipSlots != null)
         {
@@ -412,8 +410,7 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
             trigSet.EnhanceLevels[0] = 0;
             trigSet.EnhanceLevels[1] = 0;
             trigSet.EnhanceLevels[2] = 0;
-            trigSet.ActiveEquipSlots = 2 + TraitApplier.GetEquipSlotBonus(
-                UserDataManager.Instance?.Get<RunTraitData>(), TraitDatabase.Current);
+            trigSet.ActiveEquipSlots = EquipmentApplier.ActiveSlotCount;
             trigSet.TriggerAbilities.Clear();
             trigSet.TraitTriggers.Clear();
 
@@ -523,9 +520,9 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
             return;
         }
 
-        // 병사 스탯 비율: 기본 40% + CommandPower 1포인트당 1%
-        float commandPower    = _stat.Get(StatType.CommandPower);
-        float statScaleRatio  = Mathf.Clamp01(0.4f + commandPower * 0.01f);
+        // 병사 스탯 비율 — 공식은 SoldierRuntimeBridge 가 소유한다
+        // (HeroDetailPopup "용병" 탭도 같은 함수를 쓴다)
+        float statScaleRatio = SoldierRuntimeBridge.StatRatio(_stat.Get(StatType.CommandPower));
 
         // Y축 열 수: sqrt(N) 기반 자동 산출 — 병사 수에 따라 자연스러운 격자
         int colsY = Mathf.Max(3, Mathf.CeilToInt(Mathf.Sqrt(soldierCount)));

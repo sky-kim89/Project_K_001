@@ -1,4 +1,4 @@
-using TMPro;
+﻿using TMPro;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
@@ -91,8 +91,8 @@ public static class MainPanelCreator
 
     // =========================================================
 
-    [MenuItem("Tools/Project K/로비 UI/Create MainPanel Prefab")]
-    static void Run()
+    [MenuItem(ProjectKMenu.Lobby + "MainPanel", priority = ProjectKMenu.PrefabPrio + 12)]
+    public static void Run()
     {
         var canvas = new GameObject("_TempCanvas", typeof(RectTransform));
         canvas.GetComponent<RectTransform>().sizeDelta =
@@ -151,8 +151,8 @@ public static class MainPanelCreator
         // anchor(0,1)+pivot(1,0.5) → 오른쪽 엣지가 카드 왼쪽에 ArrGap 간격
         // anchor(1,1)+pivot(0,0.5) → 왼쪽 엣지가 카드 오른쪽에 ArrGap 간격
         // Y: -(PortPad + PortH*0.5) = 초상화 수직 중심
-        var arrL = BuildArrow(card, "LeftArrowBtn",  "◀");
-        var arrR = BuildArrow(card, "RightArrowBtn", "▶");
+        var arrL = BuildArrow(card, "LeftArrowBtn",  180f);
+        var arrR = BuildArrow(card, "RightArrowBtn",   0f);
         {
             var rt = arrL.GetComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);  // 카드 좌상단 앵커
@@ -292,7 +292,7 @@ public static class MainPanelCreator
         Stretch(refreshLabelGo.GetComponent<RectTransform>());
         var refreshLabelTmp = refreshLabelGo.GetComponent<TextMeshProUGUI>();
         refreshLabelTmp.text          = "새로고침";
-        refreshLabelTmp.fontSize      = 22f;
+        refreshLabelTmp.fontSize      = UIScale.FontSm - 4f;
         refreshLabelTmp.alignment     = TextAlignmentOptions.Center;
         refreshLabelTmp.color         = new Color(0.75f, 0.88f, 1f);
         refreshLabelTmp.raycastTarget = false;
@@ -378,11 +378,11 @@ public static class MainPanelCreator
         }
 
         // 타이틀 텍스트
-        var px = MakeTMP(ta, "Pixel", "PIXEL", 82f, FontStyles.Bold);
+        var px = MakeTMP(ta, "Pixel", "PIXEL", 112f, FontStyles.Bold);
         px.color = Color.white; px.alignment = TextAlignmentOptions.Center; px.raycastTarget = false;
         { var rt = px.rectTransform; rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f); rt.pivot = new Vector2(0.5f, 1f); rt.anchoredPosition = new Vector2(0f, -12f); rt.sizeDelta = new Vector2(340f, 92f); }
 
-        var gn = MakeTMP(ta, "General", "GENERAL", 50f, FontStyles.Bold);
+        var gn = MakeTMP(ta, "General", "GENERAL", 68f, FontStyles.Bold);
         gn.color = new Color(0.35f, 0.65f, 1f); gn.alignment = TextAlignmentOptions.Center; gn.raycastTarget = false;
         { var rt = gn.rectTransform; rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f); rt.pivot = new Vector2(0.5f, 0.5f); rt.anchoredPosition = new Vector2(0f, 12f); rt.sizeDelta = new Vector2(340f, 60f); }
 
@@ -422,27 +422,13 @@ public static class MainPanelCreator
 
     // ── 화살표 (소형) ─────────────────────────────────────────
 
-    static GameObject BuildArrow(GameObject parent, string name, string symbol)
+    // ◀ ▶ 글리프는 폰트에 없다 (□ 로 렌더됨) → 꺾쇠 도형으로 그린다.
+    // dirDeg: 0 = 오른쪽, 180 = 왼쪽
+    static GameObject BuildArrow(GameObject parent, string name, float dirDeg)
     {
-        var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
-        go.transform.SetParent(parent.transform, false);
-        go.GetComponent<Image>().color = ArrowC;
-        var btn = go.GetComponent<Button>();
-        var cb = btn.colors;
-        cb.highlightedColor = new Color(0.30f, 0.45f, 0.85f, 0.80f);
-        cb.pressedColor     = new Color(0.05f, 0.10f, 0.30f, 0.95f);
-        btn.colors = cb;
-
-        var lGo = new GameObject("L", typeof(RectTransform), typeof(TextMeshProUGUI));
-        lGo.transform.SetParent(go.transform, false);
-        Stretch(lGo.GetComponent<RectTransform>());
-        var tmp = lGo.GetComponent<TextMeshProUGUI>();
-        tmp.text = symbol;
-        tmp.fontSize  = UIScale.FontMd;
-        tmp.fontStyle = FontStyles.Bold;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.color     = Color.white;
-        tmp.raycastTarget = false;
+        var go = EditorUIBuilder.Go(name, parent);
+        EditorUIBuilder.RaisedBtnOn(go, ArrowC, out var body);
+        EditorUIBuilder.Chevron(body, "Mark", UIScale.FontMd, dirDeg, Color.white);
         return go;
     }
 
@@ -450,19 +436,16 @@ public static class MainPanelCreator
 
     static GameObject BuildIconBtn(GameObject parent, string name, string label, Color bg, string iconPath)
     {
-        var go = MakeImg(name, parent, bg);
-        go.AddComponent<Button>();
-        var cb = go.GetComponent<Button>().colors;
-        cb.highlightedColor = Color.Lerp(bg, Color.white, 0.22f);
-        cb.pressedColor     = Color.Lerp(bg, Color.black, 0.22f);
-        go.GetComponent<Button>().colors = cb;
+        // UI 규칙: 누를 수 있는 버튼은 음각 처리 (내용은 body 아래로)
+        var go = EditorUIBuilder.Go(name, parent);
+        EditorUIBuilder.RaisedBtnOn(go, bg, out var body);
         var iGo = new GameObject("Icon", typeof(RectTransform), typeof(Image));
-        iGo.transform.SetParent(go.transform, false);
+        iGo.transform.SetParent(body.transform, false);
         { var rt = iGo.GetComponent<RectTransform>(); rt.anchorMin = new Vector2(0.1f, 0.24f); rt.anchorMax = new Vector2(0.9f, 0.92f); rt.offsetMin = rt.offsetMax = Vector2.zero; }
         var ii = iGo.GetComponent<Image>(); ii.preserveAspect = true; ii.raycastTarget = false;
         var sp = AssetDatabase.LoadAssetAtPath<Sprite>(iconPath); if (sp != null) ii.sprite = sp;
         var lGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-        lGo.transform.SetParent(go.transform, false);
+        lGo.transform.SetParent(body.transform, false);
         { var rt = lGo.GetComponent<RectTransform>(); rt.anchorMin = new Vector2(0f, 0f); rt.anchorMax = new Vector2(1f, 0.26f); rt.offsetMin = rt.offsetMax = Vector2.zero; }
         var lt = lGo.GetComponent<TextMeshProUGUI>(); lt.text = label; lt.fontSize = UIScale.FontSm; lt.alignment = TextAlignmentOptions.Center; lt.color = Color.white; lt.raycastTarget = false;
         return go;
@@ -471,10 +454,8 @@ public static class MainPanelCreator
     static GameObject BuildLockedBtn(GameObject parent, string name, string label)
     {
         var go = MakeImg(name, parent, LockedC);
-        var lkGo = new GameObject("Lock", typeof(RectTransform), typeof(TextMeshProUGUI));
-        lkGo.transform.SetParent(go.transform, false);
-        { var rt = lkGo.GetComponent<RectTransform>(); rt.anchorMin = new Vector2(0.15f, 0.28f); rt.anchorMax = new Vector2(0.85f, 0.94f); rt.offsetMin = rt.offsetMax = Vector2.zero; }
-        var lt = lkGo.GetComponent<TextMeshProUGUI>(); lt.text = "🔒"; lt.fontSize = UIScale.FontMd; lt.alignment = TextAlignmentOptions.Center; lt.color = new Color(0.28f, 0.30f, 0.46f); lt.raycastTarget = false;
+        // 🔒 이모지는 폰트에 없다 (□ 로 렌더됨) → 자물쇠 도형으로 그린다
+        EditorUIBuilder.PadLock(go, "Lock", 54f, new Color(0.28f, 0.30f, 0.46f));
         var lGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
         lGo.transform.SetParent(go.transform, false);
         { var rt = lGo.GetComponent<RectTransform>(); rt.anchorMin = new Vector2(0f, 0f); rt.anchorMax = new Vector2(1f, 0.30f); rt.offsetMin = rt.offsetMax = Vector2.zero; }
@@ -522,65 +503,15 @@ public static class MainPanelCreator
         iconImg.raycastTarget  = false;
         iconImg.color = new Color(0.25f, 0.25f, 0.38f);
 
-        // Tooltip panel — below the icon, height auto-sized via ContentSizeFitter
-        var tooltipGo = MakeImg("Tooltip", root, new Color(0.05f, 0.06f, 0.12f, 0.96f));
-        tooltipGo.SetActive(false);
-        {
-            var rt = tooltipGo.GetComponent<RectTransform>();
-            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f); // 아이콘 하단 기준
-            rt.pivot     = new Vector2(0f, 1f);                // 툴팁 상단-좌 고정
-            rt.anchoredPosition = new Vector2(0f, -4f);        // 아이콘 아래 4px 간격
-            rt.sizeDelta = new Vector2(TipW, 0f);              // 너비 고정, 높이 자동
-        }
-        var vlg = tooltipGo.AddComponent<VerticalLayoutGroup>();
-        vlg.padding              = new RectOffset(10, 10, 12, 12);
-        vlg.spacing              = 6f;
-        vlg.childControlWidth    = true;
-        vlg.childControlHeight   = true;
-        vlg.childForceExpandWidth  = true;
-        vlg.childForceExpandHeight = false;
-        var csf = tooltipGo.AddComponent<ContentSizeFitter>();
-        csf.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-        csf.verticalFit   = ContentSizeFitter.FitMode.PreferredSize;
-
-        // Tooltip name (VerticalLayoutGroup이 크기 제어)
-        var tipNameGo = new GameObject("TooltipName", typeof(RectTransform), typeof(TextMeshProUGUI));
-        tipNameGo.transform.SetParent(tooltipGo.transform, false);
-        var tipName = tipNameGo.GetComponent<TextMeshProUGUI>();
-        tipName.text = ""; tipName.fontSize = UIScale.FontSm * 1.2f;
-        tipName.fontStyle = FontStyles.Bold; tipName.color = Color.white;
-        tipName.alignment = TextAlignmentOptions.Left; tipName.raycastTarget = false;
-        tipName.textWrappingMode = TextWrappingModes.Normal;
-
-        // Tooltip description
-        var tipDescGo = new GameObject("TooltipDesc", typeof(RectTransform), typeof(TextMeshProUGUI));
-        tipDescGo.transform.SetParent(tooltipGo.transform, false);
-        var tipDesc = tipDescGo.GetComponent<TextMeshProUGUI>();
-        tipDesc.text = ""; tipDesc.fontSize = UIScale.FontSm * 1.2f;
-        tipDesc.fontStyle = FontStyles.Normal; tipDesc.color = Muted;
-        tipDesc.alignment = TextAlignmentOptions.Left; tipDesc.raycastTarget = false;
-        tipDesc.textWrappingMode = TextWrappingModes.Normal;
-
-        // Tooltip stat (스탯 있을 때만 활성화)
-        var tipStatGo = new GameObject("TooltipStat", typeof(RectTransform), typeof(TextMeshProUGUI));
-        tipStatGo.transform.SetParent(tooltipGo.transform, false);
-        tipStatGo.SetActive(false);
-        var tipStat = tipStatGo.GetComponent<TextMeshProUGUI>();
-        tipStat.text = ""; tipStat.fontSize = UIScale.FontSm * 1.2f;
-        tipStat.fontStyle = FontStyles.Normal;
-        tipStat.color = new Color(0.55f, 0.90f, 0.65f); // 연한 초록
-        tipStat.alignment = TextAlignmentOptions.Left; tipStat.raycastTarget = false;
-        tipStat.textWrappingMode = TextWrappingModes.Normal;
+        // 상세 툴팁 — 보상 카드·특성 슬롯과 같은 공용 컴포넌트
+        var tooltip = InfoTooltipBuilder.Build(root, TipW);
 
         // Wire TraitIconUI fields
         var so = new SerializedObject(traitUI);
         so.Update();
         SetRef(so, "_iconImage",   iconImg);
         SetRef(so, "_iconBtn",     iconBtnGo.GetComponent<Button>());
-        SetRef(so, "_tooltip",     tooltipGo);
-        SetRef(so, "_tooltipName", tipName);
-        SetRef(so, "_tooltipDesc", tipDesc);
-        SetRef(so, "_tooltipStat", tipStat);
+        SetRef(so, "_tooltip",     tooltip);
         so.ApplyModifiedProperties();
 
         return traitUI;
@@ -684,11 +615,7 @@ public static class MainPanelCreator
 
     // ── 헬퍼 ──────────────────────────────────────────────────
 
-    static void Stretch(RectTransform rt)
-    {
-        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
-        rt.offsetMin = rt.offsetMax = Vector2.zero;
-    }
+    static void Stretch(RectTransform rt) => EditorUIBuilder.Stretch(rt);
 
     /// Top-Anchor Fill: card 상단 기준으로 y 위치, h 높이, 좌우 패딩
     static void TAF(RectTransform rt, float y, float h, int lp = 0, int rp = 0)
@@ -705,39 +632,14 @@ public static class MainPanelCreator
     }
 
     static GameObject MakeImg(string name, GameObject parent, Color color)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(Image));
-        go.transform.SetParent(parent.transform, false);
-        go.GetComponent<Image>().color = color;
-        return go;
-    }
+        => EditorUIBuilder.Panel(parent, name, color);
 
+    // UI 규칙: 누를 수 있는 버튼은 음각 처리 (EditorUIBuilder.RaisedTextBtn)
     static GameObject MakeBtn(GameObject parent, string name, string label, Color bg, float fontSize)
-    {
-        var go = MakeImg(name, parent, bg);
-        go.AddComponent<Button>();
-        var cb = go.GetComponent<Button>().colors;
-        cb.highlightedColor = Color.Lerp(bg, Color.white, 0.20f);
-        cb.pressedColor     = Color.Lerp(bg, Color.black, 0.20f);
-        go.GetComponent<Button>().colors = cb;
-        var lGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-        lGo.transform.SetParent(go.transform, false);
-        Stretch(lGo.GetComponent<RectTransform>());
-        var tmp = lGo.GetComponent<TextMeshProUGUI>();
-        tmp.text = label; tmp.fontSize = fontSize;
-        tmp.alignment = TextAlignmentOptions.Center; tmp.color = Color.white; tmp.raycastTarget = false;
-        return go;
-    }
+        => EditorUIBuilder.RaisedTextBtn(parent, name, label, fontSize, bg).gameObject;
 
     static TextMeshProUGUI MakeTMP(GameObject parent, string name, string text, float size, FontStyles style)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
-        go.transform.SetParent(parent.transform, false);
-        var tmp = go.GetComponent<TextMeshProUGUI>();
-        tmp.text = text; tmp.fontSize = size; tmp.fontStyle = style;
-        tmp.alignment = TextAlignmentOptions.Center; tmp.color = Color.white;
-        return tmp;
-    }
+        => EditorUIBuilder.TMP(parent, name, text, size, style);
 
     static TextMeshProUGUI GetValTMP(Transform row, string cellName)
     {

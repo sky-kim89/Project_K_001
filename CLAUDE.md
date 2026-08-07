@@ -148,14 +148,103 @@ Assets/_project/
 
 ---
 
-## 에디터 툴 (Tools > BattleGame / Project K 메뉴)
+## 에디터 툴 — `Tools > Project K` (루트 하나로 통일됨)
 
-| 메뉴 | 스크립트 | 역할 |
-|------|---------|------|
-| BattleGame > Generate Effect Textures | EffectTextureGenerator.cs | 이펙트 텍스처 14종 + 머티리얼 15종 생성 |
-| BattleGame > Generate Effect Prefabs | EffectPrefabGenerator.cs | 이펙트 프리팹 22종 생성 |
-| BattleGame > Link Effect Keys to Skills | EffectKeyLinker.cs | SO에 이펙트 풀 키 자동 연결 |
-| Tools > Project K > Generate Icons | IconGenerator.cs | 직업·스킬 PNG 아이콘 24장 생성 |
+> ⚠ `BattleGame/` 루트는 폐기됨. 모든 메뉴는 `Tools/Project K/` 아래에 있다.
+> **메뉴 경로를 문자열로 직접 쓰지 말 것** — `Assets/_project/1.Script/Editor/ProjectKMenu.cs`
+> 의 상수를 조합한다: `[MenuItem(ProjectKMenu.Popup + "Event", priority = ProjectKMenu.PrefabPrio + 42)]`
+
+```
+Tools/Project K/
+├─ 씬 이동/          Splash·Lobby·InGame 로드 (Ctrl+Shift+Alt+1/2/3)
+├─ 씬 셋업/          Splash 씬 구성 · InGame 씬 구성 · Lobby 씬 패치
+├─ 프리팹 생성/      ▶ 전체 생성
+│   ├─ 로비/         TopBar · MainPanel · BattlePanel · HeroPanel · RelicPanel
+│   ├─ 팝업/         ▶ 팝업 전체 · BattleResult · Pause · Loading · AbilitySelect
+│   │                AbilityList · EquipCompare · Disassemble · HeroDetail
+│   │                RunShop · Reincarnation · Mercenary · Event
+│   ├─ 인게임/       GeneralPanel · RewardCard
+│   └─ 이펙트/       Effect 프리팹 (22종)
+├─ 데이터 생성/      ▶ 전체 생성 · 액티브/패시브 스킬 · 특성 · 어빌리티 · 유물
+│                    장비 · 이벤트 · StageConfig · SpriteManager
+├─ 아이콘·텍스처/    ▶ 전체 생성 · 직업·스킬/특성/어빌리티/유물/아이템/장비/
+│                    스테이지노드/로비버튼 아이콘 · 이벤트 일러스트 · 이펙트 텍스처
+└─ 도구/             Cheat Editor · 스킬 SO 에 이펙트 키 연결
+```
+
+**프리팹 정본 (중복 생성자 금지)** — 한 프리팹은 한 Creator 만 만든다.
+
+| 프리팹 | 정본 Creator |
+|--------|-------------|
+| BattleResult · Pause · Loading · AbilitySelect · AbilityList · ExpRow | `PopupPrefabCreator.cs` |
+| EquipComparePopup | `EquipComparePopupCreator.cs` |
+| DisassemblePopup | `DisassemblePopupCreator.cs` |
+| HeroPanel · HeroCard · EquipCard | `HeroPanelCreator.cs` |
+| GeneralPanel · RewardCard | `UISetupTool.cs` |
+
+`UISetupTool` 은 씬 계층 담당이며 팝업 프리팹은 `PopupPrefabCreator` 에 위임한다.
+`HeroPanelCreator.BuildCardPrefab()` 은 BattlePanel·Mercenary·RunShop 이 공유하는
+장수 카드 팩토리이므로 `public` 유지 필수.
+
+**공용 UI 빌더** — `Assets/_project/1.Script/Editor/EditorUIBuilder.cs`
+Creator 들이 각자 복사해 쓰던 `Make*/Create*/Add*` 헬퍼의 본문은 전부 여기 있다.
+각 Creator 는 기존 이름을 한 줄 포워더로만 유지한다. 새 헬퍼가 필요하면
+로컬에 또 만들지 말고 여기에 추가할 것.
+
+---
+
+## UI 제작 규칙 (Creator 작성 시 필수)
+
+> **⚠ 규칙 1 — 누를 수 있는 버튼에는 반드시 음각을 넣는다**
+> 평평한 사각형은 버튼인지 라벨인지 구분이 안 된다.
+> `EditorUIBuilder.RaisedBtn()` / `RaisedTextBtn()` / `RaisedBtnOn()` 으로만 만들 것.
+> ```csharp
+> var btn = EditorUIBuilder.RaisedBtn(parent, "BuyBtn", faceColor, out var body);
+> // 라벨·아이콘은 반드시 body 아래에 넣는다 (루트에 넣으면 눌려도 안 내려간다)
+> ```
+> 구조: `Shadow`(아래 6px 노출 = 두께) → `Body` → `TopEdge`(밝은 2px) + `BottomEdge`(어두운 4px).
+> 눌림 색은 `Button.colors` 가 targetGraphic 색에 **곱해지므로** `TintFor()` 로 역산한다.
+> 템플릿처럼 루트가 이미 있으면 `RaisedBtnOn(root, ...)` — 자식 경로가 `Body/...` 로 유지된다.
+
+> **⚠ 규칙 2 — 장식 기호에 폰트 글리프를 쓰지 않는다**
+> 기본 폰트 `LiberationSans SDF` 는 **문자 250자(ASCII + Latin-1 일부)뿐**이고
+> `m_AtlasPopulationMode: 0` = **Static** 이라 런타임에 글리프를 채울 수도 없다.
+> 없는 글자는 □(두부)로 그려져 그대로 화면에 노출된다. (한글은 폴백 폰트가 처리)
+>
+> | 없음 (쓰지 말 것) | 있음 (써도 됨) |
+> |---|---|
+> | `★ ✔ ✕ ▶ ◀ ▲ ⚙ 🔒` | `› — × € ™ □` |
+>
+> `EditorUIBuilder.CheckMark / XMark / Chevron / Diamond / PadLock / Bar` 로 그릴 것.
+> 새 기호가 필요하면 `Bar()`(회전 막대)를 조합해 헬퍼를 추가한다.
+
+> **⚠ 규칙 3 — 반투명 테두리를 자식으로 두지 않는다**
+> Unity UI 는 자기 Graphic 을 먼저 그리고 그 다음 자식을 그린다.
+> `SetAsFirstSibling()` 을 해도 자식은 부모 Image 보다 뒤로 갈 수 없다.
+> 테두리는 대상의 **앞 형제**로 만들어 뒤에 깔 것.
+
+> **⚠ 규칙 4 — 폰트 크기는 `UIScale` 상수만 쓴다**
+> `FontSm(34) / FontMd(42) / FontLg(56) / FontXl(76)`, 버튼 `BtnSm(100) / BtnMd(132) / BtnLg(164)`.
+> 하드코딩 금지. 모바일 실기 기준으로 잡힌 값이며 `FontSm` 미만은 읽히지 않는다.
+
+> **⚠ 규칙 5 — 칸 높이를 손으로 적지 않는다 (글자 잘림 방지)**
+> TMP 한 줄은 폰트의 **약 1.25배**를 쓴다. 칸을 폰트보다 작게 잡으면 아래가 잘린다.
+> ```csharp
+> UIScale.RowSm / RowMd / RowLg     // 43 / 53 / 70 — 한 줄짜리 칸
+> UIScale.Line(fontSize)            // 임의 폰트의 한 줄 높이
+> UIScale.BtnFor(fontSize)          // 라벨이 안 눌리는 최소 버튼 높이 (×1.7)
+> ```
+> 폰트 상수를 올릴 때 이 값을 쓰는 칸은 자동으로 따라 커진다.
+
+> **⚠ 규칙 6 — 팝업 높이는 `UIScale.PopupMaxH`(1000) 를 넘기지 않는다**
+> 로비 캔버스 세로가 1080 뿐이라 그 이상은 위아래가 잘린다.
+> 고정 높이 대신 세로 스트레치 + 가변 영역으로 만드는 쪽이 더 안전하다
+> (EventPopup 참고: 패널은 캔버스에 맞추고 `ChoiceRoot` 가 남는 높이를 흡수).
+
+**캔버스 기준이 씬마다 다르다 (주의)**
+`Lobby.unity` = **1920×1080 가로**, `InGame.unity` = 1080×1920 세로.
+팝업 대부분은 로비 위에 뜨므로 **세로 여유가 1080 뿐**이다.
+팝업 높이를 고정하면 잘린다 — 세로 스트레치 + 가변 영역으로 만들 것.
 
 ---
 

@@ -28,6 +28,7 @@ public enum EventRewardType
     OpenAbilitySelect = 8,   // IntValue = 어빌리티 선택 팝업 연속 횟수
     RandomTraitBuff   = 9,   // 버프 특성 풀에서 랜덤 1개
     RandomTraitDebuff = 10,  // 디버프 특성 풀에서 랜덤 1개
+    OpenRunShop       = 11,  // 런 상점 팝업을 이어서 연다 (행상인 이벤트)
 }
 
 // ── 보상 단위 ────────────────────────────────────────────────

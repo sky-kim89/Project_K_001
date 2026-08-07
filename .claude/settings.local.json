@@ -2,7 +2,24 @@
   "permissions": {
     "allow": [
       "Bash(rm \"d:/project/Project_K_001/Assets/_project/1.Skript/InGame/Unit/RuntimeBridgeLinkSystem.cs\")",
-      "Bash(rm -f \"d:/project/Project_K_001/Assets/_project/1.Skript/InGame/Unit/RuntimeBridgeLinkSystem.cs.meta\")"
+      "Bash(rm -f \"d:/project/Project_K_001/Assets/_project/1.Skript/InGame/Unit/RuntimeBridgeLinkSystem.cs.meta\")",
+      "Bash(python -)",
+      "Bash(cd C:/Users/ys_p/.claude/projects/d--project-Project-K-001/memory && grep -ln \"BattleGame\\\\|로비 UI >\\\\|Generate Icons\\\\|Tools > Project K\" *.md)",
+      "Read(//c/Users/ys_p/.claude/projects/d--project-Project-K-001/memory/**)",
+      "Bash(git diff *)",
+      "Bash(grep -vE \"EditorUIBuilder|MenuItem|^\\\\-\\\\s*\\\\{$|^\\\\-\\\\s*\\\\}$|^\\\\-\\\\s*var go = new GameObject|^\\\\-\\\\s*go\\\\.|^\\\\-\\\\s*rt\\\\.|^\\\\-\\\\s*tmp\\\\.|^\\\\-\\\\s*return|^\\\\-\\\\s*var \\(rt|tmp\\) =|^\\\\-\\\\s*if \\\\\\(p\")",
+      "Bash(awk '/m_Name: Panel$/,0' Assets/_project/2.Prefabs/UI/EventPopup.prefab)",
+      "Bash(dotnet build *)",
+      "Bash(rm -f Assembly-CSharp.build.csproj Assembly-CSharp-Editor.build.csproj)",
+      "Bash(python -c \"import PIL, numpy; print\\('PIL+numpy OK', PIL.__version__, numpy.__version__\\)\")",
+      "Bash(python -c \"import numpy; print\\('numpy', numpy.__version__\\)\")",
+      "Bash(python -c \"import zlib,struct; print\\('zlib ok'\\)\")",
+      "Bash(grep -v \"^.*//\")",
+      "Bash(cp Assembly-CSharp-Editor.csproj /tmp/B.bak)",
+      "Bash(cd \"d:/project/Project_K_001\" && cp /tmp/B.bak Assembly-CSharp-Editor.csproj && echo restored)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
     ]
   }
 }

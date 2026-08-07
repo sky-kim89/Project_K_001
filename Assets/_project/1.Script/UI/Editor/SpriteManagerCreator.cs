@@ -37,7 +37,7 @@ public static class SpriteManagerCreator
     const string StageNodeAtlasPath = IconRoot + "/Atlas_StageNodes.spriteatlas";
     const string LobbyBtnAtlasPath  = IconRoot + "/Atlas_LobbyBtns.spriteatlas";
 
-    [MenuItem("BattleGame/데이터 생성/스프라이트 매니저 생성")]
+    [MenuItem(ProjectKMenu.Data + "SpriteManager + 아틀라스", priority = ProjectKMenu.DataPrio + 20)]
     public static void Create()
     {
         if (!AssetDatabase.IsValidFolder(ResourcesDir))

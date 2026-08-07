@@ -41,8 +41,9 @@ public class LocalizationManager : SingletonPure<LocalizationManager>
         { "CommandPower",        "지휘력"     },
         { "SkillCooldownReduce", "쿨감소"     },
         { "GeneralSlotBonus",    "장수슬롯"   },
-        { "AllStatPenalty",      "전체스텟감소" },
+        { "AllStatPenalty",      "전체스텟"   },   // 값은 음수로 표시된다
         { "EquipSlotBonus",      "장비슬롯"   },
+        { "ExpGainBonus",        "경험치획득" },
 
         // ── AbilityGrade ──────────────────────────────────────
         { "Advanced", "고급"  },

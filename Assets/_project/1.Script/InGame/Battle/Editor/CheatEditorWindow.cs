@@ -41,7 +41,7 @@ public class CheatEditorWindow : EditorWindow
 
     // ────────────────────────────────────────────────────────────
 
-    [MenuItem("Tools/Project K/Cheat Editor")]
+    [MenuItem(ProjectKMenu.Tool + "Cheat Editor", priority = ProjectKMenu.ToolPrio)]
     static void Open() => GetWindow<CheatEditorWindow>("치트 에디터");
 
     void OnEnable()

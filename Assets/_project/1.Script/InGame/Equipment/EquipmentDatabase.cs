@@ -34,8 +34,23 @@ public class EquipmentDatabase : ScriptableObject
     /// 스테이지 레벨 이하의 아이템 레벨을 가진 장비 풀 반환.
     /// 스테이지 클리어 보상 선택지 생성 시 사용.
     /// </summary>
-    public List<EquipmentData> GetDropPool(int stageLevel)
-        => Equipments.Where(e => e != null && e.ItemLevel <= stageLevel).ToList();
+    /// <param name="minGrade">
+    /// 등급 하한. 런 상점처럼 저등급을 취급하지 않는 곳이 쓴다.
+    /// ⚠ 등급과 아이템 레벨은 사실상 1:1(Normal=1 … Epic=5)이라
+    ///   하한을 걸면 초반 스테이지에서 풀이 통째로 비어 버린다.
+    ///   그 경우 하한 등급만은 스테이지 레벨과 무관하게 열어 준다
+    ///   — 상점이 빈 칸으로 뜨는 것보다 낫다.
+    /// </param>
+    public List<EquipmentData> GetDropPool(int stageLevel, UnitGrade minGrade = UnitGrade.Normal)
+    {
+        var pool = Equipments
+            .Where(e => e != null && e.Grade >= minGrade && e.ItemLevel <= stageLevel)
+            .ToList();
+
+        if (pool.Count > 0 || minGrade == UnitGrade.Normal) return pool;
+
+        return Equipments.Where(e => e != null && e.Grade == minGrade).ToList();
+    }
 
     /// <summary>
     /// 스테이지 레벨에 따라 장비 1개를 가중치 랜덤으로 추출.
@@ -59,10 +74,11 @@ public class EquipmentDatabase : ScriptableObject
         return pool[^1];
     }
 
-    /// <summary>결정론적 시드 기반 추출 (System.Random 사용).</summary>
-    public EquipmentData PickRandom(int stageLevel, System.Random rng)
+    /// <summary>결정론적 시드 기반 추출 (System.Random 사용). minGrade = 등급 하한.</summary>
+    public EquipmentData PickRandom(int stageLevel, System.Random rng,
+                                    UnitGrade minGrade = UnitGrade.Normal)
     {
-        var pool = GetDropPool(stageLevel);
+        var pool = GetDropPool(stageLevel, minGrade);
         if (pool.Count == 0) return null;
 
         float totalWeight = pool.Sum(e => 1f / e.ItemLevel);

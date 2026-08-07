@@ -37,12 +37,21 @@ public class RunTraitData : ISaveSection
 
     public SaveKey SaveKey => SaveKey.RunTrait;
 
+    /// <summary>보유 특성 목록이 바뀔 때 발행. TraitBarUI 가 구독한다.</summary>
+    public static event Action OnTraitsChanged;
+
     // ── 보유 여부 ───────────────────────────────────────────────
 
     public bool                   HasTrait(TraitType t)  => _data.ContainsKey(t);
-    public void                   AddTrait(TraitType t)  { if (!_data.ContainsKey(t)) _data[t] = 0; }
     public IEnumerable<TraitType> AcquiredTraits         => _data.Keys;
     public int                    Count                  => _data.Count;
+
+    public void AddTrait(TraitType t)
+    {
+        if (_data.ContainsKey(t)) return;
+        _data[t] = 0;
+        OnTraitsChanged?.Invoke();
+    }
 
     // ── 스택 ────────────────────────────────────────────────────
 
@@ -66,7 +75,10 @@ public class RunTraitData : ISaveSection
         return actual;
     }
 
-    public void RemoveTrait(TraitType t) => _data.Remove(t);
+    public void RemoveTrait(TraitType t)
+    {
+        if (_data.Remove(t)) OnTraitsChanged?.Invoke();
+    }
 
     // 직업 시너지(TraitType >= 1000)를 전부 제거한다. JobSynergyEvaluator 가 재계산 전에 호출.
     public void RemoveSynergies()
@@ -74,7 +86,9 @@ public class RunTraitData : ISaveSection
         var toRemove = new List<TraitType>();
         foreach (var t in _data.Keys)
             if ((int)t >= 1000) toRemove.Add(t);
+        if (toRemove.Count == 0) return;
         foreach (var t in toRemove) _data.Remove(t);
+        OnTraitsChanged?.Invoke();
     }
 
     // ── 직렬화 ──────────────────────────────────────────────────
@@ -95,7 +109,12 @@ public class RunTraitData : ISaveSection
         if (dto?.entries == null) return;
         foreach (var e in dto.entries)
             _data[(TraitType)e.traitType] = e.stackCount;
+        OnTraitsChanged?.Invoke();
     }
 
-    public void SetDefaults() => _data.Clear();
+    public void SetDefaults()
+    {
+        _data.Clear();
+        OnTraitsChanged?.Invoke();
+    }
 }

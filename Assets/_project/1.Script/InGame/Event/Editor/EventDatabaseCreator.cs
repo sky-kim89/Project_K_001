@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
@@ -22,15 +23,39 @@ using UnityEditor;
 //    08. AbandonedWarehouse — 방치된 창고    (즉시보상형)
 //    09. WarRelic           — 전쟁 유물      (즉시보상형)
 //    10. BlackMarket        — 상인의 밀거래  (선택지형)
+//    11. TravelingMerchant  — 행상인의 좌판  (상점 스테이지 전용)
+//
+//  ⚠ 11번은 랜덤 이벤트 풀에 들어가면 안 된다.
+//    상점 스테이지에서만 EventDatabase.ShopEventId 로 직접 꺼내 쓰고,
+//    GetRandom() 은 이 ID 를 제외한다.
 // ============================================================
 
 public static class EventDatabaseCreator
 {
-    const string DataRoot = "Assets/_project/Data";
-    const string EventDir = "Assets/_project/Data/Events";
-    const string DBPath   = "Assets/Resources/EventDatabase.asset";
+    const string DataRoot  = "Assets/_project/Data";
+    const string EventDir  = "Assets/_project/Data/Events";
+    const string DBPath    = "Assets/Resources/EventDatabase.asset";
+    const string IllustDir = "Assets/_project/3.Textures/Events";
 
-    [MenuItem("Tools/Project K/Event/Create Event Database")]
+    // ── 이벤트 ↔ 삽화 매핑 ────────────────────────────────────
+    //  삽화 8종을 이벤트 10종에 배분한다 (분위기가 겹치면 공유).
+    //  PNG 는 아이콘·텍스처 > 이벤트 일러스트 로 생성한다.
+    static readonly Dictionary<string, string> IllustMap = new()
+    {
+        { "InjuredSoldier",     "evt_soldier"  },  // 부상당한 병사
+        { "MysteriousPotion",   "evt_potion"   },  // 신비한 묘약
+        { "MerchantOffer",      "evt_merchant" },  // 상인의 제안
+        { "BloodAltar",         "evt_shrine"   },  // 피의 제단
+        { "Crossroads",         "evt_ambush"   },  // 갈림길의 첩자
+        { "AbilityDiscovery",   "evt_mystery"  },  // 어빌리티 발견
+        { "LoneVeteran",        "evt_soldier"  },  // 고독한 노병
+        { "AbandonedWarehouse", "evt_dark"     },  // 방치된 창고
+        { "WarRelic",           "evt_forest"   },  // 전쟁 유물
+        { "BlackMarket",        "evt_merchant" },  // 상인의 밀거래
+        { "TravelingMerchant",  "evt_merchant" },  // 행상인의 좌판 (상점 스테이지)
+    };
+
+    [MenuItem(ProjectKMenu.Data + "이벤트", priority = ProjectKMenu.DataPrio + 18)]
     public static void CreateAll()
     {
         // ── 폴더 준비 ──────────────────────────────────────────
@@ -188,6 +213,22 @@ public static class EventDatabaseCreator
                 "시선을 피하며 자리를 떠났습니다.")
         ));
 
+        // ── 11. 행상인의 좌판 (상점 스테이지 전용) ────────────
+        //  상점 팝업이 예고 없이 뜨면 무슨 상황인지 읽히지 않는다.
+        //  행상인을 만나는 장면을 먼저 보여주고, 좌판을 들여다보는
+        //  선택을 했을 때 비로소 RunShopPopup 이 열린다.
+        Add(arr, Make("TravelingMerchant", "행상인의 좌판",
+            "길목에 짐마차 한 대가 서 있습니다. 행상인이 천막을 걷어 좌판을 펼칩니다.\n" +
+            "\"먼 길 오셨군요, 장군님. 무기도 있고, 비법도 있고, 사람도 있습니다.\n" +
+            " 값만 치르신다면 말이죠.\"",
+            Choice("상품을 본다",
+                "행상인이 좌판 위의 천을 걷었습니다.\n무엇을 살지 고르십시오.",
+                Reward(EventRewardType.OpenRunShop, "상점 열기")),
+            Choice("그냥 지나친다",
+                "행상인에게 눈길만 주고 발걸음을 옮겼습니다.\n" +
+                "\"...다음 길목에서 또 뵙지요.\"")
+        ));
+
         // ── 저장 ──────────────────────────────────────────────
         so.ApplyModifiedProperties();
         EditorUtility.SetDirty(db);
@@ -239,7 +280,25 @@ public static class EventDatabaseCreator
             data = ScriptableObject.CreateInstance<EventData>();
             AssetDatabase.CreateAsset(data, path);
         }
+        data.Illustration = LoadIllust(id);
         return data;
+    }
+
+    // 매핑·파일이 없으면 LogError — 삽화가 조용히 빠지면 팝업이 빈 상자로 뜬다.
+    static Sprite LoadIllust(string id)
+    {
+        if (!IllustMap.TryGetValue(id, out var file))
+        {
+            Debug.LogError($"[EventDatabaseCreator] 삽화 매핑 없음: {id} — IllustMap 에 추가하세요.");
+            return null;
+        }
+
+        string path = $"{IllustDir}/{file}.png";
+        var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        if (sprite == null)
+            Debug.LogError($"[EventDatabaseCreator] 삽화를 Sprite 로 읽지 못함: {path}\n" +
+                           "Tools > Project K > 아이콘·텍스처 > 이벤트 일러스트 를 먼저 실행하세요.");
+        return sprite;
     }
 
     // ── 선택지 ────────────────────────────────────────────────

@@ -25,7 +25,6 @@ public static class ReincarnationPopupCreator
 {
     const string SavePath = "Assets/_project/2.Prefabs/UI";
 
-    [MenuItem("Tools/Project K/Popup/Create GeneralStatRow Prefab")]
     public static void CreateGeneralStatRowPrefab()
     {
         const float rowH   = 92f;
@@ -63,9 +62,14 @@ public static class ReincarnationPopupCreator
         bridgeGo.AddComponent<Assets.PixelFantasy.PixelHeroes.Common.Scripts.CharacterScripts.CharacterBuilder>();
 
         // ── 이름 텍스트 ─────────────────────────────────────────
-        var nameText = AddTMP(root, "NameText", "장수 이름", 34f, FontStyles.Bold);
+        var nameText = AddTMP(root, "NameText", "장수 이름", UIScale.FontMd, FontStyles.Bold);
         nameText.alignment    = TextAlignmentOptions.MidlineLeft;
-        nameText.overflowMode = TextOverflowModes.Ellipsis;
+        // 칸 높이(44) < FontMd 한 줄(53) 이라 Ellipsis 면 줄이 통째로 사라진다.
+        // Overflow + AutoSize — 긴 이름은 폰트를 줄여 대응한다.
+        nameText.overflowMode     = TextOverflowModes.Overflow;
+        nameText.enableAutoSizing = true;
+        nameText.fontSizeMin      = UIScale.FontSm;
+        nameText.fontSizeMax      = UIScale.FontMd;
         var nameRt = nameText.rectTransform;
         nameRt.anchorMin = new Vector2(0f, 0.5f); nameRt.anchorMax = new Vector2(0f, 0.5f);
         nameRt.pivot = new Vector2(0f, 0.5f);
@@ -152,13 +156,13 @@ public static class ReincarnationPopupCreator
 
     // ── ReincarnationPopup ────────────────────────────────────
 
-    [MenuItem("Tools/Project K/Popup/Create ReincarnationPopup Prefab")]
+    [MenuItem(ProjectKMenu.Popup + "Reincarnation (+ GeneralStatRow)", priority = ProjectKMenu.PrefabPrio + 40)]
     public static void Create()
     {
         if (AssetDatabase.LoadAssetAtPath<GameObject>($"{SavePath}/GeneralStatRow.prefab") == null)
             CreateGeneralStatRowPrefab();
 
-        var root  = CreateRoot<ReincarnationPopup>("ReincarnationPopup", 1000f, 1080f);
+        var root  = CreateRoot<ReincarnationPopup>("ReincarnationPopup", 1000f, UIScale.PopupMaxH);
         var popup = root.GetComponent<ReincarnationPopup>();
         AddBgPanel(root, new Color(0.07f, 0.08f, 0.14f, 0.97f));
 
@@ -382,76 +386,24 @@ public static class ReincarnationPopupCreator
     }
 
     static void AddBgPanel(GameObject parent, Color color)
-    {
-        var go = new GameObject("BgPanel", typeof(RectTransform), typeof(Image));
-        go.transform.SetParent(parent.transform, false);
-        go.transform.SetAsFirstSibling();
-        var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
-        rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
-        go.GetComponent<Image>().color = color;
-    }
+        => EditorUIBuilder.BgPanel(parent, color);
 
     static TextMeshProUGUI AddTMP(GameObject parent, string name, string text, float size, FontStyles style)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
-        go.transform.SetParent(parent.transform, false);
-        var tmp = go.GetComponent<TextMeshProUGUI>();
-        tmp.text      = text;
-        tmp.fontSize  = size;
-        tmp.fontStyle = style;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.color     = Color.white;
-        return tmp;
-    }
+        => EditorUIBuilder.TMP(parent, name, text, size, style);
 
     static GameObject AddButton(GameObject parent, string objName, string label, Color bgColor, float fontSize)
-    {
-        var go = new GameObject(objName, typeof(RectTransform), typeof(Image), typeof(Button));
-        go.transform.SetParent(parent.transform, false);
-        go.GetComponent<Image>().color = bgColor;
-
-        var labelGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-        labelGo.transform.SetParent(go.transform, false);
-        var labelRt = labelGo.GetComponent<RectTransform>();
-        labelRt.anchorMin = Vector2.zero; labelRt.anchorMax = Vector2.one;
-        labelRt.offsetMin = Vector2.zero; labelRt.offsetMax = Vector2.zero;
-        var tmp = labelGo.GetComponent<TextMeshProUGUI>();
-        tmp.text      = label;
-        tmp.fontSize  = fontSize;
-        tmp.fontStyle = FontStyles.Bold;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.color     = Color.white;
-        return go;
-    }
+        => EditorUIBuilder.Btn(parent, objName, label, bgColor, fontSize, boldLabel: true);
 
     static void SetRect(RectTransform rt, Vector2 pos, Vector2 size)
-    {
-        rt.anchorMin        = new Vector2(0.5f, 0.5f);
-        rt.anchorMax        = new Vector2(0.5f, 0.5f);
-        rt.pivot            = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = pos;
-        rt.sizeDelta        = size;
-    }
+        => EditorUIBuilder.Center(rt, pos, size);
 
-    static void StretchRT(GameObject go)
-    {
-        var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
-        rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
-    }
+    static void StretchRT(GameObject go) => EditorUIBuilder.Stretch(go);
 
     static void SetEnum(SerializedObject so, string field, int value)
-    {
-        var prop = so.FindProperty(field);
-        if (prop != null) prop.intValue = value;
-    }
+        => EditorUIBuilder.SetEnum(so, field, value, "ReincarnationPopupCreator");
 
     static void SetObj(SerializedObject so, string field, Object obj)
-    {
-        var prop = so.FindProperty(field);
-        if (prop != null) prop.objectReferenceValue = obj;
-    }
+        => EditorUIBuilder.SetObj(so, field, obj, "ReincarnationPopupCreator");
 
     static void Save(GameObject root, string fileName)
     {

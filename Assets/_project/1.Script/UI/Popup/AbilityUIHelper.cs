@@ -30,19 +30,37 @@ public static class AbilityUIHelper
     /// 특성·패시브용 스탯 값 포맷 — IsPercent 플래그 + 스탯 타입 동시 고려.
     /// IsPercent=true  : 기본 스탯의 N% 가산 → ×100 표시.
     /// IsPercent=false : 절대값 가산이지만 0~1 비율 스탯(방어율·치명타·쿨감)은 ×100 표시.
+    ///
+    /// 특성 설명문에서 수치를 뺐으므로(효과는 이 줄이 전부 말해준다)
+    /// 감소 효과도 여기서 제대로 음수로 보여야 한다.
     public static string FormatStatValue(StatType stat, float value, bool isPercent)
     {
-        if (isPercent)
-            return $"+{value * 100f:0.#}%";
+        // AllStatPenalty 는 "깎이는 양"을 양수로 저장한다 → 표시는 뒤집는다.
+        if (stat == StatType.AllStatPenalty) return Percent(-value);
+
+        if (isPercent) return Percent(value);
+
         return stat switch
         {
-            StatType.Defense             => $"+{value * 100f:0.#}%",
-            StatType.CritChance          => $"+{value * 100f:0.#}%",
-            StatType.SkillCooldownReduce => $"+{value * 100f:0.#}%",
-            StatType.SoldierCount        => $"+{Mathf.RoundToInt(value)}",
-            StatType.CommandPower        => $"+{Mathf.RoundToInt(value)}",
-            _                            => $"+{value:0.#}",
+            StatType.Defense             => Percent(value),
+            StatType.CritChance          => Percent(value),
+            StatType.SkillCooldownReduce => Percent(value),
+            StatType.ExpGainBonus        => Percent(value),
+            StatType.SoldierCount        => Count(value),
+            StatType.CommandPower        => Count(value),
+            StatType.GeneralSlotBonus    => Count(value),
+            StatType.EquipSlotBonus      => Count(value),
+            _                            => value >= 0f ? $"+{value:0.#}" : $"{value:0.#}",
         };
+    }
+
+    // 음수면 "-" 가 값에 이미 붙으므로 "+" 만 조건부로 붙인다 ("+-15%" 방지).
+    static string Percent(float v) => v >= 0f ? $"+{v * 100f:0.#}%" : $"{v * 100f:0.#}%";
+
+    static string Count(float v)
+    {
+        int i = Mathf.RoundToInt(v);
+        return i >= 0 ? $"+{i}" : i.ToString();
     }
 
     /// TraitData.Effects 배열을 여러 줄 스탯 텍스트로 변환.

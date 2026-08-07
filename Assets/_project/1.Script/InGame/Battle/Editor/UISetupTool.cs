@@ -1,22 +1,20 @@
 // ============================================================
 //  UISetupTool.cs  [Editor Only]
-//  Tools > Project K > Setup InGame UI 메뉴에서 실행.
+//  Tools > Project K > 씬 셋업 > InGame 씬 구성 에서 실행.
 //
-//  수행 내용:
-//    1. Assets/_project/2.Prefabs/UI/GeneralPanel.prefab 생성
-//    2. 팝업 프리팹 3종 생성
-//       - LoadingPopup.prefab    (게임 시작 로딩)
-//       - BattleResultPopup.prefab (승리/패배 결과)
-//       - PausePopup.prefab      (일시 정지)
-//    3. 현재 씬에 Canvas > InGameHUD 계층 생성
-//       (TopBarUI + 일시 정지 버튼, GeneralPanelContainer 포함)
-//    4. PopupManager 루트 오브젝트 생성 (없을 경우)
-//    5. InGameManager 참조 자동 연결 (씬에 존재할 경우)
-//    6. InGameHUD._skillIcons 에 PNG 스프라이트 자동 연결
+//  담당 범위
+//    - 인게임 전용 프리팹: GeneralPanel, RewardCard
+//    - 현재 씬의 Canvas > InGameHUD 계층
+//    - PopupManager 루트 오브젝트
 //
-//  주의:
-//    - 이미 "InGameHUD" 이름의 오브젝트가 씬에 있으면 삭제 후 재생성합니다.
-//    - 실행 후 씬을 저장(Ctrl+S)하세요.
+//  팝업 프리팹은 만들지 않는다.
+//    BattleResult / Pause / Loading 은 PopupPrefabCreator 가 정본이며
+//    이 파일은 호출만 한다. 예전에는 양쪽이 같은 경로에 서로 다른
+//    레이아웃을 덮어써서, 실행 순서에 따라 결과가 달라지는 버그가 있었다.
+//
+//  주의
+//    - "InGameHUD" 오브젝트가 이미 있으면 삭제 후 재생성한다.
+//    - 실행 후 씬을 저장(Ctrl+S)할 것.
 // ============================================================
 using UnityEngine;
 using UnityEditor;
@@ -28,36 +26,28 @@ using UnityEngine.SceneManagement;
 
 public static class UISetupTool
 {
-    const string PANEL_PREFAB            = "Assets/_project/2.Prefabs/UI/GeneralPanel.prefab";
-    const string LOADING_POPUP_PREFAB    = "Assets/_project/2.Prefabs/UI/LoadingPopup.prefab";
-    const string RESULT_POPUP_PREFAB     = "Assets/_project/2.Prefabs/UI/BattleResultPopup.prefab";
-    const string PAUSE_POPUP_PREFAB      = "Assets/_project/2.Prefabs/UI/PausePopup.prefab";
-    const string REWARD_CARD_PREFAB      = "Assets/_project/2.Prefabs/UI/RewardCard.prefab";
+    const string PANEL_PREFAB       = "Assets/_project/2.Prefabs/UI/GeneralPanel.prefab";
+    const string REWARD_CARD_PREFAB = "Assets/_project/2.Prefabs/UI/RewardCard.prefab";
 
 
     // ══════════════════════════════════════════════════════════
     //  진입점
     // ══════════════════════════════════════════════════════════
 
-    [MenuItem("Tools/Project K/씬 셋업/Setup InGame UI")]
+    [MenuItem(ProjectKMenu.Setup + "InGame 씬 구성", priority = ProjectKMenu.SetupPrio + 1)]
     public static void SetupInGameUI()
     {
-        // 1. GeneralPanel 프리팹 생성
+        // 1. 인게임 프리팹 (RewardCard 는 BattleResultPopup 이 참조하므로 먼저)
         var panelPrefab = CreateGeneralPanelPrefab();
-        if (panelPrefab == null)
-        {
-            Debug.LogError("[UISetupTool] GeneralPanel 프리팹 생성 실패 — 중단");
-            return;
-        }
+        CreateRewardCardPrefab();
 
-        // 2. 팝업 프리팹 3종 + RewardCard 프리팹 생성
-        var loadingPrefab = CreateLoadingPopupPrefab();
-        var cardPrefab    = CreateRewardCardPrefab();
-        var resultPrefab  = CreateBattleResultPopupPrefab(cardPrefab);
-        var pausePrefab   = CreatePausePopupPrefab();
+        // 2. 팝업 프리팹 — PopupPrefabCreator 가 정본이므로 위임
+        PopupPrefabCreator.CreateBattleResultPopup();
+        PopupPrefabCreator.CreatePausePopup();
+        PopupPrefabCreator.CreateLoadingPopup();
 
         // 3. Canvas + InGameHUD 계층 생성
-        var canvasGo = CreateCanvasHierarchy(panelPrefab, pausePrefab);
+        var canvasGo = CreateCanvasHierarchy(panelPrefab);
 
         // 4. PopupManager 루트 오브젝트 생성/업데이트
         CreateOrUpdatePopupManager(canvasGo);
@@ -65,6 +55,24 @@ public static class UISetupTool
         AssetDatabase.SaveAssets();
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
         Debug.Log("[UISetupTool] ✓ InGame UI 셋업 완료 — 씬을 저장하세요 (Ctrl+S)");
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  개별 프리팹 재생성 메뉴
+    // ══════════════════════════════════════════════════════════
+
+    [MenuItem(ProjectKMenu.InGame + "GeneralPanel", priority = ProjectKMenu.PrefabPrio + 45)]
+    public static void MenuCreateGeneralPanel()
+    {
+        CreateGeneralPanelPrefab();
+        AssetDatabase.SaveAssets();
+    }
+
+    [MenuItem(ProjectKMenu.InGame + "RewardCard", priority = ProjectKMenu.PrefabPrio + 46)]
+    public static void MenuCreateRewardCard()
+    {
+        CreateRewardCardPrefab();
+        AssetDatabase.SaveAssets();
     }
 
     // ══════════════════════════════════════════════════════════
@@ -268,70 +276,26 @@ public static class UISetupTool
     }
 
     // ══════════════════════════════════════════════════════════
-    //  팝업 프리팹 — LoadingPopup
-    // ══════════════════════════════════════════════════════════
-
-    static GameObject CreateLoadingPopupPrefab()
-    {
-        // 전체 화면을 덮는 풀스크린 팝업
-        var root = new GameObject("LoadingPopup");
-        var rt   = root.AddComponent<RectTransform>();
-        rt.anchorMin        = Vector2.zero;
-        rt.anchorMax        = Vector2.one;
-        rt.offsetMin        = Vector2.zero;
-        rt.offsetMax        = Vector2.zero;
-        root.AddComponent<CanvasGroup>();
-        var popup = root.AddComponent<LoadingPopup>();
-
-        // ── 배경 (전체 화면 덮기) ─────────────────────────────
-        var bg = MakeImg(root, "Bg", new Color(0.04f, 0.04f, 0.08f, 0.97f));
-        Stretch(bg.gameObject);
-
-        // ── 제목 (화면 중앙) ──────────────────────────────────
-        var title = MakeTMP(root, "TitleText", "배틀 준비 중", 36, FontStyle.Bold);
-        SetRT(title.gameObject,
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-            new Vector2(0f, 30f), new Vector2(400f, 50f));
-
-        // ── 상태 (점 애니메이션) ──────────────────────────────
-        var status = MakeTMP(root, "StatusText", "장군 소환 중...", 20, FontStyle.Normal);
-        status.color = new Color(0.75f, 0.75f, 0.75f);
-        SetRT(status.gameObject,
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-            new Vector2(0f, -20f), new Vector2(400f, 32f));
-
-        // ── 필드 연결 ──────────────────────────────────────────
-        var so = new SerializedObject(popup);
-        so.FindProperty("_popupType").intValue              = (int)PopupType.Loading;
-        so.FindProperty("_titleText").objectReferenceValue  = title;
-        so.FindProperty("_statusText").objectReferenceValue = status;
-        so.ApplyModifiedPropertiesWithoutUndo();
-
-        var prefab = PrefabUtility.SaveAsPrefabAsset(root, LOADING_POPUP_PREFAB);
-        Object.DestroyImmediate(root);
-        Debug.Log($"[UISetupTool] LoadingPopup 프리팹 저장 → {LOADING_POPUP_PREFAB}");
-        return prefab;
-    }
-
-    // ══════════════════════════════════════════════════════════
-    //  단독 재생성 — RewardCard (BattleResultPopup은 PopupPrefabCreator 사용)
-    // ══════════════════════════════════════════════════════════
-
-    public static void RebuildBattleResultPopup()
-    {
-        CreateRewardCardPrefab();
-        PopupPrefabCreator.CreateBattleResultPopup();
-        AssetDatabase.SaveAssets();
-        Debug.Log("[UISetupTool] BattleResultPopup + RewardCard 재생성 완료");
-    }
-
-    // ══════════════════════════════════════════════════════════
     //  RewardCard 프리팹
     // ══════════════════════════════════════════════════════════
 
+    //  아이콘이 카드 전면을 채우고, 수량은 우하단 배지로만 얹는다.
+    //  이름·설명·스탯은 카드에 적지 않고 눌렀을 때 툴팁으로 보여준다
+    //  (특성 아이콘과 동일한 동작 — InfoTooltipUI 공용).
+    //
+    //    RewardCard (Button)
+    //    ├─ Frame         종류·등급 색 테두리
+    //    ├─ IconImage     카드를 가득 채움
+    //    ├─ AmountBadge   우하단 수량 (수량 없는 보상이면 비활성)
+    //    │   └─ AmountText
+    //    ├─ RevealOverlay "?" — 미개봉 박스 전용
+    //    └─ Tooltip       InfoTooltipUI (기본 비활성)
+
     static GameObject CreateRewardCardPrefab()
     {
-        const float CW = 110f, CH = 130f;
+        const float CW = 128f, CH = 128f;
+        const float FrameW = 3f;      // 테두리 두께
+        const float BadgeH = 40f;
 
         var root = new GameObject("RewardCard");
         var rt   = root.AddComponent<RectTransform>();
@@ -342,40 +306,62 @@ public static class UISetupTool
         le.preferredWidth  = CW;
         le.preferredHeight = CH;
 
-        // 배경 (등급 색으로 런타임에 교체됨)
-        var bg = root.AddComponent<Image>();
-        bg.color = new Color(0.18f, 0.18f, 0.22f, 1f);
+        // 테두리 = 루트 Image. 종류·등급 색으로 런타임에 교체된다.
+        var frame = root.AddComponent<Image>();
+        frame.color = new Color(0.30f, 0.32f, 0.44f, 1f);
 
-        // 아이콘 (중앙 상단 64×64)
+        // 어두운 안쪽 바탕 — 아이콘이 비어도 카드로 읽히게
+        var inner = MakeImg(root, "Inner", new Color(0.07f, 0.08f, 0.13f, 1f));
+        SetRT(inner.gameObject, Vector2.zero, Vector2.one,
+              Vector2.zero, new Vector2(-FrameW * 2f, -FrameW * 2f));
+        inner.raycastTarget = false;
+
+        // 아이콘 — 카드 전면
         var iconGo  = MakeRect(root, "IconImage");
-        SetRT(iconGo, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-              new Vector2(0f, -8f), new Vector2(64f, 64f));
+        SetRT(iconGo, Vector2.zero, Vector2.one,
+              Vector2.zero, new Vector2(-FrameW * 2f - 8f, -FrameW * 2f - 8f));
         var iconImg = iconGo.AddComponent<Image>();
         iconImg.preserveAspect = true;
+        iconImg.raycastTarget  = false;
         iconImg.color          = Color.white;
 
-        // 이름 텍스트 (하단)
-        var nameTmp = MakeTMP(root, "NameText", "아이템", 11, FontStyle.Normal);
-        SetRT(nameTmp.gameObject, new Vector2(0f, 0f), new Vector2(1f, 0f),
-              new Vector2(0f, 34f), new Vector2(0f, 24f));
+        // 수량 배지 (우하단)
+        var badge = MakeImg(root, "AmountBadge", new Color(0.04f, 0.05f, 0.09f, 0.88f));
+        badge.raycastTarget = false;
+        {
+            var brt = badge.rectTransform;
+            brt.anchorMin        = new Vector2(1f, 0f);
+            brt.anchorMax        = new Vector2(1f, 0f);
+            brt.pivot            = new Vector2(1f, 0f);
+            brt.anchoredPosition = new Vector2(-FrameW - 2f, FrameW + 2f);
+            brt.sizeDelta        = new Vector2(CW * 0.62f, BadgeH);
+        }
 
-        // 수량 텍스트
-        var amountTmp = MakeTMP(root, "AmountText", "+0", 24, FontStyle.Bold);
-        amountTmp.color = Color.white;
-        SetRT(amountTmp.gameObject, new Vector2(0f, 0f), new Vector2(1f, 0f),
-              new Vector2(0f, 8f), new Vector2(0f, 30f));
+        var amountTmp = MakeTMP(badge.gameObject, "AmountText", "×1", (int)UIScale.FontSm, FontStyle.Bold);
+        amountTmp.color            = Color.white;
+        amountTmp.alignment        = TextAlignmentOptions.Right;
+        amountTmp.raycastTarget    = false;
+        amountTmp.textWrappingMode = TextWrappingModes.NoWrap;
+        amountTmp.overflowMode     = TextOverflowModes.Overflow;
+        amountTmp.enableAutoSizing = true;
+        amountTmp.fontSizeMin      = UIScale.FontSm - 10;
+        amountTmp.fontSizeMax      = UIScale.FontSm;
+        SetRT(amountTmp.gameObject, Vector2.zero, Vector2.one,
+              Vector2.zero, new Vector2(-12f, 0f));
 
         // 미개봉 오버레이 ("?" 상태)
         var overlay = MakeRect(root, "RevealOverlay");
         Stretch(overlay);
         var overlayImg = overlay.AddComponent<Image>();
-        overlayImg.color = new Color(0.08f, 0.08f, 0.14f, 0.92f);
+        overlayImg.color         = new Color(0.08f, 0.08f, 0.14f, 0.92f);
+        overlayImg.raycastTarget = false;
 
-        var qMark = MakeTMP(overlay, "QuestionMark", "?", 52, FontStyle.Bold);
-        qMark.color = new Color(0.9f, 0.85f, 0.5f);
+        var qMark = MakeTMP(overlay, "QuestionMark", "?", (int)UIScale.FontXl, FontStyle.Bold);
+        qMark.color         = new Color(0.9f, 0.85f, 0.5f);
+        qMark.raycastTarget = false;
         Stretch(qMark.gameObject);
 
-        // 탭 버튼 (전체 크기 투명 — 박스 개봉용)
+        // 탭 버튼 (전체 크기 투명 — 박스 개봉 / 상세 툴팁)
         var btnGo = MakeRect(root, "CardButton");
         Stretch(btnGo);
         var btnImg = btnGo.AddComponent<Image>();
@@ -385,14 +371,18 @@ public static class UISetupTool
         nav.mode   = Navigation.Mode.None;
         btn.navigation = nav;
 
+        // 상세 툴팁 (특성 아이콘과 같은 공용 컴포넌트)
+        var tooltip = BuildInfoTooltip(root);
+
         // 필드 연결
         var so = new SerializedObject(root.GetComponent<RewardCardUI>());
-        so.FindProperty("_bgImage").objectReferenceValue       = bg;
+        so.FindProperty("_frame").objectReferenceValue         = frame;
         so.FindProperty("_icon").objectReferenceValue          = iconImg;
-        so.FindProperty("_nameText").objectReferenceValue      = nameTmp;
+        so.FindProperty("_amountBadge").objectReferenceValue   = badge.gameObject;
         so.FindProperty("_amountText").objectReferenceValue    = amountTmp;
         so.FindProperty("_revealOverlay").objectReferenceValue = overlay;
         so.FindProperty("_cardButton").objectReferenceValue    = btn;
+        so.FindProperty("_tooltip").objectReferenceValue       = tooltip;
         so.ApplyModifiedPropertiesWithoutUndo();
 
         var prefab = PrefabUtility.SaveAsPrefabAsset(root, REWARD_CARD_PREFAB);
@@ -401,73 +391,15 @@ public static class UISetupTool
         return prefab;
     }
 
-    // ══════════════════════════════════════════════════════════
-    //  팝업 프리팹 — BattleResultPopup (PopupPrefabCreator에 위임)
-    // ══════════════════════════════════════════════════════════
-
-    static GameObject CreateBattleResultPopupPrefab(GameObject rewardCardPrefab = null)
-    {
-        PopupPrefabCreator.CreateBattleResultPopup();
-        return AssetDatabase.LoadAssetAtPath<GameObject>(RESULT_POPUP_PREFAB);
-    }
-
-    // ══════════════════════════════════════════════════════════
-    //  팝업 프리팹 — PausePopup
-    // ══════════════════════════════════════════════════════════
-
-    static GameObject CreatePausePopupPrefab()
-    {
-        var root = new GameObject("PausePopup");
-        SetupPopupRoot(root, 360f, 320f);
-        var popup = root.AddComponent<PausePopup>();
-
-        // 패널 배경
-        var bg = root.AddComponent<Image>();
-        bg.color = new Color(0.04f, 0.04f, 0.08f, 0.97f);
-
-        // 제목
-        var title = MakeTMP(root, "TitleText", "일시 정지", 28, FontStyle.Bold);
-        SetTL(title.gameObject, 0, 20, 360, 40);
-        title.GetComponent<RectTransform>().anchorMin = new Vector2(0f, 1f);
-        title.GetComponent<RectTransform>().anchorMax = new Vector2(1f, 1f);
-        {
-            var rt = title.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(0f, 1f); rt.anchorMax = new Vector2(1f, 1f);
-            rt.pivot = new Vector2(0.5f, 1f);
-            rt.anchoredPosition = new Vector2(0f, -20f);
-            rt.sizeDelta = new Vector2(0f, 40f);
-        }
-
-        // 버튼 레이아웃: 중앙 세로 정렬
-        const float btnW = 280f, btnH = 52f, btnGap = 14f;
-        const float startY = -88f;  // 제목 아래에서 시작
-
-        var resumeBtn  = MakePauseButton(root, "ResumeButton",  "계속하기",
-            new Color(0.18f, 0.55f, 0.28f), startY,              btnW, btnH);
-        var restartBtn = MakePauseButton(root, "RestartButton", "다시 시작",
-            new Color(0.30f, 0.30f, 0.30f), startY - (btnH + btnGap),    btnW, btnH);
-        var quitBtn    = MakePauseButton(root, "QuitButton",    "종료",
-            new Color(0.38f, 0.14f, 0.14f), startY - (btnH + btnGap) * 2, btnW, btnH);
-
-        // 필드 연결
-        var so = new SerializedObject(popup);
-        so.FindProperty("_popupType").intValue                 = (int)PopupType.Pause;
-        so.FindProperty("_resumeButton").objectReferenceValue  = resumeBtn;
-        so.FindProperty("_restartButton").objectReferenceValue = restartBtn;
-        so.FindProperty("_quitButton").objectReferenceValue    = quitBtn;
-        so.ApplyModifiedPropertiesWithoutUndo();
-
-        var prefab = PrefabUtility.SaveAsPrefabAsset(root, PAUSE_POPUP_PREFAB);
-        Object.DestroyImmediate(root);
-        Debug.Log($"[UISetupTool] PausePopup 프리팹 저장 → {PAUSE_POPUP_PREFAB}");
-        return prefab;
-    }
+    // 카드 아래로 펼쳐지는 상세 툴팁. 열릴 때 루트 캔버스로 옮겨진다.
+    static InfoTooltipUI BuildInfoTooltip(GameObject parent)
+        => InfoTooltipBuilder.Build(parent, 340f);
 
     // ══════════════════════════════════════════════════════════
     //  Canvas + InGameHUD 계층
     // ══════════════════════════════════════════════════════════
 
-    static GameObject CreateCanvasHierarchy(GameObject panelPrefab, GameObject pausePrefab)
+    static GameObject CreateCanvasHierarchy(GameObject panelPrefab)
     {
         // 기존 InGameHUD 루트 제거
         var existing = GameObject.Find("InGameHUD");
@@ -646,19 +578,7 @@ public static class UISetupTool
     //  헬퍼
     // ══════════════════════════════════════════════════════════
 
-    /// <summary>PopupBase 루트에 공통 컴포넌트(CanvasGroup, centered anchor)를 설정한다.</summary>
-    static void SetupPopupRoot(GameObject go, float w, float h)
-    {
-        var rt = go.AddComponent<RectTransform>();
-        rt.anchorMin        = new Vector2(0.5f, 0.5f);
-        rt.anchorMax        = new Vector2(0.5f, 0.5f);
-        rt.pivot            = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = Vector2.zero;
-        rt.sizeDelta        = new Vector2(w, h);
-        go.AddComponent<CanvasGroup>();
-    }
-
-    /// <summary>일시 정지 팝업 내 버튼을 생성한다 (LayoutElement 없음, 중앙 정렬).</summary>
+    /// <summary>HUD 상단바 일시정지 버튼 (LayoutElement 없음, 중앙 정렬).</summary>
     static Button MakePauseButton(GameObject parent, string name, string label,
                                   Color bgColor, float anchoredY, float w, float h)
     {
@@ -820,13 +740,5 @@ public static class UISetupTool
                       Vector2 anchoredPos, Vector2 size)
         => SetRT(img.gameObject, anchorMin, anchorMax, anchoredPos, size);
 
-    static void Stretch(GameObject go)
-    {
-        var rt = go.GetComponent<RectTransform>();
-        if (rt == null) return;
-        rt.anchorMin = Vector2.zero;
-        rt.anchorMax = Vector2.one;
-        rt.offsetMin = Vector2.zero;
-        rt.offsetMax = Vector2.zero;
-    }
+    static void Stretch(GameObject go) => EditorUIBuilder.Stretch(go);
 }

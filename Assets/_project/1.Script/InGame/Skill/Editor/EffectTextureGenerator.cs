@@ -27,7 +27,7 @@ public static class EffectTextureGenerator
     const string kMatPath = "Assets/_project/4.Materials/FX";
     const int    kSz      = 128;
 
-    [MenuItem("BattleGame/Generate Effect Textures & Materials")]
+    [MenuItem(ProjectKMenu.Icon + "이펙트 텍스처·머티리얼", priority = ProjectKMenu.IconPrio + 20)]
     public static void GenerateAll()
     {
         EnsureDir(kTexPath);

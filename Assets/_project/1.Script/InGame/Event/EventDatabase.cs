@@ -18,6 +18,13 @@ using UnityEngine;
 [CreateAssetMenu(menuName = "BattleGame/Event/Event Database", fileName = "EventDatabase")]
 public class EventDatabase : ScriptableObject
 {
+    /// <summary>
+    /// 상점 스테이지 전용 이벤트 ID.
+    /// 상점은 팝업이 바로 뜨지 않고 이 이벤트("행상인의 좌판")를 거쳐 열린다.
+    /// 랜덤 이벤트 풀에는 나오면 안 되므로 GetRandom() 이 제외한다.
+    /// </summary>
+    public const string ShopEventId = "TravelingMerchant";
+
     [SerializeField] EventData[] _events;
 
     static EventDatabase _current;
@@ -39,15 +46,12 @@ public class EventDatabase : ScriptableObject
     public EventData[] GetAll()
         => _events != null ? _events.Where(e => e != null).ToArray() : System.Array.Empty<EventData>();
 
-    public EventData GetRandom()
-    {
-        var valid = GetAll();
-        return valid.Length == 0 ? null : valid[Random.Range(0, valid.Length)];
-    }
+    /// <summary>이벤트 스테이지용 랜덤 추첨. 상점 전용 이벤트는 뽑히지 않는다.</summary>
+    public EventData GetRandom() => GetRandomExcluding(ShopEventId);
 
     public EventData GetRandomExcluding(string excludeId)
     {
         var valid = GetAll().Where(e => e.EventId != excludeId).ToArray();
-        return valid.Length == 0 ? GetRandom() : valid[Random.Range(0, valid.Length)];
+        return valid.Length == 0 ? null : valid[Random.Range(0, valid.Length)];
     }
 }

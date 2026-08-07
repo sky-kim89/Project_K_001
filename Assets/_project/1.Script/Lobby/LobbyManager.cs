@@ -73,13 +73,10 @@ public class LobbyManager : Singleton<LobbyManager>
     {
         _currentIndex = GetLatestAvailableIndex(BattleMode.Normal);
 
-        // 진행바 표시를 위해 런 시퀀스를 OnStageChanged 발화 전에 미리 생성
+        // 진행바 표시를 위해 런 시퀀스를 OnStageChanged 발화 전에 미리 확보
         var progress = UserDataManager.Instance?.Get<StageProgressData>();
-        if (progress != null && progress.GetRunSequence().Length == 0)
-        {
-            progress.SetRunSequence(RunSequenceGenerator.Generate());
+        if (progress != null && progress.EnsureRunSequence())
             UserDataManager.Instance.RequestSave();
-        }
 
         OnStageChanged?.Invoke(CurrentStage);
         StartCoroutine(SelectInitialPanelNextFrame());
@@ -155,11 +152,8 @@ public class LobbyManager : Singleton<LobbyManager>
         var progress  = UserDataManager.Instance?.Get<StageProgressData>();
 
         // 런 시퀀스가 없으면 최초 진입 — 시퀀스 생성
-        if (progress != null && (progress.GetRunSequence().Length == 0))
-        {
-            progress.SetRunSequence(RunSequenceGenerator.Generate());
+        if (progress != null && progress.EnsureRunSequence())
             UserDataManager.Instance.RequestSave();
-        }
 
         var stageType = progress?.CurrentStageType ?? RunStageType.Normal;
 

@@ -64,7 +64,7 @@ public static class RelicIconGenerator
 
     // ── 진입점 ────────────────────────────────────────────────
 
-    [MenuItem("Tools/Project K/에셋/Generate Relic Icons")]
+    [MenuItem(ProjectKMenu.Icon + "유물 아이콘", priority = ProjectKMenu.IconPrio + 14)]
     public static void GenerateAll()
     {
         EnsureDir(ICON_PATH);

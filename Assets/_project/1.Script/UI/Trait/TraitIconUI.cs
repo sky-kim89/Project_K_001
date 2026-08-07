@@ -1,4 +1,4 @@
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -17,31 +17,23 @@ using UnityEngine.UI;
 //    traitIconUI.Setup(traitDataInstance);
 //    traitIconUI.CloseTooltip();
 //
-//  Inspector 연결 (MainPanelCreator 자동):
-//    _iconImage   : 아이콘 이미지
-//    _iconBtn     : 클릭 버튼 — 클릭 시 툴팁 토글
-//    _tooltip     : 메시지 박스 루트 GO (기본 비활성)
-//    _tooltipName : 툴팁 특성 이름 TMP
-//    _tooltipDesc : 툴팁 특성 설명 TMP
+//  Inspector 연결 (TraitIconSlotBuilder · MainPanelCreator 자동):
+//    _iconImage : 아이콘 이미지
+//    _iconBtn   : 클릭 버튼 — 클릭 시 툴팁 표시
+//    _tooltip   : InfoTooltipUI (이름/설명/스탯 공용 툴팁, 기본 비활성)
+//
+//  툴팁 열기·닫기 동작은 InfoTooltipUI 가 전담한다 —
+//  보상 카드(RewardCardUI)도 같은 컴포넌트를 써서 동작이 일치한다.
 // ============================================================
 
 public class TraitIconUI : MonoBehaviour
 {
-    [SerializeField] Image           _iconImage;
-    [SerializeField] Button          _iconBtn;
-    [SerializeField] GameObject      _tooltip;
-    [SerializeField] TextMeshProUGUI _tooltipName;
-    [SerializeField] TextMeshProUGUI _tooltipDesc;
-    [SerializeField] TextMeshProUGUI _tooltipStat;
+    [SerializeField] Image         _iconImage;
+    [SerializeField] Button        _iconBtn;
+    [SerializeField] InfoTooltipUI _tooltip;
 
-    bool      _skipFrame;
-    Transform _tooltipOriginalParent;
-
-    void Awake()
-    {
-        if (_tooltip != null)
-            _tooltipOriginalParent = _tooltip.transform.parent;
-    }
+    TraitData _data;
+    bool      _showStat;
 
     // ── 공개 API ─────────────────────────────────────────────
 
@@ -54,6 +46,9 @@ public class TraitIconUI : MonoBehaviour
     public void Setup(TraitData data, bool showStat = true)
     {
         CloseTooltip();
+
+        _data     = data;
+        _showStat = showStat;
 
         if (_iconImage != null)
         {
@@ -68,58 +63,21 @@ public class TraitIconUI : MonoBehaviour
             _iconBtn.onClick.RemoveAllListeners();
             if (data != null) _iconBtn.onClick.AddListener(OpenTooltip);
         }
-
-        if (_tooltipName != null) _tooltipName.text = data?.TraitName ?? "—";
-        if (_tooltipDesc != null) _tooltipDesc.text  = data?.Description ?? "";
-
-        if (_tooltipStat != null)
-        {
-            if (!showStat)
-            {
-                _tooltipStat.gameObject.SetActive(false);
-            }
-            else
-            {
-                string statText = AbilityUIHelper.BuildStatText(data != null ? data.Effects : null);
-                _tooltipStat.text = statText;
-                _tooltipStat.gameObject.SetActive(statText.Length > 0);
-            }
-        }
     }
 
     public void CloseTooltip()
     {
-        if (_tooltip == null) return;
-        _tooltip.SetActive(false);
-        if (_tooltipOriginalParent != null)
-            _tooltip.transform.SetParent(_tooltipOriginalParent, false);
-        _skipFrame = false;
+        if (_tooltip != null) _tooltip.Close();
     }
+
+    // 슬롯이 꺼질 때(특성 목록 갱신 등) 툴팁만 화면에 남지 않게 한다.
+    void OnDisable() => CloseTooltip();
 
     // ── 내부 ─────────────────────────────────────────────────
 
     void OpenTooltip()
     {
-        if (_tooltip == null) return;
-        var rootCanvas = GetComponentInParent<Canvas>().rootCanvas;
-        _tooltip.transform.SetParent(rootCanvas.transform, true);
-        _tooltip.transform.SetAsLastSibling();
-        _tooltip.SetActive(true);
-        _skipFrame = true;
+        string stat = _showStat ? AbilityUIHelper.BuildStatText(_data.Effects) : "";
+        _tooltip.Show(_data.TraitName, _data.Description, stat);
     }
-
-    void Update()
-    {
-        if (_tooltip == null || !_tooltip.activeSelf) return;
-
-        if (_skipFrame) { _skipFrame = false; return; }
-
-        // 어떤 마우스 버튼이든 클릭 발생 시 툴팁 닫기
-        if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1) || Input.GetMouseButtonDown(2))
-        {
-            _tooltip.transform.position = Vector3.zero;
-            CloseTooltip();
-        }
-    }
-
 }

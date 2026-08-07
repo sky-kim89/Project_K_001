@@ -24,8 +24,8 @@ public static class GameAssetCreator
 
     // ── StageConfig 생성 ──────────────────────────────────────
 
-    [MenuItem("BattleGame/데이터 생성/StageConfig 생성")]
-    static void CreateStageConfig()
+    [MenuItem(ProjectKMenu.Data + "StageConfig", priority = ProjectKMenu.DataPrio + 19)]
+    public static void CreateStageConfig()
     {
         // 이미 존재하면 선택만 하고 종료
         var existing = AssetDatabase.LoadAssetAtPath<StageConfig>(StageCfgPath);
@@ -69,7 +69,7 @@ public static class GameAssetCreator
 
     // ── 패시브 스킬 생성 ─────────────────────────────────────
 
-    [MenuItem("BattleGame/데이터 생성/패시브 스킬 전체 생성")]
+    [MenuItem(ProjectKMenu.Data + "패시브 스킬", priority = ProjectKMenu.DataPrio + 12)]
     public static void CreateAllPassiveSkills()
     {
         // ── 폴더 준비 ─────────────────────────────────────────

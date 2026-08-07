@@ -20,6 +20,17 @@ public static class EquipmentApplier
     public static string SlotKey(int slot) => $"equip_{slot}";
 
     /// <summary>
+    /// 지금 쓸 수 있는 장비 슬롯 수 — 기본 2 + 특성으로 해금한 만큼.
+    ///
+    /// ⚠ 로비 표시(HeroStatResolver)와 전투 적용(ApplyAll)이 반드시 같은 값을 써야 한다.
+    ///   예전에 ApplyAll 이 2로 못 박혀 있어 3번 슬롯 장비의 스탯이
+    ///   로비에는 잡히고 전투에는 안 잡혔다 — 용병 수가 서로 달라 보이던 원인.
+    /// </summary>
+    public static int ActiveSlotCount
+        => 2 + TraitApplier.GetEquipSlotBonus(
+                   UserDataManager.Instance?.Get<RunTraitData>(), TraitDatabase.Current);
+
+    /// <summary>
     /// 단일 장비를 UnitStat 에 적용.
     /// 같은 슬롯에 기존 장비가 있으면 먼저 제거 후 재적용.
     /// </summary>
@@ -38,14 +49,15 @@ public static class EquipmentApplier
     public static void Remove(UnitStat stat, int slot) => stat.RemoveKey(SlotKey(slot));
 
     /// <summary>
-    /// UnitEntry.RunEquipSlots 를 읽어 두 슬롯 모두 UnitStat 에 적용.
+    /// UnitEntry.RunEquipSlots 를 읽어 열려 있는 슬롯을 전부 UnitStat 에 적용.
     /// GeneralRuntimeBridge.Initialize() 에서 SpawnEntity() 직전에 호출.
     /// </summary>
     public static void ApplyAll(UnitStat stat, UnitEntry entry, EquipmentDatabase db)
     {
         if (entry.RunEquipSlots == null) return;
 
-        for (int i = 0; i < 2; i++)
+        int slotCount = ActiveSlotCount;
+        for (int i = 0; i < slotCount; i++)
         {
             if (i >= entry.RunEquipSlots.Length) break;
 

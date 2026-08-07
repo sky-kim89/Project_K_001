@@ -22,8 +22,8 @@ public static class RelicCreator
 
     // ── 진입점 ────────────────────────────────────────────────
 
-    [MenuItem("Tools/Project K/데이터 생성/유물 전체 생성")]
-    static void CreateAll()
+    [MenuItem(ProjectKMenu.Data + "유물", priority = ProjectKMenu.DataPrio + 15)]
+    public static void CreateAll()
     {
         EnsureFolder();
         CreateSystemRelics();
@@ -37,7 +37,7 @@ public static class RelicCreator
         Debug.Log("[RelicCreator] 유물 전체 생성 완료");
     }
 
-    [MenuItem("Tools/Project K/데이터 생성/RelicDatabase 재구성")]
+    [MenuItem(ProjectKMenu.Data + "RelicDatabase 재구성", priority = ProjectKMenu.DataPrio + 16)]
     public static void RebuildDatabase()
     {
         var db = AssetDatabase.LoadAssetAtPath<RelicDatabase>(DbPath);

@@ -19,7 +19,7 @@ public static class ActiveSkillCreator
     const string ActiveDir  = "Assets/_project/Data/Actives";
     const string DBPath     = "Assets/Resources/ActiveSkillDatabase.asset";
 
-    [MenuItem("BattleGame/데이터 생성/액티브 스킬 전체 생성")]
+    [MenuItem(ProjectKMenu.Data + "액티브 스킬", priority = ProjectKMenu.DataPrio + 11)]
     public static void CreateAllActiveSkills()
     {
         // ── 폴더 준비 ─────────────────────────────────────────

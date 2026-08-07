@@ -52,8 +52,8 @@ public static class MercenaryPopupCreator
 
     // ── 메뉴 ─────────────────────────────────────────────────
 
-    [MenuItem("Tools/Project K/Popup/Create Mercenary Popups")]
-    static void CreateAll()
+    [MenuItem(ProjectKMenu.Popup + "Mercenary (Shop + CandidateCard)", priority = ProjectKMenu.PrefabPrio + 41)]
+    public static void CreateAll()
     {
         CreateMercCandidateCard();
         CreateMercenaryShopPopup();
@@ -66,7 +66,6 @@ public static class MercenaryPopupCreator
     //  MercCandidateCard 프리팹 (380 × 840)
     // ══════════════════════════════════════════════════════════
 
-    [MenuItem("Tools/Project K/Popup/Create MercCandidateCard Prefab")]
     public static void CreateMercCandidateCard()
     {
         const float CW       = 380f, CH = 860f;
@@ -236,12 +235,12 @@ public static class MercenaryPopupCreator
     //  CandidatePanel : 우측 플로팅 패널 (1300 × 1120)
     // ══════════════════════════════════════════════════════════
 
-    [MenuItem("Tools/Project K/Popup/Create MercenaryShop Popup")]
     public static void CreateMercenaryShopPopup()
     {
         const float PW       = 1300f;
-        const float PH       = 1120f;
-        const float HeaderH  = 100f;
+        // 1120 은 로비 캔버스 세로(1080) 를 넘어 위아래가 잘렸다
+        float PH = UIScale.PopupMaxH;   // 1120 → 1000
+        float HeaderH = UIScale.BtnFor(UIScale.FontLg);   // 100 → 96
         const float HireBarH = 140f;
 
         // ── 루트 — 전체 화면 스트레치 ─────────────────────────
@@ -548,25 +547,13 @@ public static class MercenaryPopupCreator
     }
 
     static Image AddImg(GameObject parent, string name, Color color)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(Image));
-        go.transform.SetParent(parent.transform, false);
-        go.GetComponent<Image>().color = color;
-        return go.GetComponent<Image>();
-    }
+        => EditorUIBuilder.Img(parent, name, color);
 
     static Image AddImg(Image parent, string name, Color color)
         => AddImg(parent.gameObject, name, color);
 
     static TextMeshProUGUI AddTMP(GameObject parent, string name, string text, float size, FontStyles style)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
-        go.transform.SetParent(parent.transform, false);
-        var tmp = go.GetComponent<TextMeshProUGUI>();
-        tmp.text = text; tmp.fontSize = size; tmp.fontStyle = style;
-        tmp.alignment = TextAlignmentOptions.Center; tmp.color = Color.white;
-        return tmp;
-    }
+        => EditorUIBuilder.TMP(parent, name, text, size, style);
 
     // 카드 상단 앵커, 중앙 X
     static TextMeshProUGUI AddCardTMP(GameObject parent, string name, string text,
@@ -685,47 +672,21 @@ public static class MercenaryPopupCreator
     }
 
     static GameObject AddBtn(GameObject parent, string name, string label, Color bgColor, float fontSize)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
-        go.transform.SetParent(parent.transform, false);
-        go.GetComponent<Image>().color = bgColor;
-        var lGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-        lGo.transform.SetParent(go.transform, false);
-        var lRt = lGo.GetComponent<RectTransform>();
-        lRt.anchorMin = Vector2.zero; lRt.anchorMax = Vector2.one;
-        lRt.offsetMin = lRt.offsetMax = Vector2.zero;
-        var tmp = lGo.GetComponent<TextMeshProUGUI>();
-        tmp.text = label; tmp.fontSize = fontSize; tmp.fontStyle = FontStyles.Bold;
-        tmp.alignment = TextAlignmentOptions.Center; tmp.color = Color.white;
-        return go;
-    }
+        => EditorUIBuilder.Btn(parent, name, label, bgColor, fontSize, boldLabel: true);
 
     static void SetCenterRect(RectTransform rt, Vector2 pos, Vector2 size)
-    {
-        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-        rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = pos; rt.sizeDelta = size;
-    }
+        => EditorUIBuilder.Center(rt, pos, size);
 
-    static void FullStretch(GameObject go)
-    {
-        var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
-        rt.offsetMin = rt.offsetMax = Vector2.zero;
-    }
+    static void FullStretch(GameObject go) => EditorUIBuilder.Stretch(go);
 
     static T FindChild<T>(Transform root, string name) where T : Component
-        => root.Find(name)?.GetComponent<T>();
+        => EditorUIBuilder.FindDeep<T>(root, name);
 
     static void SetEnum(SerializedObject so, string field, int value)
-    {
-        var prop = so.FindProperty(field); if (prop != null) prop.intValue = value;
-    }
+        => EditorUIBuilder.SetEnum(so, field, value, "MercenaryPopupCreator");
 
     static void SetObj(SerializedObject so, string field, Object obj)
-    {
-        var prop = so.FindProperty(field); if (prop != null) prop.objectReferenceValue = obj;
-    }
+        => EditorUIBuilder.SetObj(so, field, obj, "MercenaryPopupCreator");
 
     static void Save(GameObject root, string fileName)
     {

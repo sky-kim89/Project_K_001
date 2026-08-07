@@ -35,7 +35,7 @@ public static class EquipmentIconGenerator
         _                  => new GradeTheme { BgDark=Hex("0A0A0A"), BgMid=Hex("2E2E2E"), Border=Hex("888888"), Accent=Hex("CCCCCC") },
     };
 
-    [MenuItem("BattleGame/데이터 생성/장비 아이콘 생성")]
+    [MenuItem(ProjectKMenu.Icon + "장비 아이콘", priority = ProjectKMenu.IconPrio + 16)]
     public static void GenerateEquipmentIcons()
     {
         EnsureDir(EQUIP_PATH);

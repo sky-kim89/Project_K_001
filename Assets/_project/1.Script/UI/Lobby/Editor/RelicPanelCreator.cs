@@ -64,8 +64,8 @@ public static class RelicPanelCreator
 
     // ── 진입점 ────────────────────────────────────────────────
 
-    [MenuItem("Tools/Project K/로비 UI/Create RelicPanel Prefab")]
-    static void CreateStandalone()
+    [MenuItem(ProjectKMenu.Lobby + "RelicPanel", priority = ProjectKMenu.PrefabPrio + 15)]
+    public static void CreateStandalone()
     {
         var canvas = new GameObject("_TempCanvas", typeof(RectTransform));
         canvas.GetComponent<RectTransform>().sizeDelta = new Vector2(UIScale.RefWidth, UIScale.RefHeight);
@@ -356,7 +356,7 @@ public static class RelicPanelCreator
         badgeRt.anchoredPosition = Vector2.zero;
         badgeRt.sizeDelta        = new Vector2(60f, 26f);
 
-        var levelTmp = MakeTMP(badge, "LevelText", "Lv.1", 24f, FontStyles.Bold);
+        var levelTmp = MakeTMP(badge, "LevelText", "Lv.1", UIScale.FontSm, FontStyles.Bold);
         levelTmp.color            = new Color(0.7f, 0.9f, 1f);
         levelTmp.textWrappingMode = TextWrappingModes.NoWrap;
         StretchFull(levelTmp.rectTransform, 2, 1, 2, 1);
@@ -398,53 +398,17 @@ public static class RelicPanelCreator
     // ── UI 생성 헬퍼 ─────────────────────────────────────────
 
     static GameObject MakePanel(GameObject parent, string name, Color color)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(Image));
-        go.transform.SetParent(parent.transform, false);
-        go.GetComponent<Image>().color = color;
-        return go;
-    }
+        => EditorUIBuilder.Panel(parent, name, color);
 
     static Image MakeImg(GameObject parent, string name, Color color)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(Image));
-        go.transform.SetParent(parent.transform, false);
-        var img = go.GetComponent<Image>();
-        img.color = color;
-        return img;
-    }
+        => EditorUIBuilder.Img(parent, name, color);
 
     static TextMeshProUGUI MakeTMP(GameObject parent, string name, string text, float size, FontStyles style)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
-        go.transform.SetParent(parent.transform, false);
-        var tmp = go.GetComponent<TextMeshProUGUI>();
-        tmp.text      = text;
-        tmp.fontSize  = size;
-        tmp.fontStyle = style;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.color     = Color.white;
-        return tmp;
-    }
+        => EditorUIBuilder.TMP(parent, name, text, size, style);
 
+    // UI 규칙: 누를 수 있는 버튼은 음각 처리 (EditorUIBuilder.RaisedTextBtn)
     static GameObject MakeBtn(GameObject parent, string name, string label, Color bgColor, float fontSize)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
-        go.transform.SetParent(parent.transform, false);
-        go.GetComponent<Image>().color = bgColor;
-
-        var lGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-        lGo.transform.SetParent(go.transform, false);
-        var lRt = lGo.GetComponent<RectTransform>();
-        lRt.anchorMin = Vector2.zero; lRt.anchorMax = Vector2.one;
-        lRt.offsetMin = lRt.offsetMax = Vector2.zero;
-        var tmp = lGo.GetComponent<TextMeshProUGUI>();
-        tmp.text      = label;
-        tmp.fontSize  = fontSize;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.color     = Color.white;
-        return go;
-    }
+        => EditorUIBuilder.RaisedTextBtn(parent, name, label, fontSize, bgColor).gameObject;
 
     // ── RectTransform 헬퍼 ───────────────────────────────────
 
@@ -491,17 +455,8 @@ public static class RelicPanelCreator
     }
 
     static void SetRect(RectTransform rt, Vector2 pos, Vector2 size)
-    {
-        rt.anchorMin        = new Vector2(0.5f, 0.5f);
-        rt.anchorMax        = new Vector2(0.5f, 0.5f);
-        rt.pivot            = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = pos;
-        rt.sizeDelta        = size;
-    }
+        => EditorUIBuilder.Center(rt, pos, size);
 
     static void SetObj(SerializedObject so, string field, Object obj)
-    {
-        var prop = so.FindProperty(field);
-        if (prop != null) prop.objectReferenceValue = obj;
-    }
+        => EditorUIBuilder.SetObj(so, field, obj, "RelicPanelCreator");
 }

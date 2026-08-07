@@ -26,7 +26,7 @@ public static class LobbyScenePatcher
     static readonly string[] BtnNames   = { "NavBtn_상점", "NavBtn_영웅", "NavBtn_전투", "NavBtn_유물", "NavBtn_프로필" };
     static readonly string[] BtnLabels  = { "상점",        "영웅",        "전투",        "유물",        "프로필" };
 
-    [MenuItem("Tools/Project K/로비 UI/Patch Lobby Scene")]
+    [MenuItem(ProjectKMenu.Setup + "Lobby 씬 패치", priority = ProjectKMenu.SetupPrio + 2)]
     static void Patch()
     {
         var canvas = GameObject.Find("LobbyCanvas");

@@ -17,6 +17,8 @@ using UnityEngine.UI;
 //    선택지형 → 본문 + 버튼들 표시 → 선택 → 결과 텍스트 표시 → 확인 닫기
 //    즉시보상형 → 본문 표시 → 보상 즉시 지급 → 결과 텍스트 표시 → 확인 닫기
 //    어빌리티 선택 → 결과 표시 후 AbilitySelectPopup 연속 오픈 → 완료 후 확인 버튼 활성화
+//    상점 열기   → 결과 표시 후 RunShopPopup 오픈 → 상점을 닫으면 확인 버튼 활성화
+//                 (상점 스테이지의 "행상인의 좌판" 이벤트가 이 경로를 쓴다)
 // ============================================================
 
 public class EventPopup : PopupBase
@@ -28,16 +30,25 @@ public class EventPopup : PopupBase
     [Header("이벤트 정보")]
     [SerializeField] Image           _illustration;
     [SerializeField] TextMeshProUGUI _titleTmp;
+    [SerializeField] TextMeshProUGUI _titleShadowTmp;   // 타이틀 그림자 사본
     [SerializeField] TextMeshProUGUI _bodyTmp;
 
     [Header("선택지")]
     [SerializeField] Transform       _choiceRoot;
     [SerializeField] Button          _choiceButtonTemplate;
+    [SerializeField] GameObject      _choiceDivider;    // "선 택" 구분선
 
     [Header("결과")]
     [SerializeField] GameObject      _resultPanel;
     [SerializeField] TextMeshProUGUI _resultTmp;
     [SerializeField] Button          _confirmBtn;
+
+    [Header("획득 보상 (전투 결과 팝업과 같은 카드)")]
+    [SerializeField] Transform    _rewardArea;
+    [SerializeField] RewardCardUI _rewardCardPrefab;
+
+    // 삽화가 없는 이벤트용 placeholder 색 (EventPopupCreator.IllustBg 와 동일)
+    static readonly Color IllustPlaceholder = new Color(0.10f, 0.07f, 0.16f, 1f);
 
     // ── 런타임 상태 ───────────────────────────────────────────
 
@@ -52,7 +63,8 @@ public class EventPopup : PopupBase
 
     int _pendingAbilityCount;
 
-    readonly List<Button> _choiceButtons = new();
+    readonly List<Button>       _choiceButtons = new();
+    readonly List<RewardCardUI> _rewardCards   = new();
 
     // ── 공개 API ─────────────────────────────────────────────
 
@@ -84,36 +96,38 @@ public class EventPopup : PopupBase
     protected override void Awake()
     {
         base.Awake();
-        _confirmBtn?.onClick.AddListener(() => Close());
+        _confirmBtn.onClick.AddListener(() => Close());
     }
 
     protected override void OnAfterOpen()
     {
         if (_data == null) return;
 
-        // 삽화
-        if (_illustration != null)
-        {
-            bool hasIllust = _data.Illustration != null;
-            _illustration.gameObject.SetActive(hasIllust);
-            if (hasIllust) _illustration.sprite = _data.Illustration;
-        }
+        // 삽화 — 스프라이트가 있으면 교체하고 tint 를 흰색으로 되돌린다.
+        // (프리팹 기본 색은 어두운 placeholder 라, 흰색으로 안 바꾸면 삽화가 그 색에 곱해져 묻힌다)
+        // 팝업은 재사용되므로 삽화가 없는 이벤트에서는 반드시 placeholder 로 되돌린다.
+        _illustration.sprite = _data.Illustration;
+        _illustration.color  = _data.Illustration != null ? Color.white : IllustPlaceholder;
 
-        if (_titleTmp != null) _titleTmp.text = _data.Title;
-        if (_bodyTmp  != null) _bodyTmp.text  = _data.Body;
+        _titleTmp.text       = _data.Title;
+        _titleShadowTmp.text = _data.Title;
+        _bodyTmp.text        = _data.Body;
 
-        _resultPanel?.SetActive(false);
-        _confirmBtn?.gameObject.SetActive(false);
+        _resultPanel.SetActive(false);
+        _confirmBtn.gameObject.SetActive(false);
 
-        if (_data.Choices == null || _data.Choices.Length == 0)
-            ProcessInstantReward();
-        else
-            BuildChoiceButtons();
+        // 즉시보상형은 선택지가 없으므로 "선 택" 구분선도 감춘다
+        bool hasChoices = _data.Choices != null && _data.Choices.Length > 0;
+        _choiceDivider.SetActive(hasChoices);
+
+        if (hasChoices) BuildChoiceButtons();
+        else            ProcessInstantReward();
     }
 
     protected override void OnAfterClose()
     {
         ClearChoiceButtons();
+        ClearRewardCards();
         _data              = null;
         _abilityDb         = null;
         _runAbilityData    = null;
@@ -127,16 +141,17 @@ public class EventPopup : PopupBase
 
     void ProcessInstantReward()
     {
-        bool needsAbility = HasAbilitySelectReward(_data.InstantRewards);
-        EventRewardHandler.Apply(_data.InstantRewards, OnAbilitySelectRequired);
-        ShowResult(_data.InstantResultText, suppressConfirm: needsAbility);
+        bool needsAbility = HasReward(_data.InstantRewards, EventRewardType.OpenAbilitySelect);
+        bool needsShop    = HasReward(_data.InstantRewards, EventRewardType.OpenRunShop);
+        var granted = EventRewardHandler.Apply(_data.InstantRewards, OnAbilitySelectRequired);
+        ShowResult(_data.InstantResultText, granted, suppressConfirm: needsAbility || needsShop);
+        if (needsShop) OpenRunShop();
     }
 
     // ── 선택지 버튼 빌드 ─────────────────────────────────────
 
     void BuildChoiceButtons()
     {
-        if (_choiceButtonTemplate == null) return;
         _choiceButtonTemplate.gameObject.SetActive(false);
 
         foreach (var choice in _data.Choices)
@@ -146,13 +161,17 @@ public class EventPopup : PopupBase
             var btn = Instantiate(_choiceButtonTemplate, _choiceRoot);
             btn.gameObject.SetActive(true);
 
-            // 버튼 레이블 + 비용 힌트
-            var tmp = btn.GetComponentInChildren<TextMeshProUGUI>();
-            if (tmp != null)
+            // 버튼 레이블 + 비용 힌트.
+            // 경로가 어긋나면 여기서 바로 터져야 한다 — 예전에 이름이 안 맞아
+            // 라벨이 조용히 플레이스홀더로 남는 버그가 있었다.
+            var labelTmp = btn.transform.Find("Body/LabelText").GetComponent<TextMeshProUGUI>();
+            var hintTmp  = btn.transform.Find("Body/HintText").GetComponent<TextMeshProUGUI>();
+
+            labelTmp.text = choice.Label;
             {
-                tmp.text = string.IsNullOrEmpty(choice.CostHint)
-                    ? choice.Label
-                    : $"{choice.Label}  <size=70%><color=#FFD700>{choice.CostHint}</color></size>";
+                string hint = BuildChoiceHint(choice);
+                hintTmp.text = hint;
+                hintTmp.gameObject.SetActive(!string.IsNullOrEmpty(hint));
             }
 
             // 비용 충족 여부에 따라 버튼 비활성화
@@ -171,8 +190,7 @@ public class EventPopup : PopupBase
         foreach (var b in _choiceButtons)
             if (b != null) Destroy(b.gameObject);
         _choiceButtons.Clear();
-        if (_choiceButtonTemplate != null)
-            _choiceButtonTemplate.gameObject.SetActive(false);
+        _choiceButtonTemplate.gameObject.SetActive(false);
     }
 
     // ── 선택 처리 ─────────────────────────────────────────────
@@ -187,24 +205,70 @@ public class EventPopup : PopupBase
             ? choice.SuccessRewards
             : choice.FailRewards;
 
-        bool needsAbility = HasAbilitySelectReward(rewards);
-        EventRewardHandler.Apply(rewards, OnAbilitySelectRequired);
-        ShowResult(choice.ResultText, suppressConfirm: needsAbility);
+        bool needsAbility = HasReward(rewards, EventRewardType.OpenAbilitySelect);
+        bool needsShop    = HasReward(rewards, EventRewardType.OpenRunShop);
+        var granted = EventRewardHandler.Apply(rewards, OnAbilitySelectRequired);
+        ShowResult(choice.ResultText, granted, suppressConfirm: needsAbility || needsShop);
+        if (needsShop) OpenRunShop();
+    }
+
+    // ── 런 상점 체이닝 ───────────────────────────────────────
+    //  상점을 닫아야 이벤트를 확인할 수 있다 — 확인 버튼은 그때 열린다.
+
+    void OpenRunShop()
+    {
+        var shop = PopupManager.Instance.Open<RunShopPopup>(PopupType.RunShop);
+        shop.SetOnClose(() => _confirmBtn.interactable = true);
     }
 
     // ── 결과 표시 ─────────────────────────────────────────────
 
-    void ShowResult(string text, bool suppressConfirm)
+    void ShowResult(string text, List<RewardView> granted, bool suppressConfirm)
     {
         ClearChoiceButtons();
-        if (_resultPanel != null) _resultPanel.SetActive(true);
-        if (_resultTmp   != null) _resultTmp.text = text ?? string.Empty;
+        _choiceDivider.SetActive(false);
 
-        if (_confirmBtn != null)
+        _resultPanel.SetActive(true);
+        _resultTmp.text = text ?? string.Empty;
+
+        BuildRewardCards(granted);
+
+        _confirmBtn.gameObject.SetActive(true);
+        _confirmBtn.interactable = !suppressConfirm;
+    }
+
+    // ── 획득 보상 카드 ────────────────────────────────────────
+    //  전투 결과 팝업과 같은 RewardCardUI 를 쓴다 — 눌러서 상세를 볼 수 있다.
+
+    void BuildRewardCards(List<RewardView> granted)
+    {
+        ClearRewardCards();
+
+        _rewardArea.gameObject.SetActive(granted.Count > 0);
+        if (granted.Count == 0) return;
+
+        foreach (var view in granted)
         {
-            _confirmBtn.gameObject.SetActive(true);
-            _confirmBtn.interactable = !suppressConfirm;
+            var card = Instantiate(_rewardCardPrefab, _rewardArea);
+            card.Setup(view);
+            _rewardCards.Add(card);
         }
+    }
+
+    /// <summary>어빌리티 선택처럼 결과 표시 뒤에 확정되는 보상을 뒤에 덧붙인다.</summary>
+    void AppendRewardCard(RewardView view)
+    {
+        _rewardArea.gameObject.SetActive(true);
+        var card = Instantiate(_rewardCardPrefab, _rewardArea);
+        card.Setup(view);
+        _rewardCards.Add(card);
+    }
+
+    void ClearRewardCards()
+    {
+        foreach (var c in _rewardCards)
+            if (c != null) Destroy(c.gameObject);
+        _rewardCards.Clear();
     }
 
     // ── 어빌리티 선택 팝업 체이닝 ────────────────────────────
@@ -240,7 +304,11 @@ public class EventPopup : PopupBase
             choices,
             chosen =>
             {
-                if (chosen != null) _runAbilityData?.AddAbility(chosen.Id);
+                if (chosen != null)
+                {
+                    _runAbilityData?.AddAbility(chosen.Id);
+                    AppendRewardCard(RewardView.OfAbility(chosen.Id));   // 결과창에 이어 붙인다
+                }
                 UserDataManager.Instance?.RequestSave();
                 OpenNextAbilitySelect();  // 다음 선택 또는 완료
             },
@@ -249,12 +317,37 @@ public class EventPopup : PopupBase
 
     // ── 유틸 ─────────────────────────────────────────────────
 
-    static bool HasAbilitySelectReward(EventReward[] rewards)
+    static string BuildChoiceHint(EventChoice choice)
+    {
+        var sb = new System.Text.StringBuilder();
+
+        if (!string.IsNullOrEmpty(choice.CostHint))
+            sb.Append($"<color=#FFAA44>{choice.CostHint}</color>");
+
+        if (choice.SuccessRewards != null)
+            foreach (var r in choice.SuccessRewards)
+                if (!string.IsNullOrEmpty(r.Description))
+                {
+                    if (sb.Length > 0) sb.Append("   ");
+                    sb.Append($"<color=#55EE88>{r.Description}</color>");
+                }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// 결과 표시 뒤에 다른 팝업을 이어 여는 보상(어빌리티 선택·상점)이 있는지.
+    /// OpenAbilitySelect 는 횟수가 0이면 열 것이 없으므로 제외한다.
+    /// </summary>
+    static bool HasReward(EventReward[] rewards, EventRewardType type)
     {
         if (rewards == null) return false;
         foreach (var r in rewards)
-            if (r.Type == EventRewardType.OpenAbilitySelect && r.IntValue > 0)
-                return true;
+        {
+            if (r.Type != type) continue;
+            if (type == EventRewardType.OpenAbilitySelect && r.IntValue <= 0) continue;
+            return true;
+        }
         return false;
     }
 }

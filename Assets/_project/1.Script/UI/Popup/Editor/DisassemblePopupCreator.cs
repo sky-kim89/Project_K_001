@@ -27,9 +27,9 @@ public static class DisassemblePopupCreator
 
     const float PopupW      = 960f;
     const float PopupH      = 860f;
-    const float HeaderH     = 80f;
+    static readonly float HeaderH = UIScale.BtnFor(UIScale.FontLg);   // 80 → 96
     const float InfoW       = 300f;
-    const float BulkHeaderH = 70f;
+    static readonly float BulkHeaderH = UIScale.BtnFor(UIScale.FontMd);   // 70 → 72
     const float CellSize    = 114f;
     const float CellGap     = 8f;
     const int   GridColumns = 5;
@@ -58,7 +58,7 @@ public static class DisassemblePopupCreator
 
     // ── 진입점 ────────────────────────────────────────────────
 
-    [MenuItem("Tools/Project K/Popup/Create Disassemble Popup Prefab")]
+    [MenuItem(ProjectKMenu.Popup + "Disassemble", priority = ProjectKMenu.PrefabPrio + 37)]
     public static void Create()
     {
         Directory.CreateDirectory("Assets/_project/2.Prefabs/UI");
@@ -117,7 +117,8 @@ public static class DisassemblePopupCreator
         FullStretch(title.transform as RectTransform);
         title.alignment = TextAlignmentOptions.Center;
 
-        var closeGo = MakeButton(header, "CloseBtn", "✕", new Color(0.55f, 0.15f, 0.15f), UIScale.FontMd);
+        var closeGo = MakeButton(header, "CloseBtn", "", new Color(0.55f, 0.15f, 0.15f), UIScale.FontMd);
+        EditorUIBuilder.XMark(closeGo, "Mark", UIScale.FontMd, Color.white);
         {
             var rt = closeGo.GetComponent<RectTransform>();
             rt.anchorMin        = new Vector2(1, 0.5f);
@@ -595,54 +596,20 @@ public static class DisassemblePopupCreator
     // ── UI 생성 헬퍼 ─────────────────────────────────────────
 
     static GameObject MakePanel(GameObject parent, string name, Color color)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(Image));
-        if (parent != null) go.transform.SetParent(parent.transform, false);
-        go.GetComponent<Image>().color = color;
-        return go;
-    }
+        => EditorUIBuilder.Panel(parent, name, color);
 
+    // alignment 미지정(TMP 기본 TopLeft)이 이 팝업 레이아웃의 전제라 center:false.
     static TextMeshProUGUI MakeTMP(GameObject parent, string name, string text,
         float size, FontStyles style)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
-        go.transform.SetParent(parent.transform, false);
-        var tmp = go.GetComponent<TextMeshProUGUI>();
-        tmp.text      = text;
-        tmp.fontSize  = size;
-        tmp.fontStyle = style;
-        tmp.color     = Color.white;
-        return tmp;
-    }
+        => EditorUIBuilder.TMP(parent, name, text, size, style, center: false);
 
     static GameObject MakeButton(GameObject parent, string name, string label,
         Color bgColor, float fontSize)
-    {
-        var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
-        go.transform.SetParent(parent.transform, false);
-        go.GetComponent<Image>().color = bgColor;
-        var lGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-        lGo.transform.SetParent(go.transform, false);
-        FullStretch(lGo.GetComponent<RectTransform>());
-        var tmp = lGo.GetComponent<TextMeshProUGUI>();
-        tmp.text      = label;
-        tmp.fontSize  = fontSize;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.color     = Color.white;
-        return go;
-    }
+        => EditorUIBuilder.Btn(parent, name, label, bgColor, fontSize);
 
-    static void FullStretch(RectTransform rt)
-    {
-        rt.anchorMin = Vector2.zero;
-        rt.anchorMax = Vector2.one;
-        rt.offsetMin = rt.offsetMax = Vector2.zero;
-    }
+    static void FullStretch(RectTransform rt) => EditorUIBuilder.Stretch(rt);
 
     static void SetObj(SerializedObject so, string field, Object obj)
-    {
-        var prop = so.FindProperty(field);
-        if (prop != null) prop.objectReferenceValue = obj;
-    }
+        => EditorUIBuilder.SetObj(so, field, obj, "DisassemblePopupCreator");
 }
 #endif

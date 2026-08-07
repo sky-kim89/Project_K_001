@@ -56,8 +56,30 @@ public class StageProgressData : ISaveSection
     /// <summary>런 시작 시 시퀀스를 설정하고 진행 인덱스를 0으로 초기화.</summary>
     public void SetRunSequence(RunStageType[] seq)
     {
-        _raw.RunSequence     = System.Array.ConvertAll(seq, s => (int)s);
-        _raw.CurrentRunStage = 0;
+        _raw.RunSequence         = System.Array.ConvertAll(seq, s => (int)s);
+        _raw.CurrentRunStage     = 0;
+        // 새 시퀀스 = 새 런. 팝업 표시 기록도 같이 지운다 —
+        // 남겨 두면 새 런의 첫 상점·이벤트가 "이미 봤다" 로 판정돼 건너뛴다.
+        _raw.AutoPopupShownStage = -1;
+    }
+
+    /// <summary>
+    /// 런 시퀀스를 보장한다. 없거나 현재 규칙에 어긋나면 새로 뽑는다.
+    ///
+    /// 시퀀스는 세이브에 남으므로, 생성 규칙을 바꿔도 옛 세이브는 그대로 남는다.
+    /// (1스테이지가 상점으로 뜨던 원인 — 규칙 수정 전에 만들어진 시퀀스였다)
+    /// 단 이미 진행 중인 런(CurrentRunStage > 0)은 건드리지 않는다 —
+    /// SetRunSequence 가 진행 인덱스를 0으로 되돌리기 때문에 진행이 날아간다.
+    /// </summary>
+    /// <returns>새로 뽑았으면 true — 호출한 쪽이 저장 여부를 판단한다.</returns>
+    public bool EnsureRunSequence()
+    {
+        var seq = GetRunSequence();
+        if (seq.Length > 0 && (_raw.CurrentRunStage > 0 || RunSequenceGenerator.IsValid(seq)))
+            return false;
+
+        SetRunSequence(RunSequenceGenerator.Generate());
+        return true;
     }
 
     /// <summary>다음 스테이지를 Elite 로 강제 변경 (갈림길의 첩자 — 풀어준다 선택).</summary>
@@ -67,6 +89,17 @@ public class StageProgressData : ISaveSection
         int next = _raw.CurrentRunStage + 1;
         if (next < _raw.RunSequence.Length)
             _raw.RunSequence[next] = (int)RunStageType.Elite;
+    }
+
+    /// <summary>
+    /// 상점·이벤트 팝업을 자동으로 띄운 스테이지 인덱스 (-1 = 아직 없음).
+    /// 로비에 도착할 때마다 다시 뜨는 것을 막는다. 씬을 다시 로드해도 유지돼야 하므로
+    /// 메모리 플래그가 아니라 세이브에 남긴다.
+    /// </summary>
+    public int AutoPopupShownStage
+    {
+        get => _raw.AutoPopupShownStage;
+        set => _raw.AutoPopupShownStage = value;
     }
 
     /// <summary>스테이지가 클리어됐으면 true — 다음 상점 오픈 시 새 상품을 생성한다.</summary>
@@ -127,5 +160,6 @@ public class StageProgressData : ISaveSection
         public int[] RunSequence     = System.Array.Empty<int>();
         public int   CurrentRunStage = 0;
         public bool  IsStageCleared  = true;  // 새 런 = 클리어 상태로 시작 → 첫 상점에서 새 상품 생성
+        public int   AutoPopupShownStage = -1;
     }
 }

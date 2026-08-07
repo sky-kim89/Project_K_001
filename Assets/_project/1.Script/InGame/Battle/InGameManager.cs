@@ -91,7 +91,9 @@ public class InGameManager : MonoBehaviour
             var deployed   = deployData?.GetDeployedUnits();
 
             var   runData  = UserDataManager.Instance?.Get<RunAbilityData>();
-            float expBonus = AbilityApplier.GetExpBonusRatio(runData?.HeldAbilities, AbilityDatabase.Current);
+            float expBonus = AbilityApplier.GetExpBonusRatio(runData?.HeldAbilities, AbilityDatabase.Current)
+                           + TraitApplier.GetExpGainBonus(
+                                 UserDataManager.Instance?.Get<RunTraitData>(), TraitDatabase.Current);
             int   expReward = Mathf.RoundToInt(stage.ExpReward * (1f + expBonus));
 
             foreach (var unit in unitData.Units)

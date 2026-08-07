@@ -40,7 +40,7 @@ public static class EffectPrefabGenerator
         { "FX_RedLightning_Chain",   new[] { "MAT_FX_Spark_Add",   "MAT_FX_Soft_Add"                                } },
     };
 
-    [MenuItem("BattleGame/Generate Effect Prefabs")]
+    [MenuItem(ProjectKMenu.Fx + "Effect 프리팹 (22종)", priority = ProjectKMenu.PrefabPrio + 51)]
     public static void GenerateAll()
     {
         Directory.CreateDirectory(Path.Combine(Application.dataPath, "_project/2.Prefabs/Effect"));

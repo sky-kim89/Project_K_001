@@ -18,6 +18,22 @@ public static class TraitApplier
     public static int GetEquipSlotBonus(RunTraitData runData, TraitDatabase db)
         => GetSystemBonus(StatType.EquipSlotBonus, runData, db);
 
+    /// <summary>경험치 획득 가산 비율 (0.2 = +20%). 전투 보상 계산에서 사용.</summary>
+    public static float GetExpGainBonus(RunTraitData runData, TraitDatabase db)
+    {
+        float bonus = 0f;
+        if (runData == null || db == null) return bonus;
+        foreach (var t in runData.AcquiredTraits)
+        {
+            var td = db.Get(t);
+            if (td?.Effects == null) continue;
+            foreach (var fx in td.Effects)
+                if (fx.Stat == StatType.ExpGainBonus)
+                    bonus += fx.Value;
+        }
+        return bonus;
+    }
+
     static int GetSystemBonus(StatType target, RunTraitData runData, TraitDatabase db)
     {
         int bonus = 0;
@@ -48,6 +64,7 @@ public static class TraitApplier
             {
                 if (fx.Stat == StatType.GeneralSlotBonus) continue;
                 if (fx.Stat == StatType.EquipSlotBonus)   continue;
+                if (fx.Stat == StatType.ExpGainBonus)     continue;
 
                 if (fx.Stat == StatType.AllStatPenalty)
                 {
@@ -65,7 +82,8 @@ public static class TraitApplier
         // AllStatPenalty 는 현재 누적 스탯(base+passive+equip+ability+relic+trait) 기준 % 감산
         foreach (StatType s in System.Enum.GetValues(typeof(StatType)))
         {
-            if (s == StatType.AllStatPenalty || s == StatType.GeneralSlotBonus || s == StatType.EquipSlotBonus) continue;
+            if (s == StatType.AllStatPenalty   || s == StatType.GeneralSlotBonus ||
+                s == StatType.EquipSlotBonus   || s == StatType.ExpGainBonus) continue;
             float current = stat.Get(s);
             if (current == 0f) continue;
             stat.Add(s, -current * allStatPenalty, "trait_penalty");

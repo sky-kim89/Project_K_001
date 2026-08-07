@@ -110,7 +110,7 @@ public static class AbilityCreator
 
     const string IconDir = "Assets/_project/3.Textures/Icons/Abilities";
 
-    [MenuItem("Tools/Project K/어빌리티/Create Ability Assets")]
+    [MenuItem(ProjectKMenu.Data + "어빌리티", priority = ProjectKMenu.DataPrio + 14)]
     public static void Create()
     {
         // 폴더 보장

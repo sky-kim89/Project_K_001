@@ -25,6 +25,7 @@ public enum StatType
     GeneralSlotBonus     = 11,  // 장수 배치 슬롯 추가 수 (NormalMode 에서 집계)
     AllStatPenalty       = 12,  // 전체 능력치 패널티 비율 (TraitApplier 에서 집계 후 적용)
     EquipSlotBonus       = 13,  // 장비 슬롯 추가 수 (TraitApplier 에서 집계)
+    ExpGainBonus         = 14,  // 경험치 획득 비율 가산 (InGameManager 전투 보상에서 집계)
 
     // 새 스텟은 여기에 순서대로 추가 — 다른 코드 수정 불필요 (최대 127개)
 }

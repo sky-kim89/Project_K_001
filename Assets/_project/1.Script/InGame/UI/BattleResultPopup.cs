@@ -35,7 +35,12 @@ public class BattleResultPopup : PopupBase
 {
     public override bool BlockBackgroundClose => true;
 
+    [Header("헤더 (승패에 따라 색이 바뀐다)")]
     [SerializeField] TextMeshProUGUI _resultText;
+    [SerializeField] TextMeshProUGUI _titleShadowText;
+    [SerializeField] Image           _headerBadge;
+    [SerializeField] Image           _accentLine;
+
     [SerializeField] Transform       _rewardArea;
     [SerializeField] RewardCardUI    _rewardCardPrefab;
     [SerializeField] TextMeshProUGUI _hintText;
@@ -55,8 +60,10 @@ public class BattleResultPopup : PopupBase
     CombatStatTab _currentTab = CombatStatTab.Damage;
     BattleContext _context;
 
-    static readonly Color TabActiveColor   = new Color(0.25f, 0.45f, 0.85f);
-    static readonly Color TabInactiveColor = new Color(0.15f, 0.18f, 0.28f);
+    // 색은 PopupPrefabCreator 의 Br* 팔레트와 맞춰 둔다.
+    static readonly Color TabActiveColor = new Color(0.42f, 0.62f, 1.00f);
+    static readonly Color VictoryColor   = new Color(1.00f, 0.82f, 0.22f);
+    static readonly Color DefeatColor    = new Color(0.62f, 0.64f, 0.72f);
 
     // ── PopupBase 훅 ────────────────────────────────────────
 
@@ -101,13 +108,15 @@ public class BattleResultPopup : PopupBase
         RefreshAllRowBars();
     }
 
+    // _tabButtonBgs 는 각 탭 하단의 강조바다 — 활성 탭만 색을 켠다.
+    // (버튼 면 색을 바꾸면 입체 버튼의 모서리 색이 따라오지 않아 어긋난다)
     void RefreshTabHighlight()
     {
         if (_tabButtonBgs == null) return;
         for (int i = 0; i < _tabButtonBgs.Length; i++)
         {
             if (_tabButtonBgs[i] == null) continue;
-            _tabButtonBgs[i].color = (int)_currentTab == i ? TabActiveColor : TabInactiveColor;
+            _tabButtonBgs[i].color = (int)_currentTab == i ? TabActiveColor : Color.clear;
         }
     }
 
@@ -139,15 +148,20 @@ public class BattleResultPopup : PopupBase
 
     // ── 내부 ─────────────────────────────────────────────────
 
+    // 타이틀·다이아 배지·강조선이 한 색으로 묶여 승패가 한눈에 읽힌다.
     void SetHeader(bool isVictory)
     {
+        string title = isVictory ? "승  리" : "패  배";
+        Color  accent = isVictory ? VictoryColor : DefeatColor;
+
         if (_resultText != null)
         {
-            _resultText.text  = isVictory ? "승리!" : "패배";
-            _resultText.color = isVictory
-                ? new Color(1.00f, 0.85f, 0.10f, 1f)
-                : new Color(0.65f, 0.65f, 0.65f, 1f);
+            _resultText.text  = title;
+            _resultText.color = accent;
         }
+        if (_titleShadowText != null) _titleShadowText.text  = title;
+        if (_headerBadge     != null) _headerBadge.color     = accent;
+        if (_accentLine      != null) _accentLine.color      = accent;
     }
 
     void BuildExpRows(BattleContext context)
@@ -204,10 +218,8 @@ public class BattleResultPopup : PopupBase
             }
             else
             {
-                var icon = SpriteManager.Instance?.Get(reward.Item.IconKey());
-                card.SetupFixed(icon, GetItemColor(reward.Item),
-                                reward.Item.DisplayName(),
-                                $"+{reward.Amount}");
+                // 아이콘·색·이름·수량은 RewardInfoResolver 가 종류별로 만든다.
+                card.Setup(RewardView.From(reward));
             }
         }
 
@@ -233,13 +245,4 @@ public class BattleResultPopup : PopupBase
         Close(_onConfirmed ?? (() => LobbyManager.Instance.ReturnToLobby()));
     }
 
-    static Color GetItemColor(eItem item) => item switch
-    {
-        eItem.Gold         => new Color(1.00f, 0.80f, 0.20f, 1f),
-        eItem.Gem          => new Color(0.40f, 0.80f, 1.00f, 1f),
-        eItem.BattleStone  => new Color(0.50f, 0.75f, 0.60f, 1f),
-        eItem.Energy       => new Color(0.90f, 0.50f, 0.20f, 1f),
-        eItem.SoldierShard => new Color(0.45f, 0.70f, 1.00f, 1f),
-        _                  => new Color(0.60f, 0.60f, 0.70f, 1f),
-    };
 }

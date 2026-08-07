@@ -1,57 +1,56 @@
-﻿using System;
-using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 // ============================================================
 //  HeroDetailPopup.cs
-//  배치된 장수 상세 정보 팝업.
-//  구조: 초상화 + 탭[스탯/장비/스킬] + 우측 상단 X 닫기 버튼
+//  장수 상세 정보 팝업 — 전체 화면 3단 구성.
 //
-//  Inspector 연결 (HeroDetailPopupCreator 자동 와이어):
-//    _gradeBorder      : 좌측 등급 컬러 바 Image
-//    _portraitBg       : 초상화 배경 Image
-//    _portraitImage    : 초상화 Image
-//    _portraitBridge   : UnitAppearanceBridge
-//    _nameText         : 이름 TMP
-//    _levelText        : 레벨 TMP
-//    _jobText          : 직업 TMP
-//    _gradeBadge       : 등급 배지 Image
-//    _gradeText        : 등급 TMP
-//    _tabButtons       : Button[3] — 스탯/장비/스킬
-//    _tabPanels        : GameObject[3] — StatPanel/EquipPanel/SkillPanel
-//    [스탯] _hpText / _atkText / _defText / _spdText / _atkSpdText
-//           _rangeText / _soldierCountText / _cmdPwrText
-//    [성장] _expText / _expBarFill / _levelUpBtn / _levelUpCostText / _levelUpCostIcon
-//           _soldierUpBtn / _soldierUpCostText / _soldierUpCostIcon
-//    [장비] _equip0Btn~_equip1Btn, NameText/GradeBar/Icon/StatText/LockBadge
-//           EnhanceBtn/EnhanceCostText/EnhanceCostIcon (×2슬롯)
-//    [스킬] _activeSkillIcon / _activeSkillText / _activeSkillDescText
-//           _passive0Text~_passive2Text / _passive0DescText~_passive2DescText
-//    _closeBtn
+//  ■ 왜 탭을 없앴나
+//    스탯·장비·스킬이 탭으로 나뉘어 있어 한 번에 한 가지만 볼 수 있었다.
+//    장수를 고르는 판단은 "이 스탯에 이 스킬"을 같이 봐야 서는데,
+//    탭을 오가며 기억해야 했다. 셋 다 한 화면에 편다.
+//
+//  ■ 레이아웃 (HeroDetailPopupCreator)
+//    Header   ◆ 장 수 | 이름                                    [X]
+//    ├ Left   초상화 + 장비 3칸(아이콘만) / Lv·직업·등급 / EXP / 레벨업·용병
+//    ├ Mid    스 탯   — 9행 전부 노출. 행을 누르면 출처별 분해
+//    └ Right  스 킬   — 액티브 1 + 패시브 최대 3, 설명을 크게
+//
+//    장비 칸을 누르면 EquipComparePopup 이 우측(스킬 열) 위에 겹쳐 열린다
+//    — 예전 "장비" 탭을 눌렀을 때와 같은 창이다.
+//
+//  Inspector 연결은 전부 HeroDetailPopupCreator 가 자동으로 한다.
 // ============================================================
 
 public class HeroDetailPopup : PopupBase
 {
-    [Header("등급 컬러 바")]
-    [SerializeField] Image _gradeBorder;
+    public override bool BlockBackgroundClose => true;
+
+    [Header("헤더")]
+    [SerializeField] TextMeshProUGUI _nameText;
+    [SerializeField] Button          _closeBtn;
 
     [Header("초상화")]
+    [SerializeField] Image                _gradeBorder;
     [SerializeField] Image                _portraitBg;
     [SerializeField] Image                _portraitImage;
     [SerializeField] UnitAppearanceBridge _portraitBridge;
 
     [Header("기본 정보")]
-    [SerializeField] TextMeshProUGUI _nameText;
     [SerializeField] TextMeshProUGUI _levelText;
     [SerializeField] TextMeshProUGUI _jobText;
     [SerializeField] Image           _gradeBadge;
     [SerializeField] TextMeshProUGUI _gradeText;
 
-    [Header("탭")]
-    [SerializeField] Button[]     _tabButtons;
-    [SerializeField] GameObject[] _tabPanels;
+    [Header("장비 (아이콘만 — 누르면 EquipComparePopup)")]
+    [SerializeField] GameObject       _equipRoot;    // 프리뷰 모드에서 통째로 숨김
+    [SerializeField] HeroEquipSlotUI[] _equipSlots;  // 3칸 — 2번 칸은 특성으로 해금
+
+    [Header("스탯 — 장수 / 용병 토글")]
+    [SerializeField] Button       _generalTabBtn;
+    [SerializeField] Button       _soldierTabBtn;
+    [SerializeField] GameObject[] _generalOnlyRows;   // 용병 수·지휘력·스킬 쿨타임
 
     [Header("스탯")]
     [SerializeField] TextMeshProUGUI _hpText;
@@ -64,7 +63,16 @@ public class HeroDetailPopup : PopupBase
     [SerializeField] TextMeshProUGUI _cmdPwrText;
     [SerializeField] TextMeshProUGUI _cooldownText;
 
-    [Header("EXP · 성장")]
+    [Header("스킬")]
+    [SerializeField] Image           _activeSkillIcon;
+    [SerializeField] TextMeshProUGUI _activeSkillText;
+    [SerializeField] TextMeshProUGUI _activeSkillDescText;
+    [SerializeField] GameObject[]    _passiveBoxes;
+    [SerializeField] TextMeshProUGUI[] _passiveNameTexts;
+    [SerializeField] TextMeshProUGUI[] _passiveDescTexts;
+
+    [Header("성장 (EXP · 레벨업 · 용병)")]
+    [SerializeField] GameObject      _growthRow;
     [SerializeField] TextMeshProUGUI _expText;
     [SerializeField] Image           _expBarFill;
     [SerializeField] Button          _levelUpBtn;
@@ -74,70 +82,18 @@ public class HeroDetailPopup : PopupBase
     [SerializeField] TextMeshProUGUI _soldierUpCostText;
     [SerializeField] Image           _soldierUpCostIcon;
 
-    [Header("장비 슬롯 0")]
-    [SerializeField] Button          _equip0Btn;
-    [SerializeField] TextMeshProUGUI _equip0NameText;
-    [SerializeField] Image           _equip0GradeBar;
-    [SerializeField] Image           _equip0Icon;
-    [SerializeField] TextMeshProUGUI _equip0StatText;
-    [SerializeField] GameObject      _equip0LockBadge;
-    [SerializeField] Button          _equip0EnhanceBtn;
-    [SerializeField] TextMeshProUGUI _equip0EnhanceCostText;
-    [SerializeField] Image           _equip0EnhanceCostIcon;
-
-    [Header("장비 슬롯 1")]
-    [SerializeField] Button          _equip1Btn;
-    [SerializeField] TextMeshProUGUI _equip1NameText;
-    [SerializeField] Image           _equip1GradeBar;
-    [SerializeField] Image           _equip1Icon;
-    [SerializeField] TextMeshProUGUI _equip1StatText;
-    [SerializeField] GameObject      _equip1LockBadge;
-    [SerializeField] Button          _equip1EnhanceBtn;
-    [SerializeField] TextMeshProUGUI _equip1EnhanceCostText;
-    [SerializeField] Image           _equip1EnhanceCostIcon;
-
-    [Header("장비 슬롯 2 (특성 잠금해제)")]
-    [SerializeField] GameObject      _equip2SlotGo;
-    [SerializeField] Button          _equip2Btn;
-    [SerializeField] TextMeshProUGUI _equip2NameText;
-    [SerializeField] Image           _equip2GradeBar;
-    [SerializeField] Image           _equip2Icon;
-    [SerializeField] TextMeshProUGUI _equip2StatText;
-    [SerializeField] GameObject      _equip2LockBadge;
-    [SerializeField] Button          _equip2EnhanceBtn;
-    [SerializeField] TextMeshProUGUI _equip2EnhanceCostText;
-    [SerializeField] Image           _equip2EnhanceCostIcon;
-
-    [Header("스킬")]
-    [SerializeField] Image           _activeSkillIcon;
-    [SerializeField] TextMeshProUGUI _activeSkillText;
-    [SerializeField] TextMeshProUGUI _activeSkillDescText;
-    [SerializeField] TextMeshProUGUI _passive0Text;
-    [SerializeField] TextMeshProUGUI _passive1Text;
-    [SerializeField] TextMeshProUGUI _passive2Text;
-    [SerializeField] TextMeshProUGUI _passive0DescText;
-    [SerializeField] TextMeshProUGUI _passive1DescText;
-    [SerializeField] TextMeshProUGUI _passive2DescText;
-
-    [Header("닫기")]
-    [SerializeField] Button _closeBtn;
-
-    [Header("스탯 분해")]
-    [SerializeField] Transform _statListContainer;
-
-    [Header("프리뷰 모드 (성장행 컨테이너)")]
-    [SerializeField] GameObject _growthRow;
+    const int EquipSlotCount = 3;
 
     UnitEntry _entry;
     Texture2D _portraitTexture;
 
     HeroStatResult _statResult;
     int            _expandedStatIndex = -1;
+    bool           _showSoldier;          // false = 장수(기본), true = 용병
 
     struct StatRowEntry
     {
         public TextMeshProUGUI ValueTmp;
-        public LayoutElement   LayoutEl;
         public StatType        Type;
     }
     StatRowEntry[] _statRowEntries;
@@ -149,29 +105,23 @@ public class HeroDetailPopup : PopupBase
         _entry             = entry;
         _expandedStatIndex = -1;
 
-        // 보유 영웅 모드 — SetupPreview에서 숨겼을 수 있으므로 복원
-        _growthRow?.SetActive(true);
-        _levelText?.gameObject.SetActive(true);
-        if (_tabButtons != null && _tabButtons.Length > 1)
-            _tabButtons[1]?.gameObject.SetActive(true);
+        // 프리뷰 모드에서 껐을 수 있으므로 복원
+        _growthRow.SetActive(true);
+        _equipRoot.SetActive(true);
+        _levelText.gameObject.SetActive(true);
 
+        SetStatTarget(soldier: false);   // 열 때는 항상 장수부터
         RefreshUI();
     }
 
-    // 용병 상점에서 호출 — EXP/레벨업/장비 탭 숨김
+    /// <summary>상점 미리보기 — 아직 내 장수가 아니므로 성장·장비를 숨긴다.</summary>
     public void SetupPreview(UnitEntry entry)
     {
         Setup(entry);
 
-        _growthRow?.SetActive(false);
-        _levelText?.gameObject.SetActive(false);
-
-        if (_tabButtons != null && _tabButtons.Length > 1)
-            _tabButtons[1]?.gameObject.SetActive(false);
-        if (_tabPanels != null && _tabPanels.Length > 1)
-            _tabPanels[1]?.SetActive(false);
-
-        SwitchTab(0);
+        _growthRow.SetActive(false);
+        _equipRoot.SetActive(false);
+        _levelText.gameObject.SetActive(false);
     }
 
     // ── 생명주기 ──────────────────────────────────────────────
@@ -179,72 +129,38 @@ public class HeroDetailPopup : PopupBase
     protected override void Awake()
     {
         base.Awake();
-        _closeBtn?.onClick.AddListener(OnCloseClick);
+        _closeBtn.onClick.AddListener(OnCloseClick);
+        _levelUpBtn.onClick.AddListener(OnLevelUpClick);
+        _soldierUpBtn.onClick.AddListener(OnSoldierUpClick);
 
-        if (_tabButtons != null)
-            for (int i = 0; i < _tabButtons.Length; i++)
-            {
-                int idx = i;
-                _tabButtons[i]?.onClick.AddListener(() => SwitchTab(idx));
-            }
+        _generalTabBtn.onClick.AddListener(() => SetStatTarget(soldier: false));
+        _soldierTabBtn.onClick.AddListener(() => SetStatTarget(soldier: true));
 
-        _levelUpBtn  ?.onClick.AddListener(OnLevelUpClick);
-        _soldierUpBtn?.onClick.AddListener(OnSoldierUpClick);
-        _equip0Btn   ?.onClick.AddListener(() => OnEquipSlotClick(0));
-        _equip1Btn   ?.onClick.AddListener(() => OnEquipSlotClick(1));
-        _equip2Btn   ?.onClick.AddListener(() => OnEquipSlotClick(2));
-        _equip0EnhanceBtn?.onClick.AddListener(() => OnEnhanceClick(0));
-        _equip1EnhanceBtn?.onClick.AddListener(() => OnEnhanceClick(1));
-        _equip2EnhanceBtn?.onClick.AddListener(() => OnEnhanceClick(2));
+        for (int i = 0; i < EquipSlotCount; i++)
+        {
+            int slot = i;
+            _equipSlots[i].Bind(() => OnEquipSlotClick(slot), () => OnEnhanceClick(slot));
+        }
+
         SetupStatClickHandlers();
     }
 
     protected override void OnAfterOpen()
     {
-        ApplyCostIcon(_levelUpCostIcon,    eItem.Gold);
-        ApplyCostIcon(_soldierUpCostIcon,  eItem.SoldierShard);
-        ApplyCostIcon(_equip0EnhanceCostIcon, eItem.EquipUpgradeStone);
-        ApplyCostIcon(_equip1EnhanceCostIcon, eItem.EquipUpgradeStone);
-        ApplyCostIcon(_equip2EnhanceCostIcon, eItem.EquipUpgradeStone);
+        ApplyCostIcon(_levelUpCostIcon,   eItem.Gold);
+        ApplyCostIcon(_soldierUpCostIcon, eItem.SoldierShard);
+        foreach (var slot in _equipSlots)
+            ApplyCostIcon(slot.EnhanceCostIcon, eItem.EquipUpgradeStone);
 
         if (_entry != null) RefreshUI();
-        SwitchTab(0);
     }
 
     static void ApplyCostIcon(Image img, eItem item)
     {
-        if (img == null) return;
-        var sm = SpriteManager.Instance;
-        if (sm == null) return;
-        var sprite = sm.Get(item.IconKey());
-        if (sprite != null) { img.sprite = sprite; img.color = Color.white; }
-    }
-
-    // ── 탭 전환 ───────────────────────────────────────────────
-
-    void SwitchTab(int index)
-    {
-        if (_tabPanels != null)
-            for (int i = 0; i < _tabPanels.Length; i++)
-                _tabPanels[i]?.SetActive(i == index);
-
-        if (_tabButtons == null) return;
-        for (int i = 0; i < _tabButtons.Length; i++)
-        {
-            var btn = _tabButtons[i];
-            if (btn == null) continue;
-            bool active = i == index;
-
-            var lbl = btn.GetComponentInChildren<TextMeshProUGUI>();
-            if (lbl != null)
-            {
-                lbl.fontStyle = active ? FontStyles.Bold : FontStyles.Normal;
-                lbl.color     = active ? new Color(0.40f, 0.72f, 1.00f)
-                                       : new Color(0.72f, 0.72f, 0.78f);
-            }
-            var bar = btn.transform.Find("ActiveBar");
-            if (bar != null) bar.gameObject.SetActive(active);
-        }
+        var sprite = SpriteManager.Instance?.Get(item.IconKey());
+        if (sprite == null) return;
+        img.sprite = sprite;
+        img.color  = Color.white;
     }
 
     // ── UI 갱신 ───────────────────────────────────────────────
@@ -255,20 +171,18 @@ public class HeroDetailPopup : PopupBase
         _statResult = HeroStatResolver.Resolve(_entry);
         Color gc    = GradeStyle.GetColor(_entry.Grade);
 
-        if (_gradeBorder != null) _gradeBorder.color = gc;
-        if (_gradeBadge  != null) _gradeBadge.color  = gc;
-        if (_gradeText   != null) { _gradeText.text  = GradeStyle.GetLabel(_entry.Grade); _gradeText.color = Color.white; }
-        if (_nameText    != null) _nameText.text  = _entry.UnitName;
-        if (_levelText   != null) _levelText.text = $"Lv.{_entry.Level}";
-        if (_jobText     != null) _jobText.text   = JobStyle.GetLabel(job);
+        _gradeBorder.color = gc;
+        _gradeBadge.color  = gc;
+        _gradeText.text    = GradeStyle.GetLabel(_entry.Grade);
+        _gradeText.color   = Color.white;
+        _nameText.text     = _entry.UnitName;
+        _levelText.text    = $"Lv.{_entry.Level}";
+        _jobText.text      = JobStyle.GetLabel(job);
 
         RefreshAllStatTexts();
-
         FillSkills(job, _entry);
         RefreshEquipSlots();
-        RefreshLevelUpDisplay();
-        RefreshExpDisplay();
-        RefreshSoldierUpDisplay();
+        RefreshGrowthDisplay();
 
         UnitPortraitHelper.Render(_entry.UnitName, job, _entry.Grade,
             _portraitBridge, _portraitBg, _portraitImage, ref _portraitTexture);
@@ -279,244 +193,153 @@ public class HeroDetailPopup : PopupBase
         var activeDb  = ActiveSkillDatabase.Current;
         var passiveDb = PassiveSkillDatabase.Current;
 
-        if (activeDb != null)
+        var activeId   = ActiveSkillRoller.Roll(entry.UnitName, job, activeDb, entry.Grade);
+        var activeData = activeDb.Get(activeId);
+        _activeSkillText.text     = activeData?.SkillName   ?? "-";
+        _activeSkillDescText.text = activeData?.Description ?? "";
+
+        var sp = SpriteManager.Instance?.Get(activeId.IconKey());
+        _activeSkillIcon.sprite = sp;
+        _activeSkillIcon.color  = sp != null ? Color.white : new Color(0.25f, 0.30f, 0.48f);
+
+        var (s0, s1, s2)          = PassiveSkillRoller.Roll(entry.UnitName);
+        int slotCount             = PassiveSkillRoller.GetActiveSlotCount(entry.Grade);
+        PassiveSkillType[] passives = { s0, s1, s2 };
+
+        for (int i = 0; i < _passiveBoxes.Length; i++)
         {
-            var activeId   = ActiveSkillRoller.Roll(entry.UnitName, job, activeDb, entry.Grade);
-            var activeData = activeDb.Get(activeId);
-            if (_activeSkillText     != null) _activeSkillText.text     = activeData?.SkillName   ?? "-";
-            if (_activeSkillDescText != null) _activeSkillDescText.text = activeData?.Description ?? "";
+            bool show = i < slotCount;
+            _passiveBoxes[i].SetActive(show);
+            if (!show) continue;
 
-            if (_activeSkillIcon != null)
-            {
-                var key = activeId.IconKey();
-                var sm  = SpriteManager.Instance;
-                var sp  = (key != null && sm != null) ? sm.Get(key) : null;
-                _activeSkillIcon.sprite = sp;
-                _activeSkillIcon.color  = sp != null ? Color.white : new Color(0.25f, 0.30f, 0.48f);
-            }
-        }
-
-        var (s0, s1, s2) = PassiveSkillRoller.Roll(entry.UnitName);
-        int slotCount    = PassiveSkillRoller.GetActiveSlotCount(entry.Grade);
-        PassiveSkillType[]  passives  = { s0, s1, s2 };
-        TextMeshProUGUI[]   nameTexts = { _passive0Text,     _passive1Text,     _passive2Text };
-        TextMeshProUGUI[]   descTexts = { _passive0DescText, _passive1DescText, _passive2DescText };
-
-        for (int i = 0; i < nameTexts.Length; i++)
-        {
-            bool show = i < slotCount && passiveDb != null;
-            if (nameTexts[i] != null) nameTexts[i].gameObject.SetActive(show);
-            if (descTexts[i] != null) descTexts[i].gameObject.SetActive(show);
-
-            if (!show || nameTexts[i] == null) continue;
             var pd = passiveDb.Get(passives[i]);
-            nameTexts[i].text = pd?.SkillName   ?? "-";
-            if (descTexts[i] != null) descTexts[i].text = pd?.Description ?? "";
+            _passiveNameTexts[i].text = pd?.SkillName   ?? "-";
+            _passiveDescTexts[i].text = pd?.Description ?? "";
         }
     }
 
-    // ── 레벨업 ────────────────────────────────────────────────
+    // ── 장비 ─────────────────────────────────────────────────
 
-    void OnLevelUpClick()
+    void RefreshEquipSlots()
     {
-        if (_entry == null) return;
-        var itemData = UserDataManager.Instance?.Get<ItemData>();
-        var unitData = UserDataManager.Instance?.Get<UnitData>();
-        if (itemData == null || unitData == null) return;
+        var db     = EquipmentDatabase.Current;
+        int stones = UserDataManager.Instance.Get<ItemData>().Get(eItem.EquipUpgradeStone);
 
-        int cost = GetLevelUpCost(_entry.Level);
-        if (!itemData.CanSpend(eItem.Gold, cost)) return;
+        // 열린 슬롯 수는 EquipmentApplier 가 소유한다 (3번째 칸은 특성으로 해금)
+        int openSlots = EquipmentApplier.ActiveSlotCount;
 
-        itemData.Spend(eItem.Gold, cost);
-        unitData.SetUnitLevel(_entry.UnitName, _entry.Level + 1);
-        UserDataManager.Instance.RequestSave();
+        for (int i = 0; i < EquipSlotCount; i++)
+        {
+            var slot = _equipSlots[i];
+            slot.gameObject.SetActive(i < openSlots);
+            if (!slot.gameObject.activeSelf) continue;
 
-        _entry = unitData.GetUnit(_entry.UnitName);
-        if (_entry != null) RefreshUI();
+            string id    = GetEquipId(i);
+            var    equip = db.Get(id);
+
+            if (equip == null) { slot.SetEmpty(); continue; }
+
+            int enhance = GetEnhanceLevel(i);
+            slot.SetEquipment(equip, enhance, GetEnhanceCost(enhance), stones);
+        }
     }
 
-    static int GetLevelUpCost(int currentLevel) => currentLevel * 100;
+    string GetEquipId(int slot)
+        => _entry.RunEquipSlots != null && slot < _entry.RunEquipSlots.Length
+            ? _entry.RunEquipSlots[slot] : "";
 
-    // ── 용병 수 증가 ──────────────────────────────────────────
+    int GetEnhanceLevel(int slot)
+        => _entry.RunEquipEnhance != null && slot < _entry.RunEquipEnhance.Length
+            ? _entry.RunEquipEnhance[slot] : 0;
 
-    void OnSoldierUpClick()
-    {
-        if (_entry == null) return;
-        var itemData = UserDataManager.Instance?.Get<ItemData>();
-        var unitData = UserDataManager.Instance?.Get<UnitData>();
-        if (itemData == null || unitData == null) return;
+    static int GetEnhanceCost(int currentEnhance) => (currentEnhance + 1) * 2;
 
-        int cost = GetSoldierUpCost(_entry.SoldierBonus);
-        if (!itemData.CanSpend(eItem.SoldierShard, cost)) return;
-
-        itemData.Spend(eItem.SoldierShard, cost);
-        unitData.AddSoldierBonus(_entry.UnitName, 1);
-        UserDataManager.Instance.RequestSave();
-
-        _entry = unitData.GetUnit(_entry.UnitName);
-        if (_entry != null) RefreshUI();
-    }
-
-    static int GetSoldierUpCost(int currentBonus) => (currentBonus + 1) * 10;
-
-    void RefreshSoldierUpDisplay()
-    {
-        if (_soldierUpCostText == null || _entry == null) return;
-        int shards = UserDataManager.Instance?.Get<ItemData>()?.Get(eItem.SoldierShard) ?? 0;
-        int cost   = GetSoldierUpCost(_entry.SoldierBonus);
-        _soldierUpCostText.text  = $"{cost}";
-        _soldierUpCostText.color = shards >= cost
-            ? new Color(0.85f, 0.90f, 1.0f)
-            : new Color(0.9f, 0.35f, 0.35f);
-    }
-
-    // ── 장비 슬롯 ─────────────────────────────────────────────
-
+    // 예전 "장비" 탭과 같은 창을 연다. 팝업 위치는 스킬 열 위로 맞춰 놨다.
     void OnEquipSlotClick(int slot)
     {
-        if (_entry == null) return;
-
-        EquipComparePopup popup;
-        if (PopupManager.Instance != null && PopupManager.Instance.IsOpen(PopupType.EquipCompare))
-            popup = PopupManager.Instance.Get<EquipComparePopup>(PopupType.EquipCompare);
-        else
-            popup = PopupManager.Instance?.Open<EquipComparePopup>(PopupType.EquipCompare);
-
-        if (popup == null) return;
+        var pm = PopupManager.Instance;
+        var popup = pm.IsOpen(PopupType.EquipCompare)
+            ? pm.Get<EquipComparePopup>(PopupType.EquipCompare)
+            : pm.Open<EquipComparePopup>(PopupType.EquipCompare);
 
         var entry = _entry;
         popup.Setup(entry, slot, () =>
         {
-            _entry = UserDataManager.Instance?.Get<UnitData>()?.GetUnit(entry.UnitName);
+            _entry = UserDataManager.Instance.Get<UnitData>().GetUnit(entry.UnitName);
             if (_entry != null) RefreshUI();
         });
     }
 
     void OnEnhanceClick(int slot)
     {
-        if (_entry == null) return;
-        var itemData = UserDataManager.Instance?.Get<ItemData>();
-        var unitData = UserDataManager.Instance?.Get<UnitData>();
-        if (itemData == null || unitData == null) return;
-
-        string id = (_entry.RunEquipSlots != null && slot < _entry.RunEquipSlots.Length)
-                    ? _entry.RunEquipSlots[slot] : "";
+        string id = GetEquipId(slot);
         if (string.IsNullOrEmpty(id)) return;
 
-        int enhance = (_entry.RunEquipEnhance != null && slot < _entry.RunEquipEnhance.Length)
-                      ? _entry.RunEquipEnhance[slot] : 0;
-        int cost = GetEnhanceCost(enhance);
+        var items    = UserDataManager.Instance.Get<ItemData>();
+        var unitData = UserDataManager.Instance.Get<UnitData>();
 
-        if (!itemData.CanSpend(eItem.EquipUpgradeStone, cost)) return;
+        int enhance = GetEnhanceLevel(slot);
+        if (!items.Spend(eItem.EquipUpgradeStone, GetEnhanceCost(enhance))) return;
 
-        itemData.Spend(eItem.EquipUpgradeStone, cost);
         unitData.SetEquipment(_entry.UnitName, slot, id, enhance + 1);
         UserDataManager.Instance.RequestSave();
 
         _entry = unitData.GetUnit(_entry.UnitName);
-        if (_entry != null) RefreshUI();
+        RefreshUI();
     }
 
-    static int GetEnhanceCost(int currentEnhance) => (currentEnhance + 1) * 2;
+    // ── 성장 (레벨업 · 용병) ──────────────────────────────────
 
-    void RefreshEquipSlots()
+    void OnLevelUpClick()
     {
-        var db = EquipmentDatabase.Current;
-        RefreshEquipSlot(0, db, _equip0NameText, _equip0GradeBar, _equip0Icon, _equip0StatText, _equip0LockBadge, _equip0EnhanceBtn, _equip0EnhanceCostText);
-        RefreshEquipSlot(1, db, _equip1NameText, _equip1GradeBar, _equip1Icon, _equip1StatText, _equip1LockBadge, _equip1EnhanceBtn, _equip1EnhanceCostText);
+        var items    = UserDataManager.Instance.Get<ItemData>();
+        var unitData = UserDataManager.Instance.Get<UnitData>();
 
-        bool slot2Unlocked = TraitApplier.GetEquipSlotBonus(
-            UserDataManager.Instance?.Get<RunTraitData>(), TraitDatabase.Current) > 0;
-        _equip2SlotGo?.SetActive(slot2Unlocked);
-        if (slot2Unlocked)
-            RefreshEquipSlot(2, db, _equip2NameText, _equip2GradeBar, _equip2Icon, _equip2StatText, _equip2LockBadge, _equip2EnhanceBtn, _equip2EnhanceCostText);
+        if (!items.Spend(eItem.Gold, GetLevelUpCost(_entry.Level))) return;
+
+        unitData.SetUnitLevel(_entry.UnitName, _entry.Level + 1);
+        UserDataManager.Instance.RequestSave();
+
+        _entry = unitData.GetUnit(_entry.UnitName);
+        RefreshUI();
     }
 
-    void RefreshEquipSlot(int slot, EquipmentDatabase db,
-        TextMeshProUGUI nameText, Image gradeBar, Image iconImage,
-        TextMeshProUGUI statText, GameObject lockBadge,
-        Button enhanceBtn, TextMeshProUGUI enhanceCostText)
+    void OnSoldierUpClick()
     {
-        string id    = (_entry.RunEquipSlots != null && slot < _entry.RunEquipSlots.Length)
-                       ? _entry.RunEquipSlots[slot] : "";
-        var    equip = db?.Get(id);
+        var items    = UserDataManager.Instance.Get<ItemData>();
+        var unitData = UserDataManager.Instance.Get<UnitData>();
 
-        if (equip == null)
-        {
-            if (nameText   != null) nameText.text  = "없음";
-            if (gradeBar   != null) gradeBar.color = new Color(0.25f, 0.25f, 0.30f);
-            if (iconImage  != null) { iconImage.sprite = null; iconImage.color = new Color(0.18f, 0.18f, 0.22f); }
-            if (statText   != null) statText.text  = "";
-            if (lockBadge  != null) lockBadge.SetActive(false);
-            if (enhanceBtn != null) enhanceBtn.gameObject.SetActive(false);
-            return;
-        }
+        if (!items.Spend(eItem.SoldierShard, GetSoldierUpCost(_entry.SoldierBonus))) return;
 
-        int enhance = (_entry.RunEquipEnhance != null && slot < _entry.RunEquipEnhance.Length)
-                      ? _entry.RunEquipEnhance[slot] : 0;
+        unitData.AddSoldierBonus(_entry.UnitName, 1);
+        UserDataManager.Instance.RequestSave();
 
-        if (nameText != null)
-            nameText.text = enhance > 0 ? $"{equip.EquipmentName} +{enhance}" : equip.EquipmentName;
-        if (gradeBar  != null) gradeBar.color = GradeStyle.GetColor(equip.Grade);
-        if (iconImage != null)
-        {
-            iconImage.sprite = equip.Icon;
-            iconImage.color  = equip.Icon != null ? Color.white : GradeStyle.GetColor(equip.Grade);
-        }
-
-        if (statText != null && equip.StatEntries != null)
-        {
-            var sb  = new StringBuilder();
-            var loc = LocalizationManager.Instance;
-            foreach (var e in equip.StatEntries)
-            {
-                float val = equip.GetStatValue(e, enhance);
-                sb.Append(loc.Get(e.Stat.ToString())).Append(" +");
-                sb.AppendLine(StatDisplayHelper.FormatStat(e.Stat, val));
-            }
-            if (equip.TriggerType != EquipmentTrigger.None)
-                sb.AppendLine(EquipmentData.FormatTriggerLine(equip,
-                    loc.Get(equip.TriggerType.ToString()),
-                    loc.Get(equip.TriggerStat.ToString())));
-            statText.text = sb.ToString().TrimEnd();
-        }
-
-        if (lockBadge  != null) lockBadge.SetActive(true);
-        if (enhanceBtn != null)
-        {
-            enhanceBtn.gameObject.SetActive(true);
-            if (enhanceCostText != null)
-            {
-                int cost   = GetEnhanceCost(enhance);
-                int stones = UserDataManager.Instance?.Get<ItemData>()?.Get(eItem.EquipUpgradeStone) ?? 0;
-                enhanceCostText.text  = $"{cost}";
-                enhanceCostText.color = stones >= cost
-                    ? new Color(0.80f, 0.90f, 1.0f)
-                    : new Color(0.9f, 0.35f, 0.35f);
-            }
-        }
+        _entry = unitData.GetUnit(_entry.UnitName);
+        RefreshUI();
     }
 
-    void RefreshLevelUpDisplay()
-    {
-        if (_levelUpCostText == null || _entry == null) return;
-        int cost = GetLevelUpCost(_entry.Level);
-        int gold = UserDataManager.Instance?.Get<ItemData>()?.Get(eItem.Gold) ?? 0;
-        _levelUpCostText.text  = $"{cost:N0}";
-        _levelUpCostText.color = gold >= cost
-            ? new Color(1.0f, 0.85f, 0.20f)
-            : new Color(0.9f, 0.35f, 0.35f);
-    }
+    static int GetLevelUpCost(int currentLevel)  => currentLevel * 100;
+    static int GetSoldierUpCost(int currentBonus) => (currentBonus + 1) * 10;
 
-    void RefreshExpDisplay()
+    void RefreshGrowthDisplay()
     {
-        if (_entry == null) return;
+        var items = UserDataManager.Instance.Get<ItemData>();
+
+        int lvCost = GetLevelUpCost(_entry.Level);
+        _levelUpCostText.text  = $"{lvCost:N0}";
+        _levelUpCostText.color = items.Get(eItem.Gold) >= lvCost
+            ? new Color(1.00f, 0.85f, 0.20f) : new Color(0.90f, 0.35f, 0.35f);
+
+        int sdCost = GetSoldierUpCost(_entry.SoldierBonus);
+        _soldierUpCostText.text  = $"{sdCost}";
+        _soldierUpCostText.color = items.Get(eItem.SoldierShard) >= sdCost
+            ? new Color(0.85f, 0.90f, 1.00f) : new Color(0.90f, 0.35f, 0.35f);
+
         int expPerLevel = GameplayConfig.Current != null ? GameplayConfig.Current.ExpPerLevel : 100;
         int expNeeded   = _entry.Level * expPerLevel;
-        if (_expText    != null) _expText.text = $"{_entry.Exp:N0} / {expNeeded:N0} EXP";
-        if (_expBarFill != null)
-            _expBarFill.rectTransform.anchorMax = new Vector2(
-                expNeeded > 0 ? Mathf.Clamp01((float)_entry.Exp / expNeeded) : 0f, 1f);
+        _expText.text   = $"{_entry.Exp:N0} / {expNeeded:N0} EXP";
+        _expBarFill.rectTransform.anchorMax = new Vector2(
+            expNeeded > 0 ? Mathf.Clamp01((float)_entry.Exp / expNeeded) : 0f, 1f);
     }
 
     // ── 닫기 ─────────────────────────────────────────────────
@@ -525,14 +348,11 @@ public class HeroDetailPopup : PopupBase
     {
         var pm = PopupManager.Instance;
         if (pm != null && pm.IsOpen(PopupType.EquipCompare))
-        {
-            var ecp = pm.Get<EquipComparePopup>(PopupType.EquipCompare);
-            if (ecp != null) ecp.Close();
-        }
+            pm.Get<EquipComparePopup>(PopupType.EquipCompare)?.Close();
         Close();
     }
 
-    // ── 스탯 클릭 분해 (HeroPanelUI 동일 패턴) ──────────────────
+    // ── 스탯 행 (클릭 → 출처별 분해) ──────────────────────────
 
     void SetupStatClickHandlers()
     {
@@ -554,32 +374,12 @@ public class HeroDetailPopup : PopupBase
         for (int i = 0; i < defs.Length; i++)
         {
             var (tmp, type) = defs[i];
-            if (tmp == null) continue;
-
             var rowGo = tmp.transform.parent.gameObject;
 
-            if (!rowGo.TryGetComponent<Image>(out var img))
-            { img = rowGo.AddComponent<Image>(); img.color = Color.clear; }
-
-            if (!rowGo.TryGetComponent<Button>(out var btn))
-            {
-                btn = rowGo.AddComponent<Button>();
-                btn.targetGraphic = img;
-                btn.transition    = Selectable.Transition.None;
-            }
-
             int idx = i;
-            btn.onClick.AddListener(() => ToggleStatRow(idx));
+            rowGo.GetComponent<Button>().onClick.AddListener(() => ToggleStatRow(idx));
 
-            if (_statListContainer == null && rowGo.transform.parent != null)
-                _statListContainer = rowGo.transform.parent;
-
-            _statRowEntries[i] = new StatRowEntry
-            {
-                ValueTmp = tmp,
-                LayoutEl = rowGo.GetComponent<LayoutElement>(),
-                Type     = type,
-            };
+            _statRowEntries[i] = new StatRowEntry { ValueTmp = tmp, Type = type };
         }
     }
 
@@ -589,43 +389,83 @@ public class HeroDetailPopup : PopupBase
         RefreshAllStatTexts();
     }
 
+    // ── 장수 / 용병 전환 ──────────────────────────────────────
+    //  용병은 장수 스탯을 그대로 물려받아 배율만 곱한 값이라 같은 행을 다시 쓴다.
+    //  용병에게 의미가 없는 세 줄(용병 수·지휘력·스킬 쿨타임)만 감춘다.
+
+    void SetStatTarget(bool soldier)
+    {
+        _showSoldier       = soldier;
+        _expandedStatIndex = -1;
+
+        foreach (var row in _generalOnlyRows)
+            row.SetActive(!soldier);
+
+        StyleStatTab(_generalTabBtn, !soldier);
+        StyleStatTab(_soldierTabBtn,  soldier);
+
+        if (_statResult != null) RefreshAllStatTexts();
+    }
+
+    // 탭 바탕(Body Image) · 라벨 · 밑줄을 한꺼번에 바꾼다.
+    // Body 는 입체 버튼의 targetGraphic 이라 여기서 색만 갈아 끼우면 된다.
+    static readonly Color TabFaceOn  = new(0.20f, 0.38f, 0.62f);
+    static readonly Color TabFaceOff = new(0.15f, 0.16f, 0.25f);
+    static readonly Color TabTextOn  = new(0.90f, 0.96f, 1.00f);
+    static readonly Color TabTextOff = new(0.58f, 0.60f, 0.72f);
+
+    static void StyleStatTab(Button btn, bool active)
+    {
+        if (btn.targetGraphic != null)
+            btn.targetGraphic.color = active ? TabFaceOn : TabFaceOff;
+
+        var lbl = btn.GetComponentInChildren<TextMeshProUGUI>(true);
+        lbl.fontStyle = active ? FontStyles.Bold : FontStyles.Normal;
+        lbl.color     = active ? TabTextOn : TabTextOff;
+
+        var bar = btn.transform.Find("Body/ActiveBar");
+        if (bar != null) bar.gameObject.SetActive(active);
+    }
+
+    /// <summary>
+    /// 용병 탭일 때 이 스탯에 곱할 배율.
+    /// 공식은 SoldierRuntimeBridge 가 소유한다 — 실제 전투 병사와 같은 값이다.
+    /// </summary>
+    float SoldierScale(StatType type)
+    {
+        if (!_showSoldier || SoldierRuntimeBridge.IsUnscaled(type)) return 1f;
+        return SoldierRuntimeBridge.StatRatio(_statResult.Total(StatType.CommandPower));
+    }
+
     void RefreshAllStatTexts()
     {
         if (_statRowEntries == null) return;
         for (int i = 0; i < _statRowEntries.Length; i++)
             RefreshStatRow(i);
-        if (_statListContainer != null)
-            LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)_statListContainer);
     }
 
+    // ⚠ overflowMode 를 Ellipsis 로 두면 안 된다.
+    //   분해 문자열("1,200 +300 +157")이 칸보다 길면 TMP 가 통째로 "..." 으로 바꿔
+    //   숫자가 아예 안 보였다. 대신 AutoSize 로 줄여서 담는다 (칸 높이는 그대로).
     void RefreshStatRow(int index)
     {
         var row = _statRowEntries[index];
-        if (row.ValueTmp == null) return;
 
-        float baseVal    = _statResult?.Base.Get(row.Type)   ?? 0f;
-        float equipVal   = _statResult?.GetEquip(row.Type)   ?? 0f;
-        float passiveVal = _statResult?.GetPassive(row.Type) ?? 0f;
-        float abilityVal = _statResult?.GetAbility(row.Type) ?? 0f;
-        float relicVal   = _statResult?.GetRelic(row.Type)   ?? 0f;
-        float traitVal   = _statResult?.GetTrait(row.Type)   ?? 0f;
+        // 용병 배율은 출처별 값에 그대로 곱해도 된다 — 선형이라 분해가 그대로 성립한다.
+        float k          = SoldierScale(row.Type);
+        float baseVal    = _statResult.Base.Get(row.Type)   * k;
+        float equipVal   = _statResult.GetEquip(row.Type)   * k;
+        float passiveVal = _statResult.GetPassive(row.Type) * k;
+        float abilityVal = _statResult.GetAbility(row.Type) * k;
+        float relicVal   = _statResult.GetRelic(row.Type)   * k;
+        float traitVal   = _statResult.GetTrait(row.Type)   * k;
         float total      = baseVal + equipVal + passiveVal + abilityVal + relicVal + traitVal;
-        bool  expanded   = index == _expandedStatIndex;
-        bool  hasBonus   = equipVal != 0f || passiveVal != 0f || abilityVal != 0f || relicVal != 0f || traitVal != 0f;
 
-        if (expanded && hasBonus)
-        {
-            row.ValueTmp.overflowMode     = TextOverflowModes.Overflow;
-            row.ValueTmp.textWrappingMode = TextWrappingModes.NoWrap;
-            row.ValueTmp.text = StatDisplayHelper.BuildBreakdown(row.Type, baseVal, equipVal, passiveVal, abilityVal, relicVal, traitVal);
-            if (row.LayoutEl != null) row.LayoutEl.preferredHeight = 52f;
-        }
-        else
-        {
-            row.ValueTmp.overflowMode     = TextOverflowModes.Ellipsis;
-            row.ValueTmp.textWrappingMode = TextWrappingModes.NoWrap;
-            row.ValueTmp.text = StatDisplayHelper.FormatStat(row.Type, total, isFinal: true);
-            if (row.LayoutEl != null) row.LayoutEl.preferredHeight = 52f;
-        }
+        bool hasBonus = equipVal != 0f || passiveVal != 0f || abilityVal != 0f
+                     || relicVal != 0f || traitVal   != 0f;
+
+        row.ValueTmp.text = (index == _expandedStatIndex && hasBonus)
+            ? StatDisplayHelper.BuildBreakdown(row.Type, baseVal, equipVal, passiveVal, abilityVal, relicVal, traitVal)
+            : StatDisplayHelper.FormatStat(row.Type, total, isFinal: true);
     }
 }
