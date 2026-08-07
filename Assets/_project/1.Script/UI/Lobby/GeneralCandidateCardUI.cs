@@ -17,7 +17,8 @@ public class GeneralCandidateCardUI : MonoBehaviour
     [SerializeField] Image                _portraitImage;
     [SerializeField] UnitAppearanceBridge _portraitBridge;
     [SerializeField] TextMeshProUGUI      _nameText;
-    [SerializeField] TextMeshProUGUI      _jobGradeText;
+    [SerializeField] TextMeshProUGUI      _jobChipText;    // 초상화 좌상단 배지
+    [SerializeField] TextMeshProUGUI      _gradeChipText;  // 초상화 우상단 배지
     [SerializeField] TextMeshProUGUI      _hpText;
     [SerializeField] TextMeshProUGUI      _atkText;
     [SerializeField] TextMeshProUGUI      _defText;
@@ -27,6 +28,11 @@ public class GeneralCandidateCardUI : MonoBehaviour
 
     [Header("특성")]
     [SerializeField] TraitIconUI _traitIconUI;
+
+    [Header("스킬")]
+    [SerializeField] SkillIconUI   _activeSkillIcon;
+    [SerializeField] SkillIconUI[] _passiveSkillIcons;   // 3칸 — 등급에 따라 1~3칸만 열린다
+    [SerializeField] TextMeshProUGUI _passiveSlotText;   // "패시브 2/3"
 
     UnitEntry         _entry;
     Texture2D         _portraitTexture;
@@ -50,12 +56,15 @@ public class GeneralCandidateCardUI : MonoBehaviour
         UnitJob        job    = UnitJobRoller.GetJob(entry.UnitName);
         HeroStatResult result = HeroStatResolver.Resolve(entry);
         Color          gc     = GradeStyle.GetColor(entry.Grade);
-        string         gcHex  = ColorUtility.ToHtmlStringRGB(gc);
 
-        if (_nameText     != null) _nameText.text     = entry.UnitName;
-        if (_jobGradeText != null) _jobGradeText.text =
-            $"{JobStyle.GetLabel(job)}  ·  <color=#{gcHex}>{GradeStyle.GetLabel(entry.Grade)}</color>";
-        if (_gradeBorder  != null) _gradeBorder.color = gc;
+        if (_nameText      != null) _nameText.text      = entry.UnitName;
+        if (_jobChipText   != null) _jobChipText.text   = JobStyle.GetLabel(job);
+        if (_gradeChipText != null)
+        {
+            _gradeChipText.text  = GradeStyle.GetLabel(entry.Grade);
+            _gradeChipText.color = gc;
+        }
+        if (_gradeBorder   != null) _gradeBorder.color  = gc;
         if (_hpText      != null) { _hpText.text      = $"{result.Total(StatType.MaxHp):N0}";                                           _hpText.color      = StatColors.Hp;      }
         if (_atkText     != null) { _atkText.text      = $"{result.Total(StatType.Attack):N0}";                                          _atkText.color     = StatColors.Atk;     }
         if (_defText     != null) { _defText.text      = $"{StatDisplayHelper.EffectiveDefensePct(result.Total(StatType.Defense)):F1}%"; _defText.color     = StatColors.Def;     }
@@ -86,7 +95,40 @@ public class GeneralCandidateCardUI : MonoBehaviour
             _traitIconUI.Setup(traitData);
         }
 
+        RefreshSkills(entry, job);
         SetSelected(false);
+    }
+
+    // ── 스킬 아이콘 ──────────────────────────────────────────
+    //  액티브·패시브 모두 이름 기반 결정론적 추첨이라, 여기서 보여주는 것과
+    //  실제 전투에서 쓰는 것이 항상 같다 (GeneralRuntimeBridge 와 동일 호출).
+    void RefreshSkills(UnitEntry entry, UnitJob job)
+    {
+        if (_activeSkillIcon != null)
+        {
+            var activeDb = ActiveSkillDatabase.Current;
+            var rolledId = ActiveSkillRoller.Roll(entry.UnitName, job, activeDb, entry.Grade);
+            _activeSkillIcon.SetActiveSkill(rolledId, activeDb?.Get(rolledId));
+        }
+
+        if (_passiveSkillIcons == null) return;
+
+        var passiveDb = PassiveSkillDatabase.Current;
+        var (p0, p1, p2) = PassiveSkillRoller.Roll(entry.UnitName);
+        var rolled = new[] { p0, p1, p2 };
+        int slots  = PassiveSkillRoller.GetActiveSlotCount(entry.Grade);
+
+        for (int i = 0; i < _passiveSkillIcons.Length; i++)
+        {
+            if (_passiveSkillIcons[i] == null) continue;
+            if (i < slots && i < rolled.Length)
+                _passiveSkillIcons[i].SetPassiveSkill(passiveDb?.Get(rolled[i]));
+            else
+                _passiveSkillIcons[i].SetLocked();
+        }
+
+        if (_passiveSlotText != null)
+            _passiveSlotText.text = $"패시브 {slots}/{_passiveSkillIcons.Length}";
     }
 
     public void SetSelected(bool selected)

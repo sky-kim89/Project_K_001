@@ -202,6 +202,62 @@ public static class EditorUIBuilder
     }
 
     // ══════════════════════════════════════════════════════════
+    //  팝업 공용 시각 언어
+    // ══════════════════════════════════════════════════════════
+    //  "어두운 남색 패널 + 헤더 밴드 + 강조선 + 섹션 라벨" 계열.
+    //  EventPopup 에서 시작해 BattleResult / Reincarnation 이 공유한다.
+    //  승패색·확인버튼색처럼 팝업 하나에만 쓰는 강조색은 여기 두지 않는다.
+
+    public static class Pop
+    {
+        public static readonly Color PanelBg     = new Color(0.070f, 0.075f, 0.130f, 1f);
+        public static readonly Color PanelBorder = new Color(0.24f,  0.30f,  0.52f,  1f);
+        public static readonly Color HeaderBg    = new Color(0.095f, 0.110f, 0.200f, 1f);
+        public static readonly Color TitleShadow = new Color(0.02f,  0.02f,  0.06f,  0.85f);
+        public static readonly Color SectionLbl  = new Color(0.66f,  0.70f,  0.86f,  1f);
+        public static readonly Color Divider     = new Color(0.26f,  0.29f,  0.44f,  0.85f);
+        public static readonly Color SlotBg      = new Color(0.105f, 0.115f, 0.190f, 1f);
+        public static readonly Color SubText     = new Color(0.72f,  0.76f,  0.90f,  1f);
+        public static readonly Color TabActive   = new Color(0.24f,  0.40f,  0.74f,  1f);
+        public static readonly Color TabInactive = new Color(0.155f, 0.175f, 0.275f, 1f);
+    }
+
+    /// <summary>
+    /// 가운데 글자 + 좌우 라인 형태의 섹션 구분 라벨 (상단 밴드 배치).
+    /// contentW 는 라인 길이 계산용 — 라벨 줄의 실제 폭이다.
+    /// </summary>
+    public static GameObject SectionLabel(GameObject parent, string text, float yFromTop,
+                                          float contentW, float sidePad)
+    {
+        const float LabelW = 200f;
+        const float Gap    = 16f;
+        float h = UIScale.RowSm;   // FontSm 한 줄이 잘리지 않는 최소 높이 (UI 규칙 5)
+
+        var row = Go($"Section_{text}", parent);
+        AnchorTop(row.GetComponent<RectTransform>(), yFromTop, h, sidePad * 2f);
+
+        var label = TMP(row, "Label", text, UIScale.FontSm, FontStyles.Bold);
+        label.color         = Pop.SectionLbl;
+        label.raycastTarget = false;
+        Center(label.rectTransform, Vector2.zero, new Vector2(LabelW, h));
+
+        for (int side = 0; side < 2; side++)
+        {
+            var line = Go(side == 0 ? "LineL" : "LineR", row);
+            var img  = line.AddComponent<Image>();
+            img.color         = Pop.Divider;
+            img.raycastTarget = false;
+            var rt = line.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(side == 0 ? 0f : 1f, 0.5f);
+            rt.anchorMax = rt.anchorMin;
+            rt.pivot     = new Vector2(side == 0 ? 0f : 1f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = new Vector2((contentW - LabelW) * 0.5f - Gap, 2f);
+        }
+        return row;
+    }
+
+    // ══════════════════════════════════════════════════════════
     //  기호 도형 — 폰트 글리프 대신 Image 로 그린다
     // ══════════════════════════════════════════════════════════
     //  ⚠ 기본 폰트(LiberationSans SDF)에 없는 글자: ★ ✔ ✕ ▶ ◀ ▲ ⚙ 🔒

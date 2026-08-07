@@ -49,6 +49,7 @@ public static class BattlePanelCreator
     static readonly Color BattleBtnC     = new Color(0.11f, 0.72f, 0.58f, 1f);
     static readonly Color AbilityBtnC    = new Color(0.18f, 0.25f, 0.45f, 1f);
     static readonly Color DisassembleBtnC = new Color(0.30f, 0.16f, 0.08f, 1f);
+    static readonly Color ShopBtnC        = new Color(0.42f, 0.30f, 0.10f, 1f);
     static readonly Color MutedText    = new Color(0.55f, 0.55f, 0.60f);
 
     [MenuItem(ProjectKMenu.Lobby + "BattlePanel", priority = ProjectKMenu.PrefabPrio + 13)]
@@ -188,19 +189,25 @@ public static class BattlePanelCreator
         progressText.color = MutedText;
 
         // ── 우측 아이콘 버튼 컬럼 ────────────────────────────
-        //  상점·이벤트 버튼은 없앴다 — 해당 스테이지에 도착하면
-        //  StageSelectUI 가 팝업을 자동으로 띄운다.
+        //  이벤트 버튼은 없다 — 해당 스테이지에 도착하면 StageSelectUI 가 자동으로 띄운다.
+        //  상점 버튼은 되살렸다: 자동으로 뜬 상점을 닫으면 다시 들어갈 길이 없었는데,
+        //  상품은 ShopSeed + RefreshCount 로 고정이라 재입장이 아무것도 바꾸지 않는다.
+        //  (StageSelectUI 가 상점 스테이지에서만 SetActive(true) 한다)
         const float IBtn = 170f;
         const float IGap =  20f;
         float iBtnStep = IBtn + IGap;
 
         var abilityBtn = CreateIconButton(actionArea, "AbilityListBtn", "어빌리티", AbilityBtnC,
             "Assets/_project/3.Textures/Icons/LobbyBtns/btn_ability.png");
-        SetRightColRect(abilityBtn.GetComponent<RectTransform>(), iBtnStep / 2f, IBtn);
+        SetRightColRect(abilityBtn.GetComponent<RectTransform>(), iBtnStep, IBtn);
+
+        var shopBtn = CreateIconButton(actionArea, "ShopBtn", "상점", ShopBtnC,
+            "Assets/_project/3.Textures/Icons/LobbyBtns/btn_shop.png");
+        SetRightColRect(shopBtn.GetComponent<RectTransform>(), 0f, IBtn);
 
         var disassembleBtn = CreateIconButton(actionArea, "DisassembleBtn", "장비 분해", DisassembleBtnC,
             "Assets/_project/3.Textures/Icons/LobbyBtns/btn_disassemble.png");
-        SetRightColRect(disassembleBtn.GetComponent<RectTransform>(), -iBtnStep / 2f, IBtn);
+        SetRightColRect(disassembleBtn.GetComponent<RectTransform>(), -iBtnStep, IBtn);
 
         // 전투 시작 버튼 (하단) — 빈 슬롯 카드가 잘 보이도록 폭·높이를 줄였다.
         var battleBtn   = CreateButton(actionArea, "BattleStartBtn", "전투 시작", BattleBtnC, UIScale.FontMd);
@@ -230,6 +237,7 @@ public static class BattlePanelCreator
         SetObj(so, "_progressText",   progressText);
         SetObj(so, "_progressBar",    progressBarUi);
         SetObj(so, "_abilityListBtn", abilityBtn.GetComponent<Button>());
+        SetObj(so, "_shopBtn",        shopBtn.GetComponent<Button>());
         SetObj(so, "_disassembleBtn", disassembleBtn.GetComponent<Button>());
         SetObj(so, "_battleStartBtn", battleBtn.GetComponent<Button>());
         so.ApplyModifiedProperties();

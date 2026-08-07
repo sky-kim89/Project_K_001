@@ -13,6 +13,12 @@ MonoBehaviour:
   m_Name: GameplayConfig
   m_EditorClassIdentifier: 
   HireMercenaryCost: 500
+  HeroLevelUpCostBase: 100
+  HeroLevelUpCostPerLevel: 10
+  GradeUpCostToUncommon: 8
+  GradeUpCostToRare: 16
+  GradeUpCostToUnique: 28
+  GradeUpCostToEpic: 45
   RelicAcquireCostCommon: 1
   RelicAcquireCostUncommon: 2
   RelicAcquireCostRare: 3
@@ -28,11 +34,16 @@ MonoBehaviour:
   NormalSlots: 1
   DefenseMax: 0.9
   DefenseOverflowRate: 0.1
-  CooldownReduceMax: 0.9
+  CooldownReduceMax: 0.8
   DefenseEffectiveCap: 0.999
   ExpPerLevel: 100
   LevelMultPerLevel: 0.01
   GradeMultPerTier: 0.15
+  LevelFlatHpPerLevel: 10
+  LevelFlatAttackPerLevel: 1
+  SoldierBaseStatRatio: 0.2
+  SoldierRatioPerCommandPower: 0.01
+  SoldierStatRatioMax: 0
   GradeChanceEpic: 0.05
   GradeChanceUnique: 0.1
   GradeChanceRare: 0.2

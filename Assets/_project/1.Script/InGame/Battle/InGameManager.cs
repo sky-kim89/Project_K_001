@@ -162,17 +162,44 @@ public class InGameManager : MonoBehaviour
                 abilityPopup?.Setup(choices, chosen =>
                 {
                     runAbility.AddAbility(chosen.Id);
-                    RecordStageClear();
-                    UserDataManager.Instance.RequestSave();
-                    LobbyManager.Instance.ReturnToLobby();
+                    FinishStageClear();
                 }, db, runAbility, relicInventory, relicDb, reincarnationData);
                 return;
             }
         }
 
         // 선택지가 없을 때는 선택 없이 클리어 처리
+        FinishStageClear();
+    }
+
+    /// <summary>
+    /// 어빌리티 선택까지 끝난 뒤의 마무리 —
+    /// 엘리트 스테이지였으면 용병 고용 팝업을 한 번 띄우고, 그 다음 로비로 돌아간다.
+    /// </summary>
+    void FinishStageClear()
+    {
+        // ⚠ 스테이지 타입은 RecordStageClear() 보다 먼저 읽어야 한다.
+        //   그 안의 AdvanceRunStage() 가 인덱스를 올려 버리면 "다음" 스테이지 타입이 잡힌다.
+        var  progress = UserDataManager.Instance?.Get<StageProgressData>();
+        bool wasElite = GameSession.Instance.HasStage
+                     && progress != null
+                     && progress.CurrentStageType == RunStageType.Elite;
+
         RecordStageClear();
         UserDataManager.Instance?.RequestSave();
+
+        if (wasElite && PopupManager.Instance != null)
+        {
+            var merc = PopupManager.Instance.Open<MercenaryShopPopup>(
+                PopupType.MercenaryShop, onClose: () => LobbyManager.Instance.ReturnToLobby());
+            if (merc != null)
+            {
+                // 엘리트 보상으로 주는 고용이라 골드를 받지 않는다.
+                merc.SetupAsReward();
+                return;
+            }
+        }
+
         LobbyManager.Instance.ReturnToLobby();
     }
 

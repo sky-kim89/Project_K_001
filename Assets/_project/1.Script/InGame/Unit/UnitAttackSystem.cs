@@ -132,14 +132,19 @@ namespace BattleGame.Units
             ref AttackComponent     attack,
             ref UnitStateComponent  unitState,
             in  LocalTransform      transform,
-            in  StatComponent       stat)
+            in  StatComponent       stat,
+            in  HealthComponent     health)
         {
             if (!attack.HasTarget || attack.AttackCooldown > 0f) return;
             if (unitState.Current == UnitState.Hit)      return;
             if (unitState.Current == UnitState.Charging) return;  // KnightChargeJob 이 이동 담당
+            if (health.IsDoomed) return;                          // 사망 확정 — 이동만 한다
             if (!TransformLookup.HasComponent(attack.TargetEntity)) return;
             if (!HealthLookup.HasComponent(attack.TargetEntity))    return;
-            if (HealthLookup[attack.TargetEntity].CurrentHp <= 0f) { attack.HasTarget = false; return; }
+
+            // 이미 죽었거나(HP 0), 날아오는 발사체로 사망이 확정된 타겟은 놓는다 — 오버킬 방지
+            var targetHealth = HealthLookup[attack.TargetEntity];
+            if (targetHealth.CurrentHp <= 0f || targetHealth.IsDoomed) { attack.HasTarget = false; return; }
 
             float3 targetPos   = TransformLookup[attack.TargetEntity].Position;
             attack.TargetPosition = targetPos;
@@ -241,13 +246,19 @@ namespace BattleGame.Units
             in  LocalTransform                     transform,
             in  StatComponent                      stat,
             in  UnitIdentityComponent              identity,
-            in  UnitJobComponent                   jobComp)
+            in  UnitJobComponent                   jobComp,
+            in  HealthComponent                    health)
         {
             if (!attack.HasTarget || attack.AttackCooldown > 0f) return;
             if (unitState.Current == UnitState.Hit) return;  // 속박/스턴 중 공격 불가
+            if (health.IsDoomed) return;                     // 사망 확정 — 이동만 한다
             if (!TransformLookup.HasComponent(attack.TargetEntity)) return;
             if (!HealthLookup.HasComponent(attack.TargetEntity))    return;
-            if (HealthLookup[attack.TargetEntity].CurrentHp <= 0f) { attack.HasTarget = false; return; }
+
+            // 이미 죽었거나, 날아가는 발사체로 사망이 확정된 타겟은 놓는다.
+            // 한 명에게 화살이 몰려 낭비되는 것을 막는 핵심 분기.
+            var targetHealth = HealthLookup[attack.TargetEntity];
+            if (targetHealth.CurrentHp <= 0f || targetHealth.IsDoomed) { attack.HasTarget = false; return; }
 
             float3 targetPos   = TransformLookup[attack.TargetEntity].Position;
             attack.TargetPosition = targetPos;  // 이동 시스템에 항상 최신 위치 전달

@@ -42,7 +42,7 @@ public static class ProjectKBatch
         HeroDetailPopupCreator.Create();
         RunShopPopupCreator.Create();
         ReincarnationPopupCreator.Create();
-        MercenaryPopupCreator.CreateAll();
+        MercenaryPopupCreator.Create();
         EventPopupCreator.Create();
 
         // ── 이펙트 ────────────────────────────────────────────
@@ -85,6 +85,7 @@ public static class ProjectKBatch
         IconGenerator.GenerateAllIcons();        // 직업 · 스킬
         IconGenerator.GenerateTraitIcons();
         IconGenerator.GenerateAbilityIcons();
+        PassiveIconGenerator.GeneratePassiveIcons();
         RelicIconGenerator.GenerateAll();
         ItemIconGenerator.GenerateAll();
         EquipmentIconGenerator.GenerateEquipmentIcons();

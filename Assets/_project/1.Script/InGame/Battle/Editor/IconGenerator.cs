@@ -1252,40 +1252,43 @@ public static class IconGenerator
     {
         EnsureDir(ABILITY_PATH);
 
-        // Normal (A01~A15) — dark-blue bg, grade dot absent
-        Save(48, 48, ABILITY_PATH + "/ability_a01.png", p => DrawAbilIcon(p, DrawSymHp,     TargetCol(0), false));
-        Save(48, 48, ABILITY_PATH + "/ability_a02.png", p => DrawAbilIcon(p, DrawSymAtk,    TargetCol(0), false));
-        Save(48, 48, ABILITY_PATH + "/ability_a03.png", p => DrawAbilIcon(p, DrawSymASpd,   TargetCol(0), false));
-        Save(48, 48, ABILITY_PATH + "/ability_a04.png", p => DrawAbilIcon(p, DrawSymMSpd,   TargetCol(0), false));
-        Save(48, 48, ABILITY_PATH + "/ability_a05.png", p => DrawAbilIcon(p, DrawSymDef,    TargetCol(0), false));
-        Save(48, 48, ABILITY_PATH + "/ability_a06.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymHpSm, TargetCol(1), false));
-        Save(48, 48, ABILITY_PATH + "/ability_a07.png", p => DrawAbilIconDual(p, DrawSymRange, DrawSymASpdSm, TargetCol(2), false));
-        Save(48, 48, ABILITY_PATH + "/ability_a08.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymCdrSm,  TargetCol(3), false));
-        Save(48, 48, ABILITY_PATH + "/ability_a09.png", p => DrawAbilIconDual(p, DrawSymDef,  DrawSymHpSm, TargetCol(4), false));
-        Save(48, 48, ABILITY_PATH + "/ability_a10.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymMSpdSm, TargetCol(5), false));
-        Save(48, 48, ABILITY_PATH + "/ability_a11.png", p => DrawAbilIconDual(p, DrawSymRange, DrawSymAtkSm, TargetCol(6), false));
-        Save(48, 48, ABILITY_PATH + "/ability_a12.png", p => DrawAbilIconDual(p, DrawSymCrown, DrawSymDefSm, TargetCol(7), false));
-        Save(48, 48, ABILITY_PATH + "/ability_a13.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymMSpdSm, TargetCol(8), false));
-        Save(48, 48, ABILITY_PATH + "/ability_a14.png", p => DrawAbilIcon(p, DrawSymCrit,   TargetCol(0), false));
-        Save(48, 48, ABILITY_PATH + "/ability_a15.png", p => DrawAbilIcon(p, DrawSymRange,  TargetCol(0), false));
-        Save(48, 48, ABILITY_PATH + "/ability_a16.png", p => DrawAbilIcon(p, DrawSymHp,     TargetCol(8), false));
-        Save(48, 48, ABILITY_PATH + "/ability_a17.png", p => DrawAbilIcon(p, DrawSymCrown,  TargetCol(7), false));
+        // ── Normal (A01~A17) ──────────────────────────────────
+        //  예전엔 배경 1종 + 테두리 1종에 심볼 8개를 돌려 써서
+        //  a01 = a16, a10 = a13, a12 = a17 처럼 같은 그림이 색만 달랐다.
+        //  이제 배경·테두리·뱃지까지 조합으로 흩어 전부 다른 그림이 된다.
+        AbilIcon("a01", IconArt.Glyph.Heart,  "5CE07A", IconArt.Bg.Radial,   IconArt.Frame.Round,  IconArt.Badge.Up);
+        AbilIcon("a02", IconArt.Glyph.Sword,  "FF6A4A", IconArt.Bg.Burst,    IconArt.Frame.Cut,    IconArt.Badge.Up);
+        AbilIcon("a03", IconArt.Glyph.Bolt,   "FFD34A", IconArt.Bg.Diagonal, IconArt.Frame.Notch,  IconArt.Badge.Up);
+        AbilIcon("a04", IconArt.Glyph.Boot,   "5CD2FF", IconArt.Bg.Diagonal, IconArt.Frame.Round,  IconArt.Badge.Up);
+        AbilIcon("a05", IconArt.Glyph.Shield, "6FA8FF", IconArt.Bg.Halo,     IconArt.Frame.Rivet,  IconArt.Badge.Up);
+        AbilIcon("a06", IconArt.Glyph.Fist,   "CC3333", IconArt.Bg.Plate,    IconArt.Frame.Rivet,  IconArt.Badge.Up);
+        AbilIcon("a07", IconArt.Glyph.Bow,    "33BB44", IconArt.Bg.Radial,   IconArt.Frame.Cut,    IconArt.Badge.Plus);
+        AbilIcon("a08", IconArt.Glyph.Hourglass, "9933FF", IconArt.Bg.Halo,  IconArt.Frame.Double, IconArt.Badge.Minus);
+        AbilIcon("a09", IconArt.Glyph.Anvil,  "22BBCC", IconArt.Bg.Plate,    IconArt.Frame.Notch,  IconArt.Badge.Up);
+        AbilIcon("a10", IconArt.Glyph.Arrows, "FF8833", IconArt.Bg.Burst,    IconArt.Frame.Round,  IconArt.Badge.Up);
+        AbilIcon("a11", IconArt.Glyph.Eye,    "33CCFF", IconArt.Bg.Halo,     IconArt.Frame.Cut,    IconArt.Badge.Plus);
+        AbilIcon("a12", IconArt.Glyph.Crown,  "D4A840", IconArt.Bg.Split,    IconArt.Frame.Double, IconArt.Badge.Up);
+        AbilIcon("a13", IconArt.Glyph.Soldiers, "7799BB", IconArt.Bg.Split,  IconArt.Frame.Rivet,  IconArt.Badge.Up);
+        AbilIcon("a14", IconArt.Glyph.Star,   "FF5FA8", IconArt.Bg.Burst,    IconArt.Frame.Notch,  IconArt.Badge.Percent);
+        AbilIcon("a15", IconArt.Glyph.Aura,   "3FC8FF", IconArt.Bg.Halo,     IconArt.Frame.Round,  IconArt.Badge.Plus);
+        AbilIcon("a16", IconArt.Glyph.Pulse,  "9EE04A", IconArt.Bg.Diagonal, IconArt.Frame.Double, IconArt.Badge.Up);
+        AbilIcon("a17", IconArt.Glyph.Banner, "FFB428", IconArt.Bg.Plate,    IconArt.Frame.Cut,    IconArt.Badge.Star);
 
-        // Advanced (B01~B12) — amber bg, gold star present
-        Save(48, 48, ABILITY_PATH + "/ability_b01.png", p => DrawAbilIcon(p, DrawSymHp,     TargetCol(0), true));
-        Save(48, 48, ABILITY_PATH + "/ability_b02.png", p => DrawAbilIcon(p, DrawSymAtk,    TargetCol(0), true));
-        Save(48, 48, ABILITY_PATH + "/ability_b03.png", p => DrawAbilIcon(p, DrawSymASpd,   TargetCol(0), true));
-        Save(48, 48, ABILITY_PATH + "/ability_b04.png", p => DrawAbilIcon(p, DrawSymMSpd,   TargetCol(0), true));
-        Save(48, 48, ABILITY_PATH + "/ability_b05.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymHpSm, TargetCol(1), true));
-        Save(48, 48, ABILITY_PATH + "/ability_b06.png", p => DrawAbilIconDual(p, DrawSymRange, DrawSymASpdSm, TargetCol(2), true));
-        Save(48, 48, ABILITY_PATH + "/ability_b07.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymCdrSm,  TargetCol(3), true));
-        Save(48, 48, ABILITY_PATH + "/ability_b08.png", p => DrawAbilIconDual(p, DrawSymDef,  DrawSymHpSm, TargetCol(4), true));
-        Save(48, 48, ABILITY_PATH + "/ability_b09.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymMSpdSm, TargetCol(5), true));
-        Save(48, 48, ABILITY_PATH + "/ability_b10.png", p => DrawAbilIconDual(p, DrawSymRange, DrawSymAtkSm, TargetCol(6), true));
-        Save(48, 48, ABILITY_PATH + "/ability_b11.png", p => DrawAbilIconDual(p, DrawSymCrown, DrawSymDefSm, TargetCol(7), true));
-        Save(48, 48, ABILITY_PATH + "/ability_b12.png", p => DrawAbilIconDual(p, DrawSymAtk,  DrawSymMSpdSm, TargetCol(8), true));
-        Save(48, 48, ABILITY_PATH + "/ability_b13.png", p => DrawAbilIcon(p, DrawSymHp,     TargetCol(8), true));
-        Save(48, 48, ABILITY_PATH + "/ability_b14.png", p => DrawAbilIcon(p, DrawSymCrown,  TargetCol(7), true));
+        // ── Advanced (B01~B14) — 같은 축을 쓰되 전부 다른 조합 ──
+        AbilIcon("b01", IconArt.Glyph.Heart,  "8CFFA8", IconArt.Bg.Halo,     IconArt.Frame.Double, IconArt.Badge.Star);
+        AbilIcon("b02", IconArt.Glyph.Sword,  "FF9070", IconArt.Bg.Plate,    IconArt.Frame.Notch,  IconArt.Badge.Star);
+        AbilIcon("b03", IconArt.Glyph.Gear,   "FFE07A", IconArt.Bg.Burst,    IconArt.Frame.Rivet,  IconArt.Badge.Bolt);
+        AbilIcon("b04", IconArt.Glyph.Spiral, "8CE2FF", IconArt.Bg.Radial,   IconArt.Frame.Cut,    IconArt.Badge.Up);
+        AbilIcon("b05", IconArt.Glyph.Fist,   "FF6B6B", IconArt.Bg.Burst,    IconArt.Frame.Double, IconArt.Badge.Star);
+        AbilIcon("b06", IconArt.Glyph.Bow,    "76E888", IconArt.Bg.Diagonal, IconArt.Frame.Rivet,  IconArt.Badge.Star);
+        AbilIcon("b07", IconArt.Glyph.Hourglass, "C48CFF", IconArt.Bg.Split, IconArt.Frame.Notch,  IconArt.Badge.Clock);
+        AbilIcon("b08", IconArt.Glyph.Anvil,  "6FE0EE", IconArt.Bg.Halo,     IconArt.Frame.Cut,    IconArt.Badge.Star);
+        AbilIcon("b09", IconArt.Glyph.Flame,  "FFAE6B", IconArt.Bg.Burst,    IconArt.Frame.Round,  IconArt.Badge.Up);
+        AbilIcon("b10", IconArt.Glyph.Arrows, "7ADCFF", IconArt.Bg.Diagonal, IconArt.Frame.Double, IconArt.Badge.Star);
+        AbilIcon("b11", IconArt.Glyph.Crown,  "FFD98A", IconArt.Bg.Plate,    IconArt.Frame.Rivet,  IconArt.Badge.Star);
+        AbilIcon("b12", IconArt.Glyph.Soldiers, "A8C4E0", IconArt.Bg.Radial, IconArt.Frame.Notch,  IconArt.Badge.Star);
+        AbilIcon("b13", IconArt.Glyph.Chain,  "9EFFC4", IconArt.Bg.Split,    IconArt.Frame.Round,  IconArt.Badge.Star);
+        AbilIcon("b14", IconArt.Glyph.Horn,   "FFCF6B", IconArt.Bg.Halo,     IconArt.Frame.Rivet,  IconArt.Badge.Star);
 
         // Special (C01~C11) — dark crimson bg, diamond marker
         Save(48, 48, ABILITY_PATH + "/ability_c01.png", DrawSpecialC01);
@@ -1333,6 +1336,11 @@ public static class IconGenerator
             default: return Hex("CCCCDD");
         }
     }
+
+    static void AbilIcon(string id, IconArt.Glyph g, string accentHex,
+                         IconArt.Bg bg, IconArt.Frame fr, IconArt.Badge bd)
+        => Save(48, 48, $"{ABILITY_PATH}/ability_{id}.png",
+                p => IconArt.Compose(p, new IconArt.Style(g, Hex(accentHex), bg, fr, bd)));
 
     static void DrawAbilIcon(P p, Action<P, Color32, bool> symDraw, Color32 borderCol, bool advanced)
     {
@@ -1939,26 +1947,30 @@ public static class IconGenerator
         Save(64, 64, CLASS_PATH + "/shieldbearer_icon.png", DrawShieldBearer);
 
         // 스킬 아이콘 (48×48)
-        Save(48, 48, SKILL_PATH + "/skill_heavy_strike.png",      DrawHeavyStrike);
-        Save(48, 48, SKILL_PATH + "/skill_volley_fire.png",        DrawVolleyFire);
-        Save(48, 48, SKILL_PATH + "/skill_leap_strike.png",        DrawLeapStrike);
-        Save(48, 48, SKILL_PATH + "/skill_heal_aura.png",          DrawHealAura);
-        Save(48, 48, SKILL_PATH + "/skill_target_heal.png",        DrawTargetHeal);
-        Save(48, 48, SKILL_PATH + "/skill_charge_soldier.png",     DrawChargeSoldier);
-        Save(48, 48, SKILL_PATH + "/skill_summon_skeleton.png",    DrawSummonSkeleton);
-        Save(48, 48, SKILL_PATH + "/skill_poison_zone.png",        DrawPoisonZone);
-        Save(48, 48, SKILL_PATH + "/skill_meteor.png",             DrawMeteor);
-        Save(48, 48, SKILL_PATH + "/skill_blizzard.png",           DrawBlizzard);
-        Save(48, 48, SKILL_PATH + "/skill_sacrifice_soldier.png",  DrawSacrificeSoldier);
-        Save(48, 48, SKILL_PATH + "/skill_bind.png",               DrawBind);
-        Save(48, 48, SKILL_PATH + "/skill_suicide_soldier.png",    DrawSuicideSoldier);
-        Save(48, 48, SKILL_PATH + "/skill_berserker.png",          DrawBerserker);
-        Save(48, 48, SKILL_PATH + "/skill_iron_shield.png",        DrawIronShield);
-        Save(48, 48, SKILL_PATH + "/skill_arrow_rain.png",         DrawArrowRain);
-        Save(48, 48, SKILL_PATH + "/skill_battle_cry.png",         DrawBattleCry);
-        Save(48, 48, SKILL_PATH + "/skill_shockwave.png",          DrawShockwave);
-        Save(48, 48, SKILL_PATH + "/skill_swift_strike.png",       DrawSwiftStrike);
-        Save(48, 48, SKILL_PATH + "/skill_summon_elite.png",       DrawSummonElite);
+        //  그림 자체는 스킬마다 따로 그린다 (메테오·블리자드처럼 알아볼 수 있어야 한다).
+        //  대신 마감(하이라이트·비네트·테두리·뱃지)은 IconArt.Overlay 로 통일해
+        //  20장이 한 벌로 보이게 하고, 테두리 색·모양·뱃지로 계열을 갈라 놓는다.
+        //    뱃지 = 스킬 성격:  Bolt 피해 · Plus 회복 · Star 소환 · Up 강화 · Down 약화 · Clock 제어
+        SkillIcon("heavy_strike",     DrawHeavyStrike,     SkMelee,  IconArt.Frame.Rivet,  IconArt.Badge.Bolt);
+        SkillIcon("volley_fire",      DrawVolleyFire,      SkRanged, IconArt.Frame.Notch,  IconArt.Badge.Bolt);
+        SkillIcon("leap_strike",      DrawLeapStrike,      SkMelee,  IconArt.Frame.Cut,    IconArt.Badge.Bolt);
+        SkillIcon("heal_aura",        DrawHealAura,        SkHeal,   IconArt.Frame.Double, IconArt.Badge.Plus);
+        SkillIcon("target_heal",      DrawTargetHeal,      SkHeal,   IconArt.Frame.Round,  IconArt.Badge.Plus);
+        SkillIcon("charge_soldier",   DrawChargeSoldier,   SkGuard,  IconArt.Frame.Rivet,  IconArt.Badge.Up);
+        SkillIcon("summon_skeleton",  DrawSummonSkeleton,  SkSummon, IconArt.Frame.Notch,  IconArt.Badge.Star);
+        SkillIcon("poison_zone",      DrawPoisonZone,      SkCurse,  IconArt.Frame.Cut,    IconArt.Badge.Down);
+        SkillIcon("meteor",           DrawMeteor,          SkArcane, IconArt.Frame.Double, IconArt.Badge.Bolt);
+        SkillIcon("blizzard",         DrawBlizzard,        SkFrost,  IconArt.Frame.Round,  IconArt.Badge.Clock);
+        SkillIcon("sacrifice_soldier",DrawSacrificeSoldier,SkCurse,  IconArt.Frame.Notch,  IconArt.Badge.Minus);
+        SkillIcon("bind",             DrawBind,            SkFrost,  IconArt.Frame.Rivet,  IconArt.Badge.Clock);
+        SkillIcon("suicide_soldier",  DrawSuicideSoldier,  SkArcane, IconArt.Frame.Cut,    IconArt.Badge.Bolt);
+        SkillIcon("berserker",        DrawBerserker,       SkMelee,  IconArt.Frame.Double, IconArt.Badge.Up);
+        SkillIcon("iron_shield",      DrawIronShield,      SkGuard,  IconArt.Frame.Double, IconArt.Badge.Up);
+        SkillIcon("arrow_rain",       DrawArrowRain,       SkRanged, IconArt.Frame.Rivet,  IconArt.Badge.Bolt);
+        SkillIcon("battle_cry",       DrawBattleCry,       SkGuard,  IconArt.Frame.Notch,  IconArt.Badge.Up);
+        SkillIcon("shockwave",        DrawShockwave,       SkMelee,  IconArt.Frame.Round,  IconArt.Badge.Down);
+        SkillIcon("swift_strike",     DrawSwiftStrike,     SkRanged, IconArt.Frame.Cut,    IconArt.Badge.Up);
+        SkillIcon("summon_elite",     DrawSummonElite,     SkSummon, IconArt.Frame.Double, IconArt.Badge.Star);
 
         AssetDatabase.Refresh();
         // Sprite 임포트 설정 적용
@@ -1967,6 +1979,24 @@ public static class IconGenerator
         AssetDatabase.SaveAssets();
         Debug.Log("[IconGenerator] 아이콘 24장 생성 완료.");
     }
+
+    // ── 액티브 스킬 계열색 (테두리·뱃지에 쓴다) ───────────────
+    static readonly Color32 SkMelee  = Hex("FF6A3D");   // 근접 타격
+    static readonly Color32 SkRanged = Hex("6ED96A");   // 원거리
+    static readonly Color32 SkArcane = Hex("B15CFF");   // 마법 폭발
+    static readonly Color32 SkFrost  = Hex("5CD2FF");   // 냉기·제어
+    static readonly Color32 SkHeal   = Hex("5CE0A8");   // 회복
+    static readonly Color32 SkGuard  = Hex("FFC24A");   // 방어·강화
+    static readonly Color32 SkSummon = Hex("C9B08A");   // 소환
+    static readonly Color32 SkCurse  = Hex("A6D13C");   // 독·저주
+
+    static void SkillIcon(string fileName, Action<P> draw,
+                          Color32 accent, IconArt.Frame frame, IconArt.Badge badge)
+        => Save(48, 48, $"{SKILL_PATH}/skill_{fileName}.png", p =>
+        {
+            draw(p);
+            IconArt.Overlay(p, accent, frame, badge);
+        });
 
     // ─────────────────────────────────────────────────────
     //  ■ 직업 아이콘
@@ -2790,7 +2820,7 @@ public static class IconGenerator
     // ─────────────────────────────────────────────────────
     static Color32 Tint(Color32 a, Color32 b, float t) => Color32.Lerp(a, b, t);
 
-    static Color32 Hex(string h)
+    public static Color32 Hex(string h)
     {
         h = h.TrimStart('#');
         byte r = Convert.ToByte(h.Substring(0, 2), 16);
@@ -2811,11 +2841,12 @@ public static class IconGenerator
         Save(64, 64, LOBBY_BTN_PATH + "/btn_disassemble.png", DrawBtnDisassemble);
         Save(64, 64, LOBBY_BTN_PATH + "/btn_ability.png",     DrawBtnAbility);
         Save(64, 64, LOBBY_BTN_PATH + "/btn_relic.png",       DrawBtnRelic);
+        Save(64, 64, LOBBY_BTN_PATH + "/btn_shop.png",        DrawBtnShop);
 
         AssetDatabase.Refresh();
         ApplySpriteImportSettings(LOBBY_BTN_PATH, 64);
         AssetDatabase.SaveAssets();
-        Debug.Log("[IconGenerator] 로비 버튼 아이콘 3장 생성 완료.");
+        Debug.Log("[IconGenerator] 로비 버튼 아이콘 4장 생성 완료.");
     }
 
     // 장비 분해 버튼 아이콘 — 망치 + 검 교차 (파괴 느낌)
@@ -2899,20 +2930,48 @@ public static class IconGenerator
         p.FillCircle(14, 44, 2, new Color32(200, 100, 255, 150));
     }
 
-    static void Save(int w, int h, string assetPath, Action<P> draw)
+    // 상점 재입장 버튼 아이콘 — 차양 친 좌판 + 금화 (행상인의 좌판)
+    static void DrawBtnShop(P p)
+    {
+        p.BgGradient(Hex("0E0A04"), Hex("3A2A0A"));
+        p.RoundedBorder(10, 2, Hex("CC9933"));
+
+        // 차양 — 밝은/어두운 줄무늬 (좌판의 상징)
+        p.FillRRect(10, 12, 44, 12, 3, Hex("CC4433"));
+        for (int i = 0; i < 4; i++)
+            p.FillRect(14 + i * 11, 12, 5, 12, Hex("EEDDCC"));
+
+        // 좌판 상판
+        p.FillRect(10, 26, 44, 4, Hex("8B6020"));
+        // 다리
+        p.FillRect(14, 30, 4, 18, Hex("6A4418"));
+        p.FillRect(46, 30, 4, 18, Hex("6A4418"));
+
+        // 금화 더미 (상판 위가 아니라 앞쪽 바닥 — 좌판에 가려지지 않게)
+        p.FillCircle(26, 42, 7, Hex("D4A840"));
+        p.FillCircle(26, 40, 5, Hex("FFD966"));
+        p.FillCircle(38, 45, 6, Hex("D4A840"));
+        p.FillCircle(38, 43, 4, Hex("FFD966"));
+
+        // 반짝임
+        p.FillCircle(50, 20, 2, new Color32(255, 240, 180, 200));
+        p.FillCircle(15, 40, 2, new Color32(255, 240, 180, 150));
+    }
+
+    public static void Save(int w, int h, string assetPath, Action<P> draw)
     {
         var painter = new P(w, h);
         draw(painter);
         painter.Save(assetPath);
     }
 
-    static void EnsureDir(string assetPath)
+    public static void EnsureDir(string assetPath)
     {
         string full = Path.Combine(Application.dataPath, "..", assetPath);
         Directory.CreateDirectory(full);
     }
 
-    static void ApplySpriteImportSettings(string folder, int size)
+    public static void ApplySpriteImportSettings(string folder, int size)
     {
         var guids = AssetDatabase.FindAssets("t:Texture2D", new[] { folder });
         foreach (var guid in guids)
@@ -2935,7 +2994,7 @@ public static class IconGenerator
     // ═══════════════════════════════════════════════════════
     //  ■ Painter — 픽셀 그리기 헬퍼
     // ═══════════════════════════════════════════════════════
-    class P
+    public class P
     {
         public int W, H;
         readonly Color32[] px;

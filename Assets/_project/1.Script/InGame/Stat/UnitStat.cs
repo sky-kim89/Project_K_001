@@ -205,6 +205,15 @@ public class UnitStat
                     { if (v > max) max = v; any = true; }
                 return any ? max : 0f;
             }
+            case CombineMode.MultiplyResidual:
+            {
+                // 1 - Π(1 - v). 레이어 하나면 그 값 그대로 나온다.
+                // Settle() 로 한 레이어에 압축된 뒤에도 값이 보존된다.
+                float remain = 1f;
+                foreach (var layer in _layers.Values)
+                    if (layer.TryGetValue(type, out float v)) remain *= (1f - v);
+                return 1f - remain;
+            }
         }
         return 0f;
     }

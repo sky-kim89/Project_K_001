@@ -8,7 +8,8 @@ using BattleGame.Units;
 //
 //  Inspector:
 //    TriggerType   = OnBattleStart
-//    GoldPerBonus  : 보너스 1회당 필요 골드 (기본 1000)
+//    GoldPerBonus  : 보너스 1회당 필요 골드 (기본 300)
+//                    골드 수급이 1/3 로 내려가 1000 → 300 으로 재조정됨
 //    AttackPercent : 보너스당 공격력 증가율 (0.01 = 1%)
 //    HpPercent     : 보너스당 최대체력 증가율 (0.01 = 1%)
 // ============================================================
@@ -18,7 +19,7 @@ public class PassiveGoldenPower : PassiveSkillData
 {
     [Header("황금의 힘 설정")]
     [Tooltip("골드 N당 보너스 1단계 증가")]
-    public int GoldPerBonus = 1000;
+    public int GoldPerBonus = 300;
 
     [Tooltip("단계당 공격력 증가율 (0.01 = 1%)")]
     [Range(0f, 0.1f)]

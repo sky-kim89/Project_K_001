@@ -13,7 +13,16 @@ using TMPro;
 //    - 웨이브 텍스트 / 진행 바 / 경과 타이머
 //    - 보스 HP 바 (BossComponent 엔티티가 존재할 때만 표시)
 //    - 적 처치 수 (BattleManager.OnUnitKilled 이벤트)
-//    - 배속 버튼 (1× / 2× / 3×  → Time.timeScale 직접 설정)
+//    - 우상단: [배속 토글] [일시 정지]
+//
+//  ■ 배속은 버튼 하나짜리 토글이다
+//    누를 때마다 1× → 2× → 3× → 1× 로 돌아간다.
+//    ⚠ 예전엔 1×/2×/3× 버튼 3개가 따로 있어 상단 폭을 셋이서 나눠 먹었다.
+//      셋 중 하나만 켜져 있으므로 정보량은 같은데 자리만 3배로 썼다.
+//
+//  ⚠ 일시 정지 중에는 배속을 바꾸지 않는다
+//    PausePopup 이 timeScale=0 을 걸고 닫힐 때 이전 값으로 되돌린다.
+//    그 사이에 배속을 건드리면 팝업이 0 을 덮어써서 게임이 멈춘 채로 돌아온다.
 // ============================================================
 
 public class TopBarUI : MonoBehaviour
@@ -31,19 +40,30 @@ public class TopBarUI : MonoBehaviour
     [Header("킬 카운터")]
     [SerializeField] TextMeshProUGUI _killCountText;
 
-    [Header("배속 버튼")]
-    [SerializeField] Button _speed1xButton;
-    [SerializeField] Button _speed2xButton;
-    [SerializeField] Button _speed3xButton;
-    [SerializeField] Color  _activeSpeedColor   = new Color(1.00f, 0.80f, 0.20f, 1f);
-    [SerializeField] Color  _inactiveSpeedColor = new Color(0.50f, 0.50f, 0.50f, 1f);
+    [Header("배속 토글 (누를 때마다 1× → 2× → 3×)")]
+    [SerializeField] Button          _speedButton;
+    [SerializeField] TextMeshProUGUI _speedLabel;
+    // ⚠ 버튼 본체가 아니라 그 위에 얹은 색 띠를 가리킨다.
+    //   본체는 Button.targetGraphic 이라 색을 바꾸면 눌림 색 역산이 어긋난다.
+    [SerializeField] Image           _speedFace;
 
     [Header("일시 정지")]
     [SerializeField] Button _pauseButton;
 
+    /// <summary>토글 순서. 여기에 값을 더하면 버튼이 그대로 따라간다.</summary>
+    static readonly float[] SpeedSteps = { 1f, 2f, 3f };
+
+    static readonly Color[] SpeedColors =
+    {
+        new Color(0.18f, 0.30f, 0.46f, 1f),   // 1× — 차분한 남색
+        new Color(0.24f, 0.46f, 0.36f, 1f),   // 2× — 청록
+        new Color(0.52f, 0.36f, 0.10f, 1f),   // 3× — 금빛 (가장 빠름)
+    };
+
     // ── 런타임 상태 ─────────────────────────────────────────────
     int         _killCount;
     float       _waveElapsed;
+    int         _speedIndex;
     BattleState _prevState = BattleState.None;
     EntityManager _em;
     EntityQuery   _bossQuery;
@@ -52,12 +72,11 @@ public class TopBarUI : MonoBehaviour
 
     void Awake()
     {
-        _speed1xButton?.onClick.AddListener(() => SetSpeed(1f));
-        _speed2xButton?.onClick.AddListener(() => SetSpeed(2f));
-        _speed3xButton?.onClick.AddListener(() => SetSpeed(3f));
-        UpdateSpeedButtonUI(1f);
-
+        _speedButton?.onClick.AddListener(CycleSpeed);
         _pauseButton?.onClick.AddListener(OpenPausePopup);
+
+        _speedIndex = 0;
+        ApplySpeed();
 
         BattleManager.OnUnitKilled += HandleUnitKilled;
     }
@@ -112,7 +131,7 @@ public class TopBarUI : MonoBehaviour
         int   current = Mathf.Max(1, ctx.CurrentWave);  // 0 방지 (초기화 전 프레임 대응)
         float progress = total > 1 ? Mathf.Clamp01((float)(current - 1) / (total - 1)) : 1f;
 
-        if (_waveText         != null) _waveText.text              = $"Wave {current} / {total}";
+        if (_waveText         != null) _waveText.text              = $"웨이브 {current} / {total}";
         if (_waveProgressFill != null) _waveProgressFill.fillAmount = progress;
         if (_waveTimerText    != null) _waveTimerText.text          = FormatTime(_waveElapsed);
     }
@@ -140,13 +159,13 @@ public class TopBarUI : MonoBehaviour
         float ratio = Mathf.Clamp01(cur / maxHp);
 
         if (_bossHpFill != null) _bossHpFill.fillAmount = ratio;
-        if (_bossHpText != null) _bossHpText.text       = $"{Mathf.CeilToInt(cur)} / {Mathf.RoundToInt(maxHp)}";
+        if (_bossHpText != null) _bossHpText.text       = $"보스   {Mathf.CeilToInt(cur):N0} / {Mathf.RoundToInt(maxHp):N0}";
     }
 
     void RefreshKillCount()
     {
         if (_killCountText != null)
-            _killCountText.text = _killCount.ToString();
+            _killCountText.text = $"처치 {_killCount}";
     }
 
     // ── 이벤트 ─────────────────────────────────────────────────
@@ -169,26 +188,25 @@ public class TopBarUI : MonoBehaviour
         PopupManager.Instance.Open(PopupType.Pause);
     }
 
-    // ── 배속 버튼 ─────────────────────────────────────────────
+    // ── 배속 토글 ─────────────────────────────────────────────
 
-    void SetSpeed(float speed)
+    void CycleSpeed()
     {
+        // 일시 정지 중(timeScale=0)이면 무시 — PausePopup 이 닫히며 값을 되돌린다.
+        // 여기서 바꾸면 그 복원값이 0 으로 덮여 게임이 멈춘 채 돌아온다.
+        if (Time.timeScale <= 0f) return;
+
+        _speedIndex = (_speedIndex + 1) % SpeedSteps.Length;
+        ApplySpeed();
+    }
+
+    void ApplySpeed()
+    {
+        float speed = SpeedSteps[_speedIndex];
         Time.timeScale = speed;
-        UpdateSpeedButtonUI(speed);
-    }
 
-    void UpdateSpeedButtonUI(float currentSpeed)
-    {
-        SetBtnColor(_speed1xButton, Mathf.Approximately(currentSpeed, 1f));
-        SetBtnColor(_speed2xButton, Mathf.Approximately(currentSpeed, 2f));
-        SetBtnColor(_speed3xButton, Mathf.Approximately(currentSpeed, 3f));
-    }
-
-    void SetBtnColor(Button btn, bool active)
-    {
-        if (btn == null) return;
-        var img = btn.GetComponent<Image>();
-        if (img != null) img.color = active ? _activeSpeedColor : _inactiveSpeedColor;
+        if (_speedLabel != null) _speedLabel.text  = $"{speed:0}×";
+        if (_speedFace  != null) _speedFace.color  = SpeedColors[_speedIndex];
     }
 
     // ── 유틸 ─────────────────────────────────────────────────

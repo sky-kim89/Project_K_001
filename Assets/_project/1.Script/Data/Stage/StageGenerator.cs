@@ -67,12 +67,16 @@ public static class StageGenerator
                                    progress, waveT, statMult, isHurdle, rng));
         }
 
-        int goldReward  = Mathf.Max(10,  Mathf.RoundToInt(Mathf.Lerp(config.GoldRewardMin,  config.GoldRewardMax,  progress)));
+        // 골드만 선형 등차 — 진행도 보간(지수적 상승)에서 내려온 값
+        int goldReward  = Mathf.Max(10,  config.GoldRewardBase + (stageNumber - 1) * config.GoldRewardPerStage);
         int stoneReward = Mathf.Max(1,   Mathf.RoundToInt(Mathf.Lerp(config.StoneRewardMin, config.StoneRewardMax, progress)));
         int expReward   = Mathf.Max(1,   Mathf.RoundToInt(Mathf.Lerp(config.ExpRewardMin,   config.ExpRewardMax,   progress)));
         int block        = (stageNumber - 1) / 5;
         int shardReward  = config.ShardRewardBase + block * config.ShardRewardPerBlock
                            + (isHurdle ? config.ShardHurdleBonus : 0);
+        // 장군 강화석 — 등급업 전용 재화. 30스테이지 완주 시 누적 약 150개.
+        int generalStone = config.GeneralStoneRewardBase + block * config.GeneralStoneRewardPerBlock
+                           + (isHurdle ? config.GeneralStoneHurdleBonus : 0);
         int equipBoxReward = stageNumber >= config.EquipBoxThreshold3 ? 3
                            : stageNumber >= config.EquipBoxThreshold2 ? 2
                            : 1;
@@ -93,6 +97,7 @@ public static class StageGenerator
             StoneReward = stoneReward,
             ExpReward   = expReward,
             ShardReward    = shardReward,
+            GeneralStoneReward = generalStone,
             EquipBoxReward = equipBoxReward,
             Waves          = waves,
         };

@@ -60,9 +60,11 @@ namespace BattleGame.Units
                 float     statCount    = generalStat[StatType.SoldierCount];
                 int       count        = request.ValueRO.Count + (int)math.max(0f, statCount);
 
-                // CommandPower — 1포인트당 병사 스텟 1% 증가 (기본 StatScaleRatio 에 곱)
+                // CommandPower — 1포인트당 병사 스텟 +1%p 가산 (상한 없음).
+                // ⚠ 공식은 SoldierRuntimeBridge.StatRatio 와 같은 형태를 유지할 것
+                //   (여기는 Burst 라 GameplayConfig 를 읽지 못해 Authoring 값을 기준으로 쓴다)
                 float commandPower = generalStat[StatType.CommandPower];
-                float ratio        = request.ValueRO.StatScaleRatio * (1f + commandPower * 0.01f);
+                float ratio        = math.max(0f, request.ValueRO.StatScaleRatio + commandPower * 0.01f);
 
                 Entity   prefab = request.ValueRO.SoldierPrefab;
                 TeamType team   = identity.ValueRO.Team;

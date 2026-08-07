@@ -21,10 +21,16 @@ using UnityEngine.UI;
 //      분해 문자열이 통째로 "..." 으로 바뀌어 숫자가 사라졌다.
 //
 //  ■ 새 레이아웃 (전체 화면 1840×1000, 3단)
-//    Header  H=136   ◆ 장 수 | 이름(동적)                              [X]
+//    Header  H=136   ◆ 장 수 | 이름(동적)      [재화 4종]           [X]
 //    Body    H=814   Left 580 | Mid 460 | Right 720   (간격 20)
 //      Left   초상화 400 + 장비 3칸(144 세로 스트립, 아이콘만)
-//             Lv · 직업 · 등급 / (하단) EXP 바 + 레벨업·용병 버튼
+//             초상화 아래 [등급업][해고] / Lv · 직업 · 등급
+//             / (하단) EXP 바 + 레벨업·용병 버튼
+//
+//    ⚠ 초상화(400) 아래 빈 자리에 대해
+//      장비 스트립은 168×3+8×2 = 520 이라 초상화보다 120 길다.
+//      그래서 x 12~412 / y 412~552 가 통째로 비어 있었고, 여기에 등급업·해고 행을 넣었다.
+//      RankRowH 를 키우면 정보 행(infoY)과 겹치므로 반드시 다시 계산할 것.
 //      Mid    "스 탯" + [장 수 | 용 병] 토글 + 9행 — 전부 노출.
 //             행을 누르면 출처별 분해. 용병 탭은 배율을 곱한 값 + 3행 숨김
 //      Right  "스 킬" + 액티브 1 + 패시브 3 — 설명을 FontMd 로 크게
@@ -63,16 +69,30 @@ public static class HeroDetailPopupCreator
     const float EquipTileGap = 8f;     // 168×3 + 8×2 = 520
     const float DivH         = 36f;
 
+    // 초상화(400) 아래 ~ 정보 행(infoY) 사이의 빈 높이 = 520 + 20 - 400 = 140.
+    // 등급업·해고 행이 이 안에 들어간다.
+    const float RankRowGap   = EquipTileH * 3f + EquipTileGap * 2f + 20f - PortraitSize;
+
     static readonly float InfoRowH = UIScale.RowMd;              // 53
     static readonly float BtnH     = UIScale.BtnFor(UIScale.FontMd);  // 72
     // 9행 × 72 = 648 ≤ 목록 영역 664. FontMd 한 줄(53)보다 넉넉하다.
     // ⚠ 토글 높이나 행 수를 바꾸면 이 값도 다시 계산할 것 — 넘치면 아래가 잘린다.
     static readonly float StatRowH = 72f;
     static readonly float StatTabH = UIScale.BtnFor(UIScale.FontMd);  // 72 — 장수/용병 토글
-    const float PassiveBoxH = 160f;   // 이름 한 줄 + 설명 2~3줄
+    // 스킬 열 세로 배분 (BodyH 814 안에서)
+    //   구분선 12..48 / 액티브 60..300 / 패시브 320..802
+    //   패시브 3칸 + 간격 12×2 = 482  → 한 칸 152
+    // ⚠ ActiveH 를 키우면 패시브 칸이 줄어든다. 둘의 합을 반드시 다시 계산할 것.
+    const float ActiveBoxH  = 240f;
+    const float PassiveBoxH = 152f;
 
     /// <summary>"업(상승)" 표시 세모 크기 — ▲ 글리프는 폰트에 없어 도형으로 그린다.</summary>
     const float UpMarkSize = 26f;
+
+    // 헤더 재화 위젯 — 4종 × 176 = 704. 이름(900)과 닫기(116) 사이에 들어간다.
+    const float CurrencyW    = 176f;
+    const float CurrencyIcon = 40f;
+    static readonly float CurrencyH = UIScale.RowMd;   // 53
 
     // ── 색상 ─────────────────────────────────────────────────
     static readonly Color BgOverlay    = new Color(0f,     0f,     0f,     0.80f);
@@ -94,11 +114,18 @@ public static class HeroDetailPopupCreator
     static readonly Color SkillBoxBg   = new Color(0.115f, 0.125f, 0.215f, 1f);
     static readonly Color ActiveAccent = new Color(0.45f,  0.65f,  1.00f,  1f);
     static readonly Color PassAccent   = new Color(0.60f,  0.44f,  0.90f,  1f);
-    static readonly Color SkillNameC   = new Color(1.00f,  0.95f,  0.78f,  1f);
-    static readonly Color SkillDescC   = new Color(0.80f,  0.82f,  0.92f,  1f);
+    // 이름 = 채도 높은 강조색(액티브 금 / 패시브 보라), 설명 = 채도 낮은 청회색.
+    // 종류(금↔보라)와 역할(이름↔설명)이 색만 보고도 갈린다.
+    // 예전엔 액티브 설명(0.80,0.82,0.92)과 패시브 이름(0.92,0.88,1.00)이 거의 같은 색이었다.
+    static readonly Color ActNameC     = new Color(1.00f,  0.88f,  0.52f,  1f);   // 금
+    static readonly Color ActDescC     = new Color(0.66f,  0.72f,  0.86f,  1f);   // 청회
+    static readonly Color PassNameC    = new Color(0.80f,  0.66f,  1.00f,  1f);   // 보라
+    static readonly Color PassDescC    = new Color(0.60f,  0.63f,  0.76f,  1f);   // 어두운 청회
 
     static readonly Color LevelUpBtnC  = new Color(0.16f,  0.34f,  0.62f,  1f);
     static readonly Color SoldierBtnC  = new Color(0.14f,  0.34f,  0.22f,  1f);
+    static readonly Color GradeUpBtnC  = new Color(0.44f,  0.30f,  0.10f,  1f);   // 금빛 — 등급 상승
+    static readonly Color FireBtnC     = new Color(0.36f,  0.14f,  0.16f,  1f);   // 붉은 — 되돌릴 수 없는 조작
     static readonly Color CloseBtnC    = new Color(0.50f,  0.14f,  0.14f,  1f);
     static readonly Color EnhanceBtnC  = new Color(0.22f,  0.30f,  0.52f,  1f);
     static readonly Color UpMarkC      = Color.white;
@@ -200,6 +227,85 @@ public static class HeroDetailPopupCreator
         AnchorRight(closeBtn.gameObject, -24f, 76f, 76f);
         Center(EditorUIBuilder.XMark(body, "Mark", UIScale.FontMd, Color.white));
         SetObj(so, "_closeBtn", closeBtn);
+
+        BuildCurrencyBar(header);
+    }
+
+    // ── 헤더 재화 바 (이름 오른쪽 ~ 닫기 버튼 왼쪽) ───────────
+    //  이 팝업에서 쓰는 재화만 올린다: 레벨업(골드) · 등급업(장군 강화석)
+    //  · 장비 강화(장비 강화석) · 용병 수(용병 조각).
+    //  로비 TopBar 와 같은 CurrencyWidget 을 써서 값이 자동으로 갱신된다.
+
+    static void BuildCurrencyBar(GameObject header)
+    {
+        // 닫기 버튼(우측 24 + 76)을 피해 그 왼쪽에 붙인다
+        const float CloseW = 24f + 76f + 16f;
+
+        var bar = Go("CurrencyBar", header);
+        var rt = bar.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
+        rt.pivot     = new Vector2(1f, 0.5f);
+        rt.anchoredPosition = new Vector2(-CloseW, 0f);
+        rt.sizeDelta        = new Vector2(CurrencyW * 4f, CurrencyH);
+
+        var hlg = bar.AddComponent<HorizontalLayoutGroup>();
+        hlg.childAlignment         = TextAnchor.MiddleRight;
+        hlg.spacing                = 8f;
+        hlg.childControlWidth      = true;
+        hlg.childControlHeight     = true;
+        hlg.childForceExpandWidth  = false;
+        hlg.childForceExpandHeight = false;
+
+        BuildCurrencyWidget(bar, eItem.Gold);
+        BuildCurrencyWidget(bar, eItem.GeneralUpgradeStone);
+        BuildCurrencyWidget(bar, eItem.EquipUpgradeStone);
+        BuildCurrencyWidget(bar, eItem.SoldierShard);
+    }
+
+    static void BuildCurrencyWidget(GameObject parent, eItem item)
+    {
+        var container = Go($"CW_{item}", parent);
+
+        var hlg = container.AddComponent<HorizontalLayoutGroup>();
+        hlg.childAlignment         = TextAnchor.MiddleLeft;
+        hlg.spacing                = 6f;
+        hlg.childControlWidth      = true;
+        hlg.childControlHeight     = true;
+        hlg.childForceExpandWidth  = false;
+        hlg.childForceExpandHeight = false;
+        hlg.padding                = new RectOffset(6, 6, 0, 0);
+
+        var cle = container.AddComponent<LayoutElement>();
+        cle.preferredWidth = CurrencyW;
+        cle.minWidth       = CurrencyW;
+        cle.flexibleWidth  = 0f;
+
+        var iconImg = Go("Icon", container).AddComponent<Image>();
+        iconImg.color = new Color(0.55f, 0.55f, 0.60f);
+        var ile = iconImg.gameObject.AddComponent<LayoutElement>();
+        ile.preferredWidth = ile.minWidth  = CurrencyIcon;
+        ile.preferredHeight = ile.minHeight = CurrencyIcon;
+
+        // 자릿수가 늘어나도 줄바꿈 대신 폰트를 줄인다 (UI 규칙 5 — 칸 높이 유지)
+        var amtTmp = TMP(container, "Amount", "0", UIScale.FontSm, FontStyles.Bold);
+        amtTmp.alignment        = TextAlignmentOptions.Left;
+        amtTmp.color            = new Color(0.88f, 0.90f, 0.98f);
+        amtTmp.raycastTarget    = false;
+        amtTmp.textWrappingMode = TextWrappingModes.NoWrap;
+        amtTmp.overflowMode     = TextOverflowModes.Overflow;
+        amtTmp.enableAutoSizing = true;
+        amtTmp.fontSizeMin      = UIScale.FontSm * 0.7f;
+        amtTmp.fontSizeMax      = UIScale.FontSm;
+        var ale = amtTmp.gameObject.AddComponent<LayoutElement>();
+        ale.preferredWidth = CurrencyW - CurrencyIcon - 24f;
+        ale.minWidth       = 60f;
+
+        var widget = container.AddComponent<CurrencyWidget>();
+        var wSo    = new SerializedObject(widget);
+        wSo.FindProperty("_item").intValue                   = (int)item;
+        wSo.FindProperty("_amountText").objectReferenceValue = amtTmp;
+        wSo.FindProperty("_icon").objectReferenceValue       = iconImg;
+        wSo.ApplyModifiedProperties();
     }
 
     static TextMeshProUGUI MakeTitle(GameObject header, string name, Color color, float dy)
@@ -316,7 +422,50 @@ public static class HeroDetailPopupCreator
         SetObj(so, "_gradeBadge", gradeBadge.GetComponent<Image>());
         SetObj(so, "_gradeText",  gradeTmp);
 
+        BuildRankRow(col, so);
         BuildGrowthRow(col, so);
+    }
+
+    // ── 등급업 · 해고 행 (초상화 아래 빈 자리) ────────────────
+    //  초상화 하단 = 12 + 400 = 412, 정보 행 시작 = infoY(552).
+    //  그 사이 140 중 위아래 여백을 빼고 버튼(BtnH=72)을 세로 가운데에 놓는다.
+
+    static void BuildRankRow(GameObject col, SerializedObject so)
+    {
+        float rowTop = 12f + PortraitSize + (RankRowGap - BtnH) * 0.5f;
+
+        var row = Go("RankRow", col);
+        var rt = row.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
+        rt.pivot     = new Vector2(0f, 1f);
+        rt.anchoredPosition = new Vector2(12f, -rowTop);
+        rt.sizeDelta        = new Vector2(PortraitSize, BtnH);
+        SetObj(so, "_rankRow", row);
+
+        // 등급업 — 비용(강화석)이 붙으므로 넓게. 해고는 라벨만이라 좁아도 된다.
+        var (gradeBtn, gradeCostTmp, gradeCostIcon) =
+            BuildCostButton(row, "GradeUpButton", "등급", GradeUpBtnC, 0f, 0.62f, -6f,
+                            eItem.GeneralUpgradeStone);
+        SetObj(so, "_gradeUpBtn",      gradeBtn);
+        SetObj(so, "_gradeUpCostText", gradeCostTmp);
+        SetObj(so, "_gradeUpCostIcon", gradeCostIcon);
+
+        var fireBtn = EditorUIBuilder.RaisedBtn(row, "FireButton", FireBtnC, out var fireBody);
+        var fRt = fireBtn.GetComponent<RectTransform>();
+        fRt.anchorMin = new Vector2(0.62f, 0f);
+        fRt.anchorMax = new Vector2(1f,    0f);
+        fRt.pivot     = new Vector2(0.5f,  0f);
+        fRt.offsetMin = new Vector2(6f, 0f);
+        fRt.offsetMax = new Vector2(0f, BtnH);
+
+        // ⚠ 라벨은 반드시 Body 아래에 — 루트에 넣으면 눌려도 같이 안 내려간다 (UI 규칙 1)
+        var fireLbl = TMP(fireBody, "Label", "해고", UIScale.FontMd, FontStyles.Bold);
+        fireLbl.alignment     = TextAlignmentOptions.Center;
+        fireLbl.color         = Color.white;
+        fireLbl.raycastTarget = false;
+        Stretch(fireLbl.gameObject);
+
+        SetObj(so, "_fireBtn", fireBtn);
     }
 
     // ── 성장 행: 열 하단에 붙인다 (EXP 텍스트 → 바 → 버튼) ──
@@ -553,7 +702,8 @@ public static class HeroDetailPopupCreator
         // 아래 3줄은 장수에게만 의미가 있다 — 용병 탭에서는 감춘다
         var soldierCnt = Tint(StatRow(list, "SOLD", "용병 수",     rowIndex++), StatColors.Soldier);
         var cmdPwr     =      StatRow(list, "CMD",  "지휘력",      rowIndex++);
-        var cooldown   =      StatRow(list, "CD",   "스킬 쿨타임", rowIndex++);
+        // 라벨은 짧게 — "스킬 쿨타임" 은 라벨 칸을 넘겨 값(3.3%) 위로 밀고 들어왔다
+        var cooldown   =      StatRow(list, "CD",   "쿨타임",      rowIndex++);
 
         SetObj(so, "_soldierCountText", soldierCnt);
         SetObj(so, "_cmdPwrText",       cmdPwr);
@@ -662,7 +812,7 @@ public static class HeroDetailPopupCreator
         BuildDivider(col, 12f, "스  킬");
 
         const float ActiveY = 60f;
-        const float ActiveH = 220f;
+        const float ActiveH = ActiveBoxH;
         const float IconSz  = 128f;
 
         // ── 액티브 스킬 ──────────────────────────────────────
@@ -698,7 +848,7 @@ public static class HeroDetailPopupCreator
         float textLeft = 20f + IconSz + 18f;
 
         var nameTmp = TMP(box, "ActiveSkillText", "—", UIScale.FontLg, FontStyles.Bold);
-        nameTmp.color            = SkillNameC;
+        nameTmp.color            = ActNameC;
         nameTmp.alignment        = TextAlignmentOptions.MidlineLeft;
         nameTmp.raycastTarget    = false;
         nameTmp.textWrappingMode = TextWrappingModes.NoWrap;
@@ -710,18 +860,25 @@ public static class HeroDetailPopupCreator
         nRt.offsetMax = new Vector2(-20f, -18f);
         SetObj(so, "_activeSkillText", nameTmp);
 
-        // 설명 — 크게(FontMd) + 줄바꿈. 남는 높이를 전부 쓴다.
+        // 설명 — 남는 칸에 맞춰 줄어든다.
+        // ⚠ 예전엔 FontMd(42) + lineSpacing 12 고정이라 한 줄이 64px 였는데
+        //   칸은 108px 뿐이라 1.7줄 밖에 못 담았고, Overflow 라서 넘친 줄이
+        //   상자 밖(배경 바깥)에 그대로 그려졌다.
+        //   AutoSize 를 켜면 넘치는 대신 글자가 작아진다.
         var descTmp = TMP(box, "ActiveSkillDescText", "", UIScale.FontMd, FontStyles.Normal);
-        descTmp.color            = SkillDescC;
+        descTmp.color            = ActDescC;
         descTmp.alignment        = TextAlignmentOptions.TopLeft;
         descTmp.raycastTarget    = false;
         descTmp.textWrappingMode = TextWrappingModes.Normal;
         descTmp.overflowMode     = TextOverflowModes.Overflow;
-        descTmp.lineSpacing      = 12f;
+        descTmp.lineSpacing      = 6f;
+        descTmp.enableAutoSizing = true;
+        descTmp.fontSizeMin      = UIScale.FontSm - 8f;
+        descTmp.fontSizeMax      = UIScale.FontMd;
         var dRt = descTmp.rectTransform;
         dRt.anchorMin = new Vector2(0f, 0f); dRt.anchorMax = new Vector2(1f, 1f);
         dRt.offsetMin = new Vector2(textLeft, 16f);
-        dRt.offsetMax = new Vector2(-20f, -(18f + UIScale.RowLg + 8f));
+        dRt.offsetMax = new Vector2(-20f, -(18f + UIScale.RowLg + 6f));
         SetObj(so, "_activeSkillDescText", descTmp);
 
         // ── 패시브 3칸 ───────────────────────────────────────
@@ -744,21 +901,30 @@ public static class HeroDetailPopupCreator
         vlg.childAlignment         = TextAnchor.UpperLeft;
 
         var boxes = new Object[3];
+        var icons = new Object[3];
         var names = new Object[3];
         var descs = new Object[3];
         for (int i = 0; i < 3; i++)
         {
-            var (boxGo, nameT, descT) = BuildPassiveBox(cont, i);
-            boxes[i] = boxGo; names[i] = nameT; descs[i] = descT;
+            var (boxGo, iconI, nameT, descT) = BuildPassiveBox(cont, i);
+            boxes[i] = boxGo; icons[i] = iconI; names[i] = nameT; descs[i] = descT;
         }
         SetObjArray(so, "_passiveBoxes",     boxes);
+        SetObjArray(so, "_passiveIcons",     icons);
         SetObjArray(so, "_passiveNameTexts", names);
         SetObjArray(so, "_passiveDescTexts", descs);
     }
 
-    static (GameObject box, TextMeshProUGUI name, TextMeshProUGUI desc)
+    //  [액센트바][아이콘 96][이름 / 설명]
+    //  아이콘이 붙으면서 글자 폭이 96+여백 만큼 줄었다 —
+    //  이름은 NoWrap, 설명은 AutoSize 라 넘치지 않는다.
+    static (GameObject box, Image icon, TextMeshProUGUI name, TextMeshProUGUI desc)
         BuildPassiveBox(GameObject cont, int index)
     {
+        const float IconSz  = 96f;
+        const float IconX   = 20f;
+        float textLeft = IconX + IconSz + 18f;   // 134
+
         var box = Go($"Passive{index}Box", cont);
         box.AddComponent<Image>().color = SkillBoxBg;
         box.AddComponent<LayoutElement>().preferredHeight = PassiveBoxH;
@@ -771,8 +937,25 @@ public static class HeroDetailPopupCreator
         aRt.anchorMin = new Vector2(0f, 0f); aRt.anchorMax = new Vector2(0f, 1f);
         aRt.offsetMin = Vector2.zero;        aRt.offsetMax = new Vector2(6f, 0f);
 
+        // 아이콘 자리 — 액티브와 같은 "홈에 얹힌 카드" 형태
+        var pit = Go("IconPit", box);
+        pit.AddComponent<Image>().color = PitBg;
+        var pRt = pit.GetComponent<RectTransform>();
+        pRt.anchorMin = pRt.anchorMax = new Vector2(0f, 0.5f);
+        pRt.pivot     = new Vector2(0f, 0.5f);
+        pRt.anchoredPosition = new Vector2(IconX, 0f);
+        pRt.sizeDelta        = new Vector2(IconSz, IconSz);
+
+        var icon = Go("PassiveIcon", pit, typeof(Image)).GetComponent<Image>();
+        icon.color          = new Color(0.25f, 0.24f, 0.40f);
+        icon.preserveAspect = true;
+        icon.raycastTarget  = false;
+        var iRt = icon.rectTransform;
+        iRt.anchorMin = Vector2.zero; iRt.anchorMax = Vector2.one;
+        iRt.offsetMin = new Vector2(5f, 5f); iRt.offsetMax = new Vector2(-5f, -5f);
+
         var nameTmp = TMP(box, "NameText", "—", UIScale.FontMd, FontStyles.Bold);
-        nameTmp.color            = new Color(0.92f, 0.88f, 1.00f);
+        nameTmp.color            = PassNameC;
         nameTmp.alignment        = TextAlignmentOptions.MidlineLeft;
         nameTmp.raycastTarget    = false;
         nameTmp.textWrappingMode = TextWrappingModes.NoWrap;
@@ -780,22 +963,25 @@ public static class HeroDetailPopupCreator
         var nRt = nameTmp.rectTransform;
         nRt.anchorMin = new Vector2(0f, 1f); nRt.anchorMax = new Vector2(1f, 1f);
         nRt.pivot     = new Vector2(0.5f, 1f);
-        nRt.offsetMin = new Vector2(22f, -(12f + UIScale.RowMd));
+        nRt.offsetMin = new Vector2(textLeft, -(12f + UIScale.RowMd));
         nRt.offsetMax = new Vector2(-16f, -12f);
 
         var descTmp = TMP(box, "DescText", "", UIScale.FontSm, FontStyles.Normal);
-        descTmp.color            = SkillDescC;
+        descTmp.color            = PassDescC;
         descTmp.alignment        = TextAlignmentOptions.TopLeft;
         descTmp.raycastTarget    = false;
         descTmp.textWrappingMode = TextWrappingModes.Normal;
         descTmp.overflowMode     = TextOverflowModes.Overflow;
-        descTmp.lineSpacing      = 10f;
+        descTmp.lineSpacing      = 4f;
+        descTmp.enableAutoSizing = true;
+        descTmp.fontSizeMin      = UIScale.FontSm - 12f;
+        descTmp.fontSizeMax      = UIScale.FontSm;
         var dRt = descTmp.rectTransform;
         dRt.anchorMin = new Vector2(0f, 0f); dRt.anchorMax = new Vector2(1f, 1f);
-        dRt.offsetMin = new Vector2(22f, 12f);
-        dRt.offsetMax = new Vector2(-16f, -(12f + UIScale.RowMd + 6f));
+        dRt.offsetMin = new Vector2(textLeft, 10f);
+        dRt.offsetMax = new Vector2(-16f, -(12f + UIScale.RowMd + 4f));
 
-        return (box, nameTmp, descTmp);
+        return (box, icon, nameTmp, descTmp);
     }
 
     // ══════════════════════════════════════════════════════════

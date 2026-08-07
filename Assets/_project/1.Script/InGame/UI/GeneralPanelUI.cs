@@ -13,27 +13,29 @@ using Assets.PixelFantasy.PixelHeroes.Common.Scripts.CharacterScripts;
 //  GeneralRuntimeBridge.OnSpawned 이벤트를 받아 InGameHUD 가 Setup() 을 호출한다.
 //  LateUpdate 마다 ECS 에서 HP·병사 수·스킬 쿨다운·버프를 읽어 UI 를 갱신한다.
 //
-//  Hierarchy 예시:
-//    GeneralPanel (GeneralPanelUI, CanvasGroup)
-//      ├ Portrait        (Image — _portraitBg)
-//      │  └ PortraitIcon (Image — _portraitIcon, 선택)
-//      ├ NameText        (TMP — _nameText)
-//      ├ GradeText       (TMP — _gradeText, 선택)
-//      ├ HpBar           (Image — Filled Horizontal, _hpFill)
-//      ├ HpText          (TMP — _hpText, 선택)
-//      ├ SoldierBar      (Image — Filled Horizontal, _soldierFill)
-//      ├ SoldierText     (TMP — _soldierText, 선택)
-//      ├ SkillSlot       (SkillSlotUI — _skillSlot)
-//      └ BuffSlot0~3     (Image — _buffSlots[])
+//  ■ 표시 규칙 (2026-08-08 개편)
+//    · 좌측 등급 색 바 + 초상화 위 직업 칩 — 로비 장수 카드와 같은 언어.
+//    · HP 바는 비율에 따라 초록 → 노랑 → 빨강 으로 색이 변한다.
+//      숫자를 읽지 않아도 위험한 장군이 한눈에 잡힌다.
+//    · 사망 시 흐리게 + "전사" 배지.
+//
+//  ⚠ 모든 글자는 UIScale.FontSm(34) 이상이다
+//    예전엔 11~24px 를 직접 박아 놔서 실기에서 읽히지 않았다 (UI 규칙 4).
+//    칸 높이도 UIScale.Line(폰트) 이상으로 잡아야 아래가 잘리지 않는다 (규칙 5).
+//
+//  Hierarchy — UISetupTool.CreateGeneralPanelPrefab() 이 만든다.
 // ============================================================
 
 public class GeneralPanelUI : MonoBehaviour
 {
-    [Header("초상화")]
+    [Header("초상화 · 신원")]
+    [SerializeField] Image                _gradeBorder;   // 좌측 등급 색 바
     [SerializeField] Image                _portraitBg;
     [SerializeField] Image                _portraitIcon;  // CharacterBuilder Texture 에서 추출한 Idle_0 스프라이트
     [SerializeField] TextMeshProUGUI      _nameText;
+    [SerializeField] TextMeshProUGUI      _jobChipText;   // 초상화 좌하단 직업 칩
     [SerializeField] TextMeshProUGUI      _gradeText;
+    [SerializeField] GameObject           _deadBadge;     // "전사" 배지
 
     [Header("HP")]
     [SerializeField] Image                _hpFill;
@@ -50,7 +52,7 @@ public class GeneralPanelUI : MonoBehaviour
     [SerializeField] Image[]              _buffSlots;
     [SerializeField] TextMeshProUGUI[]       _buffStackTexts;
 
-    // ── 직업·등급 표현 상수 ─────────────────────────────────────
+    // ── 직업·HP 색 ─────────────────────────────────────────────
     static readonly Color[] s_JobColors =
     {
         new Color(0.80f, 0.22f, 0.22f, 1f),  // Knight       — 붉은
@@ -59,7 +61,10 @@ public class GeneralPanelUI : MonoBehaviour
         new Color(0.28f, 0.60f, 0.75f, 1f),  // ShieldBearer — 청록
     };
 
-    static readonly string[] s_GradeLabels = { "", "UC", "R", "U", "Epic" };
+    // HP 비율에 따른 바 색 — 숫자를 안 읽어도 위험도가 보인다
+    static readonly Color HpFull = new Color(0.35f, 0.90f, 0.45f, 1f);   // 초록
+    static readonly Color HpWarn = new Color(0.95f, 0.80f, 0.25f, 1f);   // 노랑
+    static readonly Color HpLow  = new Color(0.92f, 0.26f, 0.24f, 1f);   // 빨강
 
     // ── 런타임 상태 ─────────────────────────────────────────────
     EntityManager          _em;
@@ -113,12 +118,24 @@ public class GeneralPanelUI : MonoBehaviour
             job = _em.GetComponentData<UnitJobComponent>(_entity).Job;
 
         // ── UI 초기값 설정 ────────────────────────────────────
-        int jobIdx = Mathf.Clamp((int)job, 0, s_JobColors.Length - 1);
+        int       jobIdx = Mathf.Clamp((int)job, 0, s_JobColors.Length - 1);
+        UnitGrade grade  = bridge.Grade;
+
         if (_portraitBg   != null) _portraitBg.color    = s_JobColors[jobIdx];
         if (_portraitIcon != null) _portraitIcon.sprite = portrait;
-        if (_nameText     != null) _nameText.text        = bridge.UnitName ?? bridge.name;
-        if (_gradeText    != null) _gradeText.text       = s_GradeLabels[0];  // 등급 공개 시 교체
+        if (_nameText     != null) _nameText.text       = bridge.UnitName ?? bridge.name;
+        if (_jobChipText  != null) _jobChipText.text    = JobStyle.GetLabel(job);
         if (_skillSlot    != null) _skillSlot.SetIcon(skillIcon);
+
+        // 등급 — 로비와 같은 색·라벨을 쓴다 (GradeStyle 이 정본)
+        if (_gradeBorder != null) _gradeBorder.color = GradeStyle.GetColor(grade);
+        if (_gradeText   != null)
+        {
+            _gradeText.text  = GradeStyle.GetLabel(grade);
+            _gradeText.color = GradeStyle.GetColor(grade);
+        }
+
+        if (_deadBadge != null) _deadBadge.SetActive(false);
 
         foreach (var slot in _buffSlots)
             if (slot != null) slot.gameObject.SetActive(false);
@@ -168,9 +185,19 @@ public class GeneralPanelUI : MonoBehaviour
         float ratio = Mathf.Clamp01(cur / _maxHp);
 
         // anchorMax.x 방식: Image.type 에 무관하게 동작
-        if (_hpFill != null) _hpFill.rectTransform.anchorMax = new Vector2(ratio, 1f);
+        if (_hpFill != null)
+        {
+            _hpFill.rectTransform.anchorMax = new Vector2(ratio, 1f);
+            _hpFill.color = HpColorFor(ratio);
+        }
         if (_hpText != null) _hpText.text = $"{Mathf.CeilToInt(cur)}/{Mathf.RoundToInt(_maxHp)}";
     }
+
+    /// <summary>50% 위는 초록→노랑, 아래는 노랑→빨강.</summary>
+    static Color HpColorFor(float ratio)
+        => ratio > 0.5f
+            ? Color.Lerp(HpWarn, HpFull, (ratio - 0.5f) * 2f)
+            : Color.Lerp(HpLow,  HpWarn, ratio * 2f);
 
     void RefreshSoldiers()
     {
@@ -319,7 +346,9 @@ public class GeneralPanelUI : MonoBehaviour
     void ApplyDeadState(bool dead)
     {
         var cg = GetComponent<CanvasGroup>();
-        if (cg != null) cg.alpha = dead ? 0.38f : 1f;
+        if (cg != null) cg.alpha = dead ? 0.42f : 1f;
+        if (_deadBadge != null && _deadBadge.activeSelf != dead)
+            _deadBadge.SetActive(dead);
     }
 
     // ── 정리 ─────────────────────────────────────────────────

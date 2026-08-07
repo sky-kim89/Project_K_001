@@ -129,9 +129,21 @@ public class SoldierRuntimeBridge : UnitRuntimeBridge
     //  HeroDetailPopup 의 "용병" 탭이 같은 공식을 써서 미리 보여 준다.
     //  ⚠ 여기를 고치면 그 화면 표시도 자동으로 따라간다 — 각자 계산하지 말 것.
 
-    /// <summary>병사 스탯 배율 — 기본 40% + 지휘력 1포인트당 1% (최대 100%).</summary>
+    /// <summary>
+    /// 병사 스탯 배율 — 기본 20% + 지휘력 1포인트당 +1%p.
+    /// 상한 없음(GameplayConfig.SoldierStatRatioMax 가 0 이하일 때) — 지휘력을 쌓으면
+    /// 장군 스탯의 100% 를 넘길 수 있다.
+    /// </summary>
     public static float StatRatio(float commandPower)
-        => Mathf.Clamp01(0.4f + commandPower * 0.01f);
+    {
+        var   cfg     = GameplayConfig.Current;
+        float baseR   = cfg != null ? cfg.SoldierBaseStatRatio        : 0.2f;
+        float perCmd  = cfg != null ? cfg.SoldierRatioPerCommandPower : 0.01f;
+        float max     = cfg != null ? cfg.SoldierStatRatioMax         : 0f;
+
+        float ratio = Mathf.Max(0f, baseR + commandPower * perCmd);
+        return max > 0f ? Mathf.Min(ratio, max) : ratio;
+    }
 
     /// <summary>배율이 적용되지 않는 스탯 — 사거리·이동속도·공격속도는 장군과 같다.</summary>
     public static bool IsUnscaled(StatType type)

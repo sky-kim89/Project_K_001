@@ -28,7 +28,7 @@ public enum eItem
     ExpBook             = 100,  // 경험서         — 유닛 경험치
     BattleStone         = 101,  // 전투석         — 스테이지 클리어 보상
     SkillScroll         = 102,  // 스킬 서적      — 스킬 잠금 해제
-    GeneralUpgradeStone = 103,  // 장군 강화석    — 장군 강화에 사용
+    GeneralUpgradeStone = 103,  // 장군 강화석    — 장수 등급업에 사용 (HeroDetailPopup)
     EquipUpgradeStone   = 104,  // 장비 강화석    — 장비 강화에 사용
     SoldierShard        = 105,  // 용병조각       — 영웅 용병 수 증가에 사용
 
@@ -104,7 +104,7 @@ public static class ItemExtensions
         eItem.ExpBook             => "장수에게 사용해 경험치를 올린다.",
         eItem.BattleStone         => "스테이지 클리어 보상. 성장 재료로 쓰인다.",
         eItem.SkillScroll         => "장수의 잠긴 스킬을 해제할 때 쓰인다.",
-        eItem.GeneralUpgradeStone => "장수를 강화할 때 쓰인다.",
+        eItem.GeneralUpgradeStone => "장수의 등급을 한 단계 올릴 때 쓰인다.",
         eItem.EquipUpgradeStone   => "장비를 강화할 때 쓰인다.",
         eItem.SoldierShard        => "장수가 지휘하는 용병 수를 늘릴 때 쓰인다.",
         eItem.EquipBox            => "열면 무작위 장비가 하나 나온다.",

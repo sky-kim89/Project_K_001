@@ -99,7 +99,13 @@ public class NormalMode : BattleModeBase
             Context.PendingRewards.Add(new ItemAmount { Item = eItem.EquipBox, Amount = 1 });
         Context.PendingRewards.Add(new ItemAmount { Item = eItem.SoldierShard, Amount = _stage.ShardReward });
 
-        Debug.Log($"[NormalMode] 클리어 보상: 골드 +{totalGold}(×{1f + goldBonus:F2}), 전투석 +{_stage.StoneReward}, 장비 박스 ×{_stage.EquipBoxReward}, 용병 조각 ×{_stage.ShardReward}");
+        // 장군 강화석 — HeroDetailPopup 의 등급업에 쓰인다
+        if (_stage.GeneralStoneReward > 0)
+            Context.PendingRewards.Add(new ItemAmount
+                { Item = eItem.GeneralUpgradeStone, Amount = _stage.GeneralStoneReward });
+
+        Debug.Log($"[NormalMode] 클리어 보상: 골드 +{totalGold}(×{1f + goldBonus:F2}), 전투석 +{_stage.StoneReward}, " +
+                  $"장비 박스 ×{_stage.EquipBoxReward}, 용병 조각 ×{_stage.ShardReward}, 장군 강화석 +{_stage.GeneralStoneReward}");
     }
 
     // ── 훅 오버라이드 ─────────────────────────────────────────

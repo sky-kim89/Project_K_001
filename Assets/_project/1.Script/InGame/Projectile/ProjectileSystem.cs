@@ -18,10 +18,22 @@ using BattleGame.Projectiles; // ProjectileComponent, ProjectileGoLink, Projecti
 //    ② ProjectileMovementSystem — 이동 + Lifetime 감소 (Burst 병렬)
 //    ③ ProjectileHitSystem      — 피격 판정 (Burst 병렬)
 //    ④ ProjectileDestroySystem  — GO 반납 (non-Burst, PoolController 접근 필요)
+//    ⑤ ProjectileIncomingDamageSystem — 예약 피해 재계산
 //
 //  피격 흐름:
 //    ProjectileHitJob → HitEventBuffer append (ECB) + ProjectileDestroyTag 추가
 //    → UnitHitSystem 이 HitEvent 처리 (기존 로직 그대로)
+//
+//  ■ 예약 피해 (집중공격 낭비 방지)
+//    발사체는 날아가는 동안에도 "이미 맞은 것"으로 친다.
+//    ProjectileIncomingDamageSystem 이 매 프레임 살아있는 발사체를 훑어
+//    타겟의 HealthComponent.IncomingDamage 를 처음부터 다시 채운다.
+//    실효 체력(CurrentHp - IncomingDamage)이 0 이하가 된 유닛 = IsDoomed:
+//      - 새 공격의 타겟 후보에서 제외 (BuildGridMapJob / 공격 Job)
+//      - 스스로도 공격하지 않음 — 이동만 한다
+//      - 날아오던 발사체는 그대로 명중하고, 그때 실제 HP 가 깎여 사망 처리된다
+//    누적이 아니라 매 프레임 재계산이므로 발사체가 빗나가거나 수명이 다해 사라져도
+//    다음 프레임에 자동으로 원복된다 — 환불 로직이 필요 없다.
 // ============================================================
 
 namespace BattleGame.Projectiles
@@ -317,6 +329,96 @@ namespace BattleGame.Projectiles
 
             // 소멸 요청
             Ecb.AddComponent<ProjectileDestroyTag>(chunkIndex, entity);
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // ⑤ 예약 피해 재계산 — 비행 중 발사체가 확정지은 피해를 타겟에 반영
+    // ══════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// 매 프레임 모든 유닛의 IncomingDamage 를 0 으로 지운 뒤,
+    /// 살아있는 발사체의 피해량(방어율 적용 후)을 타겟에 다시 누적한다.
+    ///
+    /// 누적 필드가 아니라 "재계산" 이므로 발사체가 소멸하든 타겟이 바뀌든
+    /// 다음 프레임에 저절로 정합성이 맞는다.
+    ///
+    /// ⚠ 방어율 환산은 DamageMath.AfterDefense 만 쓴다 — UnitHitSystem 이 실제로
+    ///   깎는 값과 어긋나면 예약이 과대평가되어 적이 죽지도 맞지도 않게 된다.
+    /// </summary>
+    // GameplayConfig(managed) 를 읽으므로 시스템 자체는 Burst 미적용 — Job 만 Burst.
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateAfter(typeof(ProjectileDestroySystem))]
+    public partial struct ProjectileIncomingDamageSystem : ISystem
+    {
+        ComponentLookup<HealthComponent> _healthLookup;
+        ComponentLookup<StatComponent>   _statLookup;
+
+        public void OnCreate(ref SystemState state)
+        {
+            _healthLookup = state.GetComponentLookup<HealthComponent>();
+            _statLookup   = state.GetComponentLookup<StatComponent>(isReadOnly: true);
+        }
+
+        public void OnUpdate(ref SystemState state)
+        {
+            var cfg = GameplayConfig.Current;
+            if (cfg == null) return;
+
+            _healthLookup.Update(ref state);
+            _statLookup.Update(ref state);
+
+            // ① 초기화 — 병렬 가능 (각 엔티티가 자기 것만 건드린다)
+            state.Dependency = new ClearIncomingDamageJob().ScheduleParallel(state.Dependency);
+
+            // ② 누적 — 여러 발사체가 같은 타겟을 쓰므로 단일 스레드로 처리
+            state.Dependency = new AccumulateIncomingDamageJob
+            {
+                HealthLookup        = _healthLookup,
+                StatLookup          = _statLookup,
+                DefenseSoftCap      = cfg.DefenseMax,
+                DefenseOverflowRate = cfg.DefenseOverflowRate,
+                DefenseEffectiveCap = cfg.DefenseEffectiveCap,
+            }.Schedule(state.Dependency);
+        }
+    }
+
+    [BurstCompile]
+    public partial struct ClearIncomingDamageJob : IJobEntity
+    {
+        public void Execute(ref HealthComponent health) => health.IncomingDamage = 0f;
+    }
+
+    /// <summary>
+    /// ProjectileDestroyTag 가 붙은 발사체도 포함한다 — 명중 판정은 끝났지만
+    /// HitEvent 는 다음 프레임 UnitHitSystem 이 처리하므로 아직 HP 가 안 깎였다.
+    /// </summary>
+    [BurstCompile]
+    public partial struct AccumulateIncomingDamageJob : IJobEntity
+    {
+        [NativeDisableContainerSafetyRestriction]
+        public ComponentLookup<HealthComponent>            HealthLookup;
+        [ReadOnly] public ComponentLookup<StatComponent>   StatLookup;
+        public float DefenseSoftCap;
+        public float DefenseOverflowRate;
+        public float DefenseEffectiveCap;
+
+        public void Execute(in ProjectileComponent proj)
+        {
+            Entity target = proj.TargetEntity;
+            if (target == Entity.Null)                return;  // MoveJob 이 무효화한 발사체
+            if (!HealthLookup.HasComponent(target))   return;
+            if (!StatLookup.HasComponent(target))     return;
+
+            var health = HealthLookup[target];
+            if (health.CurrentHp <= 0f) return;
+
+            health.IncomingDamage += DamageMath.AfterDefense(
+                proj.Damage,
+                StatLookup[target].Final[StatType.Defense],
+                DefenseSoftCap, DefenseOverflowRate, DefenseEffectiveCap);
+
+            HealthLookup[target] = health;
         }
     }
 

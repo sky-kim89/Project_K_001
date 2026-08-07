@@ -15,20 +15,19 @@ public static class PopupPrefabCreator
     const string SavePath = "Assets/_project/2.Prefabs/UI";
 
     // ── BattleResultPopup 팔레트 ──────────────────────────────
-    //  EventPopup 과 같은 계열 — 어두운 남색 패널 + 강조선 + 섹션 라벨.
-    //  승패 색(BrVictory/BrDefeat)만 런타임에 교체된다.
-    static readonly Color BrPanelBg      = new Color(0.070f, 0.075f, 0.130f, 1f);
-    static readonly Color BrPanelBorder  = new Color(0.24f,  0.30f,  0.52f,  1f);
-    static readonly Color BrHeaderBg     = new Color(0.095f, 0.110f, 0.200f, 1f);
-    static readonly Color BrTitleShadow  = new Color(0.02f,  0.02f,  0.06f,  0.85f);
+    //  구조색은 EditorUIBuilder.Pop 공용 (Reincarnation 등과 공유).
+    //  이 팝업에만 쓰는 강조색(승패·힌트·확인)만 여기서 정의한다.
+    static readonly Color BrPanelBg      = EditorUIBuilder.Pop.PanelBg;
+    static readonly Color BrPanelBorder  = EditorUIBuilder.Pop.PanelBorder;
+    static readonly Color BrHeaderBg     = EditorUIBuilder.Pop.HeaderBg;
+    static readonly Color BrTitleShadow  = EditorUIBuilder.Pop.TitleShadow;
+    static readonly Color BrSlotBg       = EditorUIBuilder.Pop.SlotBg;
+    static readonly Color BrTabActive    = EditorUIBuilder.Pop.TabActive;
+    static readonly Color BrTabInactive  = EditorUIBuilder.Pop.TabInactive;
+
     static readonly Color BrVictory      = new Color(1.00f,  0.82f,  0.22f,  1f);
     static readonly Color BrDefeat       = new Color(0.62f,  0.64f,  0.72f,  1f);
-    static readonly Color BrSectionLabel = new Color(0.66f,  0.70f,  0.86f,  1f);
-    static readonly Color BrDivider      = new Color(0.26f,  0.29f,  0.44f,  0.85f);
-    static readonly Color BrSlotBg       = new Color(0.105f, 0.115f, 0.190f, 1f);
     static readonly Color BrHint         = new Color(0.82f,  0.74f,  0.44f,  1f);
-    static readonly Color BrTabActive    = new Color(0.24f,  0.40f,  0.74f,  1f);
-    static readonly Color BrTabInactive  = new Color(0.155f, 0.175f, 0.275f, 1f);
     static readonly Color BrConfirm      = new Color(0.16f,  0.58f,  0.36f,  1f);
 
     [MenuItem(ProjectKMenu.Popup + "▶ 팝업 전체", priority = ProjectKMenu.PrefabPrio + 20)]
@@ -242,7 +241,7 @@ public static class PopupPrefabCreator
     //    HintText      Y=384  H= 34
     //    StatLabel     Y=424  H= 40   "전투 기록"
     //    TabBar        Y=470  H= 92   딜 / 탱 / 힐
-    //    ExpArea       Y=574  → 확인 버튼 위까지
+    //    ExpBox        Y=574  → 확인 버튼 위까지 (242px, 세로 스크롤)
     //    ConfirmButton 하단 28
 
     [MenuItem(ProjectKMenu.Popup + "BattleResult", priority = ProjectKMenu.PrefabPrio + 31)]
@@ -420,14 +419,43 @@ public static class PopupPrefabCreator
         }
 
         // ── EXP 행 목록 ──────────────────────────────────────
-        var expArea = MakeGo("ExpArea", panel);
+        // 배치 슬롯이 5칸이라 행이 최대 5개(100px * 5 + spacing = 524px)까지 온다.
+        // 남는 세로는 242px 뿐이므로 3행부터 팝업 밖으로 삐져나온다 → 세로 스크롤로 감싼다.
+        var expBox = MakeGo("ExpBox", panel);
         {
-            var rt = expArea.GetComponent<RectTransform>();
+            var rt = expBox.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0f, 0f);
             rt.anchorMax = new Vector2(1f, 1f);
             rt.offsetMin = new Vector2(SidePad, UIScale.BtnMd + 52f);
             rt.offsetMax = new Vector2(-SidePad, -ExpY);
         }
+        var expScroll = expBox.AddComponent<ScrollRect>();
+
+        var expVp = MakeGo("Viewport", expBox);
+        expVp.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.01f);  // Mask 는 Graphic 이 있어야 동작
+        expVp.AddComponent<Mask>().showMaskGraphic = false;
+        var expVpRt = expVp.GetComponent<RectTransform>();
+        expVpRt.anchorMin = Vector2.zero; expVpRt.anchorMax = Vector2.one;
+        expVpRt.offsetMin = Vector2.zero; expVpRt.offsetMax = Vector2.zero;
+
+        // Content — 위에서 아래로 자라고 높이는 ContentSizeFitter 가 잰다
+        var expArea = MakeGo("ExpArea", expVp);
+        {
+            var rt = expArea.GetComponent<RectTransform>();
+            rt.anchorMin        = new Vector2(0f, 1f);
+            rt.anchorMax        = new Vector2(1f, 1f);
+            rt.pivot            = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta        = Vector2.zero;
+        }
+        expArea.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        expScroll.horizontal   = false;
+        expScroll.vertical     = true;
+        expScroll.movementType = ScrollRect.MovementType.Elastic;
+        expScroll.viewport     = expVpRt;
+        expScroll.content      = expArea.GetComponent<RectTransform>();
+
         var expVlg = expArea.AddComponent<VerticalLayoutGroup>();
         expVlg.spacing                = 6f;
         expVlg.padding                = new RectOffset(0, 0, 0, 0);
@@ -484,34 +512,7 @@ public static class PopupPrefabCreator
 
     // 섹션 라벨 — 가운데 글자 + 좌우 라인 (EventPopup 의 "선 택" 과 같은 형태)
     static void BuildSectionLabel(GameObject panel, string text, float yFromTop, float contentW)
-    {
-        const float H = 40f;
-        const float LabelW = 200f;
-
-        var row = MakeGo($"Section_{text}", panel);
-        AnchorTopBand(row, yFromTop, H, (1000f - contentW) * 0.5f);
-
-        var label = AddTMP(row, "Label", text, UIScale.FontSm, FontStyles.Bold);
-        label.color         = BrSectionLabel;
-        label.alignment     = TextAlignmentOptions.Center;
-        label.raycastTarget = false;
-        SetRect(label.rectTransform, Vector2.zero, new Vector2(LabelW, H));
-
-        // 좌우 라인
-        for (int side = 0; side < 2; side++)
-        {
-            var line = MakeGo(side == 0 ? "LineL" : "LineR", row);
-            var img  = line.AddComponent<Image>();
-            img.color         = BrDivider;
-            img.raycastTarget = false;
-            var rt = line.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(side == 0 ? 0f : 1f, 0.5f);
-            rt.anchorMax = new Vector2(side == 0 ? 0f : 1f, 0.5f);
-            rt.pivot     = new Vector2(side == 0 ? 0f : 1f, 0.5f);
-            rt.anchoredPosition = Vector2.zero;
-            rt.sizeDelta = new Vector2((contentW - LabelW) * 0.5f - 16f, 2f);
-        }
-    }
+        => EditorUIBuilder.SectionLabel(panel, text, yFromTop, contentW, (1000f - contentW) * 0.5f);
 
     // 상단에서 yFromTop 만큼 내려온 높이 h 의 가로 밴드
     static void AnchorTopBand(GameObject go, float yFromTop, float h, float sidePad = 0f)
@@ -535,45 +536,142 @@ public static class PopupPrefabCreator
 
     // ── PausePopup ────────────────────────────────────────────
 
+    //  로비 팝업(EventPopup·HeroDetail)과 같은 톤으로 맞췄다:
+    //    전체화면 오버레이 → 테두리(패널 앞 형제) → 패널 → ◆ 태그 헤더 + 강조선 → 입체 버튼.
+    //  ⚠ 이 팝업만 인게임 캔버스(1080×1920 세로) 위에 뜬다 — 가로 여유가 1080 뿐이다.
     [MenuItem(ProjectKMenu.Popup + "Pause", priority = ProjectKMenu.PrefabPrio + 32)]
     public static void CreatePausePopup()
     {
-        // 버튼 3개 + 여백 기준으로 높이 산출
-        float btnH   = UIScale.BtnSm;
-        float gap    = 24f;
-        float totalH = btnH * 3 + gap * 2;           // 3버튼 높이
-        float popupH = totalH + UIScale.FontLg + 120; // 제목 + 상하 여백
+        const float PW      = 840f;
+        const float HeaderH = 136f;
+        const float SidePad =  48f;
+        const float BtnGap  =  24f;
+        float btnH   = UIScale.BtnFor(UIScale.FontMd) + 20f;   // 92 — 인게임은 손가락으로 누른다
+        float popupH = HeaderH + 3f + 40f + btnH * 2 + BtnGap + 48f;
 
-        var root  = CreateRoot<PausePopup>("PausePopup", 720, popupH);
-        var popup = root.GetComponent<PausePopup>();
+        // 루트는 전체화면 오버레이 — 뒤 전투 화면을 어둡게 깐다
+        var root = new GameObject("PausePopup", typeof(RectTransform), typeof(CanvasGroup), typeof(Image));
+        root.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.78f);
+        StretchRT(root);
+        var popup = root.AddComponent<PausePopup>();
 
-        AddBgPanel(root, new Color(0.08f, 0.10f, 0.16f, 0.96f));
+        // 테두리는 Panel 의 **앞 형제** — 자식으로 두면 팝업 전체를 덮는다 (UI 규칙 3)
+        var border = new GameObject("Border", typeof(RectTransform), typeof(Image));
+        border.transform.SetParent(root.transform, false);
+        border.GetComponent<Image>().color = new Color(0.26f, 0.44f, 0.72f, 1f);
+        SetRect(border.GetComponent<RectTransform>(), Vector2.zero, new Vector2(PW + 6f, popupH + 6f));
 
-        var title = AddTMP(root, "TitleText", "일시 정지", UIScale.FontLg, FontStyles.Bold);
-        SetRect(title.rectTransform, new Vector2(0, popupH / 2 - 80), new Vector2(640, 70));
+        var panel = new GameObject("Panel", typeof(RectTransform), typeof(Image));
+        panel.transform.SetParent(root.transform, false);
+        panel.GetComponent<Image>().color = new Color(0.07f, 0.075f, 0.13f, 1f);
+        SetRect(panel.GetComponent<RectTransform>(), Vector2.zero, new Vector2(PW, popupH));
 
-        // 버튼 3개: 중앙 기준 위→아래
-        float btnStep = btnH + gap;
-        float btn1Y   =  btnStep;
-        float btn2Y   =  0;
-        float btn3Y   = -btnStep;
+        // ── 헤더 ──────────────────────────────────────────────
+        var header = new GameObject("Header", typeof(RectTransform), typeof(Image));
+        header.transform.SetParent(panel.transform, false);
+        header.GetComponent<Image>().color = new Color(0.08f, 0.10f, 0.18f, 1f);
+        EditorUIBuilder.AnchorTop(header.GetComponent<RectTransform>(), 0f, HeaderH);
 
-        var resumeBtn  = AddButton(root, "ResumeButton",  "계속하기",  new Color(0.20f, 0.55f, 0.20f), UIScale.FontMd);
-        var restartBtn = AddButton(root, "RestartButton", "다시 시작", new Color(0.55f, 0.45f, 0.10f), UIScale.FontMd);
-        var quitBtn    = AddButton(root, "QuitButton",    "종료",      new Color(0.55f, 0.15f, 0.15f), UIScale.FontMd);
+        // ★ 는 폰트에 없다 (□ 로 렌더됨) → 마름모 도형 (UI 규칙 2)
+        var tagRoot = EditorUIBuilder.Go("PauseTag", header);
+        var tagRt = tagRoot.GetComponent<RectTransform>();
+        tagRt.anchorMin = tagRt.anchorMax = new Vector2(0f, 1f);
+        tagRt.pivot     = new Vector2(0f, 1f);
+        tagRt.anchoredPosition = new Vector2(30f, -14f);
+        tagRt.sizeDelta        = new Vector2(300f, 34f);
 
-        SetRect(resumeBtn .GetComponent<RectTransform>(), new Vector2(0, btn1Y), new Vector2(560, btnH));
-        SetRect(restartBtn.GetComponent<RectTransform>(), new Vector2(0, btn2Y), new Vector2(560, btnH));
-        SetRect(quitBtn   .GetComponent<RectTransform>(), new Vector2(0, btn3Y), new Vector2(560, btnH));
+        var diamond = EditorUIBuilder.Diamond(tagRoot, "Mark", 16f, new Color(0.62f, 0.82f, 1.00f));
+        var dRt = diamond.GetComponent<RectTransform>();
+        dRt.anchorMin = dRt.anchorMax = new Vector2(0f, 0.5f);
+        dRt.anchoredPosition = new Vector2(10f, 0f);
+
+        var tagTmp = AddTMP(tagRoot, "Label", "전 투", UIScale.FontSm, FontStyles.Bold);
+        tagTmp.color         = new Color(0.62f, 0.82f, 1.00f);
+        tagTmp.alignment     = TextAlignmentOptions.Left;
+        tagTmp.raycastTarget = false;
+        var tlRt = tagTmp.rectTransform;
+        tlRt.anchorMin = Vector2.zero; tlRt.anchorMax = Vector2.one;
+        tlRt.offsetMin = new Vector2(30f, 0f); tlRt.offsetMax = Vector2.zero;
+
+        // 타이틀 — 그림자 사본을 먼저 깔아 어떤 배경에서도 읽히게 한다
+        MakePauseTitle(header, "TitleShadow", new Color(0.02f, 0.03f, 0.06f, 0.85f), 3f);
+        MakePauseTitle(header, "TitleText",   new Color(1.00f, 0.94f, 0.78f, 1f),    0f);
+
+        var accent = new GameObject("AccentLine", typeof(RectTransform), typeof(Image));
+        accent.transform.SetParent(panel.transform, false);
+        accent.GetComponent<Image>().color = new Color(0.40f, 0.72f, 1.00f, 1f);
+        EditorUIBuilder.AnchorTop(accent.GetComponent<RectTransform>(), HeaderH, 3f);
+
+        // ── 버튼 2개 (계속하기 / 즉시 환생하기) ───────────────
+        //  "즉시 환생하기" 는 되돌릴 수 없다 — 붉은 계열로 구분한다.
+        var resumeBtn = MakePauseChoice(panel, "ResumeButton", "계 속 하 기",
+                                        "전투로 돌아간다",
+                                        new Color(0.13f, 0.52f, 0.38f, 1f),
+                                        HeaderH + 43f, btnH, SidePad);
+
+        var reincBtn  = MakePauseChoice(panel, "ReincarnateButton", "즉시 환생하기",
+                                        "이번 런을 포기하고 환생한다",
+                                        new Color(0.50f, 0.16f, 0.18f, 1f),
+                                        HeaderH + 43f + btnH + BtnGap, btnH, SidePad);
 
         var so = new SerializedObject(popup);
-        SetEnum(so, "_popupType",     (int)PopupType.Pause);
-        SetObj (so, "_resumeButton",  resumeBtn .GetComponent<Button>());
-        SetObj (so, "_restartButton", restartBtn.GetComponent<Button>());
-        SetObj (so, "_quitButton",    quitBtn   .GetComponent<Button>());
+        SetEnum(so, "_popupType",          (int)PopupType.Pause);
+        SetObj (so, "_resumeButton",       resumeBtn);
+        SetObj (so, "_reincarnateButton",  reincBtn);
         so.ApplyModifiedProperties();
 
         Save(root, "PausePopup");
+    }
+
+    static void MakePauseTitle(GameObject header, string name, Color color, float dy)
+    {
+        var tmp = AddTMP(header, name, "일시 정지", UIScale.FontLg, FontStyles.Bold);
+        tmp.color            = color;
+        tmp.alignment        = TextAlignmentOptions.Left;
+        tmp.raycastTarget    = false;
+        tmp.textWrappingMode = TextWrappingModes.NoWrap;
+        tmp.overflowMode     = TextOverflowModes.Overflow;
+        var rt = tmp.rectTransform;
+        rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
+        rt.pivot     = new Vector2(0f, 1f);
+        rt.anchoredPosition = new Vector2(30f + dy, -52f - dy);
+        rt.sizeDelta        = new Vector2(700f, UIScale.RowLg);
+    }
+
+    /// <summary>[라벨(FontMd)] 위 / [설명(FontSm)] 아래 2줄짜리 입체 선택 버튼.</summary>
+    static Button MakePauseChoice(GameObject panel, string name, string label, string hint,
+                                  Color face, float yFromTop, float h, float sidePad)
+    {
+        // UI 규칙 1 — 누를 수 있는 버튼은 음각. 내용은 반드시 body 아래.
+        var btn = EditorUIBuilder.RaisedBtn(panel, name, face, out var body);
+        var rt = btn.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0f, 1f);
+        rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot     = new Vector2(0.5f, 1f);
+        rt.offsetMin = new Vector2(sidePad,  0f);
+        rt.offsetMax = new Vector2(-sidePad, 0f);
+        rt.anchoredPosition = new Vector2(0f, -yFromTop);
+        rt.sizeDelta        = new Vector2(-sidePad * 2f, h);
+
+        var lbl = AddTMP(body, "Label", label, UIScale.FontMd, FontStyles.Bold);
+        lbl.color            = Color.white;
+        lbl.alignment        = TextAlignmentOptions.Center;
+        lbl.raycastTarget    = false;
+        lbl.textWrappingMode = TextWrappingModes.NoWrap;
+        var lRt = lbl.rectTransform;
+        lRt.anchorMin = new Vector2(0f, 0.5f); lRt.anchorMax = new Vector2(1f, 1f);
+        lRt.offsetMin = new Vector2(16f, 0f);  lRt.offsetMax = new Vector2(-16f, -6f);
+
+        var hintTmp = AddTMP(body, "Hint", hint, UIScale.FontSm, FontStyles.Normal);
+        hintTmp.color            = new Color(1f, 1f, 1f, 0.72f);
+        hintTmp.alignment        = TextAlignmentOptions.Center;
+        hintTmp.raycastTarget    = false;
+        hintTmp.textWrappingMode = TextWrappingModes.NoWrap;
+        var hRt = hintTmp.rectTransform;
+        hRt.anchorMin = new Vector2(0f, 0f);   hRt.anchorMax = new Vector2(1f, 0.5f);
+        hRt.offsetMin = new Vector2(16f, 8f);  hRt.offsetMax = new Vector2(-16f, 0f);
+
+        return btn;
     }
 
     // ── LoadingPopup ──────────────────────────────────────────

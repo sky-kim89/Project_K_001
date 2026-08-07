@@ -7,8 +7,9 @@ using BattleGame.Units;
 //  장군 프리팹 전용 RuntimeBridge.
 //
 //  병사 스탯 비율:
-//    statScaleRatio = 0.4f + CommandPower * 0.01f
-//    CommandPower 1~30 기준 → 41%~70%
+//    statScaleRatio = 0.2f + CommandPower * 0.01f  (상한 없음)
+//    CommandPower 1~30 기준 → 21%~50%, 80 이상이면 100% 를 넘긴다
+//    공식은 SoldierRuntimeBridge.StatRatio 가 소유 — 여기서 직접 계산하지 말 것
 //
 //  병사 진형 (세로 열):
 //    전체 높이를 고정(FormationHeight)하고 병사 수로 나눠 간격 산출.
@@ -124,6 +125,14 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
     /// <summary>외부에서 롤된 스탯을 읽을 때 사용.</summary>
     public UnitStat GetRolledStat() => _stat;
 
+    /// <summary>
+    /// 표시용 등급. 세이브의 UnitEntry 가 있으면 등급업 반영분까지 그대로,
+    /// 없으면(에디터 직접 스폰 등) 이름 시드의 태생 등급으로 떨어진다.
+    /// </summary>
+    public UnitGrade Grade => _unitEntry != null
+        ? _unitEntry.Grade
+        : UnitJobRoller.GetBirthGrade(_unitName ?? name);
+
     // ── UnitRuntimeBridge 구현 ───────────────────────────────
 
     protected override TeamType GetTeam()     => TeamType.Ally;
@@ -157,8 +166,9 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         var skillData = activeDb?.Get(rolledId);
 
         float baseCooldown = skillData?.Cooldown ?? 15f;
-        float rawCdr       = Mathf.Clamp(_stat.Get(StatType.SkillCooldownReduce), 0f, GameplayConfig.Current?.CooldownReduceMax ?? 0.9f);
-        float effectiveCdr = CalcEffectiveCDR(rawCdr, GameplayConfig.Current?.CooldownReduceMax ?? 0.9f);
+        // _stat.Get 이 이미 곱연산으로 합쳐 준다 (CombineMode.MultiplyResidual)
+        float effectiveCdr = ClampCDR(_stat.Get(StatType.SkillCooldownReduce),
+                                      GameplayConfig.Current?.CooldownReduceMax ?? 0.8f);
         em.AddComponentData(entity, new GeneralActiveSkillComponent
         {
             SkillId           = (int)rolledId,
@@ -388,8 +398,8 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         var activeDb  = ActiveSkillDatabase.Current;
         var rolledId  = ActiveSkillRoller.Roll(_unitName, _job, activeDb, _grade);
         var skillData = activeDb?.Get(rolledId);
-        float rawCdr2       = Mathf.Clamp(_stat.Get(StatType.SkillCooldownReduce), 0f, GameplayConfig.Current?.CooldownReduceMax ?? 0.9f);
-        float effectiveCdr2 = CalcEffectiveCDR(rawCdr2, GameplayConfig.Current?.CooldownReduceMax ?? 0.9f);
+        float effectiveCdr2 = ClampCDR(_stat.Get(StatType.SkillCooldownReduce),
+                                       GameplayConfig.Current?.CooldownReduceMax ?? 0.8f);
         em.SetComponentData(entity, new GeneralActiveSkillComponent
         {
             SkillId           = (int)rolledId,
@@ -634,19 +644,17 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
     }
 
     /// <summary>
-    /// 쿨다운 감소 체감 공식.
-    /// rawCDR 이 maxCDR 에 도달하면 effectiveCDR 도 maxCDR 에 도달한다(최상 달성 보장).
-    /// 중간 값은 선형보다 낮게 반환해 초반 CDR 축적 효율을 떨어뜨린다.
+    /// 쿨다운 감소 최종 보정 — 이제 상한 클램프만 한다.
     ///
-    /// 예: maxCDR=0.9, power=1.5
-    ///   raw 30% → effective 17%  (linear 30%)
-    ///   raw 60% → effective 49%  (linear 60%)
-    ///   raw 90% → effective 90%  (linear 90%)
+    /// 예전에는 여기서 (raw/max)^1.5 체감 공식을 먹였는데,
+    /// 그 방식은 합산값 전체에 지수를 걸어서 **출처가 하나뿐일 때도** 깎였다.
+    /// "쿨타임 10% 감소" 장비 하나만 껴도 실제로는 3.3% 만 적용돼
+    /// 아이템 설명과 실제가 어긋났다.
+    ///
+    /// 중첩 억제는 이제 합산 단계에서 처리한다 —
+    /// UnitStat 의 CombineMode.MultiplyResidual (1 - Π(1-v)).
+    /// 10% 하나면 10%, 두 개면 19%. 여기서는 상한만 지킨다.
     /// </summary>
-    public static float CalcEffectiveCDR(float rawCDR, float maxCDR)
-    {
-        if (maxCDR <= 0f || rawCDR <= 0f) return 0f;
-        const float power = 1.5f;
-        return Mathf.Pow(rawCDR / maxCDR, power) * maxCDR;
-    }
+    public static float ClampCDR(float cdr, float maxCDR)
+        => Mathf.Clamp(cdr, 0f, maxCDR);
 }

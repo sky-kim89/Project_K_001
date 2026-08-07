@@ -13,6 +13,7 @@ using UnityEngine;
 //    레벨 보너스: × (1 + (level - 1) × 0.01)   → Lv1=×1.0, Lv100=×1.99
 //    등급 보너스: × (1 + (int)grade  × 0.10)   → Normal=×1.0, Epic=×1.4
 //    두 배율 곱 적용. 고정 스텟(CritChance, CritDamage)은 배율 미적용.
+//    배율 계산 뒤 레벨업 고정 성장(체력 +10 / 공격력 +1 per 레벨)을 더한다.
 //    Defense 는 최대 0.80 으로 클램프 (80% 데미지 감소 상한).
 //
 //  ■ 직업별 특징
@@ -45,6 +46,10 @@ public static class UnitJobRoller
 
         var stat = new UnitStat();
 
+        // 쿨감은 출처끼리 더하지 않고 곱연산으로 겹친다 (10%+10% = 19%).
+        // 출처가 하나면 액면가 그대로 나온다 — 장비 설명과 실제가 어긋나지 않는다.
+        stat.SetCombineMode(StatType.SkillCooldownReduce, CombineMode.MultiplyResidual);
+
         // ── 직업 기반 랜덤 스텟 ───────────────────────────────
         float hp           = ranges.Hp.Lerp(rng.NextFloat());
         float attack       = ranges.Attack.Lerp(rng.NextFloat());
@@ -64,9 +69,16 @@ public static class UnitJobRoller
         float gradeMult = 1f + (int)grade * gradeCoef;
         float totalMult = levelMult * gradeMult;
 
+        // ── 레벨업 고정 성장 ─────────────────────────────────
+        // 배율과 별개로 레벨 1당 그대로 더해진다 (Lv1 = 0, Lv2 = 1회분).
+        // 배율 뒤에 더하므로 "레벨업 1회 = 체력 +10 / 공격력 +1" 이 등급과 무관하게 일정하다.
+        int   levelUps  = Mathf.Max(0, level - 1);
+        float flatHp    = (cfg != null ? cfg.LevelFlatHpPerLevel     : 10f) * levelUps;
+        float flatAtk   = (cfg != null ? cfg.LevelFlatAttackPerLevel : 1f)  * levelUps;
+
         // ── 배율 적용 ─────────────────────────────────────────
-        stat.Set(StatType.MaxHp,        hp           * totalMult);
-        stat.Set(StatType.Attack,       attack       * totalMult);
+        stat.Set(StatType.MaxHp,        hp           * totalMult + flatHp);
+        stat.Set(StatType.Attack,       attack       * totalMult + flatAtk);
         stat.Set(StatType.Defense,      defense * totalMult); // 소프트캡은 UnitHitSystem에서 처리
         stat.Set(StatType.AttackRange,  attackRange);   // 배율 미적용
         stat.Set(StatType.AttackSpeed,  attackSpeed);

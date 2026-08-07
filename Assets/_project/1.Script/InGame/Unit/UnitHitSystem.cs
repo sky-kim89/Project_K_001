@@ -15,6 +15,26 @@ using Unity.Collections;
 
 namespace BattleGame.Units
 {
+    /// <summary>
+    /// 방어율 → 실제 피해 환산 공식. Burst 안에서도 쓸 수 있도록 순수 static.
+    ///
+    /// ⚠ 예약 피해(ProjectileIncomingDamageSystem)와 실제 피해(ProjectileHitJob)가
+    ///   반드시 같은 값을 내야 한다 — 예약이 실제보다 크면 죽지 않은 적이 영영
+    ///   타겟에서 제외되어 전투가 멈춘다. 두 곳 모두 이 함수만 쓸 것.
+    /// </summary>
+    public static class DamageMath
+    {
+        public static float AfterDefense(float rawDamage, float rawDefense,
+                                         float softCap, float overflowRate, float effectiveCap)
+        {
+            float eff = rawDefense <= softCap
+                ? rawDefense
+                : softCap + (rawDefense - softCap) * overflowRate;
+            float defense = math.min(eff, effectiveCap);
+            return math.max(rawDamage * (1f - defense), 1f);
+        }
+    }
+
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(UnitAttackSystem))]
@@ -101,11 +121,7 @@ namespace BattleGame.Units
             float  maxNormalKbMag   = 0f;   // 일반 공격: 프레임 내 최대 단일 타격 넉백
             float3 maxNormalKbVec   = float3.zero;
 
-            float rawDef    = stat.Final[StatType.Defense];
-            float eff       = rawDef <= DefenseSoftCap
-                ? rawDef
-                : DefenseSoftCap + (rawDef - DefenseSoftCap) * DefenseOverflowRate;
-            float defense   = math.min(eff, DefenseEffectiveCap);
+            float rawDef      = stat.Final[StatType.Defense];
 
             bool  hasMirror   = MirrorArmorLookup.HasComponent(entity);
             float mirrorRatio = hasMirror ? MirrorArmorLookup[entity].ReflectRatio : 0f;
@@ -116,10 +132,10 @@ namespace BattleGame.Units
             {
                 HitEventBufferElement hit = hitBuffer[i];
 
-                // 방어율 적용
+                // 방어율 적용 (공식은 DamageMath 가 소유 — 예약 피해 계산과 반드시 동일)
                 float rawDamage    = hit.Damage;
-                float actualDamage = rawDamage * (1f - defense);
-                actualDamage       = math.max(actualDamage, 1f);
+                float actualDamage = DamageMath.AfterDefense(
+                    rawDamage, rawDef, DefenseSoftCap, DefenseOverflowRate, DefenseEffectiveCap);
                 float absorbed     = rawDamage - actualDamage;
                 totalDamage       += actualDamage;
 

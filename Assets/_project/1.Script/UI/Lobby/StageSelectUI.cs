@@ -14,7 +14,7 @@ using TMPro;
 //
 //  특성 아이콘 목록은 여기 없다 — TopBar 의 TraitBarUI 가 담당한다.
 //
-//  상점·이벤트는 버튼이 없다. 해당 스테이지에 도착하면(=이 패널이 켜지면)
+//  이벤트는 버튼이 없다. 해당 스테이지에 도착하면(=이 패널이 켜지면)
 //  팝업이 자동으로 뜬다 — 스테이지당 한 번만. TryAutoOpenStagePopup() 참고.
 //
 //  상점 스테이지도 EventPopup 으로 연다. 상점 팝업이 예고 없이 뜨면
@@ -23,11 +23,18 @@ using TMPro;
 //  (1스테이지는 RunSequenceGenerator 가 항상 일반으로 고정하므로
 //   런 시작·환생 직후에는 여기서 아무것도 뜨지 않는다)
 //
+//  ■ 상점 재입장 버튼 (_shopBtn)
+//    자동 오픈된 상점을 닫으면 그 스테이지에서 다시 들어갈 길이 없었다.
+//    상품은 ShopSeed + RefreshCount 로 결정되므로 나갔다 들어와도 그대로다
+//    — 즉 재입장은 아무것도 바꾸지 않는다. 그래서 버튼을 되살렸다.
+//    상점 스테이지에서만 보인다 (다른 스테이지에서 열리면 상점 스테이지가 무의미해진다).
+//
 //  Inspector 연결:
 //    _deploySlots[0~4] : DeploySlotUI 컴포넌트
 //    _stageText        : "스테이지 N 도전" TMP
 //    _progressText     : "N 스테이지 클리어" TMP
 //    _abilityListBtn   : 어빌리티 목록 버튼
+//    _shopBtn          : 상점 재입장 버튼 (상점 스테이지에서만 표시)
 //    _relicBtn         : 유물 탭 이동 버튼 (ActionArea)
 //    _battleStartBtn   : 전투 시작 버튼
 // ============================================================
@@ -47,6 +54,7 @@ public class StageSelectUI : MonoBehaviour
 
     [Header("버튼")]
     [SerializeField] Button          _abilityListBtn;
+    [SerializeField] Button          _shopBtn;
     [SerializeField] Button          _relicBtn;
     [SerializeField] Button          _disassembleBtn;
     [SerializeField] Button          _battleStartBtn;
@@ -73,6 +81,12 @@ public class StageSelectUI : MonoBehaviour
         _abilityListBtn?.onClick.RemoveAllListeners();
         _abilityListBtn?.onClick.AddListener(() =>
             PopupManager.Instance?.Open<AbilityListPopup>(PopupType.AbilityList));
+
+        // 상점 재입장 — 이벤트를 거치지 않고 바로 연다.
+        // 이미 "행상인의 좌판" 을 통해 한 번 연 상태이므로 맥락은 이미 전달됐다.
+        _shopBtn?.onClick.RemoveAllListeners();
+        _shopBtn?.onClick.AddListener(() =>
+            PopupManager.Instance?.Open<RunShopPopup>(PopupType.RunShop)?.SetOnClose(Refresh));
 
         _relicBtn?.onClick.RemoveAllListeners();
         _relicBtn?.onClick.AddListener(() =>
@@ -147,6 +161,11 @@ public class StageSelectUI : MonoBehaviour
         var seq = progress?.GetRunSequence();
         if (_progressBar != null && seq != null && seq.Length > 0)
             _progressBar.Refresh(seq, stageIndex);
+
+        // 상점 재입장 버튼 — 상점 스테이지에서만 노출.
+        // 다른 스테이지에서도 열리면 상점 스테이지 자체가 의미를 잃는다.
+        if (_shopBtn != null)
+            _shopBtn.gameObject.SetActive(progress?.CurrentStageType == RunStageType.Shop);
 
         // 상점은 자동으로 열리므로 이 버튼은 항상 "전투 시작" 이다.
         var label = _battleStartBtn?.GetComponentInChildren<TextMeshProUGUI>();

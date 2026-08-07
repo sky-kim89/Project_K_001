@@ -12,13 +12,20 @@ using UnityEngine.UI;
 //    탭을 오가며 기억해야 했다. 셋 다 한 화면에 편다.
 //
 //  ■ 레이아웃 (HeroDetailPopupCreator)
-//    Header   ◆ 장 수 | 이름                                    [X]
-//    ├ Left   초상화 + 장비 3칸(아이콘만) / Lv·직업·등급 / EXP / 레벨업·용병
+//    Header   ◆ 장 수 | 이름            [재화 4종]              [X]
+//    ├ Left   초상화 + 장비 3칸(아이콘만) / [등급업][해고] / Lv·직업·등급
+//    │        / EXP / 레벨업·용병
 //    ├ Mid    스 탯   — 9행 전부 노출. 행을 누르면 출처별 분해
 //    └ Right  스 킬   — 액티브 1 + 패시브 최대 3, 설명을 크게
 //
 //    장비 칸을 누르면 EquipComparePopup 이 우측(스킬 열) 위에 겹쳐 열린다
 //    — 예전 "장비" 탭을 눌렀을 때와 같은 창이다.
+//
+//  ■ 등급업 · 해고 행 (초상화 아래)
+//    장비 스트립(520)이 초상화(400)보다 길어 비어 있던 400×140 자리를 쓴다.
+//    등급업 : 장군 강화석 소모, Epic 이면 "MAX" 로 잠긴다.
+//    해고   : 배치 장수가 1명뿐이면 잠긴다 — 전부 해고하면 전투를 시작할 수 없다.
+//    둘 다 프리뷰 모드(상점 미리보기)에서는 숨긴다 — 아직 내 장수가 아니다.
 //
 //  Inspector 연결은 전부 HeroDetailPopupCreator 가 자동으로 한다.
 // ============================================================
@@ -68,8 +75,16 @@ public class HeroDetailPopup : PopupBase
     [SerializeField] TextMeshProUGUI _activeSkillText;
     [SerializeField] TextMeshProUGUI _activeSkillDescText;
     [SerializeField] GameObject[]    _passiveBoxes;
+    [SerializeField] Image[]         _passiveIcons;
     [SerializeField] TextMeshProUGUI[] _passiveNameTexts;
     [SerializeField] TextMeshProUGUI[] _passiveDescTexts;
+
+    [Header("등급업 · 해고 (초상화 아래)")]
+    [SerializeField] GameObject      _rankRow;          // 프리뷰 모드에서 통째로 숨김
+    [SerializeField] Button          _gradeUpBtn;
+    [SerializeField] TextMeshProUGUI _gradeUpCostText;
+    [SerializeField] Image           _gradeUpCostIcon;
+    [SerializeField] Button          _fireBtn;
 
     [Header("성장 (EXP · 레벨업 · 용병)")]
     [SerializeField] GameObject      _growthRow;
@@ -108,19 +123,21 @@ public class HeroDetailPopup : PopupBase
         // 프리뷰 모드에서 껐을 수 있으므로 복원
         _growthRow.SetActive(true);
         _equipRoot.SetActive(true);
+        _rankRow.SetActive(true);
         _levelText.gameObject.SetActive(true);
 
         SetStatTarget(soldier: false);   // 열 때는 항상 장수부터
         RefreshUI();
     }
 
-    /// <summary>상점 미리보기 — 아직 내 장수가 아니므로 성장·장비를 숨긴다.</summary>
+    /// <summary>상점 미리보기 — 아직 내 장수가 아니므로 성장·장비·등급업을 숨긴다.</summary>
     public void SetupPreview(UnitEntry entry)
     {
         Setup(entry);
 
         _growthRow.SetActive(false);
         _equipRoot.SetActive(false);
+        _rankRow.SetActive(false);
         _levelText.gameObject.SetActive(false);
     }
 
@@ -132,6 +149,8 @@ public class HeroDetailPopup : PopupBase
         _closeBtn.onClick.AddListener(OnCloseClick);
         _levelUpBtn.onClick.AddListener(OnLevelUpClick);
         _soldierUpBtn.onClick.AddListener(OnSoldierUpClick);
+        _gradeUpBtn.onClick.AddListener(OnGradeUpClick);
+        _fireBtn.onClick.AddListener(OnFireClick);
 
         _generalTabBtn.onClick.AddListener(() => SetStatTarget(soldier: false));
         _soldierTabBtn.onClick.AddListener(() => SetStatTarget(soldier: true));
@@ -149,6 +168,7 @@ public class HeroDetailPopup : PopupBase
     {
         ApplyCostIcon(_levelUpCostIcon,   eItem.Gold);
         ApplyCostIcon(_soldierUpCostIcon, eItem.SoldierShard);
+        ApplyCostIcon(_gradeUpCostIcon,   eItem.GeneralUpgradeStone);
         foreach (var slot in _equipSlots)
             ApplyCostIcon(slot.EnhanceCostIcon, eItem.EquipUpgradeStone);
 
@@ -183,6 +203,7 @@ public class HeroDetailPopup : PopupBase
         FillSkills(job, _entry);
         RefreshEquipSlots();
         RefreshGrowthDisplay();
+        RefreshRankRow();
 
         UnitPortraitHelper.Render(_entry.UnitName, job, _entry.Grade,
             _portraitBridge, _portraitBg, _portraitImage, ref _portraitTexture);
@@ -215,6 +236,13 @@ public class HeroDetailPopup : PopupBase
             var pd = passiveDb.Get(passives[i]);
             _passiveNameTexts[i].text = pd?.SkillName   ?? "-";
             _passiveDescTexts[i].text = pd?.Description ?? "";
+
+            if (_passiveIcons != null && i < _passiveIcons.Length && _passiveIcons[i] != null)
+            {
+                var pic = pd?.Icon;
+                _passiveIcons[i].sprite = pic;
+                _passiveIcons[i].color  = pic != null ? Color.white : new Color(0.25f, 0.24f, 0.40f);
+            }
         }
     }
 
@@ -318,8 +346,70 @@ public class HeroDetailPopup : PopupBase
         RefreshUI();
     }
 
-    static int GetLevelUpCost(int currentLevel)  => currentLevel * 100;
+    // 비용 공식은 GameplayConfig 가 소유한다 — 여기서 따로 계산하지 말 것
+    static int GetLevelUpCost(int currentLevel)  => GameplayConfig.HeroLevelUpCost(currentLevel);
     static int GetSoldierUpCost(int currentBonus) => (currentBonus + 1) * 10;
+
+    // ── 등급업 · 해고 ────────────────────────────────────────
+
+    void OnGradeUpClick()
+    {
+        if (_entry.Grade >= UnitGrade.Epic) return;
+
+        var items    = UserDataManager.Instance.Get<ItemData>();
+        var unitData = UserDataManager.Instance.Get<UnitData>();
+
+        int cost = GameplayConfig.GradeUpCost(_entry.Grade);
+        if (!items.Spend(eItem.GeneralUpgradeStone, cost)) return;
+
+        unitData.GradeUp(_entry.UnitName);
+        // 등급이 바뀌면 직업 시너지 판정 대상(등급별 슬롯 수)도 달라진다
+        JobSynergyEvaluator.Recalculate();
+        UserDataManager.Instance.RequestSave();
+
+        _entry = unitData.GetUnit(_entry.UnitName);
+        RefreshUI();
+    }
+
+    /// <summary>배치 장수를 해고한다 — 마지막 1명은 해고할 수 없다(전투 불가).</summary>
+    void OnFireClick()
+    {
+        if (!CanFire()) return;
+
+        var unitData   = UserDataManager.Instance.Get<UnitData>();
+        var deployData = UserDataManager.Instance.Get<DeploymentData>();
+
+        deployData.Undeploy(_entry.UnitName);
+        unitData.RemoveUnit(_entry.UnitName);
+        JobSynergyEvaluator.Recalculate();
+        UserDataManager.Instance.RequestSave();
+
+        Close();   // 해고한 장수의 상세를 계속 띄워 둘 수 없다
+    }
+
+    /// <summary>배치된 장수가 2명 이상이어야 해고 가능.</summary>
+    static bool CanFire()
+    {
+        var deployData = UserDataManager.Instance.Get<DeploymentData>();
+        return deployData.GetDeployedUnits().Count > 1;
+    }
+
+    void RefreshRankRow()
+    {
+        bool isMax = _entry.Grade >= UnitGrade.Epic;
+        int  cost  = GameplayConfig.GradeUpCost(_entry.Grade);
+        int  owned = UserDataManager.Instance.Get<ItemData>().Get(eItem.GeneralUpgradeStone);
+
+        _gradeUpBtn.interactable  = !isMax && owned >= cost;
+        _gradeUpCostText.text     = isMax ? "MAX" : $"{cost}";
+        _gradeUpCostText.color    = isMax          ? new Color(0.70f, 0.72f, 0.80f)
+                                  : owned >= cost  ? new Color(1.00f, 0.85f, 0.20f)
+                                                   : new Color(0.90f, 0.35f, 0.35f);
+        // MAX 면 강화석 아이콘은 의미가 없다
+        _gradeUpCostIcon.gameObject.SetActive(!isMax);
+
+        _fireBtn.interactable = CanFire();
+    }
 
     void RefreshGrowthDisplay()
     {

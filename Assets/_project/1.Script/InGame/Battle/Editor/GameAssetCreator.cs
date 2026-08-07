@@ -326,9 +326,9 @@ public static class GameAssetCreator
 
         var lootHunter = Make<PassiveLootHunter>(db, PassiveSkillType.LootHunter, "LootHunter",
             "전리품 사냥",
-            "적 처치 시 골드 +50 획득.",
+            "적 처치 시 골드 +15 획득.",
             PassiveTrigger.OnEnemyKill);
-        lootHunter.GoldPerKill = 50;
+        lootHunter.GoldPerKill = 15;
         EditorUtility.SetDirty(lootHunter);
 
         var slaughterer = Make<PassiveSlaughterer>(db, PassiveSkillType.Slaughterer, "Slaughterer",
@@ -380,9 +380,9 @@ public static class GameAssetCreator
 
         var goldenPower = Make<PassiveGoldenPower>(db, PassiveSkillType.GoldenPower, "GoldenPower",
             "황금의 힘",
-            "전투 시작 시 보유 골드 1000당 공격력·최대체력 +1%.",
+            "전투 시작 시 보유 골드 300당 공격력·최대체력 +1%.",
             PassiveTrigger.OnBattleStart);
-        goldenPower.GoldPerBonus  = 1000;
+        goldenPower.GoldPerBonus  = 300;
         goldenPower.AttackPercent = 0.01f;
         goldenPower.HpPercent     = 0.01f;
         EditorUtility.SetDirty(goldenPower);
@@ -458,6 +458,12 @@ public static class GameAssetCreator
         so.Description   = description;
         so.TriggerType   = trigger;
         so.StatModifiers = new List<PassiveSkillData.StatModifierEntry>(mods);
+
+        // 아이콘 — 파일명이 enum 이름과 같다 (PassiveIconGenerator 가 그렇게 저장한다).
+        // 아직 아이콘을 안 만들었으면 기존 값을 유지한다 (덮어써서 지우지 않는다).
+        var icon = AssetDatabase.LoadAssetAtPath<Sprite>(
+            $"Assets/_project/3.Textures/Icons/Passives/passive_{type}.png");
+        if (icon != null) so.Icon = icon;
 
         EditorUtility.SetDirty(so);
         db.Entries.Add(so);

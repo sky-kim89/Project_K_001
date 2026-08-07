@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 // ============================================================
 //  InfoTooltipUI.cs
@@ -65,11 +66,53 @@ public class InfoTooltipUI : MonoBehaviour
         var canvas = _originalParent.GetComponentInParent<Canvas>();
         if (canvas != null)
         {
-            transform.SetParent(canvas.rootCanvas.transform, true);
+            var root = canvas.rootCanvas;
+            transform.SetParent(root.transform, true);
             transform.SetAsLastSibling();
+            FitIntoCanvas(root.transform as RectTransform);
         }
 
         _skipFrame = true;   // 여는 클릭이 그대로 닫기로 이어지지 않게
+    }
+
+    // ── 화면 안으로 밀어넣기 ─────────────────────────────────
+    //  툴팁은 기본적으로 소유 아이콘의 좌하단에서 아래로 펼쳐진다.
+    //  아이콘이 화면 아래쪽·오른쪽 끝에 있으면 그대로 두면 밖으로 나간다.
+    //    · 아래로 펼칠 자리가 없으면 → 아이콘 위로 뒤집는다
+    //    · 오른쪽이 넘치면        → 왼쪽으로 민다
+    //  뒤집기는 "화면 중심보다 아래" 가 아니라 "실제로 넘치는가" 로 판단한다.
+    //  넘치지 않는데 굳이 뒤집으면 툴팁이 아이콘을 가려 더 불편하다.
+    void FitIntoCanvas(RectTransform canvasRt)
+    {
+        if (canvasRt == null) return;
+
+        const float Margin = 12f;
+
+        // CSF 가 높이를 잡기 전이면 rect.height 가 0 이다 — 먼저 확정시킨다.
+        LayoutRebuilder.ForceRebuildLayoutImmediate(_rect);
+
+        float cw = canvasRt.rect.width, ch = canvasRt.rect.height;
+        float w  = _rect.rect.width,    h  = _rect.rect.height;
+
+        // 앵커 (0,0) · 피벗 (0,1) → anchoredPosition = 툴팁 좌상단 (캔버스 좌하단 기준)
+        Vector2 pos = _rect.anchoredPosition;
+
+        // ── 세로 ─────────────────────────────────────────────
+        if (pos.y - h < Margin)
+        {
+            // 아이콘 위로 뒤집는다. 지금 위치는 "아이콘 아래 4px" 이므로
+            // 아이콘 아래변 = pos.y + 4, 여기에 아이콘 높이를 더하면 윗변이다.
+            float ownerH   = _originalParent is RectTransform ort ? ort.rect.height : 0f;
+            float ownerTop = pos.y + 4f + ownerH;
+            pos.y = ownerTop + 4f + h;
+        }
+        pos.y = Mathf.Clamp(pos.y, h + Margin, ch - Margin);
+
+        // ── 가로 ─────────────────────────────────────────────
+        if (pos.x + w > cw - Margin) pos.x = cw - Margin - w;
+        if (pos.x < Margin)          pos.x = Margin;
+
+        _rect.anchoredPosition = pos;
     }
 
     public void Close()

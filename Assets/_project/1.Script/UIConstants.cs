@@ -127,13 +127,16 @@ public static class StatDisplayHelper
         };
     }
 
-    static string FormatCDRFinal(float rawCDR)
+    // 넘겨받는 값은 이미 곱연산으로 합쳐진 최종 쿨감이다 —
+    // 여기서는 상한에 걸렸을 때만 그 사실을 알려 준다.
+    // (예전에는 "3.3% (합산 10.0%)" 처럼 체감 공식 결과를 같이 적었는데,
+    //  이제 출처가 하나면 액면가가 그대로 나오므로 두 수치가 갈릴 일이 없다)
+    static string FormatCDRFinal(float cdr)
     {
-        float maxCDR       = GameplayConfig.Current != null ? GameplayConfig.Current.CooldownReduceMax : 0.9f;
-        float effectiveCDR = GeneralRuntimeBridge.CalcEffectiveCDR(rawCDR, maxCDR);
-        if (Mathf.Abs(rawCDR - effectiveCDR) < 0.001f)
-            return $"{rawCDR * 100f:F1}%";
-        return $"{effectiveCDR * 100f:F1}% <size=80%><color=#888888>(합산 {rawCDR * 100f:F1}%)</color></size>";
+        float maxCDR = GameplayConfig.Current != null ? GameplayConfig.Current.CooldownReduceMax : 0.8f;
+        if (cdr <= maxCDR + 0.001f)
+            return $"{cdr * 100f:F1}%";
+        return $"{maxCDR * 100f:F1}% <size=80%><color=#888888>(상한)</color></size>";
     }
 
     /// <summary>
@@ -152,14 +155,18 @@ public static class StatDisplayHelper
         if (relicVal   != 0f) sb.Append($"  <color=#{StatBonusColors.Relic}>{FormatStat(stat, relicVal,   withSign: true)}</color>");
         if (traitVal   != 0f) sb.Append($"  <color=#{StatBonusColors.Trait}>{FormatStat(stat, traitVal,   withSign: true)}</color>");
 
-        // CDR·방어율은 체감 공식이 적용되므로 합산 후 실효값을 별도 표시
+        // 쿨감은 출처끼리 더하지 않고 곱연산으로 겹친다 — 단순 합과 다르므로 결과를 적어 준다
         if (stat == StatType.SkillCooldownReduce)
         {
-            float rawTotal     = baseVal + equipVal + passiveVal + abilityVal + relicVal + traitVal;
-            float maxCDR       = GameplayConfig.Current != null ? GameplayConfig.Current.CooldownReduceMax : 0.9f;
-            float effectiveCDR = GeneralRuntimeBridge.CalcEffectiveCDR(rawTotal, maxCDR);
-            if (Mathf.Abs(rawTotal - effectiveCDR) > 0.001f)
-                sb.Append($"\n<color=#AAAAAA>→ 체감 {effectiveCDR * 100f:F1}%</color>");
+            float sum      = baseVal + equipVal + passiveVal + abilityVal + relicVal + traitVal;
+            float combined = HeroStatResult.CombineResidual(
+                baseVal, equipVal, passiveVal, abilityVal, relicVal, traitVal);
+            float maxCDR   = GameplayConfig.Current != null ? GameplayConfig.Current.CooldownReduceMax : 0.8f;
+            float final    = Mathf.Min(combined, maxCDR);
+
+            if (Mathf.Abs(sum - final) > 0.001f)
+                sb.Append($"\n<color=#AAAAAA>→ 중첩 적용 {final * 100f:F1}%" +
+                          (combined > maxCDR + 0.001f ? " (상한)" : "") + "</color>");
         }
         else if (stat == StatType.Defense)
         {

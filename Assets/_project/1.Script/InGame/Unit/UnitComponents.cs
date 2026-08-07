@@ -207,6 +207,22 @@ namespace BattleGame.Units
     public struct HealthComponent : IComponentData
     {
         public float CurrentHp;
+
+        /// <summary>
+        /// 비행 중인 발사체가 이미 확정지은 피해량 (방어율 적용 후).
+        /// ProjectileIncomingDamageSystem 이 매 프레임 살아있는 발사체로부터 다시 계산한다
+        /// — 누적 필드가 아니므로 환불·정합성 관리가 필요 없다.
+        /// </summary>
+        public float IncomingDamage;
+
+        /// <summary>날아오는 발사체까지 감안한 실효 체력. 0 이하 = 이미 죽은 목숨.</summary>
+        public float EffectiveHp => CurrentHp - IncomingDamage;
+
+        /// <summary>
+        /// 아직 살아 있지만(이동·피격 판정 유지) 도착 예정 피해로 이미 죽은 것이 확정된 상태.
+        /// 새 공격의 타겟에서 제외해 오버킬 낭비를 막는다.
+        /// </summary>
+        public bool IsDoomed => CurrentHp > 0f && CurrentHp - IncomingDamage <= 0f;
     }
 
     /// <summary>

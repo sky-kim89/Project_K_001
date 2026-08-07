@@ -38,6 +38,63 @@ public class GameplayConfig : ScriptableObject
     [Tooltip("용병 고용 시 소모 골드")]
     public int HireMercenaryCost = 500;
 
+    [Header("장수 레벨업 비용 — Lv N → N+1 = Base + (N-1) × PerLevel")]
+    [Tooltip("Lv1 → Lv2 비용 (골드)")]
+    public int HeroLevelUpCostBase     = 100;
+
+    [Tooltip("레벨 1당 비용 증가분 (골드). 기본 10 → 100 / 110 / 120 / 130 …")]
+    public int HeroLevelUpCostPerLevel = 10;
+
+    /// <summary>Lv currentLevel → currentLevel+1 에 필요한 골드.</summary>
+    public int GetHeroLevelUpCost(int currentLevel)
+        => HeroLevelUpCostBase + Mathf.Max(0, currentLevel - 1) * HeroLevelUpCostPerLevel;
+
+    /// <summary>Config 미할당 시에도 안전하게 쓸 수 있는 정적 진입점 — UI·로직 공용.</summary>
+    public static int HeroLevelUpCost(int currentLevel)
+        => Current != null ? Current.GetHeroLevelUpCost(currentLevel)
+                           : 100 + Mathf.Max(0, currentLevel - 1) * 10;
+
+    // ──────────────────────────────────────────────────────────
+    // ■ 장수 등급업 비용 (장군 강화석)
+    // ──────────────────────────────────────────────────────────
+    //  등급 1단계 = 전 스탯 ×GradeMultPerTier + 패시브 슬롯 증가(1→2→3).
+    //  스테이지 클리어로 강화석이 30스테이지 누적 약 150개 들어온다
+    //  → 한 런에 장수 하나를 Normal→Epic(누적 97) 까지 올릴 수 있는 수준.
+
+    [Header("장수 등급업 비용 — 장군 강화석 (현재 등급 → 다음 등급)")]
+    [Tooltip("일반 → 고급")]
+    public int GradeUpCostToUncommon = 8;
+    [Tooltip("고급 → 희귀")]
+    public int GradeUpCostToRare     = 16;
+    [Tooltip("희귀 → 유니크")]
+    public int GradeUpCostToUnique   = 28;
+    [Tooltip("유니크 → 에픽")]
+    public int GradeUpCostToEpic     = 45;
+
+    /// <summary>현재 등급에서 다음 등급으로 올리는 비용. Epic 이면 0 (더 못 올림).</summary>
+    public int GetGradeUpCost(UnitGrade current) => current switch
+    {
+        UnitGrade.Normal   => GradeUpCostToUncommon,
+        UnitGrade.Uncommon => GradeUpCostToRare,
+        UnitGrade.Rare     => GradeUpCostToUnique,
+        UnitGrade.Unique   => GradeUpCostToEpic,
+        _                  => 0,   // Epic = 최대 등급
+    };
+
+    /// <summary>Config 미할당 시에도 안전한 정적 진입점 — UI·로직 공용.</summary>
+    public static int GradeUpCost(UnitGrade current)
+    {
+        if (Current != null) return Current.GetGradeUpCost(current);
+        return current switch
+        {
+            UnitGrade.Normal   => 8,
+            UnitGrade.Uncommon => 16,
+            UnitGrade.Rare     => 28,
+            UnitGrade.Unique   => 45,
+            _                  => 0,
+        };
+    }
+
     // ──────────────────────────────────────────────────────────
     // ■ 유물 비용
     // ──────────────────────────────────────────────────────────
@@ -118,7 +175,7 @@ public class GameplayConfig : ScriptableObject
 
     [Tooltip("스킬 쿨다운 감소율 상한 (0~1). 이 값을 초과하는 쿨감은 무시된다.")]
     [Range(0f, 1f)]
-    public float CooldownReduceMax = 0.9f;
+    public float CooldownReduceMax = 0.8f;
 
     [Tooltip("방어율 실효 최대치 (0~1). 소프트캡 공식 적용 후 이 값으로 상한 클램프.")]
     [Range(0f, 1f)]
@@ -138,6 +195,27 @@ public class GameplayConfig : ScriptableObject
 
     [Tooltip("등급 1단계당 스텟 배율 증가량.\n기본 0.10 → Normal=×1.0, Epic(4단계)=×1.4")]
     public float GradeMultPerTier  = 0.10f;
+
+    [Header("레벨업 고정 성장 (배율과 별개로 매 레벨 그대로 더해진다)")]
+    [Tooltip("레벨 1당 기본 최대체력 가산량")]
+    public float LevelFlatHpPerLevel     = 10f;
+
+    [Tooltip("레벨 1당 기본 공격력 가산량")]
+    public float LevelFlatAttackPerLevel = 1f;
+
+    // ──────────────────────────────────────────────────────────
+    // ■ 용병(병사) 스탯 환산
+    // ──────────────────────────────────────────────────────────
+
+    [Header("용병 스탯 비율 — 실제 계산은 SoldierRuntimeBridge.StatRatio 가 소유")]
+    [Tooltip("지휘력 0 일 때의 병사 스탯 비율 (장군 대비). 기본 0.2 = 20%")]
+    public float SoldierBaseStatRatio = 0.2f;
+
+    [Tooltip("지휘력 1포인트당 병사 스탯 비율 증가량. 기본 0.01 = +1%p")]
+    public float SoldierRatioPerCommandPower = 0.01f;
+
+    [Tooltip("병사 스탯 비율 상한. 0 이하면 상한 없음 — 지휘력으로 100% 를 넘길 수 있다.")]
+    public float SoldierStatRatioMax = 0f;
 
     // ──────────────────────────────────────────────────────────
     // ■ 등급 뽑기 확률 (RollGrade)

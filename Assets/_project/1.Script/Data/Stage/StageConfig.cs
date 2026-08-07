@@ -82,6 +82,14 @@ public class StageConfig : ScriptableObject
     [Tooltip("허들 스테이지 추가 지급량")]
     public int ShardHurdleBonus    = 5;
 
+    [Header("장군 강화석 보상 (등급업 재화)")]
+    [Tooltip("스테이지 1 기본 지급량")]
+    public int GeneralStoneRewardBase     = 2;
+    [Tooltip("5스테이지 블록마다 추가 지급량 (블록 0=+0, 블록 1=+1, …)")]
+    public int GeneralStoneRewardPerBlock = 1;
+    [Tooltip("허들 스테이지 추가 지급량")]
+    public int GeneralStoneHurdleBonus    = 3;
+
     [Header("장비 박스 보상")]
     [Tooltip("이 스테이지부터 장비 박스 2개 지급")]
     public int EquipBoxThreshold2 = 10;
@@ -92,9 +100,11 @@ public class StageConfig : ScriptableObject
     // ■ 보상
     // ──────────────────────────────────────────────────────────
 
-    [Header("스테이지 클리어 골드 보상 (진행도 0→1 에 따라 Min→Max 선형 보간)")]
-    public int GoldRewardMin = 300;
-    public int GoldRewardMax = 8000;
+    [Header("스테이지 클리어 골드 보상 — 스테이지 N = Base + (N-1) × PerStage")]
+    [Tooltip("1스테이지 클리어 골드")]
+    public int GoldRewardBase     = 500;
+    [Tooltip("스테이지 1당 증가분. 기본 50 → 500 / 550 / 600 / 650 …")]
+    public int GoldRewardPerStage = 50;
 
     [Header("스테이지 클리어 전투석 보상 (진행도 0→1 에 따라 Min→Max 선형 보간)")]
     public int StoneRewardMin = 1;

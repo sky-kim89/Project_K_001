@@ -29,7 +29,21 @@ public class HeroStatResult
         float a = AbilityBonuses.TryGetValue(stat,  out var av) ? av : 0f;
         float r = RelicBonuses.TryGetValue(stat,    out var rv) ? rv : 0f;
         float t = TraitBonuses.TryGetValue(stat,    out var tv) ? tv : 0f;
+
+        // 쿨감만 곱연산 — 인게임(UnitStat.MultiplyResidual)과 같은 규칙이어야
+        // 로비에서 본 수치와 전투에서 적용되는 수치가 일치한다.
+        if (stat == StatType.SkillCooldownReduce)
+            return CombineResidual(b, e, p, a, r, t);
+
         return b + e + p + a + r + t;
+    }
+
+    /// <summary>1 - Π(1 - v). 출처가 하나면 그 값 그대로.</summary>
+    public static float CombineResidual(params float[] values)
+    {
+        float remain = 1f;
+        foreach (float v in values) remain *= (1f - v);
+        return 1f - remain;
     }
 
     public float GetEquip(StatType stat)   => EquipBonuses.TryGetValue(stat,  out var v) ? v : 0f;

@@ -126,12 +126,17 @@ namespace BattleGame.Units
             Entity                   entity,
             in LocalTransform        transform,
             in UnitIdentityComponent identity,
+            in HealthComponent       health,
             ref GridCellComponent    gridCell)
         {
             int2 cell = WorldToCell(transform.Position);
 
             gridCell.PrevCell = gridCell.Cell;
             gridCell.Cell     = cell;
+
+            // 날아오는 발사체로 이미 사망이 확정된 유닛은 타겟 후보에서 뺀다.
+            // (그리드는 타겟 탐색 전용이므로 여기서 빼면 아무도 새로 조준하지 않는다)
+            if (health.IsDoomed) return;
 
             GridWriter.Add(cell, new UnitGridEntry
             {
@@ -169,8 +174,13 @@ namespace BattleGame.Units
             in  LocalTransform        transform,
             in  UnitIdentityComponent identity,
             in  GridCellComponent     gridCell,
+            in  HealthComponent       health,
             ref AttackComponent       attack)
         {
+            // 사망이 확정된 유닛은 타겟을 놓는다 — 공격도 제자리 대기도 하지 않고
+            // 이동 분기("타겟 없음 → 전진")로 넘어가 맞을 때까지 걷기만 한다.
+            if (health.IsDoomed) { attack.HasTarget = false; return; }
+
             // 이미 유효한 타겟이 있으면 유지 — 단, 탐색 범위 초과 시 재탐색
             // (넉백·이동 스킬로 타겟이 멀리 날아간 경우 주변 적을 새로 탐색)
             // 타겟 사망 시 MeleeAttackJob / RangedAttackJob 이 HasTarget = false 로 초기화함

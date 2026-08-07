@@ -21,9 +21,9 @@ namespace BattleGame.Units
         [Tooltip("스폰할 병사 수")]
         public int        SoldierCount   = 10;
 
-        [Tooltip("병사 스탯 = 장군 스탯 × 이 값 (0.1 ~ 1.0)")]
+        [Tooltip("지휘력 0 일 때의 병사 스탯 비율. 최종 비율 = 이 값 + 지휘력 × 0.01 (상한 없음)")]
         [Range(0.1f, 1f)]
-        public float      StatScaleRatio = 0.6f;
+        public float      StatScaleRatio = 0.2f;
 
         [Tooltip("지휘 반경 — 이 범위 내 소속 병사에게 패시브 버프 적용")]
         public float      CommandRadius  = 15f;

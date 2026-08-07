@@ -36,6 +36,48 @@ public static class EventRewardHandler
         TraitType.Event_AltarCurse,
     };
 
+    // ── 이벤트로 얻을 수 있는 특성 목록 ───────────────────────
+
+    /// <summary>
+    /// 이벤트를 통해 얻을 수 있는 특성 전부.
+    /// EventDatabase 의 모든 AddTrait 보상 + 랜덤 버프/디버프 풀을 훑는다.
+    ///
+    /// 상점(RunShopPopup)이 이 목록을 빼고 상품을 뽑는다 —
+    /// "처형의 사기" 처럼 특정 이벤트에서 특정 선택지를 골라야 얻는 특성이
+    /// 골드로도 사지면 그 선택의 의미가 사라진다.
+    ///
+    /// enum 번호대(500~)로 거르지 않는 이유: 새 이벤트가 기존 특성을 주도록
+    /// 바뀌어도 여기 손댈 필요 없이 상점에서 자동으로 빠진다.
+    /// </summary>
+    public static HashSet<TraitType> CollectEventTraits()
+    {
+        var set = new HashSet<TraitType>(BuffTraitPool);
+        set.UnionWith(DebuffTraitPool);
+
+        var db = EventDatabase.Current;
+        if (db == null) return set;
+
+        foreach (var evt in db.GetAll())
+        {
+            CollectTraitRewards(evt.InstantRewards, set);
+            if (evt.Choices == null) continue;
+            foreach (var choice in evt.Choices)
+            {
+                CollectTraitRewards(choice.SuccessRewards, set);
+                CollectTraitRewards(choice.FailRewards, set);
+            }
+        }
+        return set;
+    }
+
+    static void CollectTraitRewards(EventReward[] rewards, HashSet<TraitType> set)
+    {
+        if (rewards == null) return;
+        foreach (var r in rewards)
+            if (r.Type == EventRewardType.AddTrait)
+                set.Add((TraitType)r.IntValue);
+    }
+
     // ── 비용 사전 확인 ────────────────────────────────────────
 
     /// <summary>SpendItem 항목이 모두 충족 가능한지 검사.</summary>

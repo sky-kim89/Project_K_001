@@ -146,6 +146,9 @@ public static class RewardInfoResolver
         eItem.BattleStone  => new Color(0.50f, 0.75f, 0.60f, 1f),
         eItem.Energy       => new Color(0.90f, 0.50f, 0.20f, 1f),
         eItem.SoldierShard => new Color(0.45f, 0.70f, 1.00f, 1f),
+        // 강화석 2종 — 아이콘 색과 맞춘다 (장군=금, 장비=청)
+        eItem.GeneralUpgradeStone => new Color(1.00f, 0.84f, 0.25f, 1f),
+        eItem.EquipUpgradeStone   => new Color(0.35f, 0.55f, 0.85f, 1f),
         _                  => new Color(0.60f, 0.60f, 0.70f, 1f),
     };
 

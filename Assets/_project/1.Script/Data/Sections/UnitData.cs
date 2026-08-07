@@ -96,6 +96,14 @@ public class UnitData : ISaveSection
         if (entry != null) entry.SoldierBonus += amount;
     }
 
+    /// <summary>등급을 한 단계 올린다. 이미 Epic 이면 아무 일도 하지 않는다.</summary>
+    public void GradeUp(string unitId)
+    {
+        var entry = GetUnit(unitId);
+        if (entry == null || entry.Grade >= UnitGrade.Epic) return;
+        entry.GradeUpCount++;
+    }
+
     public string PickAvailableName()
     {
         var available = new List<string>(s_namePool.Length);

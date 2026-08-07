@@ -7,11 +7,13 @@ using TMPro;
 //  ReincarnationPopup.cs
 //  패배 시 환생 전용 팝업.
 //  초상화·스탯바·어빌리티 아이콘 스트립을 포함한 런 요약 화면.
+//  BattleResultPopup 과 같은 시각 언어 (헤더 밴드 · 섹션 라벨 · 음각 탭).
 //
-//  레이아웃 (위 → 아래):
-//    "패배" 제목 / 웨이브·처치 / 총피해·DPS / 어빌리티 스트립(HScroll)
-//    딜·탱·힐 탭 / 장수별 StatBar 목록(VScroll)
-//    포인트 패널 / 환생 버튼
+//  레이아웃 (위 → 아래) — 실제 좌표는 ReincarnationPopupCreator 참조:
+//    헤더 밴드: "패  배" + 웨이브·처치(좌) / 총피해·DPS(우)
+//    "획득 어빌리티" 섹션 → 아이콘 타일 스트립(HScroll)
+//    "전투 기록" 섹션 → 딜·탱·힐 탭 → 장수별 StatBar 목록(VScroll)
+//    포인트 패널 (보유 › 획득 › 환생 후) / 환생 버튼
 // ============================================================
 
 public class ReincarnationPopup : PopupBase
@@ -22,11 +24,12 @@ public class ReincarnationPopup : PopupBase
     [SerializeField] TextMeshProUGUI _statsText;
 
     [Header("어빌리티 스트립")]
-    [SerializeField] Transform _abilityIconContent;   // HLG + CSF, 런타임 생성
+    [SerializeField] Transform       _abilityIconContent;   // HLG + CSF, 런타임 생성
+    [SerializeField] TextMeshProUGUI _abilityEmptyText;     // 하나도 없을 때만 표시
 
     [Header("통계 탭")]
     [SerializeField] Button[] _tabButtons;            // 0=딜, 1=탱, 2=힐
-    [SerializeField] Image[]  _tabButtonBgs;
+    [SerializeField] Image[]  _tabButtonBgs;          // 탭 하단 강조바 (활성만 색을 켠다)
 
     [Header("장수 목록")]
     [SerializeField] Transform        _generalArea;          // ScrollRect content (VLG)
@@ -43,8 +46,8 @@ public class ReincarnationPopup : PopupBase
     BattleContext _context;
     readonly List<GeneralStatRowUI> _generalRows = new();
 
-    static readonly Color TabActiveColor   = new Color(0.25f, 0.45f, 0.85f);
-    static readonly Color TabInactiveColor = new Color(0.15f, 0.18f, 0.28f);
+    // 색은 ReincarnationPopupCreator 의 팔레트와 맞춰 둔다.
+    static readonly Color TabActiveColor = new Color(0.42f, 0.62f, 1.00f);
 
     // ── PopupBase 훅 ─────────────────────────────────────────
 
@@ -106,75 +109,85 @@ public class ReincarnationPopup : PopupBase
         if (_abilityIconContent == null) return;
         foreach (Transform child in _abilityIconContent) Destroy(child.gameObject);
 
+        int count = 0;
         var runAbility = UserDataManager.Instance?.Get<RunAbilityData>();
-        if (runAbility == null) return;
-        var db = AbilityDatabase.Current;
-        if (db == null) return;
+        var db         = AbilityDatabase.Current;
 
-        foreach (var id in runAbility.OwnedAbilityIds)
+        if (runAbility != null && db != null)
         {
-            var data = db.Get(id);
-            if (data == null) continue;
-            CreateAbilityTile(data, runAbility.GetLevel(id));
+            foreach (var id in runAbility.OwnedAbilityIds)
+            {
+                var data = db.Get(id);
+                if (data == null) continue;
+                CreateAbilityTile(data, runAbility.GetLevel(id));
+                count++;
+            }
         }
+
+        if (_abilityEmptyText != null)
+            _abilityEmptyText.gameObject.SetActive(count == 0);
     }
 
+    // 이름 라벨은 두지 않는다 — 96px 타일에 UIScale.FontSm(34) 미만을 넣으면
+    // 모바일에서 읽히지 않는다 (UI 규칙 4). 등급색 테두리 + 아이콘 + 레벨 배지로 읽힌다.
     void CreateAbilityTile(AbilityData data, int level)
     {
-        const float tileW = 76f;
-        const float tileH = 76f;
-
-        var tile = new GameObject(data.Id.ToString(), typeof(RectTransform), typeof(Image));
-        tile.transform.SetParent(_abilityIconContent, false);
-        tile.GetComponent<RectTransform>().sizeDelta = new Vector2(tileW, tileH);
+        const float TileSize = 96f;
+        const float Border   = 3f;
 
         var gc = AbilityUIHelper.GradeColor(data.Grade);
-        tile.GetComponent<Image>().color = gc * 0.25f + new Color(0.06f, 0.07f, 0.12f, 1f);
 
-        // 아이콘 (하단 이름 영역 제외한 나머지)
+        // 테두리는 부모(=아래에 깔리는 면), 내용은 그 위 자식 (UI 규칙 3)
+        var tile = new GameObject(data.Id.ToString(), typeof(RectTransform), typeof(Image));
+        tile.transform.SetParent(_abilityIconContent, false);
+        tile.GetComponent<RectTransform>().sizeDelta = new Vector2(TileSize, TileSize);
+        tile.GetComponent<Image>().color = gc;
+
+        var face = new GameObject("Face", typeof(RectTransform), typeof(Image));
+        face.transform.SetParent(tile.transform, false);
+        var faceRt = face.GetComponent<RectTransform>();
+        faceRt.anchorMin = Vector2.zero; faceRt.anchorMax = Vector2.one;
+        faceRt.offsetMin = new Vector2(Border, Border);
+        faceRt.offsetMax = new Vector2(-Border, -Border);
+        face.GetComponent<Image>().color = gc * 0.22f + new Color(0.06f, 0.07f, 0.12f, 1f);
+
         if (data.Icon != null)
         {
             var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(Image));
-            iconGo.transform.SetParent(tile.transform, false);
+            iconGo.transform.SetParent(face.transform, false);
             var rt = iconGo.GetComponent<RectTransform>();
             rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
-            rt.offsetMin = new Vector2(4f, 20f); rt.offsetMax = new Vector2(-4f, -4f);
+            rt.offsetMin = new Vector2(8f, 8f); rt.offsetMax = new Vector2(-8f, -8f);
             var img = iconGo.GetComponent<Image>();
             img.sprite = data.Icon; img.preserveAspect = true; img.color = Color.white;
         }
 
-        // 이름 (하단 20px)
-        var nameGo = new GameObject("Name", typeof(RectTransform), typeof(TextMeshProUGUI));
-        nameGo.transform.SetParent(tile.transform, false);
-        var nameRt = nameGo.GetComponent<RectTransform>();
-        nameRt.anchorMin = new Vector2(0f, 0f); nameRt.anchorMax = new Vector2(1f, 0f);
-        nameRt.pivot = new Vector2(0.5f, 0f);
-        nameRt.anchoredPosition = new Vector2(0f, 2f);
-        nameRt.sizeDelta = new Vector2(0f, 18f);
-        var nameTmp = nameGo.GetComponent<TextMeshProUGUI>();
-        nameTmp.text = data.AbilityName; nameTmp.fontSize = 18f;
-        nameTmp.alignment = TextAlignmentOptions.Center;
-        nameTmp.overflowMode = TextOverflowModes.Ellipsis;
-        nameTmp.color = Color.white;
+        // 레벨 배지 (우하단 칩, MaxLevel>1 일 때만)
+        if (data.MaxLevel <= 1) return;
 
-        // 레벨 뱃지 (좌상단, MaxLevel>1 일 때만)
-        if (data.MaxLevel > 1)
-        {
-            var lvGo = new GameObject("Lv", typeof(RectTransform), typeof(TextMeshProUGUI));
-            lvGo.transform.SetParent(tile.transform, false);
-            var lvRt = lvGo.GetComponent<RectTransform>();
-            lvRt.anchorMin = new Vector2(0f, 1f); lvRt.anchorMax = new Vector2(0f, 1f);
-            lvRt.pivot = new Vector2(0f, 1f);
-            lvRt.anchoredPosition = new Vector2(2f, -2f);
-            lvRt.sizeDelta = new Vector2(40f, 20f);
-            var lvTmp = lvGo.GetComponent<TextMeshProUGUI>();
-            lvTmp.text = $"Lv{level}";
-            lvTmp.fontSize = 17f; lvTmp.fontStyle = FontStyles.Bold;
-            lvTmp.alignment = TextAlignmentOptions.Left;
-            lvTmp.color = level >= data.MaxLevel
-                ? new Color(1f, 0.85f, 0.2f)
-                : new Color(0.7f, 0.85f, 1f);
-        }
+        const float ChipSize = 40f;
+        var chip = new GameObject("LvChip", typeof(RectTransform), typeof(Image));
+        chip.transform.SetParent(face.transform, false);
+        chip.GetComponent<Image>().color = new Color(0.04f, 0.05f, 0.09f, 0.92f);
+        var chipRt = chip.GetComponent<RectTransform>();
+        chipRt.anchorMin = chipRt.anchorMax = new Vector2(1f, 0f);
+        chipRt.pivot     = new Vector2(1f, 0f);
+        chipRt.anchoredPosition = Vector2.zero;
+        chipRt.sizeDelta        = new Vector2(ChipSize, ChipSize);
+
+        var lvGo = new GameObject("Lv", typeof(RectTransform), typeof(TextMeshProUGUI));
+        lvGo.transform.SetParent(chip.transform, false);
+        var lvRt = lvGo.GetComponent<RectTransform>();
+        lvRt.anchorMin = Vector2.zero; lvRt.anchorMax = Vector2.one;
+        lvRt.offsetMin = Vector2.zero; lvRt.offsetMax = Vector2.zero;
+        var lvTmp = lvGo.GetComponent<TextMeshProUGUI>();
+        lvTmp.text      = level.ToString();
+        lvTmp.fontSize  = UIScale.FontSm;
+        lvTmp.fontStyle = FontStyles.Bold;
+        lvTmp.alignment = TextAlignmentOptions.Center;
+        lvTmp.color     = level >= data.MaxLevel
+            ? new Color(1f, 0.85f, 0.2f)
+            : new Color(0.7f, 0.85f, 1f);
     }
 
     // ── 장수 행 ───────────────────────────────────────────────
@@ -218,13 +231,15 @@ public class ReincarnationPopup : PopupBase
         RefreshAllRowBars();
     }
 
+    // _tabButtonBgs 는 각 탭 하단의 강조바다 — 활성 탭만 색을 켠다.
+    // (버튼 면 색을 바꾸면 입체 버튼의 모서리 색이 따라오지 않아 어긋난다)
     void RefreshTabHighlight()
     {
         if (_tabButtonBgs == null) return;
         for (int i = 0; i < _tabButtonBgs.Length; i++)
         {
             if (_tabButtonBgs[i] == null) continue;
-            _tabButtonBgs[i].color = (int)_currentTab == i ? TabActiveColor : TabInactiveColor;
+            _tabButtonBgs[i].color = (int)_currentTab == i ? TabActiveColor : Color.clear;
         }
     }
 

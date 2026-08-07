@@ -119,11 +119,16 @@ public class RunShopPopup : PopupBase
         var db    = TraitDatabase.Current;
         var owned = UserDataManager.Instance.Get<RunTraitData>();
 
+        // 이벤트 시나리오로 얻는 특성은 매물에서 뺀다 — 특정 선택지의 대가로
+        // 주어지는 특성을 골드로도 살 수 있으면 그 선택이 무의미해진다.
+        var eventTraits = EventRewardHandler.CollectEventTraits();
+
         var pool = new List<TraitData>();
         foreach (TraitType t in Enum.GetValues(typeof(TraitType)))
         {
             if (t == TraitType.None) continue;
-            if ((int)t >= 1000) continue;                  // 직업 시너지 — 상점 비등장
+            if ((int)t >= 1000) continue;         // 직업 시너지 — 배치로 자동 부여
+            if (eventTraits.Contains(t)) continue;  // 이벤트 전용
             if (owned.HasTrait(t)) continue;
             var td = db.Get(t);
             if (td != null) pool.Add(td);
@@ -175,12 +180,16 @@ public class RunShopPopup : PopupBase
                     if (used.Add(nm)) { chosen = nm; break; }
                 }
                 chosen ??= allNames[i % allNames.Count];
+
+                // 등급은 이름 시드가 정한 태생 등급 그대로 — 즉 매물마다 랜덤이다.
+                // ⚠ 예전엔 GradeUpCount 로 Epic 까지 끌어올려 전 매물이 에픽이었다.
+                //   그러면 등급업(HeroDetailPopup)이 항상 MAX 라 존재 의미가 없어진다.
                 entry = new UnitEntry
                 {
                     UnitName     = chosen,
                     Level        = 1,
                     Exp          = 0,
-                    GradeUpCount = Mathf.Max(0, (int)UnitGrade.Epic - (int)UnitJobRoller.GetBirthGrade(chosen)),
+                    GradeUpCount = 0,
                 };
             }
 

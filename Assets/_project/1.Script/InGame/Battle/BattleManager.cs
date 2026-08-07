@@ -344,6 +344,24 @@ public class BattleManager : Singleton<BattleManager>
         data.OnTrigger(ctx);
     }
 
+    /// <summary>
+    /// 즉시 패배 처리 — 일시 정지 팝업의 "즉시 환생하기" 가 부른다.
+    /// 아군 전멸과 같은 경로를 타므로 결과 팝업·통계·보상 처리가 전부 동일하다.
+    /// 이미 승패가 갈렸으면 무시한다 (결과 팝업이 두 번 뜨는 것을 막는다).
+    /// </summary>
+    public void Surrender()
+    {
+        if (_context == null) return;
+        if (_context.State == BattleState.BattleDefeat ||
+            _context.State == BattleState.BattleVictory) return;
+
+        _context.State = BattleState.BattleDefeat;
+        Debug.Log($"[BattleManager] 포기 — 웨이브 {_context.CurrentWave}/{_context.TotalWaves}");
+        LogBattleStats("포기");
+        _mode?.OnBattleDefeat();
+        OnDefeat?.Invoke();
+    }
+
     /// <summary>아군 전멸 시 패배를 판정한다. 웨이브 클리어는 BattleRoutine 이 처리.</summary>
     void EvaluateBattleState()
     {

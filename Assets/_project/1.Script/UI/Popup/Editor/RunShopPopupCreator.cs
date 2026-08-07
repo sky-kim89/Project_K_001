@@ -1,3 +1,5 @@
+using Assets.PixelFantasy.Common.Scripts.CollectionScripts;
+using Assets.PixelFantasy.PixelHeroes.Common.Scripts.CharacterScripts;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -12,22 +14,29 @@ using UnityEngine.UI;
 //    로비 캔버스는 1920×1080 가로 — 세로 여유가 1080 뿐이라
 //    패널 높이는 UIScale.PopupMaxH(1000)를 넘길 수 없다.
 //
-//  ■ 왜 다시 짰나 (이전 레이아웃의 문제)
-//    · 장비 4칸이 2×2 로 접혀 특성 블록 옆이 통째로 비었다.
-//    · 장비 스탯을 칸 안에 다 적으려다 폭이 모자라 글자가 접혔다.
-//      (추가 옵션 트리거까지 붙으면 어떤 폭으로도 안 들어간다)
-//    · 구매/새로고침 버튼의 preferredWidth 가 글자 폭보다 작아
-//      "구매" → "구/매", "100" → "10/0" 처럼 두 줄로 깨졌다.
-//    · 평평한 사각형 버튼이라 누를 수 있는지 읽히지 않았다 (UI 규칙 1 위반).
+//  ■ 왜 또 다시 짰나 (직전 레이아웃의 문제)
+//    · 공용 HeroCard(360×170)를 용병 칸에 그대로 썼다. 이 카드의 글자 영역은
+//      초상화(104px)를 뺀 나머지를 다시 반씩 쪼개 쓰는 구조라, 상점 칸 폭
+//      (≈339)에서는 이름 칸이 103px 밖에 안 됐다 → 5~6글자 이름이 "..." 로 잘렸다.
+//    · 같은 이유로 스탯 칸은 [라벨 39px][값 58px] 이 됐다. 라벨·값이 각자
+//      AutoSize 로 줄어드니 네 칸의 글자 크기가 제각각이 되고, 자릿수가 커지면
+//      Overflow 로 서로 침범했다 ("체력 12,345" 가 라벨 위로 겹침).
+//    · 상품 6칸이 같은 크기·같은 간격 한 줄이라 장비와 특성이 구분되지 않았다.
 //
-//  ■ 새 레이아웃 — 한 줄에 한 종류, 상세는 카드 툴팁으로
-//    Header        H=136  ◆ 상 점 / 타이틀 | 보유골드 · 새로고침 · 닫기
-//    AccentLine    H=3
-//    GoodsDivider  H=36   "상  품"
-//    GroupTags     H=34   [장비 4칸] [특성 2칸] 구간 라벨
-//    GoodsRow      H=368  RunShopGoodsSlot × 6 (HLG 균등 분배)
-//    MercDivider   H=36   "용 병 고 용"
-//    MercRow       H=272  RunShopGeneralSlot × 5 (HLG 균등 분배)
+//  ■ 새 레이아웃 — 전체화면 + 용병 우선
+//    패널을 캔버스 전체(1920×1080)로 덮는다. 세로 110px 을 더 벌어
+//    용병 칸을 513px 세로 카드로 키웠다.
+//
+//    Header       Y=  0  H=120  ◆ 상 점 / 타이틀 | 보유골드 · 새로고침 · 닫기
+//    AccentLine   Y=120  H=  3
+//    MercDivider  Y=138  H= 38  "용 병 고 용"
+//    MercRow      Y=184  H=513  RunShopGeneralSlot × 5 (칸 ≈352×513)
+//    GoodsArea    Y=712  H=344  [장비 블록 4칸] ┃ [특성 블록 2칸]
+//                                 → 블록마다 배경색·헤더바가 다르고 56px 벌어져 있다
+//
+//    용병 카드는 이 팝업 전용으로 여기서 만든다 (공용 HeroCard 를 쓰지 않는다).
+//    자식 이름(PortraitBg/NameText/HpText…)은 그대로라 RunShopGeneralSlot 은
+//    손대지 않아도 된다.
 //
 //    상품 칸은 RewardCard(전투 결과·이벤트와 같은 카드) + 이름 + 가격뿐이다.
 //    스탯·설명·추가 옵션은 카드를 누르면 InfoTooltipUI 로 뜬다.
@@ -38,43 +47,57 @@ public static class RunShopPopupCreator
     const string SavePath       = "Assets/_project/2.Prefabs/UI/RunShopPopup.prefab";
     const string RewardCardPath = "Assets/_project/2.Prefabs/UI/RewardCard.prefab";
     const string GoldIconPath   = "Assets/_project/3.Textures/Icons/Items/item_gold.png";
+    const string SpriteCollPath =
+        "Assets/PixelFantasy/PixelHeroes/FantasyHeroes/Resources/SpriteCollection.asset";
 
-    // ── 치수 ─────────────────────────────────────────────────────
-    const float PW      = 1840f;   // 패널 폭 (캔버스 1920 - 좌우 40)
-    const float PH      = 970f;    // 패널 높이 (PopupMaxH 1000 이내)
-    const float SidePad = 40f;     // 콘텐츠 좌우 여백 → 실제 폭 1760
+    // ── 치수 (로비 캔버스 1920×1080 전체) ────────────────────────
+    const float SidePad = 40f;     // 콘텐츠 좌우 여백 → 실제 폭 1840
 
-    const float HeaderH   = 136f;
-    const float GoodsDivY = 156f;
-    const float TagY      = 198f;
+    const float HeaderH   = 120f;
     const float TagH      = 34f;
-    const float GoodsY    = 240f;
-    const float GoodsH    = 368f;
-    const float MercDivY  = 624f;
-    const float MercY     = 668f;
-    const float MercH     = 272f;
-    const float DivH      = 36f;
+    const float DivH      = 38f;
     const float CellGap   = 16f;
 
-    // 상품 칸 내부 (위에서부터)
-    const float CardSize  = 160f;
-    const float CardTop   = 14f;
-    const float NameY     = 182f;
-    const float KindY     = 229f;
-    const float BuyBtmPad = 16f;
+    // 상품이 위, 용병이 아래.
+    //  툴팁은 아이콘 아래로 펼쳐지므로, 눌러 보는 칸(장비·특성)을 위쪽에 둬야
+    //  펼칠 자리가 남는다. 아래에 두면 매번 화면 밖으로 나가 뒤집혀야 했다.
+    const float GoodsY    = 134f;
+    const float GoodsH    = 344f;
+
+    const float MercDivY  = 494f;
+    const float MercY     = 540f;
+    const float MercH     = 513f;   // 하단 여백 27 (1080 - 540 - 513)
+    const float BlockTagH = 40f;
+    const float BlockGap  = 56f;    // 장비 ↔ 특성 블록 사이
+
+    // 상품 칸 내부 (블록 헤더 아래 기준, 칸 높이 298)
+    const float GoodsSlotTop = BlockTagH + 6f;
+    const float GoodsSlotH   = GoodsH - GoodsSlotTop;
+    const float CardSize     = 127f;
+    const float CardTop      = 10f;
+    const float NameY        = 143f;
+    const float KindY        = 188f;
+    const float BuyBtmPad    = 10f;
 
     // 용병 칸 내부
-    const float HeroCardH = 170f;
-    const float HeroPad   = 6f;
-    const float HireBtmPad = 12f;
+    const float MercPad    = 12f;
+    const float PortraitH  = 150f;
+    const float MercNameY  = 156f;   // CardArea 기준
+    const float MercStatY  = 215f;   // CardArea 기준
+    const float StatRowH   = 44f;
+    const float StatRowGap = 4f;
+    const float HireBtmPad = 14f;
 
-    static readonly float BuyBtnH  = UIScale.BtnFor(UIScale.FontMd);   // 72 — 라벨이 안 눌리는 최소 높이
+    static readonly float BuyBtnH  = UIScale.BtnFor(UIScale.FontSm);   // 58
+    static readonly float HireBtnH = UIScale.BtnFor(UIScale.FontMd);   // 72
     static readonly float HeadBtnH = 76f;
+
+    // 용병 카드 본체 높이 — 칸에서 위아래 여백과 고용 버튼 자리를 뺀 나머지
+    static readonly float MercCardH = MercH - MercPad - (HireBtmPad + HireBtnH + 12f);
 
     // ── 색상 팔레트 — 행상인(금빛) 계열, EventPopup 과 같은 어두운 남색 바탕 ──
     static readonly Color BgOverlay    = new Color(0f,     0f,     0f,     0.78f);
     static readonly Color PanelBg      = new Color(0.07f,  0.075f, 0.13f,  1f);
-    static readonly Color PanelBorder  = new Color(0.72f,  0.54f,  0.22f,  1f);
     static readonly Color HeaderBg     = new Color(0.15f,  0.115f, 0.06f,  1f);
     static readonly Color AccentGold   = new Color(0.90f,  0.70f,  0.30f,  1f);
     static readonly Color TagColor     = new Color(1.00f,  0.85f,  0.45f,  1f);
@@ -84,7 +107,6 @@ public static class RunShopPopupCreator
     static readonly Color DividerLine  = new Color(0.30f,  0.27f,  0.22f,  0.85f);
     static readonly Color DividerLabel = new Color(0.78f,  0.72f,  0.58f,  1f);
 
-    static readonly Color SlotBg       = new Color(0.105f, 0.115f, 0.185f, 1f);
     static readonly Color CardPit      = new Color(0.055f, 0.06f,  0.10f,  1f);
     static readonly Color NameColor    = new Color(0.98f,  0.98f,  1.00f,  1f);
     static readonly Color GoldColor    = new Color(1.00f,  0.86f,  0.30f,  1f);
@@ -96,10 +118,26 @@ public static class RunShopPopupCreator
     static readonly Color CloseBtnC    = new Color(0.50f,  0.14f,  0.14f,  1f);
 
     static readonly Color SoldPlateBg  = new Color(0.16f,  0.17f,  0.24f,  1f);
-    static readonly Color SoldTextC    = new Color(0.58f,  0.62f,  0.74f,  1f);
+    static readonly Color SoldTextC    = new Color(0.72f,  0.76f,  0.88f,  1f);
+    static readonly Color BlindBg      = new Color(0.035f, 0.040f, 0.075f, 0.86f);
 
+    // 장비 ↔ 특성 — 배경 틴트까지 다르게 줘야 "같은 칸 6개" 로 안 보인다
     static readonly Color EquipTagC    = new Color(0.62f,  0.78f,  1.00f,  1f);
     static readonly Color TraitTagC    = new Color(0.82f,  0.64f,  1.00f,  1f);
+    static readonly Color EquipBlockBg = new Color(0.070f, 0.090f, 0.150f, 1f);
+    static readonly Color TraitBlockBg = new Color(0.100f, 0.070f, 0.140f, 1f);
+    static readonly Color EquipSlotBg  = new Color(0.105f, 0.130f, 0.205f, 1f);
+    static readonly Color TraitSlotBg  = new Color(0.145f, 0.100f, 0.190f, 1f);
+    static readonly Color EquipTagBar  = new Color(0.145f, 0.215f, 0.350f, 1f);
+    static readonly Color TraitTagBar  = new Color(0.215f, 0.145f, 0.320f, 1f);
+
+    // 용병 카드
+    static readonly Color MercCardBg   = new Color(0.115f, 0.125f, 0.200f, 1f);
+    static readonly Color MercSlotBg   = new Color(0.085f, 0.092f, 0.155f, 1f);
+    static readonly Color StatRowBg    = new Color(0.070f, 0.078f, 0.135f, 1f);
+    static readonly Color ChipBg       = new Color(0.03f,  0.035f, 0.06f,  0.85f);
+    static readonly Color StatLabelC   = new Color(0.62f,  0.65f,  0.78f,  1f);
+    static readonly Color JobChipC     = new Color(0.86f,  0.90f,  1.00f,  1f);
 
     // ══════════════════════════════════════════════════════════
     //  진입점
@@ -117,41 +155,54 @@ public static class RunShopPopupCreator
         }
         var cardUi = rewardCard.GetComponent<RewardCardUI>();
 
-        // ── 루트 (전체화면 오버레이) ──────────────────────────
+        // ── 루트 = 캔버스 전체. 패널도 전체를 덮는다.
+        //    (예전엔 1840×970 상자를 가운데 띄웠다 — 세로 110px 을 놀리고 있었다)
         var root = new GameObject("RunShopPopup", typeof(RectTransform), typeof(Image));
         root.GetComponent<Image>().color = BgOverlay;
         Stretch(root);
+        // PopupBase.Awake 가 GetComponent<CanvasGroup>() 로 잡아 알파를 건드린다.
+        // 없으면 여는 순간 NRE — 다른 팝업 Creator 의 CreateRoot 와 같은 순서로 붙인다.
+        root.AddComponent<CanvasGroup>();
         var popup = root.AddComponent<RunShopPopup>();
-
-        // ── 테두리 (Panel 의 앞 형제 — 자식으로 두면 팝업을 덮는다) ──
-        var border = Go("Border", root);
-        border.AddComponent<Image>().color = PanelBorder;
-        CenterBox(border, PW + 6f, PH + 6f);
 
         var panel = Go("Panel", root);
         panel.AddComponent<Image>().color = PanelBg;
-        CenterBox(panel, PW, PH);
+        Stretch(panel);
 
         // ══ 헤더 ══════════════════════════════════════════════
         var (goldTmp, refreshBtn, refreshCostTmp, closeBtn) = BuildHeader(panel);
 
-        // ══ 상품 ══════════════════════════════════════════════
-        BuildDivider(panel, GoodsDivY, "상  품");
-        BuildGroupTags(panel);
-
-        var goodsRow = Go("GoodsRow", panel);
-        AnchorTop(goodsRow, GoodsY, GoodsH, SidePad);
-        EvenRow(goodsRow, CellGap);
+        // ══ 상품 — 장비 블록 ┃ 특성 블록 ══════════════════════
+        var goodsArea = Go("GoodsArea", panel);
+        AnchorTop(goodsArea, GoodsY, GoodsH, SidePad * 2f);
+        {
+            var hlg = goodsArea.AddComponent<HorizontalLayoutGroup>();
+            hlg.childAlignment         = TextAnchor.UpperCenter;
+            hlg.spacing                = BlockGap;
+            hlg.childControlWidth      = true;
+            hlg.childControlHeight     = true;
+            hlg.childForceExpandWidth  = true;
+            hlg.childForceExpandHeight = true;
+        }
 
         var goodsSlots = new RunShopGoodsSlot[RunShopData.EquipSlots + RunShopData.TraitSlots];
-        for (int i = 0; i < goodsSlots.Length; i++)
-            goodsSlots[i] = BuildGoodsSlot(goodsRow, $"GoodsSlot_{i}", cardUi);
+
+        var equipRow = BuildGoodsBlock(goodsArea, "EquipBlock", "장 비",
+            RunShopData.EquipSlots, EquipBlockBg, EquipTagBar, EquipTagC);
+        for (int i = 0; i < RunShopData.EquipSlots; i++)
+            goodsSlots[i] = BuildGoodsSlot(equipRow, $"GoodsSlot_{i}", cardUi, EquipSlotBg);
+
+        var traitRow = BuildGoodsBlock(goodsArea, "TraitBlock", "특 성",
+            RunShopData.TraitSlots, TraitBlockBg, TraitTagBar, TraitTagC);
+        for (int i = 0; i < RunShopData.TraitSlots; i++)
+            goodsSlots[RunShopData.EquipSlots + i] =
+                BuildGoodsSlot(traitRow, $"GoodsSlot_{RunShopData.EquipSlots + i}", cardUi, TraitSlotBg);
 
         // ══ 용병 ══════════════════════════════════════════════
         BuildDivider(panel, MercDivY, "용 병 고 용");
 
         var mercRow = Go("MercRow", panel);
-        AnchorTop(mercRow, MercY, MercH, SidePad);
+        AnchorTop(mercRow, MercY, MercH, SidePad * 2f);
         EvenRow(mercRow, CellGap);
 
         var genSlots = new RunShopGeneralSlot[RunShopData.GeneralSlots];
@@ -328,61 +379,65 @@ public static class RunShopPopupCreator
     }
 
     // ══════════════════════════════════════════════════════════
-    //  구간 라벨 — [장비 4칸] [특성 2칸]
+    //  상품 블록 — 장비 / 특성을 통째로 갈라놓는다
     // ══════════════════════════════════════════════════════════
-    //  칸 폭은 HLG 가 균등 분배하므로 여기서도 같은 식으로 나눈다.
+    //  칸 6개를 같은 간격으로 늘어놓으면 어디까지가 장비인지 안 읽힌다.
+    //  블록마다 ① 배경 틴트 ② 색 헤더바 ③ 56px 간격 세 가지를 다르게 준다.
+    //  블록 폭은 칸 수에 비례(4:2)하게 두어 칸 크기는 6개 모두 같다.
+    //  반환값 = 칸을 담을 Row (HLG 균등 분배).
 
-    static void BuildGroupTags(GameObject panel)
+    static GameObject BuildGoodsBlock(GameObject parent, string name, string label,
+                                      int cellCount, Color blockBg, Color tagBar, Color tagText)
     {
-        var row = Go("GroupTags", panel);
-        AnchorTop(row, TagY, TagH, SidePad);
+        var block = Go(name, parent, typeof(Image));
+        block.GetComponent<Image>().color = blockBg;
+        var le = block.AddComponent<LayoutElement>();
+        le.flexibleWidth  = cellCount;   // 장비 4 : 특성 2
+        le.flexibleHeight = 1f;
 
-        const int Total = RunShopData.EquipSlots + RunShopData.TraitSlots;   // 6
-        float content   = PW - SidePad;
-        float cell      = (content - CellGap * (Total - 1)) / Total;
+        // ── 헤더 바 ───────────────────────────────────────────
+        var tag = Go("BlockTag", block, typeof(Image));
+        tag.GetComponent<Image>().color = tagBar;
+        AnchorTop(tag, 0f, BlockTagH);
 
-        float equipW = cell * RunShopData.EquipSlots + CellGap * (RunShopData.EquipSlots - 1);
-        float traitW = cell * RunShopData.TraitSlots + CellGap * (RunShopData.TraitSlots - 1);
+        var mark = Go("Mark", tag, typeof(Image));
+        var markImg = mark.GetComponent<Image>();
+        markImg.color         = tagText;
+        markImg.raycastTarget = false;
+        {
+            var rt = mark.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 0f); rt.anchorMax = new Vector2(0f, 1f);
+            rt.offsetMin = new Vector2(0f, 0f); rt.offsetMax = new Vector2(6f, 0f);
+        }
 
-        BuildGroupTag(row, "EquipTag", "장비",  0f,                 equipW, EquipTagC);
-        BuildGroupTag(row, "TraitTag", "특성",  equipW + CellGap,   traitW, TraitTagC);
-    }
+        var tmp = TMP(tag, "Label", $"{label}   {cellCount}", UIScale.FontSm, FontStyles.Bold);
+        tmp.color            = tagText;
+        tmp.alignment        = TextAlignmentOptions.MidlineLeft;
+        tmp.raycastTarget    = false;
+        tmp.textWrappingMode = TextWrappingModes.NoWrap;
+        tmp.overflowMode     = TextOverflowModes.Overflow;
+        {
+            var rt = tmp.rectTransform;
+            rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2(18f, 0f); rt.offsetMax = new Vector2(-12f, 0f);
+        }
 
-    static void BuildGroupTag(GameObject parent, string name, string label,
-                              float x, float w, Color color)
-    {
-        var go = Go(name, parent);
-        var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
-        rt.pivot     = new Vector2(0f, 0.5f);
-        rt.anchoredPosition = new Vector2(x, 0f);
-        rt.sizeDelta        = new Vector2(w, TagH);
-
-        var bar = Go("Bar", go);
-        var barImg = bar.AddComponent<Image>();
-        barImg.color         = color;
-        barImg.raycastTarget = false;
-        var bRt = bar.GetComponent<RectTransform>();
-        bRt.anchorMin = new Vector2(0f, 0f); bRt.anchorMax = new Vector2(0f, 1f);
-        bRt.offsetMin = new Vector2(0f, 4f); bRt.offsetMax = new Vector2(5f, -4f);
-
-        var tmp = TMP(go, "Label", label, UIScale.FontSm, FontStyles.Bold);
-        tmp.color         = color;
-        tmp.alignment     = TextAlignmentOptions.MidlineLeft;
-        tmp.raycastTarget = false;
-        var lRt = tmp.rectTransform;
-        lRt.anchorMin = Vector2.zero; lRt.anchorMax = Vector2.one;
-        lRt.offsetMin = new Vector2(16f, 0f); lRt.offsetMax = Vector2.zero;
+        // ── 칸 줄 ─────────────────────────────────────────────
+        var row = Go("Row", block);
+        AnchorTop(row, GoodsSlotTop, GoodsSlotH, 20f);
+        EvenRow(row, CellGap);
+        return row;
     }
 
     // ══════════════════════════════════════════════════════════
     //  상품 칸 — RewardCard + 이름 + 종류 + 가격 버튼
     // ══════════════════════════════════════════════════════════
 
-    static RunShopGoodsSlot BuildGoodsSlot(GameObject parent, string name, RewardCardUI cardPrefab)
+    static RunShopGoodsSlot BuildGoodsSlot(GameObject parent, string name,
+                                           RewardCardUI cardPrefab, Color slotBg)
     {
         var go = Go(name, parent, typeof(Image));
-        go.GetComponent<Image>().color = SlotBg;
+        go.GetComponent<Image>().color = slotBg;
         var slot = go.AddComponent<RunShopGoodsSlot>();
         Flex(go);
 
@@ -424,7 +479,7 @@ public static class RunShopPopupCreator
         // ── 구매 버튼 (입체) ─────────────────────────────────
         var buyBtn = EditorUIBuilder.RaisedBtn(go, "BuyBtn", BuyBtnC, out var body);
         AnchorBottom(buyBtn.gameObject, BuyBtmPad, BuyBtnH, 16f);
-        BuildCostRow(body, "구매", UIScale.FontMd);
+        BuildCostRow(body, "구매", UIScale.FontSm);
 
         // ── 품절 판 (버튼과 같은 자리) ───────────────────────
         var (plate, soldTmp) = BuildSoldPlate(go, BuyBtmPad, BuyBtnH, 16f);
@@ -447,27 +502,24 @@ public static class RunShopPopupCreator
     //  용병 칸 — HeroCard + 고용 버튼
     // ══════════════════════════════════════════════════════════
 
+    //  칸 ≈352×513. 공용 HeroCard(가로형 360×170)를 쓰지 않는 이유는
+    //  파일 상단 주석 참고 — 이름 칸 103px, 스탯 값 칸 58px 이 근본 원인이었다.
+    //  여기서는 세로로 세워 이름은 카드 폭(≈328)을 통째로, 스탯은 한 행에
+    //  하나씩 [라벨 좌][값 우] 로 둔다. 값이 6자리가 되어도 겹칠 자리가 없다.
     static RunShopGeneralSlot BuildGeneralSlot(GameObject parent, string name)
     {
         var go = Go(name, parent, typeof(Image));
-        go.GetComponent<Image>().color = SlotBg;
+        go.GetComponent<Image>().color = MercSlotBg;
         var slot = go.AddComponent<RunShopGeneralSlot>();
         Flex(go);
 
-        // HeroCard 는 360×170 설계값 — 칸 폭이 좁으면 스탯 글자가 접힌다.
-        // 이 레이아웃에서 칸 폭은 (1760 - 4×16) / 5 ≈ 339 로 설계값에 근접한다.
-        var cardGo = HeroPanelCreator.BuildCardPrefab();
-        cardGo.name = "CardArea";
-        cardGo.transform.SetParent(go.transform, false);
-        AnchorTop(cardGo, HeroPad, HeroCardH, HeroPad * 2f);
+        // ── 카드 본체 (전체가 상세 보기 버튼) ────────────────
+        var cardGo = Go("CardArea", go, typeof(Image));
+        var cardImg = cardGo.GetComponent<Image>();
+        cardImg.color = MercCardBg;
+        AnchorTop(cardGo, MercPad, MercCardH, MercPad * 2f);
 
-        if (cardGo.TryGetComponent<HeroCardUI>(out var heroCardUi))
-            Object.DestroyImmediate(heroCardUi);
-
-        // 카드 전체가 상세 보기 버튼 — 고용 후에도 계속 눌린다
-        if (!cardGo.TryGetComponent<Button>(out var cardBtn))
-            cardBtn = cardGo.AddComponent<Button>();
-        cardGo.TryGetComponent<Image>(out var cardImg);
+        var cardBtn = cardGo.AddComponent<Button>();
         cardBtn.targetGraphic = cardImg;
         var cb = cardBtn.colors;
         cb.normalColor      = Color.white;
@@ -476,6 +528,51 @@ public static class RunShopPopupCreator
         cb.fadeDuration     = 0.08f;
         cardBtn.colors = cb;
 
+        // ── 초상화 + 직업·등급 배지 ──────────────────────────
+        var portraitBg = Go("PortraitBg", cardGo, typeof(Image)).GetComponent<Image>();
+        portraitBg.color = new Color(0.16f, 0.27f, 0.56f, 1f);
+        AnchorTop(portraitBg.gameObject, 0f, PortraitH);
+
+        var portraitImg = Go("PortraitImage", portraitBg.gameObject, typeof(Image)).GetComponent<Image>();
+        portraitImg.color          = Color.white;
+        portraitImg.preserveAspect = true;
+        Stretch(portraitImg.gameObject);
+
+        var jobTmp   = BuildPortraitChip(portraitBg.gameObject, "JobChip",   "JobText",
+                                         "기사", JobChipC,  left: true);
+        var gradeTmp = BuildPortraitChip(portraitBg.gameObject, "GradeChip", "GradeText",
+                                         "일반", Color.white, left: false);
+
+        // ── 이름 — 카드 폭을 통째로 쓴다 (잘림의 원인이던 0.70 분할 제거) ──
+        var nameTmp = TMP(cardGo, "NameText", "용병 이름", UIScale.FontMd, FontStyles.Bold);
+        nameTmp.color            = NameColor;
+        nameTmp.alignment        = TextAlignmentOptions.Center;
+        nameTmp.raycastTarget    = false;
+        nameTmp.textWrappingMode = TextWrappingModes.NoWrap;
+        nameTmp.overflowMode     = TextOverflowModes.Overflow;   // Ellipsis 는 줄을 통째로 버린다
+        nameTmp.enableAutoSizing = true;
+        nameTmp.fontSizeMin      = UIScale.FontSm;
+        nameTmp.fontSizeMax      = UIScale.FontMd;
+        AnchorTop(nameTmp.gameObject, MercNameY, UIScale.RowMd, 20f);
+
+        // ── 스탯 4행 — 한 행에 하나씩, 라벨 좌 / 값 우 ───────
+        var hpTmp   = BuildStatRow(cardGo, 0, "Hp",      "체 력", StatColors.Hp);
+        var atkTmp  = BuildStatRow(cardGo, 1, "Atk",     "공 격", StatColors.Atk);
+        var defTmp  = BuildStatRow(cardGo, 2, "Def",     "방 어", StatColors.Def);
+        var sldTmp  = BuildStatRow(cardGo, 3, "Soldier", "병 사", StatColors.Soldier);
+
+        // ── 초상화 렌더용 빌더 (비활성 — 화면에 그리지 않는다) ──
+        var preview = Go("PortraitPreview", cardGo);
+        preview.SetActive(false);
+        var bridge  = preview.AddComponent<UnitAppearanceBridge>();
+        var builder = preview.GetComponent<CharacterBuilder>();
+        if (builder != null)
+        {
+            var sc = AssetDatabase.LoadAssetAtPath<SpriteCollection>(SpriteCollPath);
+            if (sc != null) builder.SpriteCollection = sc;
+        }
+
+        // 카드 본체만 클릭을 받는다 — 자식이 레이캐스트를 먹으면 상세가 안 열린다
         foreach (var img in cardGo.GetComponentsInChildren<Image>(true))
             img.raycastTarget = false;
         foreach (var tmp in cardGo.GetComponentsInChildren<TextMeshProUGUI>(true))
@@ -484,23 +581,23 @@ public static class RunShopPopupCreator
 
         // ── 고용 버튼 (입체) ─────────────────────────────────
         var hireBtn = EditorUIBuilder.RaisedBtn(go, "HireBtn", HireBtnC, out var body);
-        AnchorBottom(hireBtn.gameObject, HireBtmPad, BuyBtnH, 24f);
+        AnchorBottom(hireBtn.gameObject, HireBtmPad, HireBtnH, 24f);
         BuildCostRow(body, "고용", UIScale.FontMd);
 
-        var (plate, soldTmp) = BuildSoldPlate(go, HireBtmPad, BuyBtnH, 24f);
+        var (plate, soldTmp) = BuildBlindPlate(go);
 
         var sSo = new SerializedObject(slot);
         sSo.Update();
-        SetObj(sSo, "_portraitBg",     FindChild<Image>(cardGo.transform, "PortraitBg"));
-        SetObj(sSo, "_portraitImg",    FindChild<Image>(cardGo.transform, "PortraitImage"));
-        SetObj(sSo, "_portraitBridge", FindChild<UnitAppearanceBridge>(cardGo.transform, "PortraitPreview"));
-        SetObj(sSo, "_nameText",       FindChild<TextMeshProUGUI>(cardGo.transform, "NameText"));
-        SetObj(sSo, "_jobText",        FindChild<TextMeshProUGUI>(cardGo.transform, "JobText"));
-        SetObj(sSo, "_gradeText",      FindChild<TextMeshProUGUI>(cardGo.transform, "GradeText"));
-        SetObj(sSo, "_hpText",         FindChild<TextMeshProUGUI>(cardGo.transform, "HpText"));
-        SetObj(sSo, "_atkText",        FindChild<TextMeshProUGUI>(cardGo.transform, "AtkText"));
-        SetObj(sSo, "_defText",        FindChild<TextMeshProUGUI>(cardGo.transform, "DefText"));
-        SetObj(sSo, "_soldierText",    FindChild<TextMeshProUGUI>(cardGo.transform, "SoldierText"));
+        SetObj(sSo, "_portraitBg",     portraitBg);
+        SetObj(sSo, "_portraitImg",    portraitImg);
+        SetObj(sSo, "_portraitBridge", bridge);
+        SetObj(sSo, "_nameText",       nameTmp);
+        SetObj(sSo, "_jobText",        jobTmp);
+        SetObj(sSo, "_gradeText",      gradeTmp);
+        SetObj(sSo, "_hpText",         hpTmp);
+        SetObj(sSo, "_atkText",        atkTmp);
+        SetObj(sSo, "_defText",        defTmp);
+        SetObj(sSo, "_soldierText",    sldTmp);
         SetObj(sSo, "_costText",       FindTMP(body, "CostText"));
         SetObj(sSo, "_buyBtn",         hireBtn);
         SetObj(sSo, "_cardBtn",        cardBtn);
@@ -508,6 +605,81 @@ public static class RunShopPopupCreator
         SetObj(sSo, "_soldText",       soldTmp);
         sSo.ApplyModifiedProperties();
         return slot;
+    }
+
+    // ── 초상화 위 직업·등급 배지 ─────────────────────────────
+    //  카드 세로를 아끼려고 별도 행 대신 초상화 모서리에 얹는다.
+    static TextMeshProUGUI BuildPortraitChip(GameObject portrait, string chipName,
+                                             string tmpName, string text, Color color, bool left)
+    {
+        const float W = 108f, H = 38f, Pad = 8f;
+
+        var chip = Go(chipName, portrait, typeof(Image));
+        chip.GetComponent<Image>().color = ChipBg;
+        var rt = chip.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = new Vector2(left ? 0f : 1f, 1f);
+        rt.pivot     = new Vector2(left ? 0f : 1f, 1f);
+        rt.anchoredPosition = new Vector2(left ? Pad : -Pad, -Pad);
+        rt.sizeDelta        = new Vector2(W, H);
+
+        var tmp = TMP(chip, tmpName, text, UIScale.FontSm, FontStyles.Bold);
+        tmp.color            = color;
+        tmp.alignment        = TextAlignmentOptions.Center;
+        tmp.raycastTarget    = false;
+        tmp.textWrappingMode = TextWrappingModes.NoWrap;
+        tmp.overflowMode     = TextOverflowModes.Overflow;
+        tmp.enableAutoSizing = true;
+        tmp.fontSizeMin      = UIScale.FontSm - 8f;
+        tmp.fontSizeMax      = UIScale.FontSm;
+        Stretch(tmp.gameObject);
+        return tmp;
+    }
+
+    // ── 스탯 한 행 ───────────────────────────────────────────
+    //  라벨은 왼쪽 고정폭, 값은 남는 폭 전부를 오른쪽 정렬로 쓴다.
+    //  둘 다 AutoSize 를 끄고 같은 크기(FontSm)로 못 박는다 —
+    //  칸마다 제각각 줄어들어 글자 크기가 어긋나던 문제의 원인이었다.
+    //  값 칸이 200px 넘게 남으므로 "999,999" 도 줄이지 않고 들어간다.
+    static TextMeshProUGUI BuildStatRow(GameObject card, int index, string id,
+                                        string label, Color valueColor)
+    {
+        const float LabelW = 100f;
+
+        float y = MercStatY + index * (StatRowH + StatRowGap);
+
+        var row = Go($"Stat_{id}", card, typeof(Image));
+        var rowImg = row.GetComponent<Image>();
+        rowImg.color         = StatRowBg;
+        rowImg.raycastTarget = false;
+        AnchorTop(row, y, StatRowH, 20f);
+
+        var lbl = TMP(row, $"{id}Label", label, UIScale.FontSm, FontStyles.Normal);
+        lbl.color            = StatLabelC;
+        lbl.alignment        = TextAlignmentOptions.MidlineLeft;
+        lbl.raycastTarget    = false;
+        lbl.textWrappingMode = TextWrappingModes.NoWrap;
+        lbl.overflowMode     = TextOverflowModes.Overflow;
+        {
+            var rt = lbl.rectTransform;
+            rt.anchorMin = new Vector2(0f, 0f); rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot     = new Vector2(0f, 0.5f);
+            rt.offsetMin = new Vector2(14f, 0f);
+            rt.offsetMax = new Vector2(14f + LabelW, 0f);
+        }
+
+        var val = TMP(row, $"{id}Text", "—", UIScale.FontSm, FontStyles.Bold);
+        val.color            = valueColor;
+        val.alignment        = TextAlignmentOptions.MidlineRight;
+        val.raycastTarget    = false;
+        val.textWrappingMode = TextWrappingModes.NoWrap;
+        val.overflowMode     = TextOverflowModes.Overflow;
+        {
+            var rt = val.rectTransform;
+            rt.anchorMin = new Vector2(0f, 0f); rt.anchorMax = new Vector2(1f, 1f);
+            rt.offsetMin = new Vector2(14f + LabelW + 8f, 0f);
+            rt.offsetMax = new Vector2(-14f, 0f);
+        }
+        return val;
     }
 
     // ══════════════════════════════════════════════════════════
@@ -559,6 +731,40 @@ public static class RunShopPopupCreator
         lbl.raycastTarget    = false;
         lbl.textWrappingMode = TextWrappingModes.NoWrap;
         lbl.overflowMode     = TextOverflowModes.Overflow;
+    }
+
+    //  용병 칸 블라인드 — 칸 전체를 반투명하게 덮고 사유를 크게 얹는다.
+    //  버튼 자리만 덮던 예전 방식은 배치 슬롯이 가득 찼을 때
+    //  빈 카드(흰 상자)가 그대로 남아 무슨 상태인지 읽히지 않았다.
+    //  반투명이라 고용 완료 시에는 누구를 뽑았는지 비쳐 보인다.
+    static (GameObject plate, TextMeshProUGUI label) BuildBlindPlate(GameObject parent)
+    {
+        var plate = Go("SoldPlate", parent);
+        var img = plate.AddComponent<Image>();
+        img.color = BlindBg;
+        // 고용 완료 후에도 카드를 눌러 상세를 볼 수 있어야 한다 — 클릭은 통과시킨다.
+        // (고용 불가 칸은 Setup 에서 _cardBtn.interactable=false 라 눌러도 안 열린다)
+        img.raycastTarget = false;
+        Stretch(plate);
+
+        // 라벨은 카드 위쪽(초상화 자리)에 — 아래 버튼 자리가 아니라
+        var tmp = TMP(plate, "Label", "고용 불가", UIScale.FontLg, FontStyles.Bold);
+        tmp.color            = SoldTextC;
+        tmp.raycastTarget    = false;
+        tmp.textWrappingMode = TextWrappingModes.NoWrap;
+        tmp.overflowMode     = TextOverflowModes.Overflow;
+        {
+            var rt = tmp.rectTransform;
+            rt.anchorMin = new Vector2(0f, 0.5f); rt.anchorMax = new Vector2(1f, 0.5f);
+            rt.pivot     = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = new Vector2(0f, MercH * 0.16f);
+            rt.sizeDelta        = new Vector2(0f, UIScale.RowLg);
+        }
+
+        // 아래 어딘가에 깔리지 않게 항상 맨 위로
+        plate.transform.SetAsLastSibling();
+        plate.SetActive(false);
+        return (plate, tmp);
     }
 
     //  품절 판 — 버튼과 정확히 같은 자리를 덮는다.
@@ -633,9 +839,6 @@ public static class RunShopPopupCreator
         le.flexibleHeight = 1f;
     }
 
-    static void CenterBox(GameObject go, float w, float h)
-        => EditorUIBuilder.Center(go.GetComponent<RectTransform>(), Vector2.zero, new Vector2(w, h));
-
     static void AnchorTop(GameObject go, float yFromTop, float height, float padH = 0f)
         => EditorUIBuilder.AnchorTop(go.GetComponent<RectTransform>(), yFromTop, height, padH);
 
@@ -675,9 +878,6 @@ public static class RunShopPopupCreator
         => EditorUIBuilder.TMP(parent, name, text, size, style);
 
     static void Stretch(GameObject go) => EditorUIBuilder.Stretch(go);
-
-    static T FindChild<T>(Transform root, string cname) where T : Component
-        => EditorUIBuilder.FindDeep<T>(root, cname);
 
     static TextMeshProUGUI FindTMP(GameObject root, string cname)
         => EditorUIBuilder.FindDeep<TextMeshProUGUI>(root.transform, cname);

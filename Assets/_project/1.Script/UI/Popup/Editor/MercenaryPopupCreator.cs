@@ -4,695 +4,441 @@ using UnityEngine;
 using UnityEngine.UI;
 
 // ============================================================
-//  MercenaryPopupCreator.cs
-//  Tools > Project K > Popup > Create Mercenary Popups
+//  MercenaryPopupCreator.cs  [Editor Only]
+//  Tools > Project K > 프리팹 생성 > 팝업 > Mercenary
 //
-//  생성 대상:
-//    MercenaryShopPopup.prefab  (용병 상점 — 전체 화면 오버레이)
-//    MercCandidateCard.prefab   (후보 카드 1장)
+//  생성물: MercenaryShopPopup.prefab
 //
-//  전체 화면 레이아웃:
-//    SlotFullView  — 좌측, BattlePanel DeployArea와 동일 위치·구조
-//    CandidatePanel— 우측 플로팅 패널 (1300×1120)
+//  ⚠ 캔버스 기준
+//    PopupManager 는 Splash 에서 살아남는 싱글턴이라 팝업 캔버스가 씬과 무관하다.
+//    HeroDetailPopup·EventPopup 과 같은 가로 기준(1920×1080)이며 세로 여유가 1080 뿐이다.
+//    → 패널은 세로 스트레치(위아래 16 여백)로 캔버스에 맞춘다.
 //
-//  저장 경로: Assets/_project/2.Prefabs/UI/
+//  ── 레이아웃 (PW=1840, H=캔버스높이-32 / 1080 캔버스 기준 1048) ──
+//  Header      Y=  0  H=136  ◆ 용 병 태그 + 타이틀(그림자) + 닫기
+//  AccentLine  Y=136  H=  3
+//  Body        Y=156  → 하단 26
+//    Left  832  ◀ [장수 카드 620×862] ▶     ← MainPanelCreator.BuildHeroCard
+//    Right 888  "선 택" 구분선 → 안내 문구 → [고용] / [돌려보내기]
+//
+//  ⚠ 카드 높이(862)가 Body 높이를 결정한다
+//    Body = H - 156 - 26. 1080 캔버스에서 866 → 862 가 겨우 들어간다.
+//    헤더를 키우거나 여백을 늘리면 카드 아래가 잘린다 — 반드시 다시 계산할 것.
+//
+//  ⚠ 카드 레이아웃을 여기서 다시 짜지 않는다
+//    MainPanelCreator.BuildHeroCard() 가 장수 카드의 정본이다.
+//    복사본을 만들면 스탯 표기·스킬 아이콘 규칙이 화면마다 갈라진다.
+//
+//  ⚠ 선택 버튼은 EventPopup 과 같은 입체 버튼
+//    Shadow(하단 6px 노출) → Body → TopEdge/BottomEdge → 라벨 + 힌트.
+//    평평한 사각형은 버튼인지 라벨인지 구분이 안 된다 (UI 규칙 1).
 // ============================================================
 
 public static class MercenaryPopupCreator
 {
     const string SaveDir = "Assets/_project/2.Prefabs/UI";
 
-    // ── BattlePanel.DeployArea와 동일한 레이아웃 상수 ────────
-    const float TopBarH  = 180f;
-    const float NavBarH  = 160f;
-    const float DeployW  = 420f;
-    const int   SlotCount = 5;
-    const float SlotGap  = 8f;
+    // ── 치수 ─────────────────────────────────────────────────
+    const float PW       = 1840f;
+    const float PVMargin =   16f;   // 캔버스 위·아래 여백
+    const float HeaderH  =  136f;
+    const float BodyTop  =  156f;
+    const float BodyBtm  =   26f;
+    const float SidePad  =   40f;
 
-    // ── 색상 ─────────────────────────────────────────────────
+    const float LeftW    =  832f;   // 카드 620 + 화살표 2×(88+18)
+    const float ColGap   =   40f;
+    const float RightW   = PW - SidePad * 2f - LeftW - ColGap;   // 888
 
-    static readonly Color BgColor        = new Color(0.08f, 0.10f, 0.16f, 0.97f);
-    static readonly Color BgDark         = new Color(0.07f, 0.07f, 0.13f, 1f);
-    static readonly Color SlotBgEmpty    = new Color(0.12f, 0.12f, 0.20f, 1f);
-    static readonly Color DividerColor   = new Color(0.25f, 0.25f, 0.35f, 0.80f);
-    static readonly Color MutedText      = new Color(0.60f, 0.60f, 0.65f);
-    static Color HpColor      => StatColors.Hp;
-    static Color AtkColor     => StatColors.Atk;
-    static Color DefColor     => StatColors.Def;
-    static Color SoldierColor => StatColors.Soldier;
-    static readonly Color FireBtnColor   = new Color(0.70f, 0.20f, 0.18f, 1f);
-    static readonly Color HireBtnColor   = new Color(0.15f, 0.65f, 0.40f, 1f);
-    static readonly Color PassBtnColor   = new Color(0.35f, 0.35f, 0.42f, 1f);
-    static readonly Color CloseBtnColor  = new Color(0.55f, 0.18f, 0.18f, 1f);
-    static readonly Color CardBg         = new Color(0.11f, 0.13f, 0.22f, 1f);
-    static readonly Color PortraitBg     = new Color(0.14f, 0.14f, 0.22f, 1f);
-    static readonly Color PassiveNameColor = new Color(0.90f, 0.85f, 1.00f);
-    static readonly Color PassiveDescColor = new Color(0.65f, 0.63f, 0.80f);
-    static readonly Color ActiveNameColor  = new Color(1.00f, 0.95f, 0.75f);
+    const float DivH     =   36f;
+    const float HintH    =  120f;
+    const float BtnH     =  112f;   // FontMd 라벨 + FontSm 힌트 2줄
+    const float BtnGap   =   16f;
 
-    // ── 메뉴 ─────────────────────────────────────────────────
+    // ── 색상 (EventPopup 톤 — 용병은 청록 계열로 구분) ────────
+    static readonly Color BgOverlay    = new Color(0f,     0f,     0f,     0.78f);
+    static readonly Color PanelBg      = new Color(0.07f,  0.075f, 0.13f,  1f);
+    static readonly Color PanelBorder  = new Color(0.20f,  0.52f,  0.56f,  1f);
+    static readonly Color HeaderBg     = new Color(0.06f,  0.14f,  0.16f,  1f);
+    static readonly Color AccentTeal   = new Color(0.26f,  0.78f,  0.80f,  1f);
+    static readonly Color TagColor     = new Color(0.58f,  0.92f,  0.94f,  1f);
+    static readonly Color TitleColor   = new Color(1.00f,  0.94f,  0.78f,  1f);
+    static readonly Color TitleShadow  = new Color(0.02f,  0.03f,  0.06f,  0.85f);
 
-    [MenuItem(ProjectKMenu.Popup + "Mercenary (Shop + CandidateCard)", priority = ProjectKMenu.PrefabPrio + 41)]
-    public static void CreateAll()
+    static readonly Color DividerLineC = new Color(0.26f,  0.34f,  0.40f,  0.85f);
+    static readonly Color DividerLbl   = new Color(0.64f,  0.76f,  0.82f,  1f);
+    static readonly Color HintColor    = new Color(0.72f,  0.78f,  0.86f,  1f);
+
+    static readonly Color HireBtnC     = new Color(0.13f,  0.52f,  0.38f,  1f);
+    static readonly Color PassBtnC     = new Color(0.26f,  0.28f,  0.36f,  1f);
+    static readonly Color CloseBtnC    = new Color(0.50f,  0.14f,  0.14f,  1f);
+    static readonly Color LabelWhite   = new Color(0.98f,  0.99f,  1.00f,  1f);
+    static readonly Color HintGreen    = new Color(0.50f,  0.94f,  0.66f,  1f);
+    static readonly Color CostGold     = new Color(1.00f,  0.85f,  0.20f,  1f);
+
+    // ══════════════════════════════════════════════════════════
+    //  진입점
+    // ══════════════════════════════════════════════════════════
+
+    [MenuItem(ProjectKMenu.Popup + "Mercenary", priority = ProjectKMenu.PrefabPrio + 41)]
+    public static void Create()
     {
-        CreateMercCandidateCard();
-        CreateMercenaryShopPopup();
+        System.IO.Directory.CreateDirectory(SaveDir);
+
+        var root = Build();
+        string path = $"{SaveDir}/MercenaryShopPopup.prefab";
+        PrefabUtility.SaveAsPrefabAsset(root, path);
+        Object.DestroyImmediate(root);
+
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("[MercenaryPopupCreator] 팝업 프리팹 생성 완료");
+        Debug.Log($"[MercenaryPopupCreator] 저장: {path} — PopupManager > Load Popup Prefabs 실행 필요.");
     }
 
-    // ══════════════════════════════════════════════════════════
-    //  MercCandidateCard 프리팹 (380 × 840)
-    // ══════════════════════════════════════════════════════════
-
-    public static void CreateMercCandidateCard()
+    static GameObject Build()
     {
-        const float CW       = 380f, CH = 860f;
-        const float PortSz   = 130f;
-        const float PortX    = 12f;
-        const float PortY    = -14f;   // from top
-        const float RightX   = PortX + PortSz + 12f;
-        const float RightW   = CW - RightX - 12f;
-        const float PortBot  = PortY - PortSz; // -144
-        const float DivA     = PortBot - 14f;  // -158
+        // ── 루트 (전체화면 오버레이) ─────────────────────────
+        var root = EditorUIBuilder.Panel(null, "MercenaryShopPopup", BgOverlay);
+        EditorUIBuilder.Stretch(root);
+        var popup = root.AddComponent<MercenaryShopPopup>();
+        var so    = new SerializedObject(popup);
+        SetEnum(so, "_popupType", (int)PopupType.MercenaryShop);
 
-        var root = new GameObject("MercCandidateCard", typeof(RectTransform), typeof(Image));
-        root.AddComponent<MercCandidateCardUI>();
-        root.GetComponent<Image>().color = CardBg;
-        root.GetComponent<RectTransform>().sizeDelta = new Vector2(CW, CH);
+        // ── 테두리 (Panel 의 앞 형제 — 자식으로 두면 팝업을 덮는다) ──
+        var border = Go("Border", root);
+        border.AddComponent<Image>().color = PanelBorder;
+        StretchV(border.GetComponent<RectTransform>(), PW + 6f, PVMargin - 3f);
 
-        // 등급 상단 바
-        var topBar = AddImg(root, "GradeTopBar", new Color(0.3f, 0.3f, 0.4f));
-        SetTopStretch(topBar.GetComponent<RectTransform>(), 8f);
+        var panel = Go("Panel", root);
+        panel.AddComponent<Image>().color = PanelBg;
+        StretchV(panel.GetComponent<RectTransform>(), PW, PVMargin);
 
-        // 초상화 — 좌상단 고정
-        var portBg = AddImg(root, "PortraitBg", PortraitBg);
-        var pbRt = portBg.GetComponent<RectTransform>();
-        pbRt.anchorMin = pbRt.anchorMax = new Vector2(0f, 1f);
-        pbRt.pivot = new Vector2(0f, 1f);
-        pbRt.anchoredPosition = new Vector2(PortX, PortY);
-        pbRt.sizeDelta = new Vector2(PortSz, PortSz);
-        var portImg    = AddImg(portBg, "PortraitImage", Color.white);
-        FullStretch(portImg.gameObject);
-        var portBridge = portBg.gameObject.AddComponent<UnitAppearanceBridge>();
+        BuildHeader(panel, so);
+        BuildLeftColumn(panel, so);
+        BuildRightColumn(panel, so);
 
-        // 이름 — 초상화 오른쪽 상단
-        var nameText = AddTMP(root, "NameText", "이름", UIScale.FontLg, FontStyles.Bold);
-        nameText.alignment = TextAlignmentOptions.Left;
-        var ntRt = nameText.rectTransform;
-        ntRt.anchorMin = ntRt.anchorMax = new Vector2(0f, 1f);
-        ntRt.pivot = new Vector2(0f, 1f);
-        ntRt.anchoredPosition = new Vector2(RightX, PortY);
-        ntRt.sizeDelta = new Vector2(RightW, 52f);
-
-        // 등급 — 초상화 오른쪽 중단
-        var gradeText = AddTMP(root, "GradeText", "일반", UIScale.FontMd, FontStyles.Bold);
-        gradeText.alignment = TextAlignmentOptions.Left;
-        gradeText.color = new Color(0.80f, 0.80f, 0.90f);
-        var gtRt = gradeText.rectTransform;
-        gtRt.anchorMin = gtRt.anchorMax = new Vector2(0f, 1f);
-        gtRt.pivot = new Vector2(0f, 1f);
-        gtRt.anchoredPosition = new Vector2(RightX, PortY - 60f);
-        gtRt.sizeDelta = new Vector2(RightW * 0.5f, 40f);
-
-        // 직업 — 등급 오른쪽
-        var jobText = AddTMP(root, "JobText", "직업", UIScale.FontMd, FontStyles.Normal);
-        jobText.alignment = TextAlignmentOptions.Right;
-        jobText.color = MutedText;
-        var jtRt = jobText.rectTransform;
-        jtRt.anchorMin = jtRt.anchorMax = new Vector2(0f, 1f);
-        jtRt.pivot = new Vector2(0f, 1f);
-        jtRt.anchoredPosition = new Vector2(RightX + RightW * 0.5f, PortY - 60f);
-        jtRt.sizeDelta = new Vector2(RightW * 0.5f, 40f);
-
-        AddCardDivider(root, DivA, CW);
-
-        // 스탯 행 1: 체력(좌) / 공격(우)
-        float statRow1Y = DivA - 14f;
-        var hpText  = AddStatHalf(root, "HpText",  "체력 0",  HpColor,  statRow1Y, CW, isLeft: true);
-        var atkText = AddStatHalf(root, "AtkText", "공격 0",  AtkColor, statRow1Y, CW, isLeft: false);
-
-        // 스탯 행 2: 방어(좌) / 용병(우)
-        float statRow2Y = statRow1Y - 58f;
-        var defText     = AddStatHalf(root, "DefText",     "방어 0%",  DefColor,    statRow2Y, CW, isLeft: true);
-        var soldierText = AddStatHalf(root, "SoldierText", "용병 0명", SoldierColor,statRow2Y, CW, isLeft: false);
-
-        float divBY = statRow2Y - 64f;
-        AddCardDivider(root, divBY, CW);
-
-        // 액티브 스킬 행: 아이콘(72×72) + 이름
-        const float activeIconSz = 72f;
-        float activeRowY = divBY - 14f;
-
-        var activeIcon = AddImg(root, "ActiveSkillIcon", new Color(0.25f, 0.30f, 0.48f));
-        var aiRt = activeIcon.GetComponent<RectTransform>();
-        aiRt.anchorMin = aiRt.anchorMax = new Vector2(0f, 1f);
-        aiRt.pivot = new Vector2(0f, 1f);
-        aiRt.anchoredPosition = new Vector2(14f, activeRowY);
-        aiRt.sizeDelta = new Vector2(activeIconSz, activeIconSz);
-
-        var activeNameText = AddTMP(root, "ActiveSkillNameText", "스킬명", UIScale.FontMd, FontStyles.Bold);
-        activeNameText.color = ActiveNameColor;
-        activeNameText.alignment = TextAlignmentOptions.Left;
-        var anRt = activeNameText.rectTransform;
-        anRt.anchorMin = anRt.anchorMax = new Vector2(0f, 1f);
-        anRt.pivot = new Vector2(0f, 0.5f);
-        anRt.anchoredPosition = new Vector2(14f + activeIconSz + 10f, activeRowY - activeIconSz * 0.5f);
-        anRt.sizeDelta = new Vector2(CW - 14f - activeIconSz - 10f - 14f, activeIconSz);
-
-        float divCY = activeRowY - activeIconSz - 14f;
-        AddCardDivider(root, divCY, CW);
-
-        // 패시브 스킬 (이름 38px + 설명 64px — 2줄 표시, FontSm=24 × 2 ≈ 58px)
-        float p0NameY = divCY - 14f;
-        float p0DescY = p0NameY - 40f;   // 2px gap after 38px name
-        float p1NameY = p0DescY - 68f;   // 4px gap after 64px desc
-        float p1DescY = p1NameY - 40f;
-        float p2NameY = p1DescY - 68f;
-        float p2DescY = p2NameY - 40f;
-
-        var passive0     = AddPassiveNameTMP(root, "Passive0Text",     p0NameY, CW);
-        var passive0Desc = AddPassiveDescTMP(root, "Passive0DescText", p0DescY, CW);
-        var passive1     = AddPassiveNameTMP(root, "Passive1Text",     p1NameY, CW);
-        var passive1Desc = AddPassiveDescTMP(root, "Passive1DescText", p1DescY, CW);
-        var passive2     = AddPassiveNameTMP(root, "Passive2Text",     p2NameY, CW);
-        var passive2Desc = AddPassiveDescTMP(root, "Passive2DescText", p2DescY, CW);
-
-        // 하단 버튼 2개: [자세히 보기] [고용하기]
-        var selBtn = AddBtn(root, "SelectBtn", "자세히 보기", new Color(0.22f, 0.45f, 0.72f), UIScale.FontMd);
-        var sbRt = selBtn.GetComponent<RectTransform>();
-        sbRt.anchorMin = new Vector2(0f, 0f); sbRt.anchorMax = new Vector2(0.5f, 0f);
-        sbRt.pivot = new Vector2(0f, 0f);
-        sbRt.anchoredPosition = new Vector2(8f, 12f);
-        sbRt.sizeDelta = new Vector2(-12f, UIScale.BtnSm);
-
-        var hireBtn = AddBtn(root, "HireBtn", "고용하기", HireBtnColor, UIScale.FontMd);
-        var hbRt = hireBtn.GetComponent<RectTransform>();
-        hbRt.anchorMin = new Vector2(0.5f, 0f); hbRt.anchorMax = new Vector2(1f, 0f);
-        hbRt.pivot = new Vector2(1f, 0f);
-        hbRt.anchoredPosition = new Vector2(-8f, 12f);
-        hbRt.sizeDelta = new Vector2(-12f, UIScale.BtnSm);
-
-        // 선택 하이라이트 테두리
-        var highlightBorder = AddImg(root, "HighlightBorder", new Color(0.80f, 0.75f, 1.00f, 0.00f));
-        highlightBorder.raycastTarget = false;
-        FullStretch(highlightBorder.gameObject);
-
-        // 직렬화 필드 연결
-        var so = new SerializedObject(root.GetComponent<MercCandidateCardUI>());
-        SetObj(so, "_gradeBorder",         topBar.GetComponent<Image>());
-        SetObj(so, "_portraitBg",          portBg.GetComponent<Image>());
-        SetObj(so, "_portraitImg",         portImg.GetComponent<Image>());
-        SetObj(so, "_portraitBridge",      portBridge);
-        SetObj(so, "_nameText",            nameText);
-        SetObj(so, "_gradeText",           gradeText);
-        SetObj(so, "_jobText",             jobText);
-        SetObj(so, "_hpText",              hpText);
-        SetObj(so, "_atkText",             atkText);
-        SetObj(so, "_defText",             defText);
-        SetObj(so, "_soldierText",         soldierText);
-        SetObj(so, "_activeSkillIcon",     activeIcon.GetComponent<Image>());
-        SetObj(so, "_activeSkillNameText", activeNameText);
-        SetObj(so, "_passive0Text",        passive0);
-        SetObj(so, "_passive0DescText",    passive0Desc);
-        SetObj(so, "_passive1Text",        passive1);
-        SetObj(so, "_passive1DescText",    passive1Desc);
-        SetObj(so, "_passive2Text",        passive2);
-        SetObj(so, "_passive2DescText",    passive2Desc);
-        SetObj(so, "_button",              selBtn.GetComponent<Button>());
-        SetObj(so, "_hireBtn",             hireBtn.GetComponent<Button>());
-        SetObj(so, "_highlightBorder",     highlightBorder);
         so.ApplyModifiedProperties();
-
-        Save(root, "MercCandidateCard");
+        return root;
     }
 
     // ══════════════════════════════════════════════════════════
-    //  MercenaryShopPopup — 전체 화면 오버레이
-    //
-    //  SlotFullView : BattlePanel DeployArea와 완전히 동일한 위치·구조
-    //  CandidatePanel : 우측 플로팅 패널 (1300 × 1120)
+    //  헤더
     // ══════════════════════════════════════════════════════════
 
-    public static void CreateMercenaryShopPopup()
+    static void BuildHeader(GameObject panel, SerializedObject so)
     {
-        const float PW       = 1300f;
-        // 1120 은 로비 캔버스 세로(1080) 를 넘어 위아래가 잘렸다
-        float PH = UIScale.PopupMaxH;   // 1120 → 1000
-        float HeaderH = UIScale.BtnFor(UIScale.FontLg);   // 100 → 96
-        const float HireBarH = 140f;
+        var header = Go("Header", panel);
+        header.AddComponent<Image>().color = HeaderBg;
+        EditorUIBuilder.AnchorTop(header.GetComponent<RectTransform>(), 0f, HeaderH);
 
-        // ── 루트 — 전체 화면 스트레치 ─────────────────────────
-        var root  = MakeFullScreenRoot<MercenaryShopPopup>("MercenaryShopPopup");
-        var popup = root.GetComponent<MercenaryShopPopup>();
+        // ★ 는 폰트에 없다 (□ 로 렌더됨) → 마름모 도형으로 대체 (UI 규칙 2)
+        var tagRoot = Go("MercTag", header);
+        var tagRt = tagRoot.GetComponent<RectTransform>();
+        tagRt.anchorMin = tagRt.anchorMax = new Vector2(0f, 1f);
+        tagRt.pivot     = new Vector2(0f, 1f);
+        tagRt.anchoredPosition = new Vector2(30f, -14f);
+        tagRt.sizeDelta        = new Vector2(300f, 34f);
 
-        // FadeOnly 애니메이션 (전체화면 팝업에 FadeScale은 어색)
-        var animSo = new SerializedObject(popup);
-        SetEnum(animSo, "_openAnimation",  (int)PopupAnimation.FadeOnly);
-        SetEnum(animSo, "_closeAnimation", (int)PopupAnimation.FadeOnly);
-        animSo.ApplyModifiedProperties();
+        var diamond = EditorUIBuilder.Diamond(tagRoot, "Mark", 16f, TagColor);
+        var dRt = diamond.GetComponent<RectTransform>();
+        dRt.anchorMin = dRt.anchorMax = new Vector2(0f, 0.5f);
+        dRt.anchoredPosition = new Vector2(10f, 0f);
 
-        // ── InputBlocker — 배경 클릭 차단 (로비 UI 보호) ──────
-        var blocker = new GameObject("InputBlocker", typeof(RectTransform), typeof(Image));
-        blocker.transform.SetParent(root.transform, false);
-        FullStretch(blocker);
-        var blockerImg = blocker.GetComponent<Image>();
-        blockerImg.color         = new Color(0f, 0f, 0f, 0f);
-        blockerImg.raycastTarget = true;
+        var tagTmp = TMP(tagRoot, "Label", "용 병", UIScale.FontSm, FontStyles.Bold);
+        tagTmp.color         = TagColor;
+        tagTmp.alignment     = TextAlignmentOptions.Left;
+        tagTmp.raycastTarget = false;
+        var tlRt = tagTmp.rectTransform;
+        tlRt.anchorMin = Vector2.zero; tlRt.anchorMax = Vector2.one;
+        tlRt.offsetMin = new Vector2(30f, 0f); tlRt.offsetMax = Vector2.zero;
 
-        // ══════════════════════════════════════════════════════
-        //  SlotFullView — BattlePanel DeployArea와 동일 위치
-        //  anchorMin=(0,0) anchorMax=(0,1)
-        //  offsetMin=(0, NavBarH) offsetMax=(DeployW, -TopBarH)
-        // ══════════════════════════════════════════════════════
+        // 타이틀 — 그림자 사본을 먼저 깔아 어떤 배경에서도 읽히게 한다
+        MakeTitle(header, "TitleShadow", TitleShadow, 3f);
+        MakeTitle(header, "TitleText",   TitleColor,  0f);
 
-        var slotFullView = new GameObject("SlotFullView", typeof(RectTransform));
-        slotFullView.transform.SetParent(root.transform, false);
-        var sfvRt = slotFullView.GetComponent<RectTransform>();
-        sfvRt.anchorMin = new Vector2(0f, 0f);
-        sfvRt.anchorMax = new Vector2(0f, 1f);
-        sfvRt.offsetMin = new Vector2(0f,      0f);
-        sfvRt.offsetMax = new Vector2(DeployW, -TopBarH);
+        var accent = Go("AccentLine", panel);
+        accent.AddComponent<Image>().color = AccentTeal;
+        EditorUIBuilder.AnchorTop(accent.GetComponent<RectTransform>(), HeaderH, 3f);
 
-        var sfvImg = slotFullView.AddComponent<Image>();
-        sfvImg.color = BgDark;
+        var closeBtn = EditorUIBuilder.RaisedBtn(header, "CloseBtn", CloseBtnC, out var body);
+        var cRt = closeBtn.GetComponent<RectTransform>();
+        cRt.anchorMin = cRt.anchorMax = new Vector2(1f, 0.5f);
+        cRt.pivot     = new Vector2(1f, 0.5f);
+        cRt.anchoredPosition = new Vector2(-24f, 0f);
+        cRt.sizeDelta        = new Vector2(76f, 76f);
+        CenterMark(EditorUIBuilder.XMark(body, "Mark", UIScale.FontMd, Color.white));
+        SetObj(so, "_closeBtn", closeBtn);
 
-        var sfvVlg = slotFullView.AddComponent<VerticalLayoutGroup>();
-        sfvVlg.childAlignment         = TextAnchor.UpperCenter;
-        sfvVlg.spacing                = SlotGap;
-        sfvVlg.childForceExpandWidth  = true;
-        sfvVlg.childForceExpandHeight = true;
-        sfvVlg.padding                = new RectOffset(4, 4, 4, 4);
+        // 보유 골드 — 닫기 버튼 왼쪽. 고용에 골드가 나가므로 잔액이 보여야 한다.
+        // 로비 TopBar 와 같은 CurrencyWidget 이라 값이 자동으로 갱신된다.
+        BuildGoldWidget(header);
+    }
 
-        float slotH = (UIScale.RefHeight - TopBarH
-                       - SlotGap * (SlotCount - 1) - 8f) / SlotCount;
+    // ── 보유 골드 위젯 ───────────────────────────────────────
 
-        var slots = new MercSlotCardUI[SlotCount];
-        for (int i = 0; i < SlotCount; i++)
+    static void BuildGoldWidget(GameObject header)
+    {
+        const float W = 200f;
+        const float IconSz = 44f;
+
+        var group = Go("GoldGroup", header);
+        var rt = group.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
+        rt.pivot     = new Vector2(1f, 0.5f);
+        rt.anchoredPosition = new Vector2(-(24f + 76f + 20f), 0f);   // 닫기 버튼 왼쪽
+        rt.sizeDelta        = new Vector2(W, UIScale.RowMd);
+
+        var icon = EditorUIBuilder.Img(group, "Icon", CostGold);
+        var iRt = icon.rectTransform;
+        iRt.anchorMin = iRt.anchorMax = new Vector2(0f, 0.5f);
+        iRt.pivot     = new Vector2(0f, 0.5f);
+        iRt.anchoredPosition = new Vector2(0f, 0f);
+        iRt.sizeDelta        = new Vector2(IconSz, IconSz);
+
+        // 자릿수가 늘어나도 줄바꿈 대신 폰트를 줄인다 (UI 규칙 5 — 칸 높이 유지)
+        var amt = TMP(group, "Value", "0", UIScale.FontMd, FontStyles.Bold);
+        amt.color            = CostGold;
+        amt.alignment        = TextAlignmentOptions.MidlineLeft;
+        amt.raycastTarget    = false;
+        amt.textWrappingMode = TextWrappingModes.NoWrap;
+        amt.overflowMode     = TextOverflowModes.Overflow;
+        amt.enableAutoSizing = true;
+        amt.fontSizeMin      = UIScale.FontSm;
+        amt.fontSizeMax      = UIScale.FontMd;
+        var aRt = amt.rectTransform;
+        aRt.anchorMin = new Vector2(0f, 0f); aRt.anchorMax = new Vector2(1f, 1f);
+        aRt.offsetMin = new Vector2(IconSz + 10f, 0f);
+        aRt.offsetMax = Vector2.zero;
+
+        var widget = group.AddComponent<CurrencyWidget>();
+        var wSo    = new SerializedObject(widget);
+        wSo.FindProperty("_item").intValue                   = (int)eItem.Gold;
+        wSo.FindProperty("_amountText").objectReferenceValue = amt;
+        wSo.FindProperty("_icon").objectReferenceValue       = icon;
+        wSo.ApplyModifiedProperties();
+    }
+
+    static void MakeTitle(GameObject header, string name, Color color, float dy)
+    {
+        var tmp = TMP(header, name, "용병 고용", UIScale.FontLg, FontStyles.Bold);
+        tmp.color            = color;
+        tmp.alignment        = TextAlignmentOptions.Left;
+        tmp.raycastTarget    = false;
+        tmp.textWrappingMode = TextWrappingModes.NoWrap;
+        tmp.overflowMode     = TextOverflowModes.Overflow;
+        var rt = tmp.rectTransform;
+        rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
+        rt.pivot     = new Vector2(0f, 1f);
+        rt.anchoredPosition = new Vector2(30f + dy, -52f - dy);
+        rt.sizeDelta        = new Vector2(900f, UIScale.RowLg);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  좌측 — 장수 카드 + 페이지 화살표
+    // ══════════════════════════════════════════════════════════
+
+    static void BuildLeftColumn(GameObject panel, SerializedObject so)
+    {
+        var col = Go("CardColumn", panel);
+        var rt = col.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0f, 0f);
+        rt.anchorMax = new Vector2(0f, 1f);
+        rt.pivot     = new Vector2(0f, 1f);
+        rt.offsetMin = new Vector2(SidePad, BodyBtm);
+        rt.offsetMax = new Vector2(SidePad + LeftW, -BodyTop);
+
+        // 카드는 MainPanelCreator 가 정본 — 여기서 레이아웃을 다시 짜지 않는다.
+        //  withRefresh : MainPanel 전용 (상점 후보는 다시 뽑을 수 없다)
+        //  withTrait   : 특성은 게임 시작 시 직업별로 하나 받는 것이다.
+        //                용병 고용은 특성을 주지 않으므로 칸 자체를 뺀다.
+        var card = MainPanelCreator.BuildHeroCard(col, withDots: true, withRefresh: false,
+                                                  withTrait: false,
+                                                  out var cardUI, out var dots, out _);
+        var cardRt = card.GetComponent<RectTransform>();
+        cardRt.anchorMin = cardRt.anchorMax = new Vector2(0.5f, 1f);
+        cardRt.pivot     = new Vector2(0.5f, 1f);
+        cardRt.anchoredPosition = Vector2.zero;
+
+        // 화살표 — 카드 좌우 바깥, 초상화 수직 중심에 맞춘다 (MainPanel 과 동일)
+        float arrY = -(MainPanelCreator.PortPad + MainPanelCreator.PortH * 0.5f);
+
+        var arrL = MainPanelCreator.BuildPageArrow(card, "PrevBtn", 180f);
         {
-            var slotGo = BuildMercSlot(slotFullView, i, slotH);
-            slots[i] = slotGo.GetComponent<MercSlotCardUI>();
+            var a = arrL.GetComponent<RectTransform>();
+            a.anchorMin = a.anchorMax = new Vector2(0f, 1f);
+            a.pivot     = new Vector2(1f, 0.5f);
+            a.anchoredPosition = new Vector2(-MainPanelCreator.ArrGap, arrY);
+            a.sizeDelta = new Vector2(MainPanelCreator.ArrSize, MainPanelCreator.ArrSize);
         }
 
-        // ══════════════════════════════════════════════════════
-        //  CandidatePanel — 우측 플로팅 패널
-        //  화면 우측 [DeployW, RefWidth] 영역 중앙에 배치
-        // ══════════════════════════════════════════════════════
-
-        var candidatePanel = new GameObject("CandidatePanel", typeof(RectTransform));
-        candidatePanel.transform.SetParent(root.transform, false);
-        var cpRt = candidatePanel.GetComponent<RectTransform>();
-        cpRt.anchorMin = cpRt.anchorMax = new Vector2(0.5f, 0.5f);
-        cpRt.pivot     = new Vector2(0.5f, 0.5f);
-        cpRt.anchoredPosition = new Vector2(300f, 0f);
-        cpRt.sizeDelta        = new Vector2(PW, PH);
-
-        var cpImg = candidatePanel.AddComponent<Image>();
-        cpImg.color = BgColor;
-
-        // ── CandidatePanel > Header ────────────────────────────
-        var header = AddImg(candidatePanel, "Header", new Color(0.10f, 0.12f, 0.22f, 1f));
-        var hRt = header.GetComponent<RectTransform>();
-        hRt.anchorMin = new Vector2(0f, 1f); hRt.anchorMax = new Vector2(1f, 1f);
-        hRt.offsetMin = new Vector2(0f, -HeaderH); hRt.offsetMax = Vector2.zero;
-
-        var titleTmp = AddTMP(header.gameObject, "TitleText", "용병 상점", UIScale.FontXl, FontStyles.Bold);
-        SetCenterRect(titleTmp.rectTransform, new Vector2(0f, 0f), new Vector2(PW - 40f, HeaderH - 10f));
-
-        // ── CandidatePanel > CardArea ─────────────────────────
-        var cardArea = new GameObject("CardArea", typeof(RectTransform));
-        cardArea.transform.SetParent(candidatePanel.transform, false);
-        var caRt = cardArea.GetComponent<RectTransform>();
-        caRt.anchorMin = Vector2.zero; caRt.anchorMax = Vector2.one;
-        caRt.offsetMin = new Vector2(0f, HireBarH);
-        caRt.offsetMax = new Vector2(0f, -HeaderH);
-
-        var hlg = cardArea.AddComponent<HorizontalLayoutGroup>();
-        hlg.spacing               = 24f;
-        hlg.childAlignment        = TextAnchor.MiddleCenter;
-        hlg.childControlWidth     = false; hlg.childControlHeight     = false;
-        hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = false;
-
-        var cardPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{SaveDir}/MercCandidateCard.prefab");
-        var cards = new MercCandidateCardUI[3];
-        for (int i = 0; i < 3; i++)
+        var arrR = MainPanelCreator.BuildPageArrow(card, "NextBtn", 0f);
         {
-            GameObject cardGo;
-            if (cardPrefab != null)
-            {
-                cardGo = (GameObject)PrefabUtility.InstantiatePrefab(cardPrefab, cardArea.transform);
-                cardGo.name = $"Card{i}";
-            }
-            else
-            {
-                cardGo = new GameObject($"Card{i}", typeof(RectTransform), typeof(Image));
-                cardGo.transform.SetParent(cardArea.transform, false);
-                cardGo.GetComponent<Image>().color = CardBg;
-                cardGo.AddComponent<MercCandidateCardUI>();
-                cardGo.GetComponent<RectTransform>().sizeDelta = new Vector2(380f, 840f);
-            }
-            cards[i] = cardGo.GetComponent<MercCandidateCardUI>();
+            var a = arrR.GetComponent<RectTransform>();
+            a.anchorMin = a.anchorMax = new Vector2(1f, 1f);
+            a.pivot     = new Vector2(0f, 0.5f);
+            a.anchoredPosition = new Vector2(MainPanelCreator.ArrGap, arrY);
+            a.sizeDelta = new Vector2(MainPanelCreator.ArrSize, MainPanelCreator.ArrSize);
         }
 
-        // ── CandidatePanel > HireBar ──────────────────────────
-        var hireBar = AddImg(candidatePanel, "HireBar", new Color(0.08f, 0.09f, 0.16f, 1f));
-        var hbRt = hireBar.GetComponent<RectTransform>();
-        hbRt.anchorMin = new Vector2(0f, 0f); hbRt.anchorMax = new Vector2(1f, 0f);
-        hbRt.offsetMin = Vector2.zero; hbRt.offsetMax = new Vector2(0f, HireBarH);
+        SetObj(so, "_card",    cardUI);
+        SetObj(so, "_prevBtn", arrL.GetComponent<Button>());
+        SetObj(so, "_nextBtn", arrR.GetComponent<Button>());
 
-        // 고용 버튼
-        var hireBtn = AddBtn(hireBar.gameObject, "HireBtn", "고용", HireBtnColor, UIScale.FontLg);
-        var hbtnRt = hireBtn.GetComponent<RectTransform>();
-        hbtnRt.anchorMin = new Vector2(1f, 0.5f); hbtnRt.anchorMax = new Vector2(1f, 0.5f);
-        hbtnRt.pivot = new Vector2(1f, 0.5f);
-        hbtnRt.anchoredPosition = new Vector2(-420f, 0f);
-        hbtnRt.sizeDelta = new Vector2(220f, UIScale.BtnMd);
-
-        // 분해 버튼 [분해][아이콘][+N]
-        var passBtn = new GameObject("PassBtn", typeof(RectTransform), typeof(Image), typeof(Button));
-        passBtn.transform.SetParent(hireBar.gameObject.transform, false);
-        passBtn.GetComponent<Image>().color = PassBtnColor;
-        var pbtnRt = passBtn.GetComponent<RectTransform>();
-        pbtnRt.anchorMin = new Vector2(1f, 0.5f); pbtnRt.anchorMax = new Vector2(1f, 0.5f);
-        pbtnRt.pivot = new Vector2(1f, 0.5f);
-        pbtnRt.anchoredPosition = new Vector2(-16f, 0f);
-        pbtnRt.sizeDelta = new Vector2(384f, UIScale.BtnMd);
-
-        var passHlg = passBtn.AddComponent<HorizontalLayoutGroup>();
-        passHlg.childAlignment        = TextAnchor.MiddleCenter;
-        passHlg.spacing               = 8f;
-        passHlg.padding               = new RectOffset(16, 16, 0, 0);
-        passHlg.childControlWidth     = false; passHlg.childControlHeight     = false;
-        passHlg.childForceExpandWidth = false; passHlg.childForceExpandHeight = false;
-
-        var passStaticGo = new GameObject("StaticLabel", typeof(RectTransform), typeof(TextMeshProUGUI));
-        passStaticGo.transform.SetParent(passBtn.transform, false);
-        var psTmp = passStaticGo.GetComponent<TextMeshProUGUI>();
-        psTmp.text = "분해"; psTmp.fontSize = UIScale.FontLg;
-        psTmp.fontStyle = FontStyles.Bold; psTmp.alignment = TextAlignmentOptions.Center;
-        psTmp.color = Color.white;
-        passStaticGo.GetComponent<RectTransform>().sizeDelta = new Vector2(80f, UIScale.BtnMd);
-
-        var passIconGo = new GameObject("ShardIcon", typeof(RectTransform), typeof(Image));
-        passIconGo.transform.SetParent(passBtn.transform, false);
-        var passShardIcon = passIconGo.GetComponent<Image>();
-        passShardIcon.color = new Color(0.45f, 0.70f, 1.00f);
-        passIconGo.GetComponent<RectTransform>().sizeDelta = new Vector2(72f, 72f);
-
-        var passCountGo = new GameObject("CountLabel", typeof(RectTransform), typeof(TextMeshProUGUI));
-        passCountGo.transform.SetParent(passBtn.transform, false);
-        var pcTmp = passCountGo.GetComponent<TextMeshProUGUI>();
-        pcTmp.text = "+?"; pcTmp.fontSize = UIScale.FontLg;
-        pcTmp.fontStyle = FontStyles.Bold; pcTmp.alignment = TextAlignmentOptions.Center;
-        pcTmp.color = new Color(1f, 0.90f, 0.50f);
-        passCountGo.GetComponent<RectTransform>().sizeDelta = new Vector2(100f, UIScale.BtnMd);
-
-        // ── 직렬화 필드 연결 ──────────────────────────────────
-        var so = new SerializedObject(popup);
-        SetEnum(so, "_popupType",      (int)PopupType.MercenaryShop);
-        SetObj (so, "_candidateView",  candidatePanel);
-        SetObj (so, "_slotFullView",   slotFullView);
-        SetObj (so, "_hireBtn",        hireBtn.GetComponent<Button>());
-        SetObj (so, "_passBtn",        passBtn.GetComponent<Button>());
-        SetObj (so, "_passBtnLabel",   pcTmp);
-        SetObj (so, "_passShardIcon",  passShardIcon);
-        // _closeBtn 미연결 — 닫기 버튼 없음 (고용/분해 버튼으로만 닫힘)
-
-        var cardsProp = so.FindProperty("_candidateCards");
-        cardsProp.arraySize = 3;
-        for (int i = 0; i < 3; i++)
-            cardsProp.GetArrayElementAtIndex(i).objectReferenceValue = cards[i];
-
-        var slotsProp = so.FindProperty("_slotCards");
-        slotsProp.arraySize = SlotCount;
-        for (int i = 0; i < SlotCount; i++)
-            slotsProp.GetArrayElementAtIndex(i).objectReferenceValue = slots[i];
-
-        so.ApplyModifiedProperties();
-
-        Save(root, "MercenaryShopPopup");
+        var dp = so.FindProperty("_pageDots");
+        if (dp != null)
+        {
+            dp.arraySize = dots.Length;
+            for (int i = 0; i < dots.Length; i++)
+                dp.GetArrayElementAtIndex(i).objectReferenceValue = dots[i];
+        }
     }
 
     // ══════════════════════════════════════════════════════════
-    //  BuildMercSlot — SlotFullView 내 슬롯 1개
-    //  BattlePanelCreator.BuildSlot()과 동일한 카드 구조,
-    //  DeploySlotUI 대신 MercSlotCardUI + FireBtn 추가.
+    //  우측 — "선 택" 구분선 + 안내 + 고용/돌려보내기
     // ══════════════════════════════════════════════════════════
 
-    static GameObject BuildMercSlot(GameObject parent, int index, float height)
+    static void BuildRightColumn(GameObject panel, SerializedObject so)
     {
-        var go = new GameObject($"Slot_{index}", typeof(RectTransform));
-        go.transform.SetParent(parent.transform, false);
-        go.GetComponent<RectTransform>().sizeDelta = new Vector2(DeployW, 160f);
+        var col = Go("ChoiceColumn", panel);
+        var rt = col.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0f, 0f);
+        rt.anchorMax = new Vector2(0f, 1f);
+        rt.pivot     = new Vector2(0f, 1f);
+        rt.offsetMin = new Vector2(SidePad + LeftW + ColGap, BodyBtm);
+        rt.offsetMax = new Vector2(SidePad + LeftW + ColGap + RightW, -BodyTop);
 
-        var le = go.AddComponent<LayoutElement>();
-        le.minHeight       = 110f;
-        le.preferredHeight = height;
+        // ── "선 택" 구분선 ───────────────────────────────────
+        var divider = Go("ChoiceDivider", col);
+        EditorUIBuilder.AnchorTop(divider.GetComponent<RectTransform>(), 0f, DivH);
+        DividerLine(divider, "LineL", 0f,   0.5f,   0f, -66f);
+        DividerLine(divider, "LineR", 0.5f, 1f,   66f,   0f);
 
-        var slotUi  = go.AddComponent<MercSlotCardUI>();
-        var slotImg = go.AddComponent<Image>();
-        slotImg.color = SlotBgEmpty;
+        var divLbl = TMP(divider, "Label", "선  택", UIScale.FontSm, FontStyles.Bold);
+        divLbl.color         = DividerLbl;
+        divLbl.alignment     = TextAlignmentOptions.Center;
+        divLbl.raycastTarget = false;
+        EditorUIBuilder.Stretch(divLbl.gameObject);
 
-        // ── EmptyGroup ────────────────────────────────────────
-        var emptyGo = new GameObject("EmptyGroup", typeof(RectTransform));
-        emptyGo.transform.SetParent(go.transform, false);
-        FullStretch(emptyGo);
+        // ── 안내 문구 ────────────────────────────────────────
+        var hint = TMP(col, "HintText",
+                       "한 명을 고용하거나, 전부 돌려보내 용병 조각을 받는다.",
+                       UIScale.FontMd, FontStyles.Normal);
+        hint.color            = HintColor;
+        hint.alignment        = TextAlignmentOptions.TopLeft;
+        hint.raycastTarget    = false;
+        hint.textWrappingMode = TextWrappingModes.Normal;
+        hint.lineSpacing      = 12f;   // 줄간격이 좁으면 한글 본문이 뭉친다
+        EditorUIBuilder.AnchorTop(hint.rectTransform, DivH + 24f, HintH, padH: 8f);
+        SetObj(so, "_hintText", hint);
 
-        var emptyLbl = AddTMP(emptyGo, "EmptyLabel", "빈 슬롯", UIScale.FontMd, FontStyles.Normal);
-        emptyLbl.color     = MutedText;
-        emptyLbl.alignment = TextAlignmentOptions.Center;
-        FullStretch(emptyLbl.gameObject);
+        // ── 선택 버튼 2개 (하단 정렬) ────────────────────────
+        //  아래에서 위로 쌓는다 — 카드 높이가 캔버스에 따라 달라져도 붙어 있다.
+        var passBtn = BuildChoiceButton(col, "PassButton", "돌 려 보 내 기", PassBtnC,
+                                        bottomY: 0f,
+                                        out var passHint, out var passIcon);
+        SetObj(so, "_passBtn",       passBtn);
+        SetObj(so, "_passBtnLabel",  passHint);
+        SetObj(so, "_passShardIcon", passIcon);
 
-        // ── OccupiedGroup = HeroPanelCreator.BuildCardPrefab() ─
-        var cardGo = HeroPanelCreator.BuildCardPrefab();
-        cardGo.name = "OccupiedGroup";
-        cardGo.transform.SetParent(go.transform, false);
-        cardGo.SetActive(false);
-        FullStretch(cardGo);
-
-        var heroCardUi = cardGo.GetComponent<HeroCardUI>();
-        if (heroCardUi != null) Object.DestroyImmediate(heroCardUi);
-        var cardBtn = cardGo.GetComponent<Button>();
-        if (cardBtn != null) Object.DestroyImmediate(cardBtn);
-
-        // 카드 내부 요소는 raycast 차단 (해고 버튼은 카드 밖에 있으므로 영향 없음)
-        foreach (var img in cardGo.GetComponentsInChildren<Image>(true))
-            img.raycastTarget = false;
-        foreach (var tmp in cardGo.GetComponentsInChildren<TextMeshProUGUI>(true))
-            tmp.raycastTarget = false;
-
-
-        // 해고 버튼 — 슬롯 루트의 직접 자식, 슬롯 우측(SlotFullView–CandidatePanel 사이 공간)에 배치
-        var fireBtn = AddBtn(go, "FireBtn", "해고", FireBtnColor, UIScale.FontSm);
-        var fbRt = fireBtn.GetComponent<RectTransform>();
-        fbRt.anchorMin = new Vector2(1f, 0.5f);
-        fbRt.anchorMax = new Vector2(1f, 0.5f);
-        fbRt.pivot     = new Vector2(0f, 0.5f);
-        fbRt.anchoredPosition = new Vector2(12f, 0f);  // 슬롯 우측 경계 + 12px 여백
-        fbRt.sizeDelta = new Vector2(160f, 80f);
-
-        // ── MercSlotCardUI 필드 연결 ──────────────────────────
-        var so = new SerializedObject(slotUi);
-        SetObj(so, "_emptyGroup",     emptyGo);
-        SetObj(so, "_occupiedGroup",  cardGo);
-        SetObj(so, "_gradeBorder",    FindChild<Image>(cardGo.transform, "GradeBorder"));
-        SetObj(so, "_gradeBadge",     FindChild<Image>(cardGo.transform, "GradeBadge"));
-        SetObj(so, "_portraitBg",     FindChild<Image>(cardGo.transform, "PortraitBg"));
-        SetObj(so, "_portraitImg",    FindChild<Image>(cardGo.transform, "PortraitImage"));
-        SetObj(so, "_portraitBridge", FindChild<UnitAppearanceBridge>(cardGo.transform, "PortraitPreview"));
-        SetObj(so, "_nameText",       FindChild<TextMeshProUGUI>(cardGo.transform, "NameText"));
-        SetObj(so, "_levelText",      FindChild<TextMeshProUGUI>(cardGo.transform, "LevelText"));
-        SetObj(so, "_gradeText",      FindChild<TextMeshProUGUI>(cardGo.transform, "GradeText"));
-        SetObj(so, "_jobText",        FindChild<TextMeshProUGUI>(cardGo.transform, "JobText"));
-        SetObj(so, "_hpText",         FindChild<TextMeshProUGUI>(cardGo.transform, "HpText"));
-        SetObj(so, "_atkText",        FindChild<TextMeshProUGUI>(cardGo.transform, "AtkText"));
-        SetObj(so, "_defText",        FindChild<TextMeshProUGUI>(cardGo.transform, "DefText"));
-        SetObj(so, "_soldierText",    FindChild<TextMeshProUGUI>(cardGo.transform, "SoldierText"));
-        SetObj(so, "_fireButton",     fireBtn.GetComponent<Button>());
-        so.ApplyModifiedProperties();
-
-        return go;
+        var hireBtn = BuildChoiceButton(col, "HireButton", "고     용", HireBtnC,
+                                        bottomY: BtnH + BtnGap,
+                                        out var hireCost, out var hireIcon);
+        SetObj(so, "_hireBtn",      hireBtn);
+        SetObj(so, "_hireCostText", hireCost);
+        SetObj(so, "_hireCostIcon", hireIcon);
     }
 
-    // ══════════════════════════════════════════════════════════
-    //  헬퍼
-    // ══════════════════════════════════════════════════════════
-
-    // 전체 화면 스트레치 루트 (MercenaryShopPopup 전용)
-    static GameObject MakeFullScreenRoot<T>(string name) where T : PopupBase
+    /// <summary>
+    /// EventPopup 과 같은 입체 선택 버튼.
+    /// 좌측에 라벨(FontMd), 우측에 [아이콘][수량] 힌트.
+    /// </summary>
+    static Button BuildChoiceButton(GameObject parent, string name, string label, Color face,
+                                    float bottomY, out TextMeshProUGUI hintTmp, out Image hintIcon)
     {
-        var go = new GameObject(name, typeof(RectTransform));
-        go.AddComponent<CanvasGroup>();
-        go.AddComponent<T>();
-        var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = Vector2.zero;
-        rt.anchorMax = Vector2.one;
-        rt.offsetMin = rt.offsetMax = Vector2.zero;
-        return go;
+        var btn = EditorUIBuilder.RaisedBtn(parent, name, face, out var body);
+        var rt = btn.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0f, 0f);
+        rt.anchorMax = new Vector2(1f, 0f);
+        rt.pivot     = new Vector2(0.5f, 0f);
+        rt.offsetMin = new Vector2(8f,  bottomY);
+        rt.offsetMax = new Vector2(-8f, bottomY + BtnH);
+
+        // ⚠ 라벨·아이콘은 반드시 body 아래 — 루트에 넣으면 눌려도 안 내려간다 (UI 규칙 1)
+        var lbl = TMP(body, "Label", label, UIScale.FontMd, FontStyles.Bold);
+        lbl.color            = LabelWhite;
+        lbl.alignment        = TextAlignmentOptions.MidlineLeft;
+        lbl.raycastTarget    = false;
+        lbl.textWrappingMode = TextWrappingModes.NoWrap;
+        var lRt = lbl.rectTransform;
+        lRt.anchorMin = Vector2.zero; lRt.anchorMax = Vector2.one;
+        lRt.offsetMin = new Vector2(28f, 0f);
+        lRt.offsetMax = new Vector2(-200f, 0f);
+
+        // 우측 [아이콘][수량] — 고용은 골드 비용, 돌려보내기는 획득 조각 수
+        var hintRoot = Go("Hint", body);
+        var hRt = hintRoot.GetComponent<RectTransform>();
+        hRt.anchorMin = hRt.anchorMax = new Vector2(1f, 0.5f);
+        hRt.pivot     = new Vector2(1f, 0.5f);
+        hRt.anchoredPosition = new Vector2(-24f, 0f);
+        hRt.sizeDelta        = new Vector2(180f, UIScale.RowMd);
+        EditorUIBuilder.CostHlg(hintRoot);
+
+        hintIcon = EditorUIBuilder.Img(hintRoot, "Icon", new Color(0.55f, 0.58f, 0.66f));
+        EditorUIBuilder.IconLE(hintIcon, 40f);
+
+        hintTmp = TMP(hintRoot, "Value", "+0", UIScale.FontMd, FontStyles.Bold);
+        hintTmp.color            = HintGreen;
+        hintTmp.alignment        = TextAlignmentOptions.MidlineLeft;
+        hintTmp.raycastTarget    = false;
+        hintTmp.textWrappingMode = TextWrappingModes.NoWrap;
+        EditorUIBuilder.LE(hintTmp.gameObject, 110f, UIScale.RowMd);
+
+        return btn;
     }
 
-    // 기존 팝업 루트 (고정 크기 — MercCandidateCard 등에 미사용이지만 보존)
-    static GameObject MakeRoot<T>(string name, float w, float h) where T : PopupBase
-    {
-        var go = new GameObject(name, typeof(RectTransform));
-        go.AddComponent<CanvasGroup>();
-        go.AddComponent<T>();
-        var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-        rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = Vector2.zero;
-        rt.sizeDelta = new Vector2(w, h);
-        return go;
-    }
+    // ── 헬퍼 ─────────────────────────────────────────────────
 
-    static Image AddImg(GameObject parent, string name, Color color)
-        => EditorUIBuilder.Img(parent, name, color);
+    static GameObject Go(string name, GameObject parent) => EditorUIBuilder.Go(name, parent);
 
-    static Image AddImg(Image parent, string name, Color color)
-        => AddImg(parent.gameObject, name, color);
-
-    static TextMeshProUGUI AddTMP(GameObject parent, string name, string text, float size, FontStyles style)
+    static TextMeshProUGUI TMP(GameObject parent, string name, string text,
+                               float size, FontStyles style)
         => EditorUIBuilder.TMP(parent, name, text, size, style);
 
-    // 카드 상단 앵커, 중앙 X
-    static TextMeshProUGUI AddCardTMP(GameObject parent, string name, string text,
-        float size, FontStyles style, float anchoredY, float width, float height)
+    // 폭 고정 + 세로 스트레치 (위아래 vMargin 여백)
+    static void StretchV(RectTransform rt, float width, float vMargin)
     {
-        var tmp = AddTMP(parent, name, text, size, style);
-        var rt = tmp.rectTransform;
-        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f);
-        rt.pivot = new Vector2(0.5f, 1f);
-        rt.anchoredPosition = new Vector2(0f, anchoredY);
-        rt.sizeDelta = new Vector2(width, height);
-        return tmp;
+        rt.anchorMin        = new Vector2(0.5f, 0f);
+        rt.anchorMax        = new Vector2(0.5f, 1f);
+        rt.pivot            = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = Vector2.zero;
+        rt.sizeDelta        = new Vector2(width, -vMargin * 2f);
     }
 
-    // 좌/우 반쪽 배치
-    static TextMeshProUGUI AddHalfTMP(GameObject parent, string name, string text,
-        float size, FontStyles style, float anchoredY, float cardW, bool isLeft)
+    static void DividerLine(GameObject parent, string name,
+                            float aMinX, float aMaxX, float offMinX, float offMaxX)
     {
-        var tmp = AddTMP(parent, name, text, size, style);
-        tmp.alignment = isLeft ? TextAlignmentOptions.Left : TextAlignmentOptions.Right;
-        var rt = tmp.rectTransform;
-        if (isLeft)
-        {
-            rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
-            rt.pivot = new Vector2(0f, 1f);
-            rt.anchoredPosition = new Vector2(16f, anchoredY);
-            rt.sizeDelta = new Vector2(cardW / 2f - 20f, 36f);
-        }
-        else
-        {
-            rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
-            rt.pivot = new Vector2(1f, 1f);
-            rt.anchoredPosition = new Vector2(-16f, anchoredY);
-            rt.sizeDelta = new Vector2(cardW / 2f - 20f, 36f);
-        }
-        return tmp;
-    }
-
-    // 스탯 텍스트 (좌/우 반쪽, FontMd, Bold)
-    static TextMeshProUGUI AddStatHalf(GameObject parent, string name, string text,
-        Color color, float anchoredY, float cardW, bool isLeft)
-    {
-        var tmp = AddTMP(parent, name, text, UIScale.FontMd, FontStyles.Bold);
-        tmp.alignment = TextAlignmentOptions.Left;
-        tmp.color = color;
-        var rt = tmp.rectTransform;
-        if (isLeft)
-        {
-            rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
-            rt.pivot = new Vector2(0f, 1f);
-            rt.anchoredPosition = new Vector2(16f, anchoredY);
-        }
-        else
-        {
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f);
-            rt.pivot = new Vector2(0f, 1f);
-            rt.anchoredPosition = new Vector2(8f, anchoredY);
-        }
-        rt.sizeDelta = new Vector2(cardW / 2f - 28f, 50f);
-        return tmp;
-    }
-
-    static TextMeshProUGUI AddPassiveNameTMP(GameObject parent, string name, float anchoredY, float cardW)
-    {
-        var tmp = AddTMP(parent, name, "-", UIScale.FontMd, FontStyles.Bold);
-        var rt  = tmp.rectTransform;
-        rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
-        rt.pivot = new Vector2(0f, 1f);
-        rt.anchoredPosition = new Vector2(16f, anchoredY);
-        rt.sizeDelta = new Vector2(cardW - 32f, 38f);
-        tmp.alignment = TextAlignmentOptions.Left;
-        tmp.color = PassiveNameColor;
-        return tmp;
-    }
-
-    static TextMeshProUGUI AddPassiveDescTMP(GameObject parent, string name, float anchoredY, float cardW)
-    {
-        var tmp = AddTMP(parent, name, "", UIScale.FontSm, FontStyles.Normal);
-        var rt  = tmp.rectTransform;
-        rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
-        rt.pivot = new Vector2(0f, 1f);
-        rt.anchoredPosition = new Vector2(16f, anchoredY);
-        rt.sizeDelta = new Vector2(cardW - 32f, 64f);  // FontSm=24, 2줄 = ~58px
-        tmp.alignment = TextAlignmentOptions.Left;
-        tmp.enableWordWrapping = true;
-        tmp.overflowMode = TMPro.TextOverflowModes.Truncate;
-        tmp.color = PassiveDescColor;
-        return tmp;
-    }
-
-    static void AddCardDivider(GameObject parent, float anchoredY, float cardW)
-    {
-        var go = new GameObject("Divider", typeof(RectTransform), typeof(Image));
-        go.transform.SetParent(parent.transform, false);
-        go.GetComponent<Image>().color = DividerColor;
+        var go = Go(name, parent);
+        var img = go.AddComponent<Image>();
+        img.color         = DividerLineC;
+        img.raycastTarget = false;
         var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f);
-        rt.pivot = new Vector2(0.5f, 1f);
-        rt.anchoredPosition = new Vector2(0f, anchoredY);
-        rt.sizeDelta = new Vector2(cardW - 32f, 2f);
+        rt.anchorMin = new Vector2(aMinX, 0.5f);
+        rt.anchorMax = new Vector2(aMaxX, 0.5f);
+        rt.offsetMin = new Vector2(offMinX, -1f);
+        rt.offsetMax = new Vector2(offMaxX,  1f);
     }
 
-    static void SetTopStretch(RectTransform rt, float height)
+    static void CenterMark(GameObject mark)
     {
-        rt.anchorMin = new Vector2(0f, 1f); rt.anchorMax = new Vector2(1f, 1f);
-        rt.pivot = new Vector2(0.5f, 1f);
-        rt.anchoredPosition = Vector2.zero; rt.sizeDelta = new Vector2(0f, height);
+        var rt = mark.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot     = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = Vector2.zero;
     }
-
-    static void SetTopCenter(RectTransform rt, float anchoredY, float w, float h)
-    {
-        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f);
-        rt.pivot = new Vector2(0.5f, 1f);
-        rt.anchoredPosition = new Vector2(0f, anchoredY);
-        rt.sizeDelta = new Vector2(w, h);
-    }
-
-    static GameObject AddBtn(GameObject parent, string name, string label, Color bgColor, float fontSize)
-        => EditorUIBuilder.Btn(parent, name, label, bgColor, fontSize, boldLabel: true);
-
-    static void SetCenterRect(RectTransform rt, Vector2 pos, Vector2 size)
-        => EditorUIBuilder.Center(rt, pos, size);
-
-    static void FullStretch(GameObject go) => EditorUIBuilder.Stretch(go);
-
-    static T FindChild<T>(Transform root, string name) where T : Component
-        => EditorUIBuilder.FindDeep<T>(root, name);
-
-    static void SetEnum(SerializedObject so, string field, int value)
-        => EditorUIBuilder.SetEnum(so, field, value, "MercenaryPopupCreator");
 
     static void SetObj(SerializedObject so, string field, Object obj)
         => EditorUIBuilder.SetObj(so, field, obj, "MercenaryPopupCreator");
 
-    static void Save(GameObject root, string fileName)
-    {
-        string path = $"{SaveDir}/{fileName}.prefab";
-        PrefabUtility.SaveAsPrefabAsset(root, path);
-        Object.DestroyImmediate(root);
-        Debug.Log($"[MercenaryPopupCreator] 저장: {path}");
-    }
+    static void SetEnum(SerializedObject so, string field, int value)
+        => EditorUIBuilder.SetEnum(so, field, value, "MercenaryPopupCreator");
 }

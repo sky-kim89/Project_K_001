@@ -79,91 +79,111 @@ public static class UISetupTool
     //  GeneralPanel 프리팹
     // ══════════════════════════════════════════════════════════
 
+    // 인게임 캔버스는 화면 비율에 따라 크기가 달라진다 (ScaleWithScreenSize, match 0.5).
+    //   세로 1080×1920 / 가로 1920×1080 — **가로일 때 세로 여유가 1080 뿐**이다.
+    //   HUD 가 그 절반을 먹으면 전투가 안 보인다. 상·하단 합계를 300 아래로 유지할 것.
+    //
+    // ⚠ 카드 내용은 반드시 좌우 스트레치로 잡는다 (SetTopStretch)
+    //   패널 폭은 HorizontalLayoutGroup 이 균등 분배해 3명이면 넓고 5명이면 좁다.
+    //   고정 픽셀 폭으로 두면 넓어진 만큼 오른쪽이 통째로 빈다 — 실제로 그랬다.
+    const float GpMinW    = 200f;
+    const float GpPad     =   8f;
+    const float GpGradeW  =   6f;
+    // ⚠ 초상화를 키우면 그만큼 바(HP·병사) 폭이 줄어든다.
+    //   세로 화면 5명일 때 카드 폭이 208 밖에 안 돼 80 이 한계다.
+    const float GpPortSz  =  80f;
+    const float GpSkillSz =  48f;
+
     static GameObject CreateGeneralPanelPrefab()
     {
-        // ┌─────────────────────────────────────────────────────────┐
-        // │ 레이아웃 (좌상단 원점, y ↓)                             │
-        // │  Portrait : x=4  y=4  w=80  h=80                       │
-        // │  NameText : x=88 y=4  w=228 h=36   font=UIScale.FontSm │
-        // │  GradeText: x=88 y=44 w=228 h=28   font=22             │
-        // │  HpBarBg  : x=88 y=76 w=228 h=26                       │
-        // │  SolBarBg : x=88 y=106 w=228 h=26                      │
-        // │  SkillSlot: x=4  y=136 w=80  h=62                      │
-        // │  BuffSlot : 2행×7열=14개, 28×28, step 32               │
-        // └─────────────────────────────────────────────────────────┘
-        const float PW      = 320f;
-        const float PH      = 210f;
-        const float PortW   = 80f;
-        const float PortH   = 80f;
-        const float TextX   = 88f;    // PortW(80) + margin(4) + left-pad(4) = 88
-        const float TextW   = 228f;   // PW(320) - TextX(88) - rightPad(4) = 228
-        const float BarH    = 26f;
-        const int   BarFont = 18;
+        //   [버][버][버][버][버]        ← 카드 **밖** 위쪽 (배경 없는 전장 위에 떠 있다)
+        // ┌──────────────────────────────────────────────────────────┐
+        // │ ┃ ┌────────┐ 이름                        희귀           │
+        // │ ┃ │초상화 80│ ▬▬▬▬▬▬▬ 1694/1693  (HP)              │
+        // │ ┃ │ [마법사] │ ▬▬▬▬▬▬▬ 24/29      (병사)            │
+        // │ ┃ └[스킬48]─┘                                          │
+        // └──────────────────────────────────────────────────────────┘
+        //
+        // ⚠ 바 높이 44 는 FontSm(34) 한 줄(Line=43)을 담기 위한 값이다 (UI 규칙 5).
+        float nameH = UIScale.RowSm;          // 43
+        float barH  = UIScale.RowSm + 1f;     // 44
+        float buffH = 36f;
+
+        float innerL = GpGradeW + GpPad;               // 14 — 등급 바 오른쪽
+        float textL  = innerL + GpPortSz + 6f;         // 100 — 텍스트 열 시작
+
+        // 텍스트 열(이름+HP+병사)이 초상화보다 길다 — 그쪽이 행 높이를 정한다
+        float textColH = nameH + 4f + barH + 4f + barH;   // 139
+
+        float rowAY  = GpPad;                             // 8
+        float nameY  = rowAY;
+        float hpY    = nameY + nameH + 4f;                // 55
+        float solY   = hpY   + barH  + 4f;                // 103
+        float skillY = rowAY + GpPortSz + 4f;             //  92 — 초상화 아래 빈 자리
+        float PH     = rowAY + textColH + GpPad;          // 155 — 버프는 카드 밖이라 안 센다
+
+        // 버프는 카드 **위쪽 바깥**에 띄운다 (y 음수 = 카드 상단보다 위).
+        // 카드 배경이 없는 자리라 전장 위에 아이콘만 얹힌 것처럼 보인다.
+        float buffY  = -(buffH + 6f);                     // -42
 
         var root = new GameObject("GeneralPanel");
-        root.AddComponent<RectTransform>().sizeDelta = new Vector2(PW, PH);
+        root.AddComponent<RectTransform>().sizeDelta = new Vector2(GpMinW, PH);
         root.AddComponent<CanvasGroup>();
 
+        // 폭은 레이아웃 그룹이 나눠 준다 — 고정하지 않고 최소치만 건다
         var le = root.AddComponent<LayoutElement>();
-        le.preferredWidth  = PW;
+        le.minWidth        = GpMinW;
         le.preferredHeight = PH;
+        le.flexibleWidth   = 1f;
 
         var bg = root.AddComponent<Image>();
-        bg.color = new Color(0.06f, 0.06f, 0.10f, 0.90f);
+        bg.color = new Color(0.07f, 0.08f, 0.14f, 0.94f);   // 로비 카드와 같은 남색
 
         var panelUI = root.AddComponent<GeneralPanelUI>();
 
-        // ── Portrait (80×80) ─────────────────────────────────
+        // ── 등급 색 바 (좌측 세로 전체) ───────────────────────
+        var gradeBorder = MakeImg(root, "GradeBorder", new Color(0.55f, 0.55f, 0.60f));
+        {
+            var rt = gradeBorder.rectTransform;
+            rt.anchorMin = Vector2.zero; rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot     = new Vector2(0f, 0.5f);
+            rt.offsetMin = Vector2.zero; rt.offsetMax = new Vector2(GpGradeW, 0f);
+        }
+        gradeBorder.raycastTarget = false;
+
+        // ── 초상화 + 직업 칩 ──────────────────────────────────
         var portraitBg = MakeImg(root, "Portrait", new Color(0.8f, 0.22f, 0.22f));
-        SetTL(portraitBg.gameObject, 4, 4, PortW, PortH);
+        SetTL(portraitBg.gameObject, innerL, rowAY, GpPortSz, GpPortSz);
 
         var portraitIconGo = MakeRect(portraitBg.gameObject, "PortraitIcon");
         Stretch(portraitIconGo);
         var portraitIcon = portraitIconGo.AddComponent<Image>();
         portraitIcon.color          = Color.white;
-        portraitIcon.preserveAspect = false;
+        portraitIcon.preserveAspect = true;
 
-        // ── Name / Grade ──────────────────────────────────────
-        float nameH  = Mathf.Round(UIScale.FontSm) + 6f;   // 36
-        float gradeH = 28f;
+        var jobChip = MakeImg(portraitBg.gameObject, "JobChip", new Color(0.03f, 0.035f, 0.06f, 0.86f));
+        {
+            var rt = jobChip.rectTransform;
+            rt.anchorMin = new Vector2(0f, 0f); rt.anchorMax = new Vector2(1f, 0f);
+            rt.pivot     = new Vector2(0.5f, 0f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = new Vector2(0f, UIScale.RowSm - 8f);
+        }
+        jobChip.raycastTarget = false;
+        var jobChipText = MakeTMP(jobChip.gameObject, "Label", "기사", (int)(UIScale.FontSm * 0.85f), FontStyle.Bold);
+        Stretch(jobChipText.gameObject);
+        jobChipText.color            = new Color(0.86f, 0.90f, 1.00f);
+        jobChipText.alignment        = TextAlignmentOptions.Center;
+        jobChipText.textWrappingMode = TextWrappingModes.NoWrap;
+        jobChipText.overflowMode     = TextOverflowModes.Overflow;
 
-        var nameText = MakeTMP(root, "NameText", "장군 이름", (int)UIScale.FontSm, FontStyle.Bold);
-        SetTL(nameText.gameObject, TextX, 4, TextW, nameH);
-
-        var gradeText = MakeTMP(root, "GradeText", "", 22, FontStyle.Normal);
-        gradeText.color = new Color(1f, 0.85f, 0.3f);
-        SetTL(gradeText.gameObject, TextX, 4 + nameH + 4, TextW, gradeH);
-
-        // ── HP Bar ────────────────────────────────────────────
-        float barY1 = 4 + nameH + 4 + gradeH + 4;   // 76
-
-        var hpBg = MakeImg(root, "HpBarBg", new Color(0.12f, 0.04f, 0.04f));
-        SetTL(hpBg.gameObject, TextX, barY1, TextW, BarH);
-
-        var hpFill = MakeFilledH(hpBg.gameObject, "HpFill", new Color(0.85f, 0.15f, 0.15f));
-
-        var hpText = MakeTMP(hpBg.gameObject, "HpText", "100/100", BarFont, FontStyle.Normal);
-        Stretch(hpText.gameObject);
-
-        // ── Soldier Bar ───────────────────────────────────────
-        float barY2 = barY1 + BarH + 4;   // 106
-
-        var solBg = MakeImg(root, "SoldierBarBg", new Color(0.04f, 0.08f, 0.16f));
-        SetTL(solBg.gameObject, TextX, barY2, TextW, BarH);
-
-        var soldierFill = MakeFilledH(solBg.gameObject, "SoldierFill", new Color(0.2f, 0.5f, 0.9f));
-
-        var soldierText = MakeTMP(solBg.gameObject, "SoldierText", "5/5", BarFont, FontStyle.Normal);
-        Stretch(soldierText.gameObject);
-
-        // ── SkillSlot (80×62) ────────────────────────────────
-        float skillY = barY2 + BarH + 4;   // 136
-
+        // ── 스킬 슬롯 (초상화 아래 남는 자리) ─────────────────
+        //  텍스트 열(139)이 초상화(88)보다 길어 그 아래가 비어 있다. 거기에 넣는다.
         var skillSlotGo = MakeRect(root, "SkillSlot");
-        SetTL(skillSlotGo, 4, skillY, PortW, 62);
+        SetTL(skillSlotGo, innerL + (GpPortSz - GpSkillSz) * 0.5f, skillY, GpSkillSz, GpSkillSz);
         var skillSlot = skillSlotGo.AddComponent<SkillSlotUI>();
 
-        var skillBg = MakeImg(skillSlotGo, "SkillBg", new Color(0.12f, 0.12f, 0.12f));
+        var skillBg = MakeImg(skillSlotGo, "SkillBg", new Color(0.12f, 0.13f, 0.20f));
         Stretch(skillBg.gameObject);
 
         var skillIcon = MakeImg(skillSlotGo, "Icon", Color.white);
@@ -181,7 +201,7 @@ public static class UISetupTool
             imgSO.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        var cdText = MakeTMP(skillSlotGo, "CooldownText", "", 24, FontStyle.Bold);
+        var cdText = MakeTMP(skillSlotGo, "CooldownText", "", (int)UIScale.FontSm, FontStyle.Bold);
         Stretch(cdText.gameObject);
         cdText.outlineWidth = 0.25f;
         cdText.outlineColor = Color.black;
@@ -192,58 +212,92 @@ public static class UISetupTool
         Stretch(readyGlow);
         readyGlow.SetActive(false);
 
-        // ── Buff Slots (14개, 28×28, 2행×7열) ────────────────
-        // Row 1: y = skillY+4, Row 2: y = skillY+4+32
-        // x = TextX + (col * 32), col = i % 7
-        const int   BuffCount  = 14;
-        const int   BuffCols   = 7;
-        const float BuffSlotSz = 28f;
-        const float BuffStep   = 32f;
+        // ── 이름 + 등급 (한 줄, 이름 좌 / 등급 우) ────────────
+        //  ⚠ 여기부터는 전부 좌우 스트레치다. 패널이 넓어지면 같이 늘어난다.
+        //  긴 이름은 접히지 않고 줄어들게 한다 — 칸보다 한 줄이 크면 통째로 사라진다.
+        const float GradeW = 88f;
+
+        var nameText = MakeTMP(root, "NameText", "장군 이름", (int)UIScale.FontSm, FontStyle.Bold);
+        SetTopStretch(nameText.gameObject, textL, GpPad + GradeW, nameY, nameH);
+        nameText.alignment          = TextAlignmentOptions.MidlineLeft;
+        nameText.textWrappingMode   = TextWrappingModes.NoWrap;
+        nameText.overflowMode       = TextOverflowModes.Overflow;
+        nameText.enableAutoSizing   = true;
+        nameText.fontSizeMin        = UIScale.FontSm * 0.72f;
+        nameText.fontSizeMax        = UIScale.FontSm;
+
+        var gradeText = MakeTMP(root, "GradeText", "일반", (int)UIScale.FontSm, FontStyle.Bold);
+        SetTopStretch(gradeText.gameObject, 0f, GpPad, nameY, nameH);
+        gradeText.alignment          = TextAlignmentOptions.MidlineRight;
+        gradeText.textWrappingMode   = TextWrappingModes.NoWrap;
+        gradeText.overflowMode       = TextOverflowModes.Overflow;
+        gradeText.color              = new Color(1f, 0.85f, 0.3f);
+
+        // ── HP 바 (색은 GeneralPanelUI 가 비율에 따라 바꾼다) ──
+        var hpBg = MakeImg(root, "HpBarBg", new Color(0.10f, 0.05f, 0.06f));
+        SetTopStretch(hpBg.gameObject, textL, GpPad, hpY, barH);
+        var hpFill = MakeFilledH(hpBg.gameObject, "HpFill", new Color(0.35f, 0.90f, 0.45f));
+        var hpText = MakeBarText(hpBg.gameObject, "HpText", "100/100");
+
+        // ── 병사 바 ───────────────────────────────────────────
+        var solBg = MakeImg(root, "SoldierBarBg", new Color(0.05f, 0.07f, 0.13f));
+        SetTopStretch(solBg.gameObject, textL, GpPad, solY, barH);
+        var soldierFill = MakeFilledH(solBg.gameObject, "SoldierFill", StatColors.Soldier);
+        var soldierText = MakeBarText(solBg.gameObject, "SoldierText", "5/5");
+
+        // ── 버프 슬롯 (카드 위쪽 바깥, 초상화 머리 위부터 오른쪽으로) ──
+        //  ⚠ 예전엔 28px 짜리 14칸(2행×7열)이 카드 안 맨 아래에 있었다.
+        //    작아서 무엇이 걸렸는지 분간이 안 됐고, 카드 높이만 40 더 먹었다.
+        //  카드 밖(배경 없는 전장 위)으로 올리면 카드가 그만큼 낮아지고
+        //  아이콘도 전장 배경 위라 오히려 눈에 잘 띈다.
+        const int BuffCount = 5;
+        float buffSz   = buffH;
+        float buffStep = buffSz + 6f;
 
         var buffSlots      = new Image[BuffCount];
         var buffStackTexts = new TextMeshProUGUI[BuffCount];
 
         for (int i = 0; i < BuffCount; i++)
         {
-            int   col  = i % BuffCols;
-            int   row  = i / BuffCols;
-            float bx   = TextX + col * BuffStep;
-            float by   = skillY + 4 + row * BuffStep;
-
-            // 슬롯 컨테이너 (색상 없음 — 아이콘 스프라이트만 표시)
             var slotGo = MakeRect(root, $"BuffSlot{i}");
-            SetTL(slotGo, bx, by, BuffSlotSz, BuffSlotSz);
+            SetTL(slotGo, innerL + i * buffStep, buffY, buffSz, buffSz);
 
-            // 아이콘 이미지 (Color.white — 스프라이트 원본 색 그대로)
             buffSlots[i] = slotGo.AddComponent<Image>();
             buffSlots[i].color          = Color.white;
             buffSlots[i].preserveAspect = true;
 
-            // 스택 카운트 텍스트 (우하단, 기본 비활성)
-            var stackTxt = MakeTMP(slotGo, "StackCount", "2", 12, FontStyle.Bold);
-            stackTxt.color     = Color.yellow;
-            stackTxt.alignment = TextAlignmentOptions.BottomRight;
+            var stackTxt = MakeTMP(slotGo, "StackCount", "2", (int)(UIScale.FontSm * 0.8f), FontStyle.Bold);
+            stackTxt.color        = Color.yellow;
+            stackTxt.alignment    = TextAlignmentOptions.BottomRight;
             stackTxt.outlineWidth = 0.3f;
             stackTxt.outlineColor = Color.black;
-            {
-                var srt = stackTxt.GetComponent<RectTransform>();
-                srt.anchorMin        = Vector2.zero;
-                srt.anchorMax        = Vector2.one;
-                srt.offsetMin        = Vector2.zero;
-                srt.offsetMax        = Vector2.zero;
-            }
+            Stretch(stackTxt.gameObject);
             stackTxt.gameObject.SetActive(false);
             buffStackTexts[i] = stackTxt;
 
             slotGo.SetActive(false);
         }
 
+        // ── 전사 배지 (패널 전체 위에 겹침, 기본 숨김) ────────
+        var deadBadge = MakeImg(root, "DeadBadge", new Color(0.06f, 0.02f, 0.03f, 0.72f));
+        Stretch(deadBadge.gameObject);
+        var deadTmp = MakeTMP(deadBadge.gameObject, "Label", "전 사", (int)UIScale.FontLg, FontStyle.Bold);
+        Stretch(deadTmp.gameObject);
+        deadTmp.color        = new Color(0.92f, 0.30f, 0.30f);
+        deadTmp.alignment    = TextAlignmentOptions.Center;
+        deadTmp.outlineWidth = 0.25f;
+        deadTmp.outlineColor = Color.black;
+        deadBadge.gameObject.SetActive(false);
+
         // ── SerializedField 연결 ──────────────────────────────
         var pso = new SerializedObject(panelUI);
+        pso.FindProperty("_gradeBorder").objectReferenceValue  = gradeBorder;
         pso.FindProperty("_portraitBg").objectReferenceValue   = portraitBg;
         pso.FindProperty("_portraitIcon").objectReferenceValue = portraitIcon;
         pso.FindProperty("_nameText").objectReferenceValue     = nameText;
+        pso.FindProperty("_jobChipText").objectReferenceValue  = jobChipText;
         pso.FindProperty("_gradeText").objectReferenceValue    = gradeText;
+        pso.FindProperty("_deadBadge").objectReferenceValue    = deadBadge.gameObject;
         pso.FindProperty("_hpFill").objectReferenceValue       = hpFill;
         pso.FindProperty("_hpText").objectReferenceValue       = hpText;
         pso.FindProperty("_soldierFill").objectReferenceValue  = soldierFill;
@@ -436,72 +490,115 @@ public static class UISetupTool
         var hud = hudGo.AddComponent<InGameHUD>();
 
         // ── TopBar ─────────────────────────────────────────────
+        //  ⚠ 모든 글자는 UIScale 상수를 쓴다. 예전엔 11~24px 을 직접 박아
+        //    실기에서 읽히지 않았다 (UI 규칙 4).
+        //
+        //  ⚠ 높이 예산
+        //    가로 화면(1920×1080 참조단위)에서 세로 여유가 1080 뿐이다.
+        //    상단 78 + 하단 203 = 281 (26%). 예전 180+340=520 은 화면의 48% 를 먹어
+        //    전투가 거의 안 보였다. 늘릴 때는 이 합계를 먼저 계산할 것.
+        //
+        //  정보는 한 줄에 몰아넣는다: [웨이브] [처치] [타이머] ......... [배속][퍼즈]
+        const float TopBarH  = 78f;
+        const float CornerSz = 66f;    // 손가락으로 누르기엔 작지만 66×66 은 실기 최소선
+        const float CornerY  = -6f;
+        const float InfoY    = -8f;
+
         var topBarGo = MakeRect(hudGo, "TopBar");
         var topBarRT = topBarGo.GetComponent<RectTransform>();
         topBarRT.anchorMin        = new Vector2(0f, 1f);
         topBarRT.anchorMax        = new Vector2(1f, 1f);
         topBarRT.pivot            = new Vector2(0.5f, 1f);
         topBarRT.anchoredPosition = Vector2.zero;
-        topBarRT.sizeDelta        = new Vector2(0f, 110f);
+        topBarRT.sizeDelta        = new Vector2(0f, TopBarH);
 
         var topBarBg = topBarGo.AddComponent<Image>();
-        topBarBg.color = new Color(0.04f, 0.04f, 0.08f, 0.90f);
+        topBarBg.color = new Color(0.05f, 0.055f, 0.10f, 0.92f);
+
+        // 하단 강조선 — 로비 팝업 헤더와 같은 언어
+        var topAccent = MakeImg(topBarGo, "AccentLine", new Color(0.40f, 0.72f, 1.00f, 0.75f));
+        SetRT(topAccent, new Vector2(0f, 0f), new Vector2(1f, 0f),
+              new Vector2(0f, 0f), new Vector2(0f, 3f));
 
         var topBar = topBarGo.AddComponent<TopBarUI>();
 
-        // Wave 텍스트
-        var waveText = MakeTMP(topBarGo, "WaveText", "Wave 1 / 10", 22, FontStyle.Bold);
+        // 웨이브 · 처치 · 타이머 — 한 줄에 나란히
+        var waveText = MakeTMP(topBarGo, "WaveText", "웨이브 1 / 10", (int)UIScale.FontMd, FontStyle.Bold);
         SetRT(waveText.gameObject,
-              new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-              new Vector2(0f, -10f), new Vector2(300f, 28f));
+              new Vector2(0f, 1f), new Vector2(0f, 1f),
+              new Vector2(20f, InfoY), new Vector2(330f, UIScale.RowMd));
+        waveText.alignment = TextAlignmentOptions.MidlineLeft;
 
-        // Wave 진행 바
-        var waveBarBg = MakeImg(topBarGo, "WaveProgressBg", new Color(0.2f, 0.2f, 0.2f));
-        SetRT(waveBarBg, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-              new Vector2(0f, -42f), new Vector2(500f, 10f));
-        var waveProgressFill = MakeFilledH(waveBarBg.gameObject, "WaveProgressFill",
-                                           new Color(0.25f, 0.85f, 0.25f));
-
-        // 타이머
-        var waveTimerText = MakeTMP(topBarGo, "WaveTimerText", "0s", 14, FontStyle.Normal);
-        SetRT(waveTimerText.gameObject,
-              new Vector2(1f, 1f), new Vector2(1f, 1f),
-              new Vector2(-74f, -10f), new Vector2(80f, 20f));
-        waveTimerText.alignment = TextAlignmentOptions.Right;
-
-        // 킬 카운트
-        var killCountText = MakeTMP(topBarGo, "KillCountText", "Kills: 0", 14, FontStyle.Normal);
+        var killCountText = MakeTMP(topBarGo, "KillCountText", "처치 0", (int)UIScale.FontSm, FontStyle.Normal);
         SetRT(killCountText.gameObject,
               new Vector2(0f, 1f), new Vector2(0f, 1f),
-              new Vector2(10f, -10f), new Vector2(100f, 20f));
-        killCountText.alignment = TextAlignmentOptions.Left;
+              new Vector2(360f, InfoY), new Vector2(200f, UIScale.RowMd));
+        killCountText.alignment = TextAlignmentOptions.MidlineLeft;
+        killCountText.color     = new Color(0.70f, 0.76f, 0.90f);
 
-        // 보스 HP
-        var bossHpRoot = MakeRect(topBarGo, "BossHpRoot");
+        var waveTimerText = MakeTMP(topBarGo, "WaveTimerText", "0s", (int)UIScale.FontSm, FontStyle.Normal);
+        SetRT(waveTimerText.gameObject,
+              new Vector2(0f, 1f), new Vector2(0f, 1f),
+              new Vector2(570f, InfoY), new Vector2(170f, UIScale.RowMd));
+        waveTimerText.alignment = TextAlignmentOptions.MidlineLeft;
+        waveTimerText.color     = new Color(0.70f, 0.76f, 0.90f);
+
+        // Wave 진행 바 (상단바 최하단 전체 폭) — 강조선 위에 얹는다
+        var waveBarBg = MakeImg(topBarGo, "WaveProgressBg", new Color(0.14f, 0.15f, 0.22f));
+        SetRT(waveBarBg, new Vector2(0f, 0f), new Vector2(1f, 0f),
+              new Vector2(0f, 3f), new Vector2(0f, 7f));
+        var waveProgressFill = MakeFilledH(waveBarBg.gameObject, "WaveProgressFill",
+                                           new Color(0.40f, 0.72f, 1.00f));
+
+        // 보스 HP — 상단바 **아래**로 내렸다. 상단바 안에 있으면
+        // 웨이브 진행바와 겹쳐 어느 쪽 바인지 읽히지 않았다.
+        var bossHpRoot = MakeRect(hudGo, "BossHpRoot");
         SetRT(bossHpRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-              new Vector2(0f, -56f), new Vector2(400f, 22f));
+              new Vector2(0f, -(TopBarH + 10f)), new Vector2(820f, UIScale.RowSm + 8f));
         var bossHpBg = bossHpRoot.AddComponent<Image>();
-        bossHpBg.color = new Color(0.15f, 0.04f, 0.04f);
-        var bossHpFill = MakeFilledH(bossHpRoot, "BossHpFill", new Color(0.9f, 0.1f, 0.1f));
-        var bossHpText = MakeTMP(bossHpRoot, "BossHpText", "BOSS  1000 / 1000", 11, FontStyle.Bold);
+        bossHpBg.color = new Color(0.14f, 0.04f, 0.05f, 0.94f);
+        var bossHpFill = MakeFilledH(bossHpRoot, "BossHpFill", new Color(0.90f, 0.20f, 0.18f));
+        var bossHpText = MakeTMP(bossHpRoot, "BossHpText", "보스  1000 / 1000",
+                                 (int)UIScale.FontSm, FontStyle.Bold);
         Stretch(bossHpText.gameObject);
+        bossHpText.alignment    = TextAlignmentOptions.Center;
+        bossHpText.outlineWidth = 0.22f;
+        bossHpText.outlineColor = Color.black;
         bossHpRoot.SetActive(false);
 
-        // ── 하단 버튼 행 (배속 + 일시 정지) ──────────────────
-        var bottomRow = MakeRect(topBarGo, "BottomButtons");
-        SetRT(bottomRow, new Vector2(1f, 0f), new Vector2(1f, 0f),
-              new Vector2(-4f, 4f), new Vector2(256f, 36f));
-        var bottomHLG = bottomRow.AddComponent<HorizontalLayoutGroup>();
-        bottomHLG.spacing              = 4;
-        bottomHLG.childAlignment       = TextAnchor.MiddleRight;
-        bottomHLG.childForceExpandWidth  = false;
-        bottomHLG.childForceExpandHeight = false;
+        // ── 우상단 코너 버튼: [배속 토글] [일시 정지] ─────────
+        //  배속은 버튼 하나짜리 토글이다 (1× → 2× → 3×).
+        //  UI 규칙 1 — 누를 수 있는 버튼은 음각(RaisedBtn).
+        var pauseBtn = EditorUIBuilder.RaisedBtn(topBarGo, "PauseButton",
+                                                 new Color(0.30f, 0.16f, 0.18f), out var pauseBody);
+        SetCorner(pauseBtn.gameObject, -12f, CornerY, CornerSz);
+        // "||" 대신 세로 막대 2개 — Bar 는 (length=가로, thickness=세로) 라
+        // 세로 막대는 length 를 얇게, thickness 를 길게 준다.
+        EditorUIBuilder.Bar(pauseBody, "BarL", 9f, 28f, 0f, new Vector2(-9f, 0f), Color.white);
+        EditorUIBuilder.Bar(pauseBody, "BarR", 9f, 28f, 0f, new Vector2( 9f, 0f), Color.white);
 
-        var btn1     = MakeButton(bottomRow, "Speed1xButton", "1×");
-        var btn2     = MakeButton(bottomRow, "Speed2xButton", "2×");
-        var btn3     = MakeButton(bottomRow, "Speed3xButton", "3×");
-        var pauseBtn = MakePauseButton(bottomRow, "PauseButton", "||",
-                           new Color(0.28f, 0.28f, 0.28f), 0f, 60f, 36f);
+        var speedBtn = EditorUIBuilder.RaisedBtn(topBarGo, "SpeedButton",
+                                                 new Color(0.18f, 0.30f, 0.46f), out var speedBody);
+        SetCorner(speedBtn.gameObject, -12f - CornerSz - 10f, CornerY, CornerSz);
+        var speedLabel = MakeTMP(speedBody, "Label", "1×", (int)UIScale.FontSm, FontStyle.Bold);
+        Stretch(speedLabel.gameObject);
+        speedLabel.alignment     = TextAlignmentOptions.Center;
+        speedLabel.color         = Color.white;
+        speedLabel.raycastTarget = false;
+
+        // 배속 표시용 색 띠 — 버튼 본체(targetGraphic)를 직접 물들이지 않는다.
+        // ⚠ Button.colors 는 targetGraphic 색에 **곱해지고**, 눌림/강조 색은
+        //   생성 시점의 face 색 기준으로 역산돼 있다 (EditorUIBuilder.TintFor).
+        //   본체 색을 런타임에 바꾸면 그 역산이 어긋나 눌린 색이 이상해진다.
+        var speedAccent = MakeImg(speedBody, "SpeedAccent", new Color(0.18f, 0.30f, 0.46f));
+        {
+            var rt = speedAccent.rectTransform;
+            rt.anchorMin = new Vector2(0f, 0f); rt.anchorMax = new Vector2(1f, 0f);
+            rt.pivot     = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(0f, 3f);
+            rt.sizeDelta        = new Vector2(-14f, 6f);
+        }
+        speedAccent.raycastTarget = false;
 
         // TopBarUI 필드 연결
         var tso = new SerializedObject(topBar);
@@ -512,27 +609,36 @@ public static class UISetupTool
         tso.FindProperty("_bossHpFill").objectReferenceValue       = bossHpFill;
         tso.FindProperty("_bossHpText").objectReferenceValue       = bossHpText;
         tso.FindProperty("_killCountText").objectReferenceValue    = killCountText;
-        tso.FindProperty("_speed1xButton").objectReferenceValue    = btn1;
-        tso.FindProperty("_speed2xButton").objectReferenceValue    = btn2;
-        tso.FindProperty("_speed3xButton").objectReferenceValue    = btn3;
+        tso.FindProperty("_speedButton").objectReferenceValue      = speedBtn;
+        tso.FindProperty("_speedLabel").objectReferenceValue       = speedLabel;
+        tso.FindProperty("_speedFace").objectReferenceValue        = speedAccent;
         tso.FindProperty("_pauseButton").objectReferenceValue      = pauseBtn;
 
         tso.ApplyModifiedPropertiesWithoutUndo();
 
         // ── GeneralPanelContainer ──────────────────────────────
+        //  화면 맨 아래에 딱 붙인다 (anchoredPosition.y = 0) — 전투 화면을 최대한 남긴다.
+        //  폭은 균등 분배 — 장군 3명이면 넓게, 5명이면 좁게 잡힌다.
+        //  ⚠ childForceExpandWidth=false 로 두면 5명일 때 캔버스 폭을 넘겨 잘린다.
+        //  ⚠ 카드 내부가 SetTopStretch 로 잡혀 있어야 넓어진 폭을 실제로 채운다.
+        //  ⚠ 버프 아이콘은 카드 **위쪽 바깥**에 뜬다 — 컨테이너 높이에 넣지 않는다.
+        //    넣으면 그만큼 카드가 다시 올라와 버프를 밖으로 뺀 의미가 없어진다.
+        const float ContainerH = 155f + 8f;   // 카드 높이 + 위 여백
         var container = MakeRect(hudGo, "GeneralPanelContainer");
         var contRT    = container.GetComponent<RectTransform>();
         contRT.anchorMin        = new Vector2(0f, 0f);
         contRT.anchorMax        = new Vector2(1f, 0f);
         contRT.pivot            = new Vector2(0.5f, 0f);
-        contRT.anchoredPosition = new Vector2(0f, 10f);
-        contRT.sizeDelta        = new Vector2(0f, 226f);  // PH(210) + padding top(8) + bottom(8)
+        contRT.anchoredPosition = Vector2.zero;
+        contRT.sizeDelta        = new Vector2(0f, ContainerH);
 
         var hlg = container.AddComponent<HorizontalLayoutGroup>();
-        hlg.spacing              = 8;
-        hlg.padding              = new RectOffset(10, 10, 8, 8);
-        hlg.childAlignment       = TextAnchor.MiddleLeft;
-        hlg.childForceExpandWidth  = false;
+        hlg.spacing              = 6;
+        hlg.padding              = new RectOffset(8, 8, 8, 0);
+        hlg.childAlignment       = TextAnchor.LowerCenter;
+        hlg.childControlWidth      = true;
+        hlg.childControlHeight     = false;
+        hlg.childForceExpandWidth  = true;
         hlg.childForceExpandHeight = false;
 
         // ── InGameHUD 필드 연결 ───────────────────────────────
@@ -577,34 +683,6 @@ public static class UISetupTool
     // ══════════════════════════════════════════════════════════
     //  헬퍼
     // ══════════════════════════════════════════════════════════
-
-    /// <summary>HUD 상단바 일시정지 버튼 (LayoutElement 없음, 중앙 정렬).</summary>
-    static Button MakePauseButton(GameObject parent, string name, string label,
-                                  Color bgColor, float anchoredY, float w, float h)
-    {
-        var go  = MakeRect(parent, name);
-        var rt  = go.GetComponent<RectTransform>();
-        rt.anchorMin        = new Vector2(0.5f, 1f);
-        rt.anchorMax        = new Vector2(0.5f, 1f);
-        rt.pivot            = new Vector2(0.5f, 1f);
-        rt.anchoredPosition = new Vector2(0f, anchoredY);
-        rt.sizeDelta        = new Vector2(w, h);
-
-        var img = go.AddComponent<Image>();
-        img.color = bgColor;
-        var btn = go.AddComponent<Button>();
-
-        var labelGo = MakeRect(go, "Label");
-        Stretch(labelGo);
-        var tmp = labelGo.AddComponent<TextMeshProUGUI>();
-        tmp.text      = label;
-        tmp.fontSize  = 18;
-        tmp.fontStyle = FontStyles.Bold;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.color     = Color.white;
-
-        return btn;
-    }
 
     static GameObject MakeRect(GameObject parent, string name)
     {
@@ -667,6 +745,54 @@ public static class UISetupTool
         return AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
     }
 
+    /// <summary>
+    /// 바 안에 겹쳐 놓는 수치 텍스트.
+    /// 채워진 부분·빈 부분 어디에 걸쳐도 읽히도록 검은 외곽선을 두른다.
+    /// </summary>
+    /// <summary>
+    /// 좌우로 늘어나는 배치 — 부모 폭이 바뀌면 같이 늘어난다.
+    /// left/right 는 부모 안쪽 여백, yFromTop 은 위에서부터의 거리.
+    ///
+    /// ⚠ 장군 카드는 반드시 이걸 쓴다. SetTL(고정 폭)로 두면
+    ///   레이아웃 그룹이 패널을 넓혔을 때 오른쪽이 통째로 빈다.
+    /// </summary>
+    static void SetTopStretch(GameObject go, float left, float right, float yFromTop, float h)
+    {
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0f, 1f);
+        rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot     = new Vector2(0.5f, 1f);
+        rt.offsetMin = new Vector2(left,   -(yFromTop + h));
+        rt.offsetMax = new Vector2(-right, -yFromTop);
+    }
+
+    /// <summary>상단바 우측 코너 정사각형 버튼 배치 (x 는 우측 가장자리 기준 음수).</summary>
+    static void SetCorner(GameObject go, float x, float y, float size)
+    {
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot     = new Vector2(1f, 1f);
+        rt.anchoredPosition = new Vector2(x, y);
+        rt.sizeDelta        = new Vector2(size, size);
+    }
+
+    static TextMeshProUGUI MakeBarText(GameObject barBg, string name, string text)
+    {
+        var tmp = MakeTMP(barBg, name, text, (int)UIScale.FontSm, FontStyle.Bold);
+        Stretch(tmp.gameObject);
+        tmp.alignment          = TextAlignmentOptions.Center;
+        tmp.color              = Color.white;
+        tmp.textWrappingMode   = TextWrappingModes.NoWrap;
+        tmp.overflowMode       = TextOverflowModes.Overflow;
+        tmp.enableAutoSizing   = true;
+        tmp.fontSizeMin        = UIScale.FontSm * 0.72f;
+        tmp.fontSizeMax        = UIScale.FontSm;
+        tmp.outlineWidth       = 0.22f;
+        tmp.outlineColor       = Color.black;
+        tmp.raycastTarget      = false;
+        return tmp;
+    }
+
     static void SetTL(GameObject go, float x, float y, float w, float h)
     {
         var rt = go.GetComponent<RectTransform>();
@@ -689,27 +815,6 @@ public static class UISetupTool
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color     = Color.white;
         return tmp;
-    }
-
-    static Button MakeButton(GameObject parent, string name, string label)
-    {
-        var go  = MakeRect(parent, name);
-        var le  = go.AddComponent<LayoutElement>();
-        le.preferredWidth  = 60;
-        le.preferredHeight = 36;
-        var img = go.AddComponent<Image>();
-        img.color = new Color(0.35f, 0.35f, 0.35f);
-        var btn = go.AddComponent<Button>();
-
-        var labelGo = MakeRect(go, "Label");
-        Stretch(labelGo);
-        var tmp = labelGo.AddComponent<TextMeshProUGUI>();
-        tmp.text      = label;
-        tmp.fontSize  = 16;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.color     = Color.white;
-
-        return btn;
     }
 
     // ── RectTransform 헬퍼 ────────────────────────────────────

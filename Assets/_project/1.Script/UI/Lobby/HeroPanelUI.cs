@@ -474,7 +474,8 @@ public class HeroPanelUI : MonoBehaviour
         if (_selected != null) UpdateDetail(_selected);
     }
 
-    static int GetLevelUpCost(int currentLevel) => currentLevel * 100;
+    // 비용 공식은 GameplayConfig 가 소유한다 — 여기서 따로 계산하지 말 것
+    static int GetLevelUpCost(int currentLevel) => GameplayConfig.HeroLevelUpCost(currentLevel);
 
     // ── 용병 수 증가 ──────────────────────────────────────────
 

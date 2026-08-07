@@ -16,6 +16,7 @@ public class StageData
     public int            StoneReward;
     public int            ExpReward;
     public int            ShardReward;
+    public int            GeneralStoneReward;   // 장군 강화석 — 등급업 재화
     public int            EquipBoxReward;
     public int            DailyClearLimit;   // 0 = 무제한
     public Sprite         PreviewSprite;
@@ -42,6 +43,7 @@ public class StageData
             StoneReward     = src.StoneReward,
             ExpReward       = src.ExpReward,
             ShardReward     = src.ShardReward,
+            GeneralStoneReward = src.GeneralStoneReward,
             EquipBoxReward  = src.EquipBoxReward,
             DailyClearLimit = src.DailyClearLimit,
             PreviewSprite   = src.PreviewSprite,
