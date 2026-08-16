@@ -40,6 +40,7 @@ public class MainPanelUI : MonoBehaviour
 
     [Header("버튼")]
     [SerializeField] Button _relicBtn;
+    [SerializeField] Button _codexBtn;
     [SerializeField] Button _startBtn;
     [SerializeField] Button _refreshBtn;
 
@@ -73,6 +74,13 @@ public class MainPanelUI : MonoBehaviour
             _relicBtn.onClick.RemoveAllListeners();
             _relicBtn.onClick.AddListener(() =>
                 GetComponentInParent<LobbyNavUI>()?.Switch(3));
+        }
+
+        if (_codexBtn != null)
+        {
+            _codexBtn.onClick.RemoveAllListeners();
+            _codexBtn.onClick.AddListener(() =>
+                PopupManager.Instance.Open<CodexPopup>(PopupType.Codex));
         }
 
         if (_startBtn != null)

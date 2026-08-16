@@ -79,6 +79,7 @@ public static class EffectTextureGenerator
         SavePng("TX_FX_Brand",     GenBrand());
         SavePng("TX_FX_Tomb",      GenTomb());
         SavePng("TX_FX_Banner",    GenBanner());
+        SavePng("TX_FX_Skull",     GenSkull());
 
         AssetDatabase.Refresh();
         ConfigureTextureImports();
@@ -124,10 +125,11 @@ public static class EffectTextureGenerator
         MakeMat("MAT_FX_Tomb_Alpha",    "TX_FX_Tomb",      additive: false);
         MakeMat("MAT_FX_Tomb_Add",      "TX_FX_Tomb",      additive: true);
         MakeMat("MAT_FX_Banner_Add",    "TX_FX_Banner",    additive: true);
+        MakeMat("MAT_FX_Skull_Add",     "TX_FX_Skull",     additive: true);
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("[EffectTextureGenerator] ✓ 32 textures + 34 materials generated.");
+        Debug.Log("[EffectTextureGenerator] ✓ 33 textures + 35 materials generated.");
     }
 
     // ── 공통 헬퍼 ───────────────────────────────────────────────────
@@ -609,6 +611,40 @@ public static class EffectTextureGenerator
         return a;
     });
 
+    // 해골 — 사형 선고로 처형된 적 자리에 떠오르는 표식.
+    //
+    //  ⚠ 실루엣과 눈구멍이 전부다
+    //    작게 그려지므로 디테일은 어차피 안 보인다. 두개골+턱의 윤곽과
+    //    시커먼 눈구멍 두 개만 확실하면 그 거리에서도 해골로 읽힌다.
+    //    구멍은 알파를 **깎아서** 만든다 — 덧그리면 흰 덩어리가 된다.
+    static Texture2D GenSkull() => BuildTex((cx, cy) =>
+    {
+        // 두개골(위 타원) + 턱(아래 타원) 을 합쳐 윤곽을 만든다
+        float cranium = Ellip(cx, cy, 0f,  0.09f, 0.30f, 0.29f, 0.10f);
+        float jaw     = Ellip(cx, cy, 0f, -0.21f, 0.18f, 0.15f, 0.14f);
+        float a       = Mathf.Max(cranium, jaw);
+
+        // 파낼 구멍들 — 눈 두 개 · 코 · 이빨 틈
+        float eyeL = Ellip(cx, cy, -0.125f, 0.10f, 0.098f, 0.108f, 0.22f);
+        float eyeR = Ellip(cx, cy,  0.125f, 0.10f, 0.098f, 0.108f, 0.22f);
+        float nose = Ellip(cx, cy,  0f,    -0.04f, 0.042f, 0.070f, 0.30f);
+
+        float teeth = 0f;
+        if (cy < -0.13f && cy > -0.33f)
+            teeth = Gauss(Mathf.Repeat(cx + 0.5f, 0.072f) - 0.036f, 0f, 0.011f) * 0.95f;
+
+        float hole = Mathf.Max(Mathf.Max(eyeL, eyeR), Mathf.Max(nose, teeth));
+        return Mathf.Clamp01(a * (1f - Mathf.Clamp01(hole)));
+    });
+
+    /// <summary>타원 마스크. edge 는 가장자리가 흐려지는 폭 (0 에 가까울수록 또렷).</summary>
+    static float Ellip(float cx, float cy, float ox, float oy, float rx, float ry, float edge)
+    {
+        float dx = (cx - ox) / rx, dy = (cy - oy) / ry;
+        float d  = Mathf.Sqrt(dx * dx + dy * dy);
+        return Mathf.Clamp01((1f - d) / Mathf.Max(0.001f, edge));
+    }
+
     // 번개 줄기 — LineRenderer 전용. 가로로 길게 늘여도 형태가 살아 있어야 한다.
     //
     //  ⚠ 기존 TX_FX_ElectricBeam 과 따로 만든다
@@ -727,6 +763,7 @@ public static class EffectTextureGenerator
         "TX_FX_Blade", "TX_FX_Beam", "TX_FX_Halo",
         "TX_FX_Vortex", "TX_FX_HexShield", "TX_FX_Streak", "TX_FX_ArrowH",
         "TX_FX_Bolt", "TX_FX_Brand", "TX_FX_Tomb", "TX_FX_Banner",
+        "TX_FX_Skull",
     };
 
     static void ConfigureTextureImports()

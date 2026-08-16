@@ -267,7 +267,7 @@ public class InGameManager : MonoBehaviour
                 StageNumber = 1,
                 Waves       = WaveSetup.Waves,
                 GoldReward  = 500,
-                StoneReward = 2,
+                EquipStoneReward = 2,
             };
             mode = CreateMode(editorStage);
             Debug.Log($"[InGameManager] 배틀 시작 (에디터 직접) — 모드: {StartMode}, 웨이브: {WaveSetup.Waves.Count}개");

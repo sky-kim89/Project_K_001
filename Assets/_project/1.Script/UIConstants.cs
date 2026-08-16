@@ -96,6 +96,7 @@ public static class StatBonusColors
     public const string Ability = "FFAA44";  // 어빌리티 — 주황
     public const string Relic   = "CC66FF";  // 유물  — 보라
     public const string Trait   = "FF6688";  // 특성  — 분홍
+    public const string Codex   = "44DDCC";  // 도감  — 청록
 
     public static Color EquipColor   => new Color(0.33f, 0.60f, 1.00f);
     public static Color PassiveColor => new Color(0.33f, 0.80f, 0.47f);
@@ -167,7 +168,8 @@ public static class StatDisplayHelper
     /// </summary>
     public static string BuildBreakdown(
         StatType stat,
-        float baseVal, float equipVal, float passiveVal, float abilityVal, float relicVal = 0f, float traitVal = 0f)
+        float baseVal, float equipVal, float passiveVal, float abilityVal, float relicVal = 0f, float traitVal = 0f,
+        float codexVal = 0f)
     {
         var sb = new System.Text.StringBuilder();
         sb.Append(FormatStat(stat, baseVal));
@@ -176,13 +178,14 @@ public static class StatDisplayHelper
         if (abilityVal != 0f) sb.Append($"  <color=#{StatBonusColors.Ability}>{FormatStat(stat, abilityVal, withSign: true)}</color>");
         if (relicVal   != 0f) sb.Append($"  <color=#{StatBonusColors.Relic}>{FormatStat(stat, relicVal,   withSign: true)}</color>");
         if (traitVal   != 0f) sb.Append($"  <color=#{StatBonusColors.Trait}>{FormatStat(stat, traitVal,   withSign: true)}</color>");
+        if (codexVal   != 0f) sb.Append($"  <color=#{StatBonusColors.Codex}>{FormatStat(stat, codexVal,   withSign: true)}</color>");
 
         // 쿨감은 출처끼리 더하지 않고 곱연산으로 겹친다 — 단순 합과 다르므로 결과를 적어 준다
         if (stat == StatType.SkillCooldownReduce)
         {
-            float sum      = baseVal + equipVal + passiveVal + abilityVal + relicVal + traitVal;
+            float sum      = baseVal + equipVal + passiveVal + abilityVal + relicVal + traitVal + codexVal;
             float combined = HeroStatResult.CombineResidual(
-                baseVal, equipVal, passiveVal, abilityVal, relicVal, traitVal);
+                baseVal, equipVal, passiveVal, abilityVal, relicVal, traitVal, codexVal);
             float maxCDR   = GameplayConfig.Current != null ? GameplayConfig.Current.CooldownReduceMax : 0.8f;
             float final    = Mathf.Min(combined, maxCDR);
 
@@ -192,7 +195,7 @@ public static class StatDisplayHelper
         }
         else if (stat == StatType.Defense)
         {
-            float rawTotal  = baseVal + equipVal + passiveVal + abilityVal + relicVal + traitVal;
+            float rawTotal  = baseVal + equipVal + passiveVal + abilityVal + relicVal + traitVal + codexVal;
             float effective = StatDisplayHelper.EffectiveDefensePct(rawTotal);
             float rawPct    = rawTotal * 100f;
             if (Mathf.Abs(rawPct - effective) > 0.1f)

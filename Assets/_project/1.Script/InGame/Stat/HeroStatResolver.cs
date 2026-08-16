@@ -20,6 +20,7 @@ public class HeroStatResult
     public Dictionary<StatType, float> AbilityBonuses  = new();
     public Dictionary<StatType, float> RelicBonuses    = new();
     public Dictionary<StatType, float> TraitBonuses    = new();
+    public Dictionary<StatType, float> CodexBonuses    = new();
 
     public float Total(StatType stat)
     {
@@ -29,13 +30,14 @@ public class HeroStatResult
         float a = AbilityBonuses.TryGetValue(stat,  out var av) ? av : 0f;
         float r = RelicBonuses.TryGetValue(stat,    out var rv) ? rv : 0f;
         float t = TraitBonuses.TryGetValue(stat,    out var tv) ? tv : 0f;
+        float c = CodexBonuses.TryGetValue(stat,    out var cv) ? cv : 0f;
 
         // 쿨감만 곱연산 — 인게임(UnitStat.MultiplyResidual)과 같은 규칙이어야
         // 로비에서 본 수치와 전투에서 적용되는 수치가 일치한다.
         if (stat == StatType.SkillCooldownReduce)
-            return CombineResidual(b, e, p, a, r, t);
+            return CombineResidual(b, e, p, a, r, t, c);
 
-        return b + e + p + a + r + t;
+        return b + e + p + a + r + t + c;
     }
 
     /// <summary>1 - Π(1 - v). 출처가 하나면 그 값 그대로.</summary>
@@ -51,6 +53,7 @@ public class HeroStatResult
     public float GetAbility(StatType stat) => AbilityBonuses.TryGetValue(stat, out var v) ? v : 0f;
     public float GetRelic(StatType stat)   => RelicBonuses.TryGetValue(stat,   out var v) ? v : 0f;
     public float GetTrait(StatType stat)   => TraitBonuses.TryGetValue(stat,   out var v) ? v : 0f;
+    public float GetCodex(StatType stat)   => CodexBonuses.TryGetValue(stat,   out var v) ? v : 0f;
 }
 
 public static class HeroStatResolver
@@ -138,16 +141,49 @@ public static class HeroStatResolver
 
             // 비율 합산 (StatType별)
             var ratios = new Dictionary<StatType, float>();
+
+            // Special 신고분은 따로 모은다 — 합치는 규칙이 다르기 때문이다 (아래 참고)
+            var special = new Dictionary<StatType, float>();
+
             foreach (var id in heldAbilities)
             {
                 var data = abilityDb.Get(id);
-                if (data == null || data.Grade == AbilityGrade.Special) continue;
+                if (data == null) continue;
                 if (data.Target == AbilityTarget.Unit_Soldier) continue;
                 if (!AbilityApplier.MatchesGeneralTarget(data.Target, job)) continue;
+
+                // Special 은 효과를 Stat1/Value1 이 아니라 OnTrigger 코드로 들고 있다.
+                // 그래서 예전엔 통째로 건너뛰었고 "시간 왜곡 쿨타임 -35%" 가 스탯 화면에
+                // 전혀 안 보였다. 지금은 각자 신고한 값만 받는다 (CollectPreviewStats 주석 참고).
+                if (data.Grade == AbilityGrade.Special)
+                {
+                    data.CollectPreviewStats(special);
+                    continue;
+                }
 
                 ratios[data.Stat1] = ratios.GetValueOrDefault(data.Stat1) + data.Value1;
                 if (data.HasStat2)
                     ratios[data.Stat2] = ratios.GetValueOrDefault(data.Stat2) + data.Value2;
+            }
+
+            // ── Special 병합 ─────────────────────────────────────
+            //
+            //  ⚠ 쿨감은 더하면 안 된다 — 잔여 곱연산이다
+            //    일반 어빌리티끼리는 같은 "ability" 레이어라 가산이 맞다
+            //    (AbilityApplier.Accumulate 와 같은 규칙).
+            //    하지만 시간 왜곡은 전투에서 ApplyCooldown 이 기존 쿨감과
+            //    **잔여 곱연산**으로 합친다. 여기서 그냥 더하면
+            //    마법사의 집중(8%) + 마법의 각성(15%) + 시간 왜곡(35%) 이
+            //    로비에서 58% 로 뜨는데 실제 전투는 50% 다.
+            //
+            //  ⚠ 그래서 두 번 돌린다
+            //    한 루프에서 처리하면 시간 왜곡이 먼저 오느냐 나중에 오느냐에 따라
+            //    결과가 달라진다. 일반 어빌리티를 다 더한 뒤에 합쳐야 순서와 무관해진다.
+            foreach (var kv in special)
+            {
+                ratios[kv.Key] = kv.Key == StatType.SkillCooldownReduce
+                    ? HeroStatResult.CombineResidual(ratios.GetValueOrDefault(kv.Key), kv.Value)
+                    : ratios.GetValueOrDefault(kv.Key) + kv.Value;
             }
 
             // 이 시점 result.Total() = base + passive + equip (어빌리티 미포함) → % 기준 동일
@@ -250,6 +286,15 @@ public static class HeroStatResolver
                 }
             }
         }
+
+        // 7. 도감 보너스 — 수집 1종당 공격력·체력 +0.5%
+        //
+        //  ⚠ 맨 마지막에 건다
+        //    앞의 모든 출처가 합쳐진 뒤의 값에 비례한다 = 다른 성장과 곱해진다.
+        //    도감은 "지금까지 만나 본 것" 에 대한 보상이라 성장의 토대가 아니라
+        //    성장을 밀어 올리는 배수여야 한다.
+        //  ⚠ 전투(CodexApplier.ApplyToGeneralStat)와 순서·대상이 같아야 한다.
+        CodexApplier.Accumulate(result);
 
         return result;
     }

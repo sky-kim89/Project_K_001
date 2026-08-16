@@ -107,8 +107,8 @@ public class StageConfig : ScriptableObject
     public int GoldRewardPerStage = 50;
 
     [Header("스테이지 클리어 전투석 보상 (진행도 0→1 에 따라 Min→Max 선형 보간)")]
-    public int StoneRewardMin = 1;
-    public int StoneRewardMax = 20;
+    public int EquipStoneRewardMin = 1;
+    public int EquipStoneRewardMax = 20;
 
     [Header("스테이지 클리어 경험치 보상 (진행도 0→1 에 따라 Min→Max 선형 보간)")]
     public int ExpRewardMin = 200;

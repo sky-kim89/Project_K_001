@@ -26,6 +26,7 @@ public enum SaveKey
     RunTrait        = 9,
     RunShop         = 10,
     RunEventBonus   = 11,  // 이벤트 런 스코프 보너스 (병사 수 + 직접 스탯)
+    Codex           = 12,  // 도감 — 한 번이라도 획득한 장비·어빌리티·특성·장수 (영구)
 }
 
 public interface ISaveSection

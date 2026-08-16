@@ -553,13 +553,14 @@ public class HeroDetailPopup : PopupBase
         float abilityVal = _statResult.GetAbility(row.Type) * k;
         float relicVal   = _statResult.GetRelic(row.Type)   * k;
         float traitVal   = _statResult.GetTrait(row.Type)   * k;
-        float total      = baseVal + equipVal + passiveVal + abilityVal + relicVal + traitVal;
+        float codexVal   = _statResult.GetCodex(row.Type)   * k;
+        float total      = baseVal + equipVal + passiveVal + abilityVal + relicVal + traitVal + codexVal;
 
         bool hasBonus = equipVal != 0f || passiveVal != 0f || abilityVal != 0f
-                     || relicVal != 0f || traitVal   != 0f;
+                     || relicVal != 0f || traitVal   != 0f || codexVal   != 0f;
 
         row.ValueTmp.text = (index == _expandedStatIndex && hasBonus)
-            ? StatDisplayHelper.BuildBreakdown(row.Type, baseVal, equipVal, passiveVal, abilityVal, relicVal, traitVal)
+            ? StatDisplayHelper.BuildBreakdown(row.Type, baseVal, equipVal, passiveVal, abilityVal, relicVal, traitVal, codexVal)
             : StatDisplayHelper.FormatStat(row.Type, total, isFinal: true);
     }
 }

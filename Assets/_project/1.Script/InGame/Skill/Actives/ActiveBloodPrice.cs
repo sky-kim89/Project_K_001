@@ -13,6 +13,11 @@ using BattleGame.Units;
 //
 //  체력이 많을수록 세진다 — "지금 지르느냐" 판단이 생기는 위험 감수형.
 //
+//  ⚠ 대가를 치르는 스킬은 눈에 크게 보여야 한다
+//    체력을 40% 태우고도 화면에서 한 번 번쩍이고 마는 게 예전 문제였다.
+//    연출(응축 → 파도 → 거리순 착탄 + 화면 흔들림)은 BloodPriceRunner 가 돌린다.
+//    여기서는 대가 정산과 피해량 계산까지만 한다.
+//
 //  EffectRadius : 부채꼴 사거리
 // ============================================================
 
@@ -32,13 +37,18 @@ public class ActiveBloodPrice : ActiveSkillData
 
     [Tooltip("부채꼴 각도 (도)")]
     [Range(30f, 360f)]
-    public float ConeAngleDegrees = 120f;
+    public float ConeAngleDegrees = 160f;
 
     [Tooltip("넉백 배율")]
     public float KnockbackMult = 7f;
 
+    [Tooltip("응축 시간 (초) — 이 동안 시전자는 발이 묶인다")]
+    public float ChargeTime = 0.3f;
+
     public override void Execute(ActiveSkillContext ctx)
     {
+        if (ctx.CasterObject == null) return;
+
         var em = ctx.EntityManager;
         em.CompleteAllTrackedJobs();
 
@@ -74,29 +84,28 @@ public class ActiveBloodPrice : ActiveSkillData
         float damage = cost * DamagePerHp
                      + ctx.CasterStat.Final[StatType.Attack] * AttackMultiplier * EffectValue;
 
-        // ── 연출 ─────────────────────────────────────────────
-        float  angle   = math.degrees(math.atan2(forward.y, forward.x));
-        var    rot     = Quaternion.Euler(0f, 0f, angle);
-        float  range   = EffectRadius > 0f ? EffectRadius : 6f;
-        Vector3 origin = new Vector3(casterPos.x, casterPos.y, 0f);
-
-        SkillEffectHelper.Spawn(CasterEffectKey, origin, EffectDespawnDelay, rot);
-        SkillEffectHelper.Spawn(BaseEffectKey,
-                                origin + new Vector3(forward.x, forward.y, 0f) * range * 0.5f,
-                                EffectDespawnDelay, rot, range / 3f);
-
-        // ── 타격 ─────────────────────────────────────────────
         var identity = em.GetComponentData<UnitIdentityComponent>(ctx.CasterEntity);
-        var targets  = SkillCrowdControl.CollectEnemiesInCone(
-            em, casterPos, forward, range, ConeAngleDegrees * 0.5f, identity.Team);
 
-        foreach (var t in targets)
-        {
-            if (!em.Exists(t)) continue;
+        var runner = ctx.CasterObject.GetComponent<BloodPriceRunner>();
+        if (runner == null) runner = ctx.CasterObject.AddComponent<BloodPriceRunner>();
 
-            Vector3 tp = SkillCrowdControl.PositionOf(em, t);
-            SkillEffectHelper.Spawn(TargetEffectKey, tp, EffectDespawnDelay, rot);
-            SkillCrowdControl.DealDamage(em, t, damage, forward, KnockbackMult, ctx.CasterEntity);
-        }
+        runner.Run(
+            em          : em,
+            casterEntity: ctx.CasterEntity,
+            casterTeam  : identity.Team,
+            origin      : casterPos,
+            forward     : forward,
+            range       : EffectRadius > 0f ? EffectRadius : 9f,
+            halfAngleDeg: ConeAngleDegrees * 0.5f,
+            damage      : damage,
+            knockMult   : KnockbackMult,
+            chargeTime  : ChargeTime,
+            fx          : new SkillEffectConfig
+            {
+                CasterEffectKey = CasterEffectKey,
+                TargetEffectKey = TargetEffectKey,
+                BaseEffectKey   = BaseEffectKey,
+                DespawnDelay    = EffectDespawnDelay,
+            });
     }
 }

@@ -56,10 +56,16 @@ public static class EventIllustrationGenerator
         GenPotion();
         GenDark();
 
+        // 발견형 이벤트 전용 — 사건이 무엇인지 그림만 보고 알 수 있어야 한다
+        GenTome();
+        GenWarehouse();
+        GenRelic();
+        GenVeteran();
+
         AssetDatabase.Refresh();
         ApplySpriteImportSettings();   // ← 이게 없으면 Sprite 로 로드되지 않는다
         AssetDatabase.SaveAssets();
-        Debug.Log($"[EventIllustrationGenerator] 삽화 8종 → {OutDir}");
+        Debug.Log($"[EventIllustrationGenerator] 삽화 12종 → {OutDir}");
     }
 
     // PNG 를 Sprite(Single) 로 임포트한다.
@@ -277,6 +283,190 @@ public static class EventIllustrationGenerator
         BottomFade(C(0.03f, 0.04f, 0.08f), 140f, 1.5f);
         Grain(0.018f, 83);
         Save("evt_soldier");
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  ⑨ 전술서 — 펼쳐진 고서와 떠오르는 전조
+    //
+    //  ⚠ evt_mystery(물음표 마법진)와 나눠 쓴다
+    //    "어빌리티 발견" 은 무엇을 얻는지가 분명한 사건이다.
+    //    물음표를 띄우면 "정체불명" 으로 읽혀 발견의 만족감이 죽는다.
+    // ══════════════════════════════════════════════════════════
+
+    static void GenTome()
+    {
+        Begin();
+        Sky(C(0.05f, 0.04f, 0.11f), C(0.13f, 0.09f, 0.20f));
+        Clouds(C(0.42f, 0.32f, 0.78f), 0.24f, 3.2f, 211);
+
+        float cx = W * 0.5f, cy = 84f;
+
+        // 책 뒤 후광 — 시선을 가운데로 모은다
+        Glow(cx, cy + 6f, 128f, C(0.72f, 0.56f, 1f), 0.46f);
+
+        // 펼친 책 — 좌우 페이지를 살짝 기울여 입체를 만든다
+        var paper  = C(0.88f, 0.86f, 0.78f);
+        var shade  = C(0.62f, 0.60f, 0.55f);
+        Tri(cx - 78f, cy - 8f, cx - 4f, cy + 4f, cx - 4f, cy - 26f, paper);
+        Tri(cx - 78f, cy - 8f, cx - 78f, cy - 26f, cx - 4f, cy - 26f, paper);
+        Tri(cx + 78f, cy - 8f, cx + 4f, cy + 4f, cx + 4f, cy - 26f, paper);
+        Tri(cx + 78f, cy - 8f, cx + 78f, cy - 26f, cx + 4f, cy - 26f, paper);
+
+        // 책등 그림자 = 접힌 부분
+        Capsule(cx, cy + 4f, cx, cy - 26f, 3.2f, shade);
+
+        // 글줄 — 왼쪽은 빛바래고 오른쪽은 아직 읽히는 느낌
+        for (int i = 0; i < 5; i++)
+        {
+            float y = cy - 4f - i * 4.2f;
+            Capsule(cx - 66f, y, cx - 14f, y, 1.1f, C(0.45f, 0.42f, 0.40f, 0.65f));
+            Capsule(cx + 14f, y, cx + 66f, y, 1.1f, C(0.45f, 0.42f, 0.40f, 0.45f));
+        }
+
+        // 페이지에서 떠오르는 전조 — 마름모 룬 셋
+        for (int i = 0; i < 3; i++)
+        {
+            float rx = cx + (i - 1) * 34f;
+            float ry = cy + 34f + Mathf.Abs(i - 1) * -8f;
+            float s  = 7f;
+            Tri(rx, ry + s, rx - s, ry, rx + s, ry, C(0.86f, 0.72f, 1f, 0.92f));
+            Tri(rx, ry - s, rx - s, ry, rx + s, ry, C(0.68f, 0.50f, 1f, 0.92f));
+            Glow(rx, ry, 26f, C(0.78f, 0.60f, 1f), 0.42f);
+        }
+
+        Motes(160, C(0.88f, 0.78f, 1f), 233, 0.55f);
+        Vignette(0.62f);
+        BottomFade(C(0.03f, 0.02f, 0.08f), 150f, 1.6f);
+        Grain(0.020f, 191);
+        Save("evt_tome");
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  ⑩ 창고 — 열린 문틈으로 드러난 상자 더미
+    // ══════════════════════════════════════════════════════════
+
+    static void GenWarehouse()
+    {
+        Begin();
+        Sky(C(0.04f, 0.04f, 0.06f), C(0.10f, 0.09f, 0.11f));
+
+        float cx = W * 0.5f;
+
+        // 문틈으로 새는 빛 — 창고 안을 비추는 유일한 광원
+        LightShaft(cx + 22f, 200f, 26f, 150f, C(0.96f, 0.86f, 0.62f), 0.34f);
+
+        // 뒷벽 판자
+        for (int i = 0; i < 9; i++)
+        {
+            float x = 24f + i * 34f;
+            Capsule(x, 160f, x, 52f, 1.4f, C(0.16f, 0.14f, 0.13f, 0.85f));
+        }
+
+        // 상자 더미 — 아래 큰 것부터 쌓는다
+        Crate(cx - 54f, 52f, 30f, C(0.42f, 0.30f, 0.19f));
+        Crate(cx + 8f,  52f, 26f, C(0.38f, 0.27f, 0.17f));
+        Crate(cx - 34f, 108f, 22f, C(0.46f, 0.33f, 0.21f));
+        Crate(cx + 52f, 52f, 20f, C(0.34f, 0.24f, 0.15f));
+
+        // 열린 상자에서 새는 빛 — "쓸만한 게 있다" 는 신호
+        Glow(cx - 34f, 132f, 46f, C(1f, 0.84f, 0.48f), 0.55f);
+        Coin(cx - 44f, 136f, 4.2f, 0.3f);
+        Coin(cx - 30f, 134f, 4.2f, -0.2f);
+        Coin(cx - 37f, 142f, 4.2f, 0.1f);
+
+        Motes(120, C(0.86f, 0.78f, 0.62f), 307, 0.40f);
+        Vignette(0.72f);
+        BottomFade(C(0.02f, 0.02f, 0.03f), 140f, 1.7f);
+        Grain(0.026f, 271);
+        Save("evt_warehouse");
+    }
+
+    // 나무 상자 하나 — 판자 두 줄 + 대각선 보강대
+    static void Crate(float cx, float baseY, float half, Color wood)
+    {
+        var dark = C(wood.r * 0.6f, wood.g * 0.6f, wood.b * 0.6f);
+        RoundRect(cx, baseY + half, half, half, 2f, wood);
+        Capsule(cx - half, baseY + half, cx + half, baseY + half, 1.6f, dark);
+        Capsule(cx - half, baseY + half * 1.6f, cx + half, baseY + half * 0.4f, 1.4f, dark);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  ⑪ 유물 — 흙에 반쯤 묻힌 갑옷과 전투석
+    // ══════════════════════════════════════════════════════════
+
+    static void GenRelic()
+    {
+        Begin();
+        Sky(C(0.06f, 0.06f, 0.09f), C(0.16f, 0.13f, 0.12f));
+        MistBand(96f, 34f, C(0.30f, 0.28f, 0.30f), 0.30f);
+
+        // 흙더미 능선 — 전장터의 파헤쳐진 땅
+        Ridge(x => 62f + Mathf.Sin(x * 0.021f) * 9f + Mathf.Sin(x * 0.055f) * 4f,
+              C(0.13f, 0.11f, 0.09f));
+
+        float cx = W * 0.5f;
+
+        // 부러진 창·검이 땅에 꽂혀 있다 — 배경 밀도
+        Sword(cx - 118f, 66f, 14f,  C(0.34f, 0.34f, 0.38f), C(0.20f, 0.14f, 0.10f));
+        Sword(cx + 126f, 62f, -22f, C(0.30f, 0.30f, 0.34f), C(0.18f, 0.13f, 0.09f));
+
+        // 반쯤 묻힌 갑옷 — 실루엣만 보이게 흙 위로 살짝 올린다
+        ShieldSilhouette(cx - 8f, 84f, 40f, 46f, C(0.26f, 0.25f, 0.27f));
+        RingAA(cx - 8f, 92f, 16f, 1.6f, C(0.42f, 0.40f, 0.42f, 0.6f));
+        // 녹슨 자국
+        Capsule(cx - 26f, 96f, cx - 12f, 74f, 2.2f, C(0.42f, 0.24f, 0.12f, 0.55f));
+        Capsule(cx + 8f,  100f, cx + 18f, 78f, 1.8f, C(0.40f, 0.22f, 0.11f, 0.45f));
+
+        // 갑옷에 박힌 전투석 — 이 그림의 주인공
+        Glow(cx + 26f, 96f, 54f, C(0.40f, 0.72f, 1f), 0.60f);
+        Tri(cx + 26f, 108f, cx + 16f, 94f, cx + 36f, 94f, C(0.66f, 0.88f, 1f));
+        Tri(cx + 26f, 82f,  cx + 16f, 94f, cx + 36f, 94f, C(0.34f, 0.60f, 0.96f));
+
+        Embers(70, C(0.52f, 0.76f, 1f), 419);
+        Vignette(0.68f);
+        BottomFade(C(0.03f, 0.02f, 0.02f), 146f, 1.6f);
+        Grain(0.024f, 383);
+        Save("evt_relic");
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  ⑫ 노병 — 모닥불 옆에 홀로 앉은 실루엣
+    // ══════════════════════════════════════════════════════════
+
+    static void GenVeteran()
+    {
+        Begin();
+        Sky(C(0.05f, 0.05f, 0.09f), C(0.14f, 0.10f, 0.10f));
+        StarField(140, 53);
+        Ridge(x => 50f + Mathf.Sin(x * 0.017f) * 6f, C(0.09f, 0.08f, 0.10f));
+
+        float fx = W * 0.5f + 46f, fy = 62f;
+
+        // 모닥불
+        Glow(fx, fy + 10f, 96f, C(1f, 0.62f, 0.24f), 0.70f);
+        Tri(fx, fy + 30f, fx - 12f, fy, fx + 12f, fy, C(1f, 0.70f, 0.28f));
+        Tri(fx, fy + 20f, fx - 7f,  fy, fx + 7f,  fy, C(1f, 0.90f, 0.60f));
+        // 장작
+        Capsule(fx - 18f, fy + 2f, fx + 16f, fy + 8f, 2.6f, C(0.26f, 0.17f, 0.11f));
+        Capsule(fx - 16f, fy + 8f, fx + 18f, fy + 2f, 2.6f, C(0.22f, 0.14f, 0.09f));
+
+        // 앉은 노병 — 굽은 등과 뻗은 한쪽 다리로 "불편한 다리" 를 읽히게 한다
+        var body = C(0.10f, 0.09f, 0.12f);
+        Ellipse(fx - 66f, fy + 26f, 15f, 18f, body);            // 몸통
+        Disc(fx - 70f, fy + 50f, 9f, body);                      // 머리
+        Capsule(fx - 56f, fy + 14f, fx - 24f, fy + 6f, 5f, body); // 뻗은 다리
+        Capsule(fx - 66f, fy + 16f, fx - 48f, fy + 4f, 5f, body); // 접은 다리
+        // 옆에 세워 둔 지팡이
+        Capsule(fx - 84f, fy + 4f, fx - 78f, fy + 52f, 2f, C(0.22f, 0.16f, 0.11f));
+
+        // 불빛이 등에 닿는 가장자리
+        Capsule(fx - 54f, fy + 40f, fx - 52f, fy + 16f, 2.2f, C(1f, 0.66f, 0.32f, 0.55f));
+
+        Embers(90, C(1f, 0.68f, 0.32f), 457);
+        Vignette(0.66f);
+        BottomFade(C(0.03f, 0.02f, 0.03f), 142f, 1.6f);
+        Grain(0.022f, 431);
+        Save("evt_veteran");
     }
 
     // ══════════════════════════════════════════════════════════

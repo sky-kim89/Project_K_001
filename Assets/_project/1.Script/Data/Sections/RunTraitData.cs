@@ -48,6 +48,10 @@ public class RunTraitData : ISaveSection
 
     public void AddTrait(TraitType t)
     {
+        // 도감은 "이번 런에 들고 있나" 가 아니라 "만나 본 적 있나" 를 센다.
+        // 그래서 중복 보유로 걸러지기 **전에** 기록한다.
+        CodexData.Record(t);
+
         if (_data.ContainsKey(t)) return;
         _data[t] = 0;
         OnTraitsChanged?.Invoke();

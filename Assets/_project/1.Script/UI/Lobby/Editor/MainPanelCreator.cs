@@ -111,6 +111,7 @@ public static class MainPanelCreator
     static readonly Color ChipC    = new Color(0.03f, 0.035f, 0.06f, 0.86f);
     static readonly Color StartC   = new Color(0.11f, 0.72f, 0.58f, 1.00f);
     static readonly Color RelicC   = new Color(0.35f, 0.18f, 0.50f, 1.00f);
+    static readonly Color CodexC   = new Color(0.10f, 0.36f, 0.42f, 1.00f);   // 도감 — 청록 (StatBonusColors.Codex 계열)
     static readonly Color DetailC  = new Color(0.18f, 0.25f, 0.42f, 1.00f);
     static readonly Color ArrowC   = new Color(0.20f, 0.30f, 0.52f, 1.00f);
     static readonly Color RefreshC = new Color(0.16f, 0.42f, 0.62f, 1.00f);
@@ -156,7 +157,7 @@ public static class MainPanelCreator
         bgImgComp.raycastTarget  = false;
 
         // 좌측 사이드
-        var relicBtn = BuildSide(root);
+        var (relicBtn, codexBtn) = BuildSide(root);
 
         // 우측 영역 (투명)
         var right = new GameObject("RightArea", typeof(RectTransform));
@@ -223,6 +224,7 @@ public static class MainPanelCreator
         SetRef(so, "_backgroundImage", bgImgComp);
         SetRef(so, "_card",       cardUI);
         SetRef(so, "_relicBtn",   relicBtn != null ? relicBtn.GetComponent<Button>() : null);
+        SetRef(so, "_codexBtn",   codexBtn != null ? codexBtn.GetComponent<Button>() : null);
         SetRef(so, "_startBtn",   startBtn.GetComponent<Button>());
         SetRef(so, "_prevBtn",    arrL.GetComponent<Button>());
         SetRef(so, "_nextBtn",    arrR.GetComponent<Button>());
@@ -524,7 +526,7 @@ public static class MainPanelCreator
 
     // ── 사이드바 ─────────────────────────────────────────────
 
-    static GameObject BuildSide(GameObject parent)
+    static (GameObject relic, GameObject codex) BuildSide(GameObject parent)
     {
         var side = MakeImg("SideColumn", parent, SideBg);
         {
@@ -597,15 +599,16 @@ public static class MainPanelCreator
         var rle = relicBtn.AddComponent<LayoutElement>();
         rle.preferredWidth = SideBtnW; rle.preferredHeight = 116f;
 
-        var dogsanBtn = BuildLockedBtn(btnArea, "DogsanBtn", "도감");
-        var dle = dogsanBtn.AddComponent<LayoutElement>();
-        dle.preferredWidth = SideBtnW; dle.preferredHeight = 100f;
+        var codexBtn = BuildWideBtn(btnArea, "CodexBtn", "도감", CodexC,
+            "Assets/_project/3.Textures/Icons/LobbyBtns/btn_codex.png");
+        var dle = codexBtn.AddComponent<LayoutElement>();
+        dle.preferredWidth = SideBtnW; dle.preferredHeight = 116f;
 
         var etcBtn = BuildLockedBtn(btnArea, "EtcBtn", "기타");
         var ele = etcBtn.AddComponent<LayoutElement>();
         ele.preferredWidth = SideBtnW; ele.preferredHeight = 100f;
 
-        return relicBtn;
+        return (relicBtn, codexBtn);
     }
 
     // ── 화살표 ────────────────────────────────────────────────

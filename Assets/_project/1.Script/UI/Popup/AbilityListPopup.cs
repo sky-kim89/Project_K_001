@@ -237,10 +237,30 @@ public class AbilityListPopup : PopupBase
 
         // (StatType, AbilityTarget) 쌍별 합산 — 대상이 다른 동일 스탯은 별도 행으로 표시
         var totals = new Dictionary<(StatType stat, AbilityTarget target), float>();
+
+        // Special 신고분은 따로 모은다 — 합치는 규칙이 다르다 (아래 참고)
+        var special = new Dictionary<(StatType stat, AbilityTarget target), float>();
+        var preview = new Dictionary<StatType, float>();
+
         foreach (var id in runData.HeldAbilities)
         {
             var d = db.Get(id);
-            if (d == null || d.Grade == AbilityGrade.Special || d.Grade == AbilityGrade.Mastery) continue;
+            if (d == null || d.Grade == AbilityGrade.Mastery) continue;
+
+            // Special 은 Stat1/Value1 이 비어 있고 효과가 OnTrigger 코드에 있다.
+            // 스스로 신고한 상시 효과만 합산에 넣는다 (AbilityData.CollectPreviewStats 참고).
+            if (d.Grade == AbilityGrade.Special)
+            {
+                preview.Clear();
+                d.CollectPreviewStats(preview);
+
+                foreach (var kv in preview)
+                {
+                    var key = (kv.Key, d.Target);
+                    special[key] = special.GetValueOrDefault(key) + kv.Value;
+                }
+                continue;
+            }
 
             var k1 = (d.Stat1, d.Target);
             totals[k1] = totals.GetValueOrDefault(k1) + d.Value1;
@@ -249,6 +269,16 @@ public class AbilityListPopup : PopupBase
                 var k2 = (d.Stat2, d.Target);
                 totals[k2] = totals.GetValueOrDefault(k2) + d.Value2;
             }
+        }
+
+        // ⚠ 쿨감만 잔여 곱연산으로 합친다 (HeroStatResolver 와 같은 규칙)
+        //   시간 왜곡은 전투에서 기존 쿨감과 곱해서 합쳐진다. 여기서 더해 버리면
+        //   이 패널 숫자와 장수 상세의 쿨타임 줄이 서로 안 맞는다.
+        foreach (var kv in special)
+        {
+            totals[kv.Key] = kv.Key.stat == StatType.SkillCooldownReduce
+                ? HeroStatResult.CombineResidual(totals.GetValueOrDefault(kv.Key), kv.Value)
+                : totals.GetValueOrDefault(kv.Key) + kv.Value;
         }
 
         // StatType 순 → 같은 스탯 내에서 AbilityTarget 순 정렬

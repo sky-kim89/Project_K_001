@@ -69,7 +69,7 @@ public static class StageGenerator
 
         // 골드만 선형 등차 — 진행도 보간(지수적 상승)에서 내려온 값
         int goldReward  = Mathf.Max(10,  config.GoldRewardBase + (stageNumber - 1) * config.GoldRewardPerStage);
-        int stoneReward = Mathf.Max(1,   Mathf.RoundToInt(Mathf.Lerp(config.StoneRewardMin, config.StoneRewardMax, progress)));
+        int stoneReward = Mathf.Max(1,   Mathf.RoundToInt(Mathf.Lerp(config.EquipStoneRewardMin, config.EquipStoneRewardMax, progress)));
         int expReward   = Mathf.Max(1,   Mathf.RoundToInt(Mathf.Lerp(config.ExpRewardMin,   config.ExpRewardMax,   progress)));
         int block        = (stageNumber - 1) / 5;
         int shardReward  = config.ShardRewardBase + block * config.ShardRewardPerBlock
@@ -94,7 +94,7 @@ public static class StageGenerator
             StageNumber = stageNumber,
             EnergyCost  = energyCost,
             GoldReward  = goldReward,
-            StoneReward = stoneReward,
+            EquipStoneReward = stoneReward,
             ExpReward   = expReward,
             ShardReward    = shardReward,
             GeneralStoneReward = generalStone,

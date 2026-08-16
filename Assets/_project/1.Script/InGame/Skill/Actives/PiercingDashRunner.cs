@@ -1,6 +1,7 @@
 using System.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Transforms;
 using UnityEngine;
 using BattleGame.Units;
 
@@ -10,7 +11,12 @@ using BattleGame.Units;
 //
 //    ① 돌진 : EntityLink 동기화를 끄고 transform 을 직접 밀어 낸다
 //    ② 관통 : 출발점~도착점 직선 위의 적을 한 번에 전부 때린다
-//    ③ 복귀 : 동기화를 되돌린다 (ECS 위치가 다음 프레임에 따라잡는다)
+//    ③ 착지 : 도착 지점을 ECS 에 써 넣고 동기화를 되돌린다
+//
+//  ⚠ 돌진은 실제 이동이다 — 돌아오지 않는다
+//    예전엔 동기화만 되돌려서 다음 프레임에 출발점으로 스냅됐다("치고 빠지기").
+//    지금은 ECS LocalTransform 까지 도착 지점으로 옮겨 파고든 자리에 그대로 선다.
+//    ECS 위치를 안 옮기고 동기화만 켜면 무조건 뒤로 끌려간다.
 //
 //  ⚠ 판정은 도착 후 한 번만 한다
 //    매 프레임 검사하면 같은 적을 여러 번 때린다. 1초 쿨 기술이라
@@ -84,9 +90,16 @@ public class PiercingDashRunner : MonoBehaviour
             SkillCrowdControl.DealDamage(em, t, damage, forward, knockMult, casterEntity);
         }
 
-        // ── ③ 동기화 복귀 ────────────────────────────────────
-        // ECS 쪽 위치는 그대로이므로 다음 프레임에 원래 자리로 스냅된다.
-        // 돌진은 "치고 빠지는" 연출이지 실제 이동이 아니다 — 대열이 무너지지 않는다.
+        // ── ③ 착지 ───────────────────────────────────────────
+        // 도착 지점을 ECS 에 먼저 써 넣는다. 이 순서를 바꾸면(동기화 먼저)
+        // 다음 LateUpdate 가 옛 위치로 덮어써 장군이 출발점으로 튕긴다.
+        if (em.Exists(casterEntity) && em.HasComponent<LocalTransform>(casterEntity))
+        {
+            var ecsTf = em.GetComponentData<LocalTransform>(casterEntity);
+            ecsTf.Position = new float3(casterTf.position.x, casterTf.position.y, ecsTf.Position.z);
+            em.SetComponentData(casterEntity, ecsTf);
+        }
+
         if (link != null)
         {
             link.SyncPosition = true;

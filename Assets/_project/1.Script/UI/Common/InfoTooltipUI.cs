@@ -36,18 +36,75 @@ public class InfoTooltipUI : MonoBehaviour
 
     // ── 공개 API ─────────────────────────────────────────────
 
+    /// <summary>
+    /// 부모는 그대로 두고, 누른 대상 아래에 위치만 맞춰 띄운다.
+    ///
+    /// ■ 언제 쓰나
+    ///   아이콘마다 툴팁을 자식으로 하나씩 두는 게 기본이다 (TraitIconUI 방식).
+    ///   그런데 도감처럼 칸이 수백 개고 탭을 바꿀 때마다 통째로 다시 그리는
+    ///   격자에서는 그 방식을 쓸 수 없다.
+    ///
+    /// ⚠ 격자에서 Show(부모 교체) 를 쓰면 툴팁이 파괴된다
+    ///   Show 는 소유자를 부모로 삼고, Close 는 그 부모 밑으로 되돌린다.
+    ///   그 직후 격자가 칸을 Destroy 하면 자식인 툴팁까지 같이 사라져
+    ///   다음부터는 아무리 눌러도 뜨지 않는다 (참조가 죽는다).
+    ///   여기서는 부모를 절대 바꾸지 않으므로 칸이 사라져도 툴팁은 살아 있다.
+    /// </summary>
+    public void ShowAnchored(RectTransform owner, string title, string desc, string stat)
+    {
+        if (owner == null) return;
+
+        var parentRt = transform.parent as RectTransform;
+        if (parentRt == null) return;
+
+        _rect = GetComponent<RectTransform>();
+
+        Fill(title, desc, stat);
+        gameObject.SetActive(true);
+        transform.SetAsLastSibling();   // 같은 부모 안에서 맨 앞으로
+
+        // 높이를 먼저 확정시킨다 — CSF 가 재기 전이면 rect.height 가 0 이다
+        LayoutRebuilder.ForceRebuildLayoutImmediate(_rect);
+
+        _rect.anchorMin = _rect.anchorMax = Vector2.zero;   // 부모 좌하단 기준
+        _rect.pivot     = new Vector2(0f, 1f);              // 아래로 펼침
+
+        // 누른 칸의 좌하단을 부모 좌표계로 옮긴다.
+        // (같은 캔버스 안이므로 카메라 없이 변환이 성립한다)
+        var corners = new Vector3[4];
+        owner.GetWorldCorners(corners);                     // 0=좌하 1=좌상 2=우상 3=우하
+        Vector2 local = parentRt.InverseTransformPoint(corners[0]);
+        Vector2 pos   = local - parentRt.rect.min - new Vector2(0f, 4f);
+
+        _rect.anchoredPosition = ClampInside(pos, parentRt, owner);
+
+        _skipFrame = true;   // 여는 클릭이 그대로 닫기로 이어지지 않게
+    }
+
+    // 부모 밖으로 나가면 뒤집거나 밀어 넣는다 (FitIntoCanvas 와 같은 규칙).
+    Vector2 ClampInside(Vector2 pos, RectTransform parentRt, RectTransform owner)
+    {
+        const float Margin = 12f;
+
+        float pw = parentRt.rect.width, ph = parentRt.rect.height;
+        float w  = _rect.rect.width,    h  = _rect.rect.height;
+
+        // 아래로 펼칠 자리가 없으면 칸 위로 뒤집는다
+        if (pos.y - h < Margin) pos.y = pos.y + 4f + owner.rect.height + 4f + h;
+        pos.y = Mathf.Clamp(pos.y, h + Margin, ph - Margin);
+
+        if (pos.x + w > pw - Margin) pos.x = pw - Margin - w;
+        if (pos.x < Margin)          pos.x = Margin;
+
+        return pos;
+    }
+
     /// <summary>내용을 채우고 띄운다. desc·stat 이 비면 해당 줄은 숨긴다.</summary>
     public void Show(string title, string desc, string stat)
     {
         CaptureParent();
 
-        _nameText.text = title;
-
-        _descText.text = desc ?? "";
-        _descText.gameObject.SetActive(!string.IsNullOrEmpty(desc));
-
-        _statText.text = stat ?? "";
-        _statText.gameObject.SetActive(!string.IsNullOrEmpty(stat));
+        Fill(title, desc, stat);
 
         // 옮기기 전에 반드시 원래 자리로 되돌린다.
         //
@@ -135,10 +192,30 @@ public class InfoTooltipUI : MonoBehaviour
         _parentCaptured   = true;
     }
 
+    void Fill(string title, string desc, string stat)
+    {
+        _nameText.text = title;
+
+        _descText.text = desc ?? "";
+        _descText.gameObject.SetActive(!string.IsNullOrEmpty(desc));
+
+        _statText.text = stat ?? "";
+        _statText.gameObject.SetActive(!string.IsNullOrEmpty(stat));
+    }
+
     /// <summary>부모·자리를 프리팹이 정해 둔 상태로 되돌린다 (여러 번 불러도 안전).</summary>
     void Restore()
     {
         if (!_parentCaptured) return;
+
+        // ⚠ 소유자가 이미 파괴된 경우 (격자를 다시 그리며 칸을 Destroy 한 뒤)
+        //   그대로 SetParent(null) 하면 툴팁이 캔버스 밖 씬 루트로 튀어나가
+        //   다음에 띄울 때 화면에서 사라진다. 붙잡을 곳이 없으면 놓아준다.
+        if (_originalParent == null)
+        {
+            _parentCaptured = false;
+            return;
+        }
 
         if (transform.parent != _originalParent)
             transform.SetParent(_originalParent, false);

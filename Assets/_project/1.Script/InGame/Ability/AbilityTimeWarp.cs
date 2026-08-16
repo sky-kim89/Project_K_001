@@ -1,3 +1,5 @@
+// ⚠ GetValueOrDefault 는 확장 메서드다 — 타입을 풀네임으로 써도 이 using 없이는 안 잡힌다
+using System.Collections.Generic;
 using BattleGame.Units;
 
 // ============================================================
@@ -25,6 +27,18 @@ public class AbilityTimeWarp : AbilityData
         => $"스킬 쿨타임 -{CooldownBonus * 100f:0}%  |  공격력 -{AttackPenalty * 100f:0}%";
 
     public override PassiveTrigger GetTriggerType() => PassiveTrigger.OnBattleStart;
+
+    // 전투 시작 시 조건 없이 무조건 걸린다 = 플레이어에겐 상시 효과다.
+    // 신고하지 않으면 로비 스탯 화면에서 쿨타임 -35% 가 통째로 안 보인다.
+    public override void CollectPreviewStats(Dictionary<StatType, float> ratios)
+    {
+        ratios[StatType.SkillCooldownReduce] =
+            ratios.GetValueOrDefault(StatType.SkillCooldownReduce) + CooldownBonus;
+
+        // 페널티는 음수로 — 합산 화면에 "공격력 -10%" 로 정직하게 뜬다
+        ratios[StatType.Attack] =
+            ratios.GetValueOrDefault(StatType.Attack) - AttackPenalty;
+    }
 
     public override void OnTrigger(PassiveTriggerContext ctx)
     {

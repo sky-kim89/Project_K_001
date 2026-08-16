@@ -1207,7 +1207,7 @@ public static class HeroPanelCreator
         BuildCurrencyWidget(currencyBar, eItem.SoldierShard);
         BuildCurrencyWidget(currencyBar, eItem.GeneralUpgradeStone);
         BuildCurrencyWidget(currencyBar, eItem.EquipUpgradeStone);
-        BuildCurrencyWidget(currencyBar, eItem.BattleStone);
+        // 전투석 위젯 제거 — 이제 아무도 주지 않는다 (eItem.BattleStone 주석 참고)
 
         // ── ScrollView ────────────────────────────────────────
         var scrollGo = new GameObject("ScrollView", typeof(RectTransform), typeof(ScrollRect));

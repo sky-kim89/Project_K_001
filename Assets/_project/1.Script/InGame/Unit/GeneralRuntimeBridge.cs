@@ -104,6 +104,11 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
             UserDataManager.Instance?.Get<RunTraitData>(),
             TraitDatabase.Current);
 
+        // ── 도감 보너스 (수집 1종당 공/체 +0.5%) ──────────────
+        // ⚠ 순서가 HeroStatResolver 의 7번과 같아야 로비 표시와 일치한다.
+        //   앞의 모든 출처가 합쳐진 뒤에 곱해지는 마지막 배수다.
+        CodexApplier.ApplyToGeneralStat(_stat);
+
         // ── 방어율 소프트캡 실전 적용 (UI·전투 일치) ─────────────
         // UI(EffectiveDefensePct)와 전투(StatComponent.Final)가 같은 값을 사용하도록
         // 모든 스탯 계산이 끝난 뒤 원시 방어율을 소프트캡 공식으로 덮어씀

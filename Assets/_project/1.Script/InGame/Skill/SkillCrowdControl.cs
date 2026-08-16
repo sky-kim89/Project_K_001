@@ -235,6 +235,27 @@ public static class SkillCrowdControl
         return new Vector3(p.x, p.y, p.z);
     }
 
+    /// <summary>
+    /// 이펙트를 붙일 몸통 중심.
+    ///
+    /// ⚠ 낙인·착탄 이펙트를 PositionOf 에 붙이면 안 된다
+    ///   LocalTransform 위치는 유닛의 **발밑(피벗)** 이다. 거기에 이펙트를 띄우면
+    ///   적 몸에 찍힌 게 아니라 바닥에 깔린 것처럼 보인다 — "타겟에 정확히 안 붙는"
+    ///   증상의 정체다. 스프라이트 경계 중앙을 쓰면 유닛 크기가 달라도 항상 몸통에 맞는다.
+    ///   (연결된 GameObject 가 없는 엔티티는 발밑으로 되돌아간다)
+    /// </summary>
+    public static Vector3 BodyCenterOf(EntityManager em, Entity e)
+    {
+        var go = ObjectOf(em, e);
+        if (go != null)
+        {
+            var r = go.GetComponentInChildren<Renderer>();
+            if (r != null) return r.bounds.center;
+        }
+
+        return PositionOf(em, e);
+    }
+
     /// <summary>엔티티에 연결된 GameObject (떨림 연출용). 풀 링크가 없으면 null.</summary>
     public static GameObject ObjectOf(EntityManager em, Entity e)
     {

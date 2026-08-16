@@ -35,6 +35,7 @@ using UnityEngine;
 //    FX_Chain_Hit        — 감전 착탄
 //    FX_Sentence_Mark    — 사형 낙인 (루프)
 //    FX_Sentence_Execute — 처형 순간
+//    FX_Death_Skull      — 처형된 자리에서 떠오르는 해골
 // ============================================================
 
 public static class RareSkillEffectGenerator
@@ -42,6 +43,11 @@ public static class RareSkillEffectGenerator
     const string kSavePath = "Assets/_project/2.Prefabs/Effect";
     const string kMatPath  = "Assets/_project/4.Materials/FX";
     const int    kSortOrder = 200;   // EffectPrefabGenerator 와 같은 값 — 유닛(100/105)보다 앞
+
+    // 바닥에 깔리는 범위 표시용. 유닛(100/105)보다 **뒤** 라야 캐릭터를 덮지 않는다.
+    // 범위 표시는 "어디까지 걸리는가" 를 읽는 정보라 캐릭터를 가리면 안 된다.
+    // 반대로 타격·폭발은 캐릭터 앞(200)에서 터져야 맞는다 — 전부 내리지 말 것.
+    const int kGroundSortOrder = 90;
 
     // 레이어 순서 = 자식 생성 순서. 첫 항목이 루트 파티클이다.
     static readonly Dictionary<string, string[]> kMaterials = new()
@@ -73,9 +79,34 @@ public static class RareSkillEffectGenerator
         { "FX_Banner_Aura",      new[] { "MAT_FX_Banner_Add",    "MAT_FX_Ring_Add",    "MAT_FX_Star_Add"                        } },
         { "FX_Blood_Burst",      new[] { "MAT_FX_Blade_Add",     "MAT_FX_Spark_Add",   "MAT_FX_Soft_Add"                        } },
         { "FX_Dash_Slash",       new[] { "MAT_FX_Beam_Add",      "MAT_FX_Spark_Add"                                             } },
+        { "FX_Death_Skull",      new[] { "MAT_FX_Skull_Add",     "MAT_FX_Halo_Add",    "MAT_FX_Wisp_Add"                        } },
     };
 
-    [MenuItem(ProjectKMenu.Fx + "희귀 스킬 이펙트 (20종)", priority = ProjectKMenu.PrefabPrio + 52)]
+    // ⚠ 방향이 곧 연출인 이펙트는 여기에 등록한다
+    //   Billboard 파티클은 이미터의 Z 회전을 무시하고 항상 카메라를 본다.
+    //   참격선·돌진선·부채꼴처럼 "어느 쪽으로 나가는가" 가 그림인 이펙트는
+    //   Local 정렬로 바꿔야 Runner 가 넘긴 회전값대로 눕는다.
+    //   안 그러면 위로 쏘든 아래로 쏘든 늘 수평으로만 그려진다.
+    static readonly HashSet<string> kDirectional = new()
+    {
+        "FX_Dash_Slash",    // 관통 돌진 — 돌진 방향으로 눕는 참격선
+        "FX_Blood_Burst",   // 피의 대가 — 전방 부채꼴 파도
+    };
+
+    // ⚠ 캐릭터 뒤(바닥)에 깔려야 하는 레이어만 여기에 등록한다
+    //   값은 자식 GameObject 이름, "" 는 루트 파티클을 뜻한다.
+    //   등록된 레이어만 kGroundSortOrder 로 내려가고 나머지는 앞(200)에 남는다 —
+    //   범위 표시는 바닥, 타격·불꽃은 캐릭터 앞이라는 구분을 지키기 위한 표다.
+    static readonly Dictionary<string, string[]> kGroundLayers = new()
+    {
+        // 군기 강림 — 버프 반경을 그리는 링만 바닥으로
+        { "FX_Banner_Aura",  new[] { "Ring" } },
+        // 불멸의 방벽 — 방벽 본체와 내부 광채가 곧 범위 표시다.
+        // 표면 결정(Facets)은 그 위를 도는 장식이라 앞에 남긴다.
+        { "FX_Bulwark_Dome", new[] { "", "InnerGlow" } },
+    };
+
+    [MenuItem(ProjectKMenu.Fx + "희귀 스킬 이펙트 (21종)", priority = ProjectKMenu.PrefabPrio + 52)]
     public static void GenerateAll()
     {
         Directory.CreateDirectory(Path.Combine(Application.dataPath, "_project/2.Prefabs/Effect"));
@@ -102,6 +133,7 @@ public static class RareSkillEffectGenerator
         n += Save("FX_Banner_Aura",      BuildBannerAura());
         n += Save("FX_Blood_Burst",      BuildBloodBurst());
         n += Save("FX_Dash_Slash",       BuildDashSlash());
+        n += Save("FX_Death_Skull",      BuildDeathSkull());
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
@@ -1299,7 +1331,7 @@ public static class RareSkillEffectGenerator
     //  공통 희귀 — 사형 선고
     // ══════════════════════════════════════════════════════════
 
-    // 낙인 — 적 머리 위에서 붉게 맥동한다 (markDuration 동안 유지)
+    // 낙인 — 선고받은 적의 몸통에서 붉게 맥동한다 (EffectDuration 동안 유지)
     static GameObject BuildSentenceMark()
     {
         var go = NewGO();
@@ -2004,6 +2036,100 @@ public static class RareSkillEffectGenerator
     }
 
 
+    // 처형 해골 — 사형 선고로 즉사한 적 자리에서 혼이 떠오른다.
+    //
+    //  ⚠ 이건 "몇 명이 죽었나" 를 세어 보이는 장치다
+    //    피해 이펙트가 아니라 결과 표시다. 그래서 크고 느리고 오래 간다 —
+    //    다른 이펙트가 다 꺼진 뒤에도 잠깐 남아 있어야 눈에 들어온다.
+    static GameObject BuildDeathSkull()
+    {
+        var go = NewGO();
+
+        // Root — 떠오르는 해골
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 1.1f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(1.05f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(0f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(1.5f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(235, 245, 255));
+            m.simulationSpace = ParticleSystemSimulationSpace.World;   // 적이 사라져도 그 자리에 남는다
+            m.maxParticles = 3;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 1) });
+            var shOff = ps.shape; shOff.enabled = false;
+
+            // 천천히 떠오른다 — 위로 1.3 정도
+            SetVelocity(ps, ParticleSystemSimulationSpace.World, y: new Vector2(1.2f, 1.4f));
+
+            // 튀어나오듯 커졌다가 마지막에 살짝 줄며 사라진다
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.35f, 0.18f, 1.12f, 0.9f));
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.35f, (Color)C(220, 240, 255)), (1f, (Color)C(120, 150, 200)) },
+                new[] { (0f, 0f), (0.12f, 1f), (0.65f, 0.95f), (1f, 0f) }));
+        }
+
+        // 발밑 섬광 — 처형된 위치를 못 놓치게 한 번 때린다
+        {
+            var c = Child(go, "Flash");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.3f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.28f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(0f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(1.4f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 235, 245));
+            m.simulationSpace = ParticleSystemSimulationSpace.World;
+            m.maxParticles = 3;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 1) });
+            var shOff = ps.shape; shOff.enabled = false;
+
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.3f, 0.25f, 1.6f, 2f));
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, (Color)C(180, 120, 255)) },
+                new[] { (0f, 1f), (1f, 0f) }));
+        }
+
+        // 흩어지는 혼불
+        {
+            var c = Child(go, "Souls");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 1f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.6f, 1.1f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(0.3f, 1.1f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(0.12f, 0.34f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(230, 240, 255), C(150, 120, 230));
+            m.simulationSpace = ParticleSystemSimulationSpace.World;
+            m.maxParticles = 24;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 14) });
+
+            var sh = ps.shape;
+            sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 0.45f;
+
+            SetVelocity(ps, ParticleSystemSimulationSpace.World, y: new Vector2(0.7f, 1.6f));
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, (Color)C(130, 100, 220)) },
+                new[] { (0f, 0f), (0.2f, 1f), (1f, 0f) }));
+        }
+
+        return go;
+    }
+
     // ══════════════════════════════════════════════════════════
     //  헬퍼 — EffectPrefabGenerator 와 같은 규칙
     // ══════════════════════════════════════════════════════════
@@ -2013,10 +2139,8 @@ public static class RareSkillEffectGenerator
         go.name = key;
         if (kMaterials.TryGetValue(key, out var mats)) ApplyMaterials(go, mats);
 
-        // ⚠ Billboard 파티클은 이미터의 Z 회전을 무시한다 (항상 카메라를 본다)
-        //   참격처럼 "각도가 곧 연출" 인 이펙트는 Local 정렬로 바꿔야
-        //   Runner 가 넘긴 회전값대로 눕는다. 안 그러면 늘 같은 방향으로 터진다.
-        if (key.StartsWith("FX_Bisect_")) AlignToTransform(go);
+        if (kDirectional.Contains(key) || key.StartsWith("FX_Bisect_")) AlignToTransform(go);
+        if (kGroundLayers.TryGetValue(key, out var ground)) SortToGround(go, ground);
         PrefabUtility.SaveAsPrefabAsset(go, $"{kSavePath}/{key}.prefab");
         Object.DestroyImmediate(go);
         return 1;
@@ -2099,6 +2223,22 @@ public static class RareSkillEffectGenerator
     {
         foreach (var rd in root.GetComponentsInChildren<ParticleSystemRenderer>(true))
             rd.alignment = ParticleSystemRenderSpace.Local;
+    }
+
+    // 지정한 레이어만 유닛 뒤(바닥)로 내린다. names 의 "" 는 루트를 뜻한다.
+    static void SortToGround(GameObject root, string[] names)
+    {
+        foreach (var name in names)
+        {
+            var t = string.IsNullOrEmpty(name) ? root.transform : root.transform.Find(name);
+            if (t == null)
+            {
+                Debug.LogWarning($"[RareSkillEffectGenerator] 바닥 정렬 대상 없음: {root.name}/{name}");
+                continue;
+            }
+
+            t.GetComponent<ParticleSystemRenderer>().sortingOrder = kGroundSortOrder;
+        }
     }
 
     static void ApplyMaterials(GameObject root, string[] mats)

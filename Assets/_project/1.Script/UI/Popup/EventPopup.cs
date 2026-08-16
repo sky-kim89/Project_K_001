@@ -204,15 +204,26 @@ public class EventPopup : PopupBase
         foreach (var b in _choiceButtons) b.interactable = false;
 
         // 성공/실패 분기
-        EventReward[] rewards = (choice.SuccessRate >= 1f || UnityEngine.Random.value <= choice.SuccessRate)
-            ? choice.SuccessRewards
-            : choice.FailRewards;
+        //
+        // ⚠ 보상과 텍스트를 같은 판정에서 뽑아야 한다
+        //   예전엔 보상만 분기하고 텍스트는 늘 ResultText 를 썼다.
+        //   그래서 묘약을 마셔 디버프를 받아도 "강한 힘이 솟구칩니다 [강화 특성 2개]"
+        //   가 떠서, 화면에 뜬 특성과 글이 정반대인 상황이 나왔다.
+        bool success = choice.SuccessRate >= 1f
+                    || UnityEngine.Random.value <= choice.SuccessRate;
+
+        EventReward[] rewards = success ? choice.SuccessRewards : choice.FailRewards;
+
+        // 실패 텍스트를 안 채운 옛 데이터는 성공 텍스트로 되돌아간다 (빈 화면보다는 낫다)
+        string resultText = !success && !string.IsNullOrEmpty(choice.FailResultText)
+            ? choice.FailResultText
+            : choice.ResultText;
 
         bool needsAbility = HasReward(rewards, EventRewardType.OpenAbilitySelect);
         bool needsShop    = HasReward(rewards, EventRewardType.OpenRunShop);
         bool needsMerc    = HasReward(rewards, EventRewardType.OpenMercenary);
         var granted = EventRewardHandler.Apply(rewards, OnAbilitySelectRequired);
-        ShowResult(choice.ResultText, granted,
+        ShowResult(resultText, granted,
                    suppressConfirm: needsAbility || needsShop || needsMerc);
         if (needsShop) OpenRunShop();
         if (needsMerc) OpenMercenary();

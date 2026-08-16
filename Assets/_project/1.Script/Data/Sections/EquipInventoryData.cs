@@ -25,7 +25,10 @@ public class EquipInventoryData : ISaveSection
     public void Add(string id)
     {
         if (!string.IsNullOrEmpty(id))
+        {
+            CodexData.RecordEquip(id);   // 도감 — 회귀해도 남는다
             _raw.Ids.Add(id);
+        }
     }
 
     public void Remove(string id) => _raw.Ids.Remove(id);

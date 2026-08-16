@@ -137,8 +137,18 @@ public class NormalMode : BattleModeBase
         float goldBonus = AbilityApplier.GetGoldBonusRatio(runData?.HeldAbilities, AbilityDatabase.Current);
         int   totalGold = Mathf.RoundToInt(_stage.GoldReward * (1f + goldBonus));
 
-        if (totalGold          > 0) Context.PendingRewards.Add(new ItemAmount { Item = eItem.Gold,        Amount = totalGold           });
-        if (_stage.StoneReward > 0) Context.PendingRewards.Add(new ItemAmount { Item = eItem.BattleStone, Amount = _stage.StoneReward  });
+        if (totalGold > 0)
+            Context.PendingRewards.Add(new ItemAmount { Item = eItem.Gold, Amount = totalGold });
+
+        // 장비 강화석 — 장비 강화(HeroDetailPopup)에 쓰인다.
+        //
+        // ⚠ 예전엔 여기서 전투석(BattleStone)을 줬다
+        //   전투석은 소비처가 이벤트 선택지 하나뿐이라 사실상 쌓이기만 했고,
+        //   반대로 장비 강화석은 소비처만 있고 획득처가 '장비 분해' 뿐이었다.
+        //   스테이지 보상을 강화석으로 돌려 두 문제를 같이 없앴다.
+        if (_stage.EquipStoneReward > 0)
+            Context.PendingRewards.Add(new ItemAmount
+                { Item = eItem.EquipUpgradeStone, Amount = _stage.EquipStoneReward });
 
         for (int i = 0; i < _stage.EquipBoxReward; i++)
             Context.PendingRewards.Add(new ItemAmount { Item = eItem.EquipBox, Amount = 1 });
@@ -149,7 +159,7 @@ public class NormalMode : BattleModeBase
             Context.PendingRewards.Add(new ItemAmount
                 { Item = eItem.GeneralUpgradeStone, Amount = _stage.GeneralStoneReward });
 
-        Debug.Log($"[NormalMode] 클리어 보상: 골드 +{totalGold}(×{1f + goldBonus:F2}), 전투석 +{_stage.StoneReward}, " +
+        Debug.Log($"[NormalMode] 클리어 보상: 골드 +{totalGold}(×{1f + goldBonus:F2}), 장비 강화석 +{_stage.EquipStoneReward}, " +
                   $"장비 박스 ×{_stage.EquipBoxReward}, 용병 조각 ×{_stage.ShardReward}, 장군 강화석 +{_stage.GeneralStoneReward}");
     }
 

@@ -3536,11 +3536,12 @@ public static class IconGenerator
         Save(64, 64, LOBBY_BTN_PATH + "/btn_ability.png",     DrawBtnAbility);
         Save(64, 64, LOBBY_BTN_PATH + "/btn_relic.png",       DrawBtnRelic);
         Save(64, 64, LOBBY_BTN_PATH + "/btn_shop.png",        DrawBtnShop);
+        Save(64, 64, LOBBY_BTN_PATH + "/btn_codex.png",       DrawBtnCodex);
 
         AssetDatabase.Refresh();
         ApplySpriteImportSettings(LOBBY_BTN_PATH, 64);
         AssetDatabase.SaveAssets();
-        Debug.Log("[IconGenerator] 로비 버튼 아이콘 4장 생성 완료.");
+        Debug.Log("[IconGenerator] 로비 버튼 아이콘 5장 생성 완료.");
     }
 
     // 장비 분해 버튼 아이콘 — 망치 + 검 교차 (파괴 느낌)
@@ -3596,6 +3597,36 @@ public static class IconGenerator
     }
 
     // 유물 버튼 아이콘 — 보라 보석 + 빛줄기
+    // 도감 버튼 아이콘 — 펼친 책 + 채워진 칸 몇 개
+    //  ⚠ 책만 그리면 "설정"·"기록"과 구분이 안 된다.
+    //    페이지 위에 칸(수집 슬롯)을 얹어야 도감으로 읽힌다.
+    static void DrawBtnCodex(P p)
+    {
+        p.BgGradient(Hex("04141A"), Hex("0A3440"));
+        p.RoundedBorder(10, 2, Hex("44BBCC"));
+
+        // 펼친 책 — 좌우 페이지 (가운데 접힘선을 비워 둔다)
+        p.FillRect(10, 20, 22, 26, Hex("D8E8F0"));
+        p.FillRect(34, 20, 22, 26, Hex("D8E8F0"));
+        // 페이지 아랫면 그림자 = 두께
+        p.FillRect(10, 44, 22, 3, Hex("8FA8B8"));
+        p.FillRect(34, 44, 22, 3, Hex("8FA8B8"));
+        // 접힘선
+        p.FillRect(31, 18, 3, 30, Hex("2A6070"));
+
+        // 수집 칸 — 채워진 두 칸(청록)과 빈 한 칸(어두움)
+        p.FillRect(14, 25, 6, 6, Hex("44DDCC"));
+        p.FillRect(23, 25, 6, 6, Hex("44DDCC"));
+        p.FillRect(38, 25, 6, 6, Hex("9FB4C0"));
+        p.FillRect(47, 25, 6, 6, Hex("9FB4C0"));
+
+        // 아래쪽 줄 = 설명글
+        p.FillRect(14, 35, 15, 2, Hex("9FB4C0"));
+        p.FillRect(38, 35, 15, 2, Hex("9FB4C0"));
+        p.FillRect(14, 39, 11, 2, Hex("9FB4C0"));
+        p.FillRect(38, 39, 11, 2, Hex("9FB4C0"));
+    }
+
     static void DrawBtnRelic(P p)
     {
         p.BgGradient(Hex("0A0418"), Hex("220A44"));

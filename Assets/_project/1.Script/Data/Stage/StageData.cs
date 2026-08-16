@@ -13,7 +13,7 @@ public class StageData
     public int            StageNumber;
     public int            EnergyCost;
     public int            GoldReward;
-    public int            StoneReward;
+    public int            EquipStoneReward;    // 장비 강화석 — 장비 강화 재화
     public int            ExpReward;
     public int            ShardReward;
     public int            GeneralStoneReward;   // 장군 강화석 — 등급업 재화
@@ -40,7 +40,7 @@ public class StageData
             StageNumber     = src.StageNumber,
             EnergyCost      = src.EnergyCost,
             GoldReward      = (int)(src.GoldReward * 1.3f),
-            StoneReward     = src.StoneReward,
+            EquipStoneReward = src.EquipStoneReward,
             ExpReward       = src.ExpReward,
             ShardReward     = src.ShardReward,
             GeneralStoneReward = src.GeneralStoneReward,

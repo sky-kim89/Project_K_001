@@ -20,11 +20,19 @@ public static class AbilityUIHelper
 
     /// 어빌리티용 스탯 값 포맷 — 스탯 타입 기반 (IsPercent 없음).
     /// Defense·CritChance·CDR 는 0~1 비율, SoldierCount·CommandPower 는 정수, 나머지는 ×100%.
+    /// <summary>
+    /// 어빌리티 합산 표기.
+    ///
+    /// ⚠ 부호를 붙박이로 "+" 로 쓰지 않는다
+    ///   어빌리티에도 페널티가 있다 (시간 왜곡: 공격력 -10%).
+    ///   무조건 "+" 를 붙이면 "+-10%" 가 찍힌다.
+    /// </summary>
     public static string FormatStatValue(StatType stat, float value)
     {
         if (stat == StatType.SoldierCount || stat == StatType.CommandPower)
-            return $"+{Mathf.RoundToInt(value)}";
-        return $"+{value * 100f:0.#}%";
+            return Count(value);
+
+        return Percent(value);
     }
 
     /// 특성·패시브용 스탯 값 포맷 — IsPercent 플래그 + 스탯 타입 동시 고려.

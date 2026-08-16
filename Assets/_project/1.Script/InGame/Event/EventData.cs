@@ -62,9 +62,14 @@ public class EventChoice
     [Tooltip("버튼에 표시되는 선택지 텍스트")]
     public string Label;
 
-    [Tooltip("선택 후 본문에 표시될 결과 텍스트")]
+    [Tooltip("선택 후 본문에 표시될 결과 텍스트 (성공 분기)")]
     [TextArea(2, 6)]
     public string ResultText;
+
+    [Tooltip("실패 분기에서 표시될 결과 텍스트.\n" +
+             "⚠ 비워두면 실패해도 성공 텍스트가 그대로 뜬다 — 받은 보상과 글이 어긋난다.")]
+    [TextArea(2, 6)]
+    public string FailResultText;
 
     [Range(0f, 1f)]
     [Tooltip("1.0 = 항상 성공 분기. 미만이면 난수로 SuccessRewards / FailRewards 분기")]

@@ -120,7 +120,9 @@ public class UserDataManager : PureSingleton<UserDataManager>
         reincData?.EarnPointsByStage(cleared);
         reincData?.ResetOnReincarnation();
 
-        // 런 데이터 전체 초기화 (UserData·RelicInventory·ReincarnationData 제외)
+        // 런 데이터 전체 초기화 (UserData·RelicInventory·ReincarnationData·Codex 제외)
+        // ⚠ CodexData 를 여기에 넣지 말 것 — 도감은 "지금까지 만나 본 것" 의 영구 기록이다.
+        //   회귀로 지워지면 도감 버프가 매 런 0 에서 다시 시작해 존재 의미가 사라진다.
         Get<UnitData>()?.SetDefaults();
         Get<ItemData>()?.SetDefaults();
         Get<StageProgressData>()?.SetDefaults();
@@ -155,6 +157,7 @@ public class UserDataManager : PureSingleton<UserDataManager>
         RegisterSection(new RunEventBonusData());
         RegisterSection(new RelicInventoryData());
         RegisterSection(new ReincarnationData());
+        RegisterSection(new CodexData());
 
         LoadAll();
         AutoDeployFirstHeroIfNeeded();

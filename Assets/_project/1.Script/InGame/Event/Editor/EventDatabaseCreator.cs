@@ -54,10 +54,12 @@ public static class EventDatabaseCreator
         { "MerchantOffer",      "evt_merchant" },  // 상인의 제안
         { "BloodAltar",         "evt_shrine"   },  // 피의 제단
         { "Crossroads",         "evt_ambush"   },  // 갈림길의 첩자
-        { "AbilityDiscovery",   "evt_mystery"  },  // 어빌리티 발견
-        { "LoneVeteran",        "evt_soldier"  },  // 고독한 노병
-        { "AbandonedWarehouse", "evt_dark"     },  // 방치된 창고
-        { "WarRelic",           "evt_forest"   },  // 전쟁 유물
+        // 발견형 4종은 전용 삽화를 쓴다 — 무엇을 발견했는지가 그림으로 읽혀야
+        // "발견 → 행동 → 보상" 의 첫 박자가 성립한다 (공용 삽화는 사건이 안 보인다)
+        { "AbilityDiscovery",   "evt_tome"      },  // 어빌리티 발견 — 펼쳐진 전술서
+        { "LoneVeteran",        "evt_veteran"   },  // 고독한 노병 — 모닥불 옆 실루엣
+        { "AbandonedWarehouse", "evt_warehouse" },  // 방치된 창고 — 상자 더미
+        { "WarRelic",           "evt_relic"     },  // 전쟁 유물 — 묻힌 갑옷과 전투석
         { "BlackMarket",        "evt_merchant" },  // 상인의 밀거래
         { "TravelingMerchant",  "evt_merchant" },  // 행상인의 좌판 (상점 스테이지)
         { "StragglerSoldiers",  "evt_soldier"  },  // 패잔병 무리
@@ -106,21 +108,21 @@ public static class EventDatabaseCreator
             "쓰러진 적에게서 정체불명의 약병을 발견했습니다.\n" +
             "색깔은 영롱하지만 냄새가 좀 이상합니다.",
             ChoiceProb("전부 마신다",
-                successText : "단숨에 마셨습니다! 강한 힘이 솟구칩니다.\n[강화 특성 2개 획득]",
-                failText    : "단숨에 마셨습니다! 몸이 달아오르다가 속이 뒤틀립니다.\n[강화 특성 1개 획득 / 부작용 특성 획득]",
+                successText : "단숨에 마셨습니다! 강한 힘이 솟구칩니다.\n[랜덤 강화 특성 2개 획득]",
+                failText    : "단숨에 마셨습니다! 몸이 달아오르다가 속이 뒤틀립니다.\n[랜덤 강화 특성 1개 / 랜덤 부작용 특성 1개 획득]",
                 rate        : 0.5f,
                 successRewards: Rewards(
-                    Reward(EventRewardType.RandomTraitBuff, "강화 특성 획득"),
-                    Reward(EventRewardType.RandomTraitBuff, "강화 특성 추가 획득")),
+                    Reward(EventRewardType.RandomTraitBuff, "랜덤 강화 특성 획득"),
+                    Reward(EventRewardType.RandomTraitBuff, "랜덤 강화 특성 추가 획득")),
                 failRewards: Rewards(
-                    Reward(EventRewardType.RandomTraitBuff,   "강화 특성 획득"),
-                    Reward(EventRewardType.RandomTraitDebuff, "부작용 특성 획득"))),
+                    Reward(EventRewardType.RandomTraitBuff,   "랜덤 강화 특성 획득"),
+                    Reward(EventRewardType.RandomTraitDebuff, "랜덤 부작용 특성 획득"))),
             ChoiceProb("반만 마신다",
-                successText : "절반만 마셨습니다. 몸이 가벼워집니다.\n[강화 특성 1개 획득]",
-                failText    : "절반만 마셨는데 이상한 기운이 퍼집니다.\n[디버프 특성 획득]",
+                successText : "절반만 마셨습니다. 몸이 가벼워집니다.\n[랜덤 강화 특성 1개 획득]",
+                failText    : "절반만 마셨는데 이상한 기운이 퍼집니다.\n[랜덤 부작용 특성 1개 획득]",
                 rate        : 0.5f,
-                successRewards: Rewards(Reward(EventRewardType.RandomTraitBuff,   "강화 특성 획득")),
-                failRewards:   Rewards(Reward(EventRewardType.RandomTraitDebuff, "디버프 특성 획득"))),
+                successRewards: Rewards(Reward(EventRewardType.RandomTraitBuff,   "랜덤 강화 특성 획득")),
+                failRewards:   Rewards(Reward(EventRewardType.RandomTraitDebuff, "랜덤 부작용 특성 획득"))),
             Choice("버린다",
                 "수상한 약을 멀리 던져버렸습니다.")
         ));
@@ -171,37 +173,50 @@ public static class EventDatabaseCreator
                 Reward(EventRewardType.NextStageElite, "다음 스테이지 → 엘리트"))
         ));
 
-        // ── 06. 어빌리티 발견 (즉시보상) ─────────────────────
-        Add(arr, MakeInstant("AbilityDiscovery", "어빌리티 발견",
-            "오래된 전술서를 발견했습니다. 빛바랜 페이지에서 강력한 전술이 눈에 들어옵니다.",
-            "전술서를 읽었습니다. 새로운 능력을 습득할 기회입니다.\n[어빌리티 1택]",
-            Reward(EventRewardType.OpenAbilitySelect, intVal: 1, "어빌리티 1택")
+        // ── 06. 어빌리티 발견 ────────────────────────────────
+        //  ⚠ 즉시보상(MakeInstant)에서 한 박자 있는 형태로 바꿨다
+        //    예전엔 팝업이 열리자마자 어빌리티 선택창이 떠서, 플레이어는
+        //    "무엇 때문에" 고르는지 모른 채 카드부터 봤다. 지금은
+        //    발견 서술 → 행동 버튼 → 그 결과로 보상이 열린다.
+        Add(arr, Make("AbilityDiscovery", "어빌리티 발견",
+            "무너진 서고 바닥에서 전조가 새겨진 상자를 찾았습니다.\n" +
+            "봉인을 뜯자 빛바랜 전술서 한 권이 모습을 드러냅니다.",
+            Choice("전술서를 펼친다",
+                "전조에 숨겨진 고대의 전술을 찾았습니다.\n" +
+                "페이지를 넘길수록 새로운 싸움법이 머릿속에 그려집니다.\n[어빌리티 1택]",
+                Reward(EventRewardType.OpenAbilitySelect, intVal: 1, "어빌리티 1택"))
         ));
 
-        // ── 07. 고독한 노병 (즉시보상) ───────────────────────
-        Add(arr, MakeInstant("LoneVeteran", "고독한 노병",
+        // ── 07. 고독한 노병 ──────────────────────────────────
+        Add(arr, Make("LoneVeteran", "고독한 노병",
             "한쪽 다리가 불편한 노병이 막사 밖에 홀로 앉아 있습니다.\n" +
             "\"장군님, 제가 당신 같았을 때의 이야기를 해드릴까요?\"",
-            "노병의 이야기를 들었습니다. 발걸음이 한결 가벼워집니다.\n[이동속도 +10% 특성]",
-            Reward(EventRewardType.AddTrait, intVal: (int)TraitType.Event_VeteranHeritage, "노병의 유산: 이동속도 +10%")
+            Choice("이야기를 듣는다",
+                "노병은 젊은 날의 행군을 밤새 들려주었습니다.\n" +
+                "그 걸음걸이를 흉내 내자 부대의 발이 한결 가벼워집니다.\n[이동속도 +10% 특성]",
+                Reward(EventRewardType.AddTrait, intVal: (int)TraitType.Event_VeteranHeritage, "노병의 유산: 이동속도 +10%"))
         ));
 
-        // ── 08. 방치된 창고 (즉시보상) ───────────────────────
-        Add(arr, MakeInstant("AbandonedWarehouse", "방치된 창고",
+        // ── 08. 방치된 창고 ──────────────────────────────────
+        Add(arr, Make("AbandonedWarehouse", "방치된 창고",
             "길가의 허름한 창고 문이 반쯤 열려 있습니다.\n" +
-            "안을 들여다보니 오래된 상자들이 쌓여 있습니다.",
-            "창고를 뒤졌습니다. 먼지 쌓인 상자 안에 쓸만한 것들이 있습니다.\n[장비 박스 1개 + 골드 획득]",
-            Reward(EventRewardType.AddItem, eItem.EquipBox, 1, "장비 박스 +1"),
-            ScaledReward(EventRewardType.AddItem, eItem.Gold, 220)
+            "안을 들여다보니 오래된 상자들이 먼지를 뒤집어쓴 채 쌓여 있습니다.",
+            Choice("상자를 열어본다",
+                "못질을 뜯어내자 기름 먹인 천에 싸인 장비 한 벌이 나왔습니다.\n" +
+                "구석의 낡은 자루에서는 동전 소리가 납니다.\n[장비 박스 1개 + 골드 획득]",
+                Reward(EventRewardType.AddItem, eItem.EquipBox, 1, "장비 박스 +1"),
+                ScaledReward(EventRewardType.AddItem, eItem.Gold, 220))
         ));
 
-        // ── 09. 전쟁 유물 (즉시보상) ─────────────────────────
-        Add(arr, MakeInstant("WarRelic", "전쟁 유물",
+        // ── 09. 전쟁 유물 ────────────────────────────────────
+        Add(arr, Make("WarRelic", "전쟁 유물",
             "전장터 구석에서 오래된 전쟁의 흔적을 발견했습니다.\n" +
             "녹슨 갑옷 조각에서 아직도 전투의 기운이 느껴집니다.",
-            "유물을 조심스럽게 수습했습니다. 전투에 도움이 될 것 같습니다.\n[전투석 2개 + 환생 포인트 5 획득]",
-            Reward(EventRewardType.AddItem, eItem.BattleStone,        2, "전투석 +2"),
-            Reward(EventRewardType.AddItem, eItem.ReincarnationPoint,  5, "환생 포인트 +5")
+            Choice("유물을 수습한다",
+                "흙을 걷어내자 갑옷에서 떨어져 나온 강화석 조각이 드러났습니다.\n" +
+                "먼저 스러진 이름들이 손끝에 닿는 듯합니다.\n[장비 강화석 3개 + 환생 포인트 5 획득]",
+                Reward(EventRewardType.AddItem, eItem.EquipUpgradeStone,   3, "장비 강화석 +3"),
+                Reward(EventRewardType.AddItem, eItem.ReincarnationPoint,  5, "환생 포인트 +5"))
         ));
 
         // ── 10. 상인의 밀거래 ─────────────────────────────────
@@ -212,11 +227,11 @@ public static class EventDatabaseCreator
                 "금화를 건네자 상인이 묵직한 상자를 넘겼습니다.\n[골드 소모 / 장비 박스 2개]",
                 ScaledReward(EventRewardType.SpendItem, eItem.Gold, 85),
                 Reward(EventRewardType.AddItem,   eItem.EquipBox,   2, "장비 박스 +2")),
-            Choice("전투석으로 산다",
-                "희귀한 전투석을 대가로 치렀습니다. 상인이 환하게 웃으며 상자를 건넸습니다.\n[전투석 3개 소모 / 장비 박스 2개]",
-                costHint: "전투석 3",
-                Reward(EventRewardType.SpendItem, eItem.BattleStone, 3, "전투석 -3"),
-                Reward(EventRewardType.AddItem,   eItem.EquipBox,    2, "장비 박스 +2")),
+            Choice("강화석으로 산다",
+                "손때 묻은 강화석을 대가로 치렀습니다. 상인이 환하게 웃으며 상자를 건넸습니다.\n[장비 강화석 8개 소모 / 장비 박스 2개]",
+                costHint: "강화석 8",
+                Reward(EventRewardType.SpendItem, eItem.EquipUpgradeStone, 8, "장비 강화석 -8"),
+                Reward(EventRewardType.AddItem,   eItem.EquipBox,          2, "장비 박스 +2")),
             Choice("거절한다",
                 "시선을 피하며 자리를 떠났습니다.")
         ));
@@ -310,6 +325,17 @@ public static class EventDatabaseCreator
         return data;
     }
 
+    /// <summary>
+    /// 선택지 없이 열자마자 보상을 주는 이벤트.
+    ///
+    /// ⚠ 지금 이걸 쓰는 이벤트는 하나도 없다 — 일부러 그렇다
+    ///   팝업이 열리는 순간 보상이 튀어나오면 "무엇 때문에 받았는지" 가 안 보여
+    ///   뜬금없다는 인상만 남는다. 발견형 4종(어빌리티 발견·고독한 노병·
+    ///   방치된 창고·전쟁 유물)은 전부 선택지 1개짜리로 바꿔
+    ///   서술 → 행동 버튼 → 보상 순서를 만들었다.
+    ///   새 이벤트도 같은 이유로 Make + Choice 를 쓸 것.
+    ///   (EventPopup 의 즉시보상 경로 자체는 살아 있어 언제든 되살릴 수 있다)
+    /// </summary>
     static EventData MakeInstant(string id, string title, string body,
         string resultText, params EventReward[] rewards)
     {
@@ -377,10 +403,14 @@ public static class EventDatabaseCreator
         string successText, string failText, float rate,
         EventReward[] successRewards, EventReward[] failRewards)
     {
+        // ⚠ failText 를 반드시 담는다
+        //   예전엔 이 값을 받고도 버려서 EventChoice 에 성공 텍스트만 남았다.
+        //   실패해도 성공 글이 떠서 "강화 특성 2개 획득" 옆에 저주 특성이 붙는 그림이 나왔다.
         return new EventChoice
         {
             Label          = label,
-            ResultText     = successText,  // 성공 텍스트 (UI에서 분기 표시 가능)
+            ResultText     = successText,
+            FailResultText = failText,
             SuccessRate    = rate,
             SuccessRewards = successRewards,
             FailRewards    = failRewards,

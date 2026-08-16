@@ -26,7 +26,12 @@ public enum eItem
 
     // ── 성장 재료 (Material) ────────────────── 100~199
     ExpBook             = 100,  // 경험서         — 유닛 경험치
-    BattleStone         = 101,  // 전투석         — 스테이지 클리어 보상
+    // ⚠ 전투석은 폐지됐다 — 주는 곳도 쓰는 곳도 없다
+    //   소비처가 이벤트 선택지 하나뿐이라 쌓이기만 하는 재화였다.
+    //   스테이지 클리어·전쟁 유물 보상은 전부 EquipUpgradeStone 으로 넘어갔다.
+    //   enum 값은 남긴다 — 옛 세이브에 수량이 들어 있어 지우면 로드가 깨진다.
+    //   새로 지급하는 코드를 추가하지 말 것.
+    BattleStone         = 101,  // 전투석         — (폐지) 지급처 없음
     SkillScroll         = 102,  // 스킬 서적      — 스킬 잠금 해제
     GeneralUpgradeStone = 103,  // 장군 강화석    — 장수 등급업에 사용 (HeroDetailPopup)
     EquipUpgradeStone   = 104,  // 장비 강화석    — 장비 강화에 사용
@@ -102,7 +107,7 @@ public static class ItemExtensions
         eItem.Honor               => "PvP 콘텐츠 보상 교환에 쓰인다.",
         eItem.ReincarnationPoint  => "환생 후 유물을 강화할 때 쓰인다.",
         eItem.ExpBook             => "장수에게 사용해 경험치를 올린다.",
-        eItem.BattleStone         => "스테이지 클리어 보상. 성장 재료로 쓰인다.",
+        eItem.BattleStone         => "더 이상 쓰이지 않는 재화다.",
         eItem.SkillScroll         => "장수의 잠긴 스킬을 해제할 때 쓰인다.",
         eItem.GeneralUpgradeStone => "장수의 등급을 한 단계 올릴 때 쓰인다.",
         eItem.EquipUpgradeStone   => "장비를 강화할 때 쓰인다.",

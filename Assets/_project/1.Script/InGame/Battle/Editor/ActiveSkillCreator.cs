@@ -419,7 +419,8 @@ public static class ActiveSkillCreator
             id          : ActiveSkillId.ChainLightning,
             fileName    : "Active_ChainLightning",
             skillName   : "연쇄 번개",
-            description : "번개가 적 사이를 최대 8번 튀며, 튈 때마다 피해가 15%씩 커진다. " +
+            description : "번개가 맞은 적마다 둘로 갈라지며 4번 번진다 (최대 15명). " +
+                          "갈라질 때마다 피해가 15%씩 커진다. " +
                           "맞은 적은 2초간 감전되어 발이 묶인다.",
             cooldown    : 20f,
             effectValue : 1f,
@@ -428,9 +429,12 @@ public static class ActiveSkillCreator
             jobs        : new UnitJob[0]);
         chain.IsRare           = true;
         chain.DamageMultiplier = 2.2f;
-        chain.MaxChains        = 8;
+        chain.MaxWaves         = 4;      // 1 → 2 → 4 → 8
+        chain.SplitCount       = 2;
         chain.DamageGrowth     = 0.15f;
         chain.ChainInterval    = 0.09f;
+        // 줄기가 오래 남으면 15줄이 한꺼번에 떠서 화면이 파랗게 덮인다
+        chain.BoltLifetime     = 0.14f;
         chain.ShockSlowRatio   = 0.7f;
         chain.ShockDuration    = 2f;
         chain.KnockbackMult    = 1.5f;
@@ -441,13 +445,13 @@ public static class ActiveSkillCreator
             id          : ActiveSkillId.DeathSentence,
             fileName    : "Active_DeathSentence",
             skillName   : "사형 선고",
-            description : "범위 내 적에게 낙인을 찍고 2초 뒤 일제히 처형한다. " +
-                          "그때 체력 35% 이하인 적은 즉사하고, 살아남은 적은 공격력 400% 피해를 받는다. " +
+            description : "범위 내 적을 즉시 선고·처형한다. " +
+                          "체력 35% 이하인 적은 즉사하고, 살아남은 적은 공격력 400% 피해를 받는다. " +
                           "처형한 수만큼 시전자 공격력이 누적된다.",
             cooldown    : 34f,
             effectValue : 1f,
             radius      : 6f,
-            duration    : 2f,      // 낙인 → 처형까지
+            duration    : 0.8f,    // 인장·낙인이 화면에 남는 시간 (처형은 즉발)
             jobs        : new UnitJob[0]);
         sentence.IsRare           = true;
         sentence.ExecuteHpRatio   = 0.35f;
@@ -455,6 +459,7 @@ public static class ActiveSkillCreator
         sentence.AttackPerExecute = 6f;
         sentence.ExecuteBosses    = false;   // 보스 즉사는 막는다 — 최종 콘텐츠가 무너진다
         sentence.KnockbackMult    = 3f;
+        sentence.SkullEffectKey   = "FX_Death_Skull";
         EditorUtility.SetDirty(sentence);
 
         // ── ㉗ 피의 대가 (방패병 · 희귀) ────────────────────
@@ -466,7 +471,8 @@ public static class ActiveSkillCreator
                           "공격력 200% 광역 피해 + 강한 넉백. 체력이 많을수록 강해진다.",
             cooldown    : 18f,
             effectValue : 1f,
-            radius      : 6f,
+            // 체력 40% 를 태우는 한 방이다 — 사거리·각도가 좁으면 지를 이유가 없다
+            radius      : 9f,
             duration    : 0f,
             // 잃은 체력에 비례해 피해가 오르는 스킬 — 체력·방어가 가장 높은 방패병 전용
             jobs        : new[] { UnitJob.ShieldBearer });
@@ -474,8 +480,9 @@ public static class ActiveSkillCreator
         blood.HpCostRatio      = 0.4f;
         blood.DamagePerHp      = 2.5f;
         blood.AttackMultiplier = 2f;
-        blood.ConeAngleDegrees = 120f;
+        blood.ConeAngleDegrees = 160f;   // 전방을 거의 반원으로 쓸어버린다
         blood.KnockbackMult    = 7f;
+        blood.ChargeTime       = 0.3f;
         EditorUtility.SetDirty(blood);
 
         // ── ㉘ 관통 돌진 (근거리 · 희귀) ────────────────────
@@ -514,6 +521,7 @@ public static class ActiveSkillCreator
         banner.AttackMultiplier      = 1.4f;
         banner.AttackSpeedMultiplier = 1.4f;
         banner.MoveSpeedMultiplier   = 1.15f;
+        banner.FlashTime             = 1f;    // 깃발은 1초만 펄럭이고 반경 표시만 남는다
         EditorUtility.SetDirty(banner);
 
         // ── ㉚ 비석 강림 (법사 · 희귀) ──────────────────────

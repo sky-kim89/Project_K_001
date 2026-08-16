@@ -38,7 +38,11 @@ public class RunAbilityData : ISaveSection
     public bool HasAbility(AbilityId id) => _levels.ContainsKey(id);
 
     /// 레벨 1 증가. 최대 레벨 제한은 호출 측(AbilitySelectPopup)에서 관리.
-    public void AddAbility(AbilityId id) => _levels[id] = _levels.GetValueOrDefault(id, 0) + 1;
+    public void AddAbility(AbilityId id)
+    {
+        CodexData.Record(id);   // 도감 — 회귀해도 남는다
+        _levels[id] = _levels.GetValueOrDefault(id, 0) + 1;
+    }
 
     /// UI용 — 고유 ID 열거
     public IEnumerable<AbilityId> OwnedAbilityIds => _levels.Keys;

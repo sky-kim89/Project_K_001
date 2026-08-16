@@ -15,7 +15,7 @@ public class CheatEditorWindow : EditorWindow
 {
     // ── 탭 ──────────────────────────────────────────────────────
     int _tab;
-    static readonly string[] kTabs = { "어빌리티", "특성", "장비", "장수" };
+    static readonly string[] kTabs = { "어빌리티", "특성", "장비", "장수", "도감" };
 
     // ── 어빌리티 ─────────────────────────────────────────────────
     AbilityData[] _allAbilities;
@@ -69,8 +69,127 @@ public class CheatEditorWindow : EditorWindow
             case 1: DrawTraitTab();    break;
             case 2: DrawEquipTab();    break;
             case 3: DrawGeneralTab();  break;
+            case 4: DrawCodexTab();    break;
         }
     }
+
+    // ── 도감 탭 ───────────────────────────────────────────────────
+    //
+    //  ⚠ 도감만 채운다 — 실제 보유는 건드리지 않는다
+    //    도감은 "만나 본 적 있나" 의 기록이라 지금 들고 있는 것과 별개다.
+    //    여기서 장비·장수까지 인벤토리에 넣으면 도감 버프 확인이 아니라
+    //    전혀 다른 상태의 세이브가 되어 무엇 때문에 세진 건지 알 수 없어진다.
+    //    (실제 획득이 필요하면 각 탭에서 따로 준다)
+
+    void DrawCodexTab()
+    {
+        var codex = UserDataManager.Instance?.Get<CodexData>();
+        if (codex == null)
+        {
+            EditorGUILayout.HelpBox("CodexData 를 불러올 수 없습니다.", MessageType.Warning);
+            return;
+        }
+
+        // 현재 진행률 — 분류별 + 합계
+        EditorGUILayout.LabelField("현재 수집", EditorStyles.boldLabel);
+        foreach (CodexCategory c in System.Enum.GetValues(typeof(CodexCategory)))
+        {
+            var (owned, total) = CodexCatalog.Progress(c);
+            EditorGUILayout.LabelField($"  {CodexCatalog.Label(c)}", $"{owned} / {total}");
+        }
+
+        var (allOwned, allTotal) = CodexCatalog.TotalProgress();
+        EditorGUILayout.LabelField("  합계", $"{allOwned} / {allTotal}");
+        EditorGUILayout.LabelField("  공/체 보너스", $"+{CodexApplier.BonusRatio * 100f:F1}%");
+
+        EditorGUILayout.Space(8);
+        EditorGUILayout.LabelField("분류별 완성", EditorStyles.boldLabel);
+
+        foreach (CodexCategory c in System.Enum.GetValues(typeof(CodexCategory)))
+        {
+            var cat = c;   // 클로저가 마지막 값을 물지 않게 복사
+            if (GUILayout.Button($"{CodexCatalog.Label(cat)} 도감 완성", GUILayout.Height(26)))
+                FillCodex(codex, cat);
+        }
+
+        EditorGUILayout.Space(8);
+        EditorGUILayout.LabelField("전체", EditorStyles.boldLabel);
+
+        if (GUILayout.Button("모든 도감 완성", GUILayout.Height(34)))
+        {
+            int added = 0;
+            foreach (CodexCategory c in System.Enum.GetValues(typeof(CodexCategory)))
+                added += FillCodex(codex, c, silent: true);
+
+            RequestSave();
+            Debug.Log($"[치트] 도감 전체 완성 — {added}종 추가 " +
+                      $"(공/체 +{CodexApplier.BonusRatio * 100f:F1}%)");
+        }
+
+        EditorGUILayout.Space(8);
+
+        if (GUILayout.Button("도감 초기화", GUILayout.Height(26)))
+        {
+            codex.SetDefaults();
+            RequestSave();
+            Debug.Log("[치트] 도감 초기화 — 수집 기록을 모두 지웠다.");
+        }
+    }
+
+    /// <summary>
+    /// 한 분류를 전부 수집 상태로 만든다. 반환값 = 새로 추가된 수.
+    ///
+    /// ⚠ 목록의 출처는 도감 화면과 같아야 한다
+    ///   여기서 DB 를 다르게 훑으면 "완성" 을 눌렀는데 화면은 399/400 이 된다.
+    ///   기록에 필요한 ID 는 CodexCatalog 가 주지 않으므로 DB 를 직접 돌되,
+    ///   반드시 CodexCatalog.Build 와 같은 컬렉션을 봐야 한다.
+    /// </summary>
+    static int FillCodex(CodexData codex, CodexCategory category, bool silent = false)
+    {
+        int before = OwnedCount(category);
+
+        switch (category)
+        {
+            case CodexCategory.Equipment:
+                var edb = EquipmentDatabase.Current;
+                if (edb != null)
+                    foreach (var e in edb.Equipments)
+                        if (e != null) codex.AddEquip(e.EquipmentId);
+                break;
+
+            case CodexCategory.Ability:
+                var adb = AbilityDatabase.Current;
+                if (adb != null)
+                    foreach (var a in adb.GetAll())
+                        if (a != null) codex.RecordAbility(a.Id);
+                break;
+
+            case CodexCategory.Trait:
+                var tdb = TraitDatabase.Current;
+                if (tdb != null)
+                    foreach (var t in tdb.GetAll())
+                        if (t != null) codex.RecordTrait(t.TraitType);
+                break;
+
+            case CodexCategory.General:
+                foreach (var name in UnitData.AllNames)
+                    codex.AddGeneral(name);
+                break;
+        }
+
+        int added = OwnedCount(category) - before;
+
+        if (!silent)
+        {
+            RequestSave();
+            Debug.Log($"[치트] {CodexCatalog.Label(category)} 도감 완성 — {added}종 추가 " +
+                      $"(공/체 +{CodexApplier.BonusRatio * 100f:F1}%)");
+        }
+
+        return added;
+    }
+
+    static int OwnedCount(CodexCategory category) => CodexCatalog.Progress(category).owned;
 
     // ── 어빌리티 탭 ───────────────────────────────────────────────
 
