@@ -42,7 +42,7 @@ public class HeroCardUI : MonoBehaviour
 
         if (_nameText  != null) _nameText.text  = entry.UnitName;
         if (_levelText != null) _levelText.text = $"Lv.{entry.Level}";
-        if (_gradeText != null) _gradeText.text = GradeStyle.GetLabel(entry.Grade);
+        if (_gradeText != null) _gradeText.text = GradeStyle.GetLabelWithQuality(entry.Grade, entry.UnitName);
 
         Color gc = GradeStyle.GetColor(entry.Grade);
         if (_gradeBorder != null) _gradeBorder.color = gc;

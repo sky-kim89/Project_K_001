@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8e01cea01c8b9704d935c7d725fd2b3f, type: 3}
+  m_Name: Event_WanderingMercenary
+  m_EditorClassIdentifier: 
+  EventId: WanderingMercenary
+  Title: "\uB5A0\uB3CC\uC774 \uC6A9\uBCD1"
+  Body: "\uC57C\uC601\uC9C0 \uBD88\uBE5B\uC744 \uBCF4\uACE0 \uB0AF\uC120 \uC774\uAC00
+    \uCC3E\uC544\uC654\uC2B5\uB2C8\uB2E4. \uD589\uC0C9\uC740 \uB0A8\uB8E8\uD558\uC9C0\uB9CC
+    \uB208\uB9E4\uAC00 \uB9E4\uC12D\uC2B5\uB2C8\uB2E4.\n\"\uAC12\uC744 \uCCD0\uC8FC\uC2E0\uB2E4\uBA74
+    \uC774 \uD55C \uBAB8 \uB9E1\uAE30\uACA0\uC2B5\uB2C8\uB2E4.\""
+  Illustration: {fileID: 21300000, guid: 7914c4148e6fdb648b1fd3a9cf5c572f, type: 3}
+  Choices:
+  - Label: "\uC120\uAE08\uC744 \uCE58\uB978\uB2E4"
+    ResultText: "\uAE08\uD654\uB97C \uC138\uC5B4 \uAC74\uB138\uC2B5\uB2C8\uB2E4.
+      \uADF8\uAC00 \uC9D0\uC744 \uD480\uACE0 \uB9C9\uC0AC \uD55C\uCF20\uC5D0 \uC790\uB9AC\uB97C
+      \uC7A1\uC2B5\uB2C8\uB2E4.\n[\uACE8\uB4DC \uC18C\uBAA8 / \uC6A9\uBCD1 \uACE0\uC6A9]"
+    SuccessRate: 1
+    SuccessRewards:
+    - Type: 3
+      Item: 0
+      IntValue: 70
+      FloatValue: 0
+      Description: 
+      ScaleByStageReward: 1
+    - Type: 12
+      Item: -1
+      IntValue: 0
+      FloatValue: 0
+      Description: "\uC6A9\uBCD1 \uACE0\uC6A9"
+      ScaleByStageReward: 0
+    FailRewards: []
+    CostHint: 
+  - Label: "\uAC70\uC808\uD55C\uB2E4"
+    ResultText: "\uACE0\uAC1C\uB97C \uC813\uC790 \uADF8\uB294 \uC5B4\uAE68\uB97C
+      \uC73C\uC4F1\uD558\uACE0 \uC5B4\uB460 \uC18D\uC73C\uB85C \uC0AC\uB77C\uC84C\uC2B5\uB2C8\uB2E4."
+    SuccessRate: 1
+    SuccessRewards: []
+    FailRewards: []
+    CostHint: 
+  InstantRewards: []
+  InstantResultText: 

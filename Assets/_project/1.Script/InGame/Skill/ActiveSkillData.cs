@@ -72,6 +72,17 @@ public class ActiveSkillData : ScriptableObject
     public UnitJob[] AllowedJobs = new UnitJob[0];
 
     // ─────────────────────────────────────────────────────────
+    // ■ 희귀 스킬
+    // ─────────────────────────────────────────────────────────
+
+    [Header("희귀 스킬")]
+    [Tooltip("희귀 스킬 여부.\n" +
+             "· 주인 영웅 한 명이 이름으로 고정된다 (RareSkillArbiter 할당표)\n" +
+             "· 그 영웅은 등급·부대와 무관하게 항상 이 스킬을 쓴다\n" +
+             "· 다른 영웅은 추첨으로도 절대 얻을 수 없다")]
+    public bool IsRare = false;
+
+    // ─────────────────────────────────────────────────────────
     // ■ 이펙트 풀 키 (PoolType.Effect)
     // ─────────────────────────────────────────────────────────
 
@@ -158,6 +169,20 @@ public enum ActiveSkillId : int
     Shockwave        = 18,  // 충격파         — 전방 부채꼴 넉백               (전사)
     SwiftStrike      = 19,  // 신속 연격      — 자신·병사 공격속도 대폭 증가   (궁수)
     SummonElite      = 20,  // 정예 소환      — 강화된 병사 분대 소환          (법사)
+
+    // ── 희귀 스킬 (직업당 부대 내 1명만) ─────────────────────────
+    Bisect           = 21,  // 일도양단       — 전방 직선 경직 후 참격          (기사)
+    ArrowStorm       = 22,  // 화살 폭풍      — 3연타 광역 낙하                 (궁수)
+    GravityCollapse  = 23,  // 중력 붕괴      — 흡입 구속 후 붕괴 폭발          (법사)
+    Bulwark          = 24,  // 불멸의 방벽    — 아군 보호막 후 폭발 + 치유      (방패)
+
+    // ── 희귀 스킬 (공통 — 직업 무관, 전체에서 1명만) ─────────────
+    ChainLightning   = 25,  // 연쇄 번개      — 적 사이를 튀며 피해 누적        (공통)
+    DeathSentence    = 26,  // 사형 선고      — 낙인 후 일제 처형(즉사)         (공통)
+    BloodPrice       = 27,  // 피의 대가      — 자기 체력을 태워 전방 광역       (공통)
+    PiercingDash     = 28,  // 관통 돌진      — 1초 쿨 평타형 돌진 관통          (근거리)
+    WarBanner        = 29,  // 군기 강림      — 주변 아군 공·공속·이속 강화      (공통)
+    Gravestone       = 30,  // 비석 강림      — 비석 낙하 피해 + 스켈레톤 소환   (공통)
 }
 
 public static class ActiveSkillIdExtensions
@@ -184,6 +209,16 @@ public static class ActiveSkillIdExtensions
         ActiveSkillId.Shockwave        => "skill_shockwave",
         ActiveSkillId.SwiftStrike      => "skill_swift_strike",
         ActiveSkillId.SummonElite      => "skill_summon_elite",
+        ActiveSkillId.Bisect           => "skill_bisect",
+        ActiveSkillId.ArrowStorm       => "skill_arrow_storm",
+        ActiveSkillId.GravityCollapse  => "skill_gravity_collapse",
+        ActiveSkillId.Bulwark          => "skill_bulwark",
+        ActiveSkillId.ChainLightning   => "skill_chain_lightning",
+        ActiveSkillId.DeathSentence    => "skill_death_sentence",
+        ActiveSkillId.BloodPrice       => "skill_blood_price",
+        ActiveSkillId.PiercingDash     => "skill_piercing_dash",
+        ActiveSkillId.WarBanner        => "skill_war_banner",
+        ActiveSkillId.Gravestone       => "skill_gravestone",
         _                              => null,
     };
 }

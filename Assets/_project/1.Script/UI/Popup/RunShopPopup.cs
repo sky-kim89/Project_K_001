@@ -46,7 +46,19 @@ public class RunShopPopup : PopupBase
 
     const int EquipSlots      = RunShopData.EquipSlots;     // 4
     const int TraitSlots      = RunShopData.TraitSlots;     // 2
-    const int TraitCost       = 400;
+    // ── 가격 정책 ────────────────────────────────────────────
+    //  특성은 이 게임에서 가장 비싼 물건이다.
+    //  런 내내 유지되고 스택까지 쌓이는데 400 골드면(한 스테이지 보상의 절반)
+    //  보이는 족족 전부 사게 된다 — 고를 이유가 없으면 상점이 자판기가 된다.
+    //
+    //  ⚠ 스테이지가 아니라 **보유 개수**에 비례한다
+    //    스테이지 비례로 두면 "언제 샀느냐" 가 값을 정한다 — 늦게 시작한 특성일수록
+    //    비싸서, 초반에 몰아 사는 게 항상 정답이 된다.
+    //    보유 비례면 "몇 개째냐" 가 값을 정한다. 특성을 쌓을수록 다음 하나가 무거워져
+    //    소수 정예로 갈지 넓게 모을지 고르게 된다.
+    const int TraitCostBase     = 500;
+    const int TraitCostPerOwned = 500;
+
     const int RefreshBaseCost = 100;
     const int SeedPrime       = 7919;   // 새로고침별 시드 오프셋용 소수
 
@@ -146,7 +158,7 @@ public class RunShopPopup : PopupBase
             if (purchase != TraitType.None)
             {
                 var bought = db.Get(purchase);
-                slot.SetupTrait(bought, TraitCost, () => OnBuyTrait(bought, TraitCost, idx));
+                slot.SetupTrait(bought, TraitCost(), () => OnBuyTrait(bought, TraitCost(), idx));
                 slot.SetSoldOut("구매 완료");
                 continue;
             }
@@ -154,13 +166,12 @@ public class RunShopPopup : PopupBase
             if (poolIdx >= pool.Count) { slot.SetEmpty(); continue; }
 
             var data = pool[poolIdx++];
-            slot.SetupTrait(data, TraitCost, () => OnBuyTrait(data, TraitCost, idx));
+            slot.SetupTrait(data, TraitCost(), () => OnBuyTrait(data, TraitCost(), idx));
         }
     }
 
     void SetupGeneralSlots(System.Random rng, RunShopData shopData)
     {
-        int cost        = GameplayConfig.Current.HireMercenaryCost;
         int activeSlots = RelicApplier.GetTotalActiveGeneralSlots();
         int deployed    = UserDataManager.Instance.Get<DeploymentData>().GetDeployedUnits().Count;
         bool slotsFull  = deployed >= activeSlots;
@@ -193,7 +204,12 @@ public class RunShopPopup : PopupBase
                 };
             }
 
-            int idx = i;
+            // 고용가는 매물 등급에 따라 다르다 (빈 슬롯이면 표시용 기본값)
+            int idx  = i;
+            int cost = entry != null
+                ? GameplayConfig.HireCost(entry.Grade)
+                : GameplayConfig.HireCost(UnitGrade.Normal);
+
             _generalSlots[i].Setup(entry, cost, (e, c) => OnHireGeneral(e, c, idx));
 
             if (shopData.IsPurchasedGeneral(i)) _generalSlots[i].SetSoldOut();
@@ -217,7 +233,7 @@ public class RunShopPopup : PopupBase
             slot.SetAffordable(gold >= slot.Cost);
 
         foreach (var slot in _generalSlots)
-            slot.SetAffordable(gold >= GameplayConfig.Current.HireMercenaryCost);
+            slot.SetAffordable(gold >= slot.Cost);
     }
 
     int RefreshCost()
@@ -291,14 +307,34 @@ public class RunShopPopup : PopupBase
 
     // ── 유틸 ─────────────────────────────────────────────────
 
+    /// <summary>
+    /// 특성 가격 — 이미 보유한 특성 개수에 비례한다.
+    /// 1개 보유 시 1,000 / 3개 2,000 / 6개 3,500 …
+    ///
+    /// ⚠ 시너지 특성(1000~)은 세지 않는다
+    ///   배치 구성에 따라 자동으로 붙었다 떨어지는 파생값이라,
+    ///   세면 부대를 바꿀 때마다 상점 가격이 출렁인다.
+    /// </summary>
+    static int TraitCost()
+    {
+        var run = UserDataManager.Instance?.Get<RunTraitData>();
+        int owned = 0;
+        if (run?.AcquiredTraits != null)
+            foreach (var t in run.AcquiredTraits)
+                if ((int)t < 1000) owned++;
+
+        return TraitCostBase + owned * TraitCostPerOwned;
+    }
+
+    // 장비는 특성보다 싸되, 등급 차이가 선택으로 느껴질 만큼은 벌린다
     static int CalcEquipCost(EquipmentData data) => data.Grade switch
     {
-        UnitGrade.Normal   => 200,
-        UnitGrade.Uncommon => 350,
-        UnitGrade.Rare     => 550,
-        UnitGrade.Unique   => 800,
-        UnitGrade.Epic     => 1200,
-        _                  => 300,
+        UnitGrade.Normal   => 250,
+        UnitGrade.Uncommon => 450,
+        UnitGrade.Rare     => 700,
+        UnitGrade.Unique   => 1050,
+        UnitGrade.Epic     => 1600,
+        _                  => 400,
     };
 
     static void ShuffleSeeded<T>(List<T> list, System.Random rng)

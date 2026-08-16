@@ -81,21 +81,9 @@ public class ReincarnationData : ISaveSection
         return Mathf.Max(1, Mathf.RoundToInt(Mathf.Pow(currentLevel + 1, exp)));
     }
 
-    /// <summary>희귀도별 유물 첫 획득 포인트 비용 (GameplayConfig 에서 읽음).</summary>
-    public static int AcquireCost(RelicRarity rarity)
-    {
-        var cfg = GameplayConfig.Current;
-        if (cfg != null) return cfg.GetRelicAcquireCost(rarity);
-        return rarity switch
-        {
-            RelicRarity.Common    => 1,
-            RelicRarity.Uncommon  => 2,
-            RelicRarity.Rare      => 3,
-            RelicRarity.Epic      => 4,
-            RelicRarity.Legendary => 5,
-            _ => 2,
-        };
-    }
+    // ⚠ AcquireCost(희귀도별 첫 획득 비용) 는 삭제됐다.
+    //   유물에 "획득" 단계는 없다 — 모든 유물이 0레벨로 존재하고 전부 강화일 뿐이다.
+    //   비용은 LevelUpCost(현재레벨) 하나로 끝난다.
 
     // ── 포인트 조작 ───────────────────────────────────────────
 

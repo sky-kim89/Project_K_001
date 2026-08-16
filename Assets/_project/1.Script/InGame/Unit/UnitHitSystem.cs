@@ -103,6 +103,12 @@ namespace BattleGame.Units
         public float DefenseOverflowRate;
         public float DefenseEffectiveCap;
 
+        // ── 일반 공격 넉백 ────────────────────────────────────
+        /// <summary>최대 체력 100% 를 한 방에 깎았을 때의 넉백 세기.</summary>
+        const float KnockbackPerHpRatio = 10f;
+        /// <summary>단일 타격 넉백 상한 (여러 타격 합산 상한은 MaxKnockbackMag).</summary>
+        const float MaxSingleKnockback  = 6f;
+
         public void Execute(
             [ChunkIndexInQuery] int                    chunkIndex,
             Entity                                     entity,
@@ -122,6 +128,13 @@ namespace BattleGame.Units
             float3 maxNormalKbVec   = float3.zero;
 
             float rawDef      = stat.Final[StatType.Defense];
+
+            // 넉백은 "절대 피해량" 이 아니라 "최대 체력 대비 비율" 로 정한다.
+            //   100 체력에 50 피해  → 0.5   → 크게 밀린다
+            //   10000 체력에 50 피해 → 0.005 → 거의 밀리지 않는다
+            // 절대값 기준이면 스테이지가 올라가 공격력이 커질수록 체력 만 단위 보스도
+            // 잡몹처럼 날아가고, 반대로 초반 저공격력은 종잇장 적조차 못 밀어낸다.
+            float maxHp = math.max(1f, stat.Final[StatType.MaxHp]);
 
             bool  hasMirror   = MirrorArmorLookup.HasComponent(entity);
             float mirrorRatio = hasMirror ? MirrorArmorLookup[entity].ReflectRatio : 0f;
@@ -147,7 +160,8 @@ namespace BattleGame.Units
                 }
                 else
                 {
-                    float kbMag = math.min(actualDamage * 0.05f, 6f);
+                    // 체력의 100% 를 한 방에 날리면 KnockbackPerHpRatio 만큼 밀린다.
+                    float kbMag = math.min(actualDamage / maxHp * KnockbackPerHpRatio, MaxSingleKnockback);
                     if (kbMag > maxNormalKbMag)
                     {
                         maxNormalKbMag = kbMag;

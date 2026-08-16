@@ -16,9 +16,11 @@ using UnityEngine;
 //    먼저 실행해 RebuildOnStart = false 를 선점한다.
 //    이렇게 하면 SpriteCollection / Character 가 없어도 NullReference 가 발생하지 않는다.
 //
-//  풀 재사용 최적화:
-//    마지막으로 적용한 외형 키를 기억해 동일한 조합이면 Rebuild() 를 스킵한다.
-//    OnDisable() 에서 키를 초기화해 다음 스폰 시 첫 Rebuild 는 항상 수행한다.
+//  풀 재사용 최적화 (2단):
+//    ① 인스턴스 단위 — 마지막으로 적용한 외형 키를 기억해 같은 조합이면 Rebuild() 자체를 건너뛴다.
+//       (디스폰 시 키를 지우지 않는다. 지우면 같은 유닛이 다시 나올 때마다 재합성한다)
+//    ② 전역 단위 — CharacterBuilder 의 공유 캐시가 같은 외형의 텍스처·SpriteLibraryAsset 을
+//       모든 인스턴스에 돌려쓴다. 한 웨이브 적 20기는 조합이 같아 합성은 1회로 끝난다.
 // ============================================================
 
 [DefaultExecutionOrder(-100)]

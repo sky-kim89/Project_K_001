@@ -1,4 +1,6 @@
 using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
 using UnityEngine;
 
 // ============================================================
@@ -43,7 +45,8 @@ namespace BattleGame.Units
     {
         // GO 반납 목록 — ForEach 외부에서 처리하기 위해 캐싱
         // generalEntity: 병사 사망 시 소속 장군 알림용 (병사 아니면 Entity.Null)
-        readonly System.Collections.Generic.List<(GameObject obj, TeamType team, Entity generalEntity)> _pending = new();
+        // deathPos    : 쓰러진 지점 — 순교 등 위치 기반 특성이 SoldierDeathEvent 로 받는다
+        readonly System.Collections.Generic.List<(GameObject obj, TeamType team, Entity generalEntity, float3 deathPos)> _pending = new();
         bool _anyEnemyDied;
 
         protected override void OnUpdate()
@@ -59,7 +62,8 @@ namespace BattleGame.Units
                 .WithoutBurst()
                 .ForEach((Entity entity,
                           UnitPoolLinkComponent link,
-                          in UnitIdentityComponent identity) =>
+                          in UnitIdentityComponent identity,
+                          in LocalTransform xform) =>
                 {
                     // ForEach 안에서는 GO 반납 금지 (SetActive → EntityLink.OnDisable → AddComponent 구조적 변경 오류)
                     // 대신 목록에 담아 두고 ForEach 완료 후 처리
@@ -73,7 +77,7 @@ namespace BattleGame.Units
                             .GetComponentData<SoldierComponent>(entity).GeneralEntity;
                     }
 
-                    _pending.Add((link.LinkedObject, identity.Team, generalEntity));
+                    _pending.Add((link.LinkedObject, identity.Team, generalEntity, xform.Position));
                     ecb.RemoveComponent<UnitPoolLinkComponent>(entity);
 
                     if (identity.Team == TeamType.Enemy)
@@ -100,17 +104,18 @@ namespace BattleGame.Units
             // ── ③ 병사 사망 이벤트 → 소속 장군에게 알림 ─────────
             // SoldierDeathEvent 버퍼가 있는 장군에게 사망 이벤트를 추가한다.
             // PassiveSkillRuntimeSystem 이 다음 프레임에 이 버퍼를 처리한다.
-            foreach (var (_, _, generalEntity) in _pending)
+            foreach (var (_, _, generalEntity, deathPos) in _pending)
             {
                 if (generalEntity == Entity.Null) continue;
                 if (!EntityManager.Exists(generalEntity)) continue;
                 if (!EntityManager.HasBuffer<SoldierDeathEvent>(generalEntity)) continue;
 
-                EntityManager.GetBuffer<SoldierDeathEvent>(generalEntity).Add(default);
+                EntityManager.GetBuffer<SoldierDeathEvent>(generalEntity)
+                    .Add(new SoldierDeathEvent { Position = deathPos });
             }
 
             // ── ④ ForEach 완료 후 GO 반납 (이 시점은 Entity 순회 밖이므로 안전) ──
-            foreach (var (obj, team, generalEntity) in _pending)
+            foreach (var (obj, team, generalEntity, _) in _pending)
             {
                 // 아군 병사 사망 시 런 내 누적 카운터 갱신 (혼령 집결 어빌리티 참조)
                 if (generalEntity != Entity.Null && team == TeamType.Ally)

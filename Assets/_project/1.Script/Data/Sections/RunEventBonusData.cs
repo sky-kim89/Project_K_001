@@ -20,9 +20,10 @@ using UnityEngine;
 [Serializable]
 class RunEventBonusRaw
 {
-    public int        ExtraSoldiers = 0;
-    public List<int>  StatKeys      = new();   // (int)StatType
-    public List<float> StatValues   = new();   // 대응하는 % 보너스 합산값
+    public int          ExtraSoldiers = 0;
+    public List<int>    StatKeys      = new();   // (int)StatType
+    public List<float>  StatValues    = new();   // 대응하는 % 보너스 합산값
+    public List<string> SeenEventIds  = new();   // 이번 런에 이미 등장한 이벤트 ID
 }
 
 public class RunEventBonusData : ISaveSection
@@ -68,6 +69,18 @@ public class RunEventBonusData : ISaveSection
 
     /// <summary>이벤트 보너스가 하나라도 있으면 true.</summary>
     public bool HasAnyBonus => _raw.ExtraSoldiers != 0 || _raw.StatKeys.Count > 0;
+
+    // ── 등장 이력 (런 내 중복 방지) ───────────────────────────
+
+    /// <summary>이번 런에 이미 등장한 이벤트 ID 목록.</summary>
+    public IEnumerable<string> SeenEventIds => _raw.SeenEventIds;
+
+    /// <summary>이벤트가 열릴 때 호출 — 같은 런에서 다시 뽑히지 않게 기록한다.</summary>
+    public void MarkEventSeen(string id)
+    {
+        if (string.IsNullOrEmpty(id) || _raw.SeenEventIds.Contains(id)) return;
+        _raw.SeenEventIds.Add(id);
+    }
 
     // ── ISaveSection ─────────────────────────────────────────
 

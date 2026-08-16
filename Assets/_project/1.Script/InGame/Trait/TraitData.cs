@@ -30,6 +30,11 @@ public class TraitData : ScriptableObject
     [Header("효과")]
     public TraitStatEntry[] Effects = Array.Empty<TraitStatEntry>();
 
+    [Header("스탯 전환")]
+    [Tooltip("한 스탯을 다른 스탯으로 환산한다 (중갑·거인·속공 등).\n" +
+             "TraitApplier 가 모든 레이어 합산이 끝난 뒤 마지막에 처리한다.")]
+    public StatConversion[] Conversions = Array.Empty<StatConversion>();
+
     [Header("누적 스택 보너스")]
     [Tooltip("스택을 쌓는 트리거. None = 스택 없음.")]
     public PassiveTrigger StackTrigger;
@@ -51,5 +56,33 @@ public class TraitData : ScriptableObject
 
         [Tooltip("true → Base 스탯 × Value 가산 / false → Value 를 직접 가산")]
         public bool IsPercent;
+    }
+
+    // ── 스탯 전환 ────────────────────────────────────────────
+    /// <summary>
+    /// From 스탯을 PerUnit 단위로 세어, 그 개수만큼 To 스탯을 Rate 비율로 올린다.
+    ///
+    ///     증가량 = To의 현재값 × Rate × (From의 현재값 / PerUnit)
+    ///
+    /// 예) 중갑 = From:Defense, PerUnit:0.01, To:Attack, Rate:0.015
+    ///     → 방어율 45% 면 45단위 × 1.5% = 공격력 +67.5%
+    ///
+    /// "현재값" 은 전환이 시작되기 전 스냅샷이다 — 전환끼리 서로를 증폭시키거나
+    /// 특성 획득 순서에 따라 결과가 달라지지 않게 하기 위함.
+    /// </summary>
+    [Serializable]
+    public struct StatConversion
+    {
+        [Tooltip("환산 재료가 되는 스탯")]
+        public StatType From;
+
+        [Tooltip("From 스탯 몇 단위마다 계산할지. 방어율·쿨감·치명확률은 0.01(=1%p) 이 자연스럽다.")]
+        public float PerUnit;
+
+        [Tooltip("보상으로 올릴 스탯")]
+        public StatType To;
+
+        [Tooltip("1단위당 To 스탯을 올릴 비율 (0.015 = 1.5%)")]
+        public float Rate;
     }
 }

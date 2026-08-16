@@ -191,10 +191,94 @@ public static class EffectKeyLinker
             targetKey: "",
             delay:     2.5f);
 
+        // ══════════════════════════════════════════════════════
+        //  희귀 스킬 4종 — RareSkillEffectGenerator 가 만든 프리팹
+        //  Runner 가 Base/Caster/Target 을 단계별 연출로 나눠 쓴다.
+        // ══════════════════════════════════════════════════════
+
+        // ㉑ Bisect — 일도양단
+        //    Caster = 검광 응축(①) + 적 발도 표식(②), Base = 참격선(③), Target = 절단 섬광(③)
+        //    경직 2초 + 응축 0.35초를 넘겨야 연출이 중간에 잘리지 않는다
+        Link("Active_Bisect",
+            baseKey:   "FX_Bisect_Slash",
+            casterKey: "FX_Bisect_Charge",
+            targetKey: "FX_Bisect_Cut",
+            delay:     4.0f);
+
+        // ㉒ ArrowStorm — 화살 폭풍 (전방 산탄 3연발)
+        //    Caster = 발사 산탄(발마다 조준 방향으로 스폰), Target = 명중
+        Link("Active_ArrowStorm",
+            baseKey:   "",
+            casterKey: "FX_ArrowStorm_Volley",
+            targetKey: "FX_ArrowStorm_Burst",
+            delay:     1.5f);
+
+        // ㉓ GravityCollapse — 중력 붕괴
+        //    Base = 흡입 소용돌이(루프, EffectDuration 2.5 + 여유), Target = 붕괴 폭발
+        Link("Active_GravityCollapse",
+            baseKey:   "FX_Gravity_Vortex",
+            casterKey: "",
+            targetKey: "FX_Gravity_Collapse",
+            delay:     3.5f);
+
+        // ㉔ Bulwark — 불멸의 방벽
+        //    Caster = 방벽 돔(루프, Runner 가 duration+delay 로 직접 연장), Target = 붕괴
+        Link("Active_Bulwark",
+            baseKey:   "",
+            casterKey: "FX_Bulwark_Dome",
+            targetKey: "FX_Bulwark_Burst",
+            delay:     2.0f);
+
+        // ㉕ ChainLightning — 연쇄 번개
+        //    Caster = 시전 방전, Base = 번개 줄기(from→to), Target = 감전 착탄
+        Link("Active_ChainLightning",
+            baseKey:   "FX_Chain_Bolt",
+            casterKey: "FX_Chain_Cast",
+            targetKey: "FX_Chain_Hit",
+            delay:     1.5f);
+
+        // ㉖ DeathSentence — 사형 선고
+        //    Base = 범위 표시(2초 유지), Caster = 대상별 낙인, Target = 처형
+        Link("Active_DeathSentence",
+            baseKey:   "FX_Sentence_Mark",
+            casterKey: "FX_Sentence_Mark",
+            targetKey: "FX_Sentence_Execute",
+            delay:     1.5f);
+
+        // ㉗ BloodPrice — 피의 대가
+        //    Caster = 자해 연출, Base = 전방 충격파, Target = 피격
+        Link("Active_BloodPrice",
+            baseKey:   "FX_Blood_Burst",
+            casterKey: "FX_Sacrifice",
+            targetKey: "FX_Explosion",
+            delay:     1.5f);
+
+        // ㉘ PiercingDash — 관통 돌진 (1초 쿨 — 연출은 짧고 가볍게)
+        Link("Active_PiercingDash",
+            baseKey:   "FX_Dust_Dash",
+            casterKey: "FX_Dash_Slash",
+            targetKey: "FX_Slash_Impact",
+            delay:     0.8f);
+
+        // ㉙ WarBanner — 군기 강림 (Base = 군기 오라, 8초 유지)
+        Link("Active_WarBanner",
+            baseKey:   "FX_Banner_Aura",
+            casterKey: "FX_Battle_Cry",
+            targetKey: "FX_Speed_Up",
+            delay:     2.0f);
+
+        // ㉚ Gravestone — 비석 강림
+        //    Base = 낙하 예고, Target = 착탄 폭발, Caster = 소환진(망자가 일어난다)
+        Link("Active_Gravestone",
+            baseKey:   "FX_Grave_Warning",
+            casterKey: "FX_Grave_Rise",
+            targetKey: "FX_Grave_Impact",
+            delay:     2.5f);
+
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
-        Debug.Log("[EffectKeyLinker] ✓ 20개 액티브 스킬 이펙트 키 연동 완료.");
+        Debug.Log("[EffectKeyLinker] ✓ 30개 액티브 스킬 이펙트 키 연동 완료.");
     }
 
     // ── 내부 헬퍼 ───────────────────────────────────────────────────────

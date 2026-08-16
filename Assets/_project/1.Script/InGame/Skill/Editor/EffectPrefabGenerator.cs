@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
@@ -36,11 +36,12 @@ public static class EffectPrefabGenerator
         { "FX_Bind",             new[] { "MAT_FX_Spiral_Add",   "MAT_FX_Ring_Add",      "MAT_FX_Smoke_Alpha"   } },
         { "FX_Poison_Zone",      new[] { "MAT_FX_Smoke_Alpha",  "MAT_FX_Poison_Alpha",  "MAT_FX_Ring_Add"      } },
         { "FX_Blizzard",             new[] { "MAT_FX_Snowflake_Add","MAT_FX_Crystal_Add",   "MAT_FX_Smoke_Alpha"   } },
-        // c1=ImpactSparks, c2=RedGlow — Root LineRenderer 는 BuildRedLightningChain 에서 직접 설정
-        { "FX_RedLightning_Chain",   new[] { "MAT_FX_Spark_Add",   "MAT_FX_Soft_Add"                                } },
+        // 파티클 없이 LineRenderer 하나뿐 — 머티리얼은 BuildRedLightningChain 이 직접 넣는다
+        // 순교 — 병사가 쓰러진 자리의 폭발
+        { "FX_Martyr_Explosion",     new[] { "MAT_FX_Flame_Add",   "MAT_FX_Shard_Add",     "MAT_FX_Ring_Add",    "MAT_FX_Wisp_Add"    } },
     };
 
-    [MenuItem(ProjectKMenu.Fx + "Effect 프리팹 (22종)", priority = ProjectKMenu.PrefabPrio + 51)]
+    [MenuItem(ProjectKMenu.Fx + "Effect 프리팹 (24종)", priority = ProjectKMenu.PrefabPrio + 51)]
     public static void GenerateAll()
     {
         Directory.CreateDirectory(Path.Combine(Application.dataPath, "_project/2.Prefabs/Effect"));
@@ -70,6 +71,7 @@ public static class EffectPrefabGenerator
         n += Save("FX_Poison_Zone",     BuildPoisonZone());
         n += Save("FX_Blizzard",           BuildBlizzard());
         n += Save("FX_RedLightning_Chain", BuildRedLightningChain());
+        n += Save("FX_Martyr_Explosion",   BuildMartyrExplosion());
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
@@ -100,13 +102,20 @@ public static class EffectPrefabGenerator
 
     static GameObject NewGO() => new GameObject("FX");
 
+    // ── 정렬 순서 ────────────────────────────────────────────
+    //  ⚠ 이 프로젝트의 Sorting Layer 는 "Default" 하나뿐이다.
+    //    예전 코드가 넣던 sortingLayerName = "Effect" 는 존재하지 않는 레이어라
+    //    Unity 가 조용히 무시했고, 결국 모든 이펙트가 Default 레이어의 order 5 로 남았다.
+    //    유닛 스프라이트는 order 100 / 105 를 쓰므로 이펙트가 전부 캐릭터 뒤에 깔렸다.
+    //    → 같은 레이어 안에서 order 로만 앞뒤가 갈리므로 유닛보다 확실히 큰 값을 준다.
+    const int EffectSortingOrder = 200;
+
     static ParticleSystem AddPS(GameObject go)
     {
         var ps = go.AddComponent<ParticleSystem>();
         var rd = go.GetComponent<ParticleSystemRenderer>();
         rd.renderMode = ParticleSystemRenderMode.Billboard;
-        rd.sortingLayerName = "Effect";
-        rd.sortingOrder = 5;
+        rd.sortingOrder = EffectSortingOrder;
         var def = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Particle.mat");
         if (def != null) rd.material = def;
         return ps;
@@ -1699,64 +1708,152 @@ public static class EffectPrefabGenerator
     {
         var go = NewGO();
 
-        // Root — LineRenderer: A→B 전기 체인 선
+        // Root — LineRenderer 하나가 전부다. 렌더러 1개 = 인스턴스당 드로우콜 1.
+        //
+        // ⚠ 예전에는 여기에 ImpactSparks / RedGlow 파티클을 더 달아 뒀다.
+        //   보기엔 좋았지만 머티리얼이 서로 달라 배칭이 안 되고, 인스턴스 하나가
+        //   드로우콜 3개를 먹었다. 병사까지 폭우 사격을 쓰게 되면서 동시에
+        //   수십 발이 뜨는 상황이 되어 그대로 두면 수백 콜이 된다.
+        //   → 파티클을 걷어내고, 사라진 타격감은 선 자체의 굵기·색으로 살린다.
         var lr = go.AddComponent<LineRenderer>();
         lr.positionCount       = 2;
         lr.SetPosition(0, Vector3.zero);
-        lr.SetPosition(1, Vector3.right * 2f);  // SpawnLine() 이 런타임에 덮어씀
-        lr.startWidth          = 0.18f;
-        lr.endWidth            = 0.06f;
+        lr.SetPosition(1, Vector3.right * 2f);  // SkillEffectHelper 가 런타임에 덮어씀
+        lr.numCapVertices      = 0;             // 캡 버텍스 = 추가 삼각형. 짧은 선엔 불필요
+        lr.numCornerVertices   = 0;
+        lr.alignment           = LineAlignment.View;
         lr.useWorldSpace       = true;
-        lr.textureMode         = LineTextureMode.Tile;
-        lr.sortingLayerName    = "Effect";
-        lr.sortingOrder        = 5;
+        lr.textureMode         = LineTextureMode.Stretch;
+        lr.sortingOrder        = EffectSortingOrder;
         lr.generateLightingData = false;
+        lr.shadowCastingMode   = UnityEngine.Rendering.ShadowCastingMode.Off;
+        lr.receiveShadows      = false;
+        lr.lightProbeUsage     = UnityEngine.Rendering.LightProbeUsage.Off;
+
+        // 착탄측(A)을 굵고 희게, 튄 쪽(B)을 가늘고 붉게 — 파티클 없이도 방향이 읽힌다
+        lr.widthCurve = new AnimationCurve(
+            new Keyframe(0f, 1f), new Keyframe(0.25f, 0.75f), new Keyframe(1f, 0.28f));
+        lr.widthMultiplier = 0.30f;
+
+        var grad = new Gradient();
+        grad.SetKeys(
+            new[]
+            {
+                new GradientColorKey(new Color(1f, 0.95f, 0.85f), 0f),   // 착탄 지점 백열
+                new GradientColorKey(new Color(1f, 0.25f, 0.15f), 0.3f),
+                new GradientColorKey(new Color(0.65f, 0f, 0f),    1f),
+            },
+            new[]
+            {
+                new GradientAlphaKey(1f,   0f),
+                new GradientAlphaKey(0.9f, 0.5f),
+                new GradientAlphaKey(0f,   1f),
+            });
+        lr.colorGradient = grad;
+
         var lrMat = AssetDatabase.LoadAssetAtPath<Material>($"{kMatPath}/MAT_FX_ElectricBeam_Add.mat");
-        if (lrMat != null)
+        if (lrMat != null) lr.material = lrMat;
+        else Debug.LogWarning("[EffectPrefabGenerator] 머티리얼 없음: MAT_FX_ElectricBeam_Add");
+
+        return go;
+    }
+
+    // ── #24  FX_Martyr_Explosion ─────────────────────────────
+    //  특성 "순교" — 병사가 쓰러진 자리에서 터지는 소형 폭발.
+    //  Root:Flame_Add  c1:Shard_Add  c2:Ring_Add  c3:Wisp_Add
+    //
+    //  일반 폭발(FX_Explosion)보다 작고 짧게 잡았다 — 병사가 여럿 죽으면
+    //  같은 프레임에 여러 발이 겹치므로, 크게 만들면 화면이 통째로 가려진다.
+    //  마지막 위습은 "혼이 빠져나간다" 는 순교 컨셉을 담당한다.
+    static GameObject BuildMartyrExplosion()
+    {
+        var go = NewGO();
+
+        // Root — 붉은 화염구 (짧고 강하게)
         {
-            lr.material   = lrMat;
-            lr.startColor = new Color(1f, 0.08f, 0.08f, 1f);
-            lr.endColor   = new Color(0.6f, 0f, 0f, 0f);
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.3f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.25f, 0.55f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(3f, 9f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.5f, 1.5f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,220,120), C(220,40,10));
+            m.gravityModifier = -0.15f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 32;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 24) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.15f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.3f, new Color(1f,0.38f,0.05f)), (1f, new Color(0.25f,0.03f,0f)) },
+                new[] { (0f, 1f), (0.4f, 0.8f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.15f, 0.2f, 1.4f, 0.1f));
         }
 
-        // c1 — B 위치 충격 스파크 (MAT_FX_Spark_Add, 단발)
-        var c1 = new GameObject("ImpactSparks"); c1.transform.SetParent(go.transform, false);
+        // c1 — 갑주 파편 (Shard_Add)
+        var c1 = new GameObject("Debris"); c1.transform.SetParent(go.transform, false);
         {
             var ps = AddPS(c1);
             var m = ps.main;
-            m.duration      = 0.2f; m.loop = false;
-            m.startLifetime = new ParticleSystem.MinMaxCurve(0.1f, 0.25f);
-            m.startSpeed    = new ParticleSystem.MinMaxCurve(3f, 9f);
-            m.startSize     = new ParticleSystem.MinMaxCurve(0.06f, 0.2f);
-            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 80, 80), C(180, 0, 0));
-            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 20;
+            m.duration = 0.25f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.25f, 0.6f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(4f, 13f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.08f, 0.3f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,170,60), C(150,45,10));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
+            m.gravityModifier = 1.4f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 22;
             var em = ps.emission; em.rateOverTime = 0f;
-            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 14) });
-            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.12f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 16) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.2f;
             var col = ps.colorOverLifetime; col.enabled = true;
             col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
-                new[] { (0f, new Color(1f, 0.5f, 0.5f)), (1f, new Color(0.5f, 0f, 0f)) },
-                new[] { (0f, 1f), (1f, 0f) }));
+                new[] { (0f, new Color(1f,0.62f,0.18f)), (1f, new Color(0.4f,0.08f,0f)) },
+                new[] { (0f, 1f), (0.55f, 0.65f), (1f, 0f) }));
         }
 
-        // c2 — B 위치 붉은 플래시 글로우 (MAT_FX_Soft_Add, 단발)
-        var c2 = new GameObject("RedGlow"); c2.transform.SetParent(go.transform, false);
+        // c2 — 지면 충격 링 (Ring_Add) — 피해 반경 2 를 눈으로 알려 준다
+        var c2 = new GameObject("ShockRing"); c2.transform.SetParent(go.transform, false);
         {
             var ps = AddPS(c2);
             var m = ps.main;
-            m.duration      = 0.15f; m.loop = false;
-            m.startLifetime = new ParticleSystem.MinMaxCurve(0.1f, 0.22f);
-            m.startSpeed    = new ParticleSystem.MinMaxCurve(0f, 0.5f);
-            m.startSize     = new ParticleSystem.MinMaxCurve(0.6f, 1.6f);
-            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 60, 60, 200), C(200, 0, 0, 120));
-            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 4;
+            m.duration = 0.25f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.18f, 0.3f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(7f, 9f);   // ≈ 반경 2 까지 퍼진다
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.15f, 0.45f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,200,90), C(255,70,15));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 44;
             var em = ps.emission; em.rateOverTime = 0f;
-            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 3) });
-            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.08f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 36) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 0.1f; sh.radiusThickness = 0f;
             var col = ps.colorOverLifetime; col.enabled = true;
             col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
-                new[] { (0f, new Color(1f, 0.3f, 0.3f)), (1f, new Color(0.5f, 0f, 0f)) },
-                new[] { (0f, 0.75f), (1f, 0f) }));
+                new[] { (0f, Color.white), (0.4f, new Color(1f,0.45f,0.05f)), (1f, new Color(0.35f,0.03f,0f)) },
+                new[] { (0f, 1f), (0.5f, 0.5f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.1f, 0.3f, 1.35f, 0f));
+        }
+
+        // c3 — 떠오르는 혼백 (Wisp_Add) — 순교 컨셉
+        var c3 = new GameObject("Soul"); c3.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c3);
+            var m = ps.main;
+            m.duration = 0.4f; m.loop = false;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.6f, 1.0f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(1.2f, 2.6f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.18f, 0.42f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,240,200), C(255,180,90));
+            m.gravityModifier = -0.5f;   // 위로 떠오른다
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 10;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.08f, 6) });
+            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.18f;
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(1f,0.95f,0.8f)), (1f, new Color(1f,0.6f,0.2f)) },
+                new[] { (0f, 0f), (0.25f, 0.85f), (1f, 0f) }));
         }
 
         return go;

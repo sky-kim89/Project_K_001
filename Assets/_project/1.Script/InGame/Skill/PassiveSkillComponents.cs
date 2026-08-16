@@ -55,11 +55,17 @@ namespace BattleGame.Units
 
     /// <summary>
     /// 병사 사망 이벤트 버퍼 — 제너럴 Entity 에 붙음.
-    /// UnitDeathDespawnSystem 이 소속 병사 사망 감지 시 Add(default).
-    /// SoldierDeathEmpowerSystem 이 프레임 내 처리 후 Clear.
+    /// UnitDeathDespawnSystem 이 소속 병사 사망 감지 시 사망 지점과 함께 Add.
+    ///
+    /// 소비 순서: PassiveSkillRuntimeSystem(패시브) → CombatTriggerSystem(장비·어빌리티·특성)
+    /// → CombatTriggerSystem 이 Clear. 앞쪽에서 지우면 뒤쪽 트리거가 영원히 못 본다.
     /// </summary>
     [InternalBufferCapacity(4)]
-    public struct SoldierDeathEvent : IBufferElementData { }
+    public struct SoldierDeathEvent : IBufferElementData
+    {
+        /// <summary>병사가 쓰러진 지점 — 순교 등 위치 기반 특성이 사용.</summary>
+        public float3 Position;
+    }
 
     // ── 조건부 패시브 트리거 추적 ────────────────────────────
 

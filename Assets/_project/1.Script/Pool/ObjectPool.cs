@@ -59,6 +59,34 @@ public class ObjectPool : MonoBehaviour
         return obj;
     }
 
+    /// <summary>
+    /// 등록된 원본 프리팹을 이름으로 조회한다 (인스턴스 아님).
+    /// 프리팹이 들고 있는 머티리얼·설정을 런타임에 읽고 싶을 때 쓴다
+    /// — 같은 에셋을 Resources 에 또 복사해 두는 것보다 출처가 하나로 유지된다.
+    /// </summary>
+    public GameObject GetPrefab(string name)
+        => _prefabMap.TryGetValue(name, out var prefab) ? prefab : null;
+
+    // ── 미리 만들어 두기 ──────────────────────────────────────
+    /// <summary>
+    /// name 프리팹의 비활성 인스턴스를 count 개까지 미리 채워 둔다.
+    /// 이미 그만큼 있으면 아무것도 하지 않으므로 여러 번 불러도 안전하다.
+    ///
+    /// 전투 중 Instantiate 가 몰리면 프레임이 끊긴다 — 이펙트처럼
+    /// 짧은 시간에 여러 개가 동시에 필요한 오브젝트는 전투 시작 전에 채운다.
+    /// </summary>
+    public void Prewarm(string name, int count)
+    {
+        if (!_inactive.TryGetValue(name, out var pool))
+        {
+            Debug.LogWarning($"[ObjectPool:{Type}] 등록되지 않은 이름: {name}");
+            return;
+        }
+
+        for (int i = pool.Count; i < count; i++)
+            pool.Add(CreateInstance(name));
+    }
+
     // ── 반납 ──────────────────────────────────────────────────
     public void Release(string name, GameObject instance)
     {

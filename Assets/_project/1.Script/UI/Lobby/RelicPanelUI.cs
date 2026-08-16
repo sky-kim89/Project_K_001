@@ -144,8 +144,10 @@ public class RelicPanelUI : MonoBehaviour
 
     void SetupCard(GameObject card, RelicData data)
     {
-        int  level = _inventory?.GetLevel(data.Id) ?? -1;
-        bool owned = level >= 0;
+        // 모든 유물은 0레벨로 존재한다 — "미보유" 상태는 없다.
+        // owned 자리에 들어가던 판정은 "강화했는가(level > 0)" 로 바뀐다.
+        int  level = _inventory?.GetLevel(data.Id) ?? 0;
+        bool owned = level > 0;
 
         // 희귀도 상단 바
         var rarityBorder = card.transform.Find("RarityBorder")?.GetComponent<Image>();
@@ -173,11 +175,12 @@ public class RelicPanelUI : MonoBehaviour
 
         bool isInfinite = data.Rarity == RelicRarity.Common;
 
-        // 레벨 뱃지 (아이콘 우하단) — 미보유 시 완전 숨김
+        // 레벨 뱃지 (아이콘 우하단) — 0레벨도 표시한다.
+        // 0 이 보여야 "아직 아무 효과도 없다" 는 것이 드러난다.
         var levelBadgeTr = card.transform.Find("IconBg/LevelBadge");
-        if (levelBadgeTr != null) levelBadgeTr.gameObject.SetActive(owned);
+        if (levelBadgeTr != null) levelBadgeTr.gameObject.SetActive(true);
         var levelTmp = levelBadgeTr?.GetComponentInChildren<TextMeshProUGUI>();
-        if (levelTmp != null && owned)
+        if (levelTmp != null)
         {
             levelTmp.text = (!isInfinite && level >= data.MaxLevel) ? "MAX" : $"Lv.{level}";
         }
@@ -187,10 +190,11 @@ public class RelicPanelUI : MonoBehaviour
         if (nameTmp != null)
         {
             nameTmp.text  = data.RelicName;
-            nameTmp.color = owned ? Color.white : new Color(0.5f, 0.5f, 0.5f);
+            // 0레벨은 흐리게 — 다만 이름은 읽혀야 하므로 너무 어둡게 두지 않는다
+            nameTmp.color = owned ? Color.white : new Color(0.68f, 0.70f, 0.76f);
         }
 
-        // 설명 (미보유면 1레벨 미리보기)
+        // 설명 (0레벨이면 1레벨 미리보기 — 강화하면 뭐가 붙는지 보여준다)
         var descTmp = card.transform.Find("DescText")?.GetComponent<TextMeshProUGUI>();
         if (descTmp != null)
             descTmp.text = data.GetDescription(Mathf.Max(level, 1));
@@ -199,31 +203,7 @@ public class RelicPanelUI : MonoBehaviour
         var costTmp    = card.transform.Find("CostText")?.GetComponent<TextMeshProUGUI>();
         var upgradeBtn = card.transform.Find("UpgradeBtn")?.GetComponent<Button>();
 
-        if (!owned)
-        {
-            int  acquireCost = ReincarnationData.AcquireCost(data.Rarity);
-            bool canAfford   = (_reincData?.ReincarnationPoints ?? 0) >= acquireCost;
-
-            if (costTmp    != null) costTmp.text = $"{acquireCost}pt";
-            if (upgradeBtn != null)
-            {
-                SetBtnLabel(upgradeBtn, "획득");
-                upgradeBtn.interactable = canAfford;
-                upgradeBtn.onClick.RemoveAllListeners();
-                var capturedId   = data.Id;
-                var capturedMax  = isInfinite ? int.MaxValue : data.MaxLevel;
-                var capturedCost = acquireCost;
-                upgradeBtn.onClick.AddListener(() =>
-                {
-                    if (_reincData == null || !_reincData.TrySpendPoints(capturedCost)) return;
-                    _inventory?.Acquire(capturedId);
-                    _inventory?.LevelUp(capturedId, capturedMax);
-                    UserDataManager.Instance?.RequestSave();
-                    Refresh();
-                });
-            }
-        }
-        else if (!isInfinite && level >= data.MaxLevel)
+        if (!isInfinite && level >= data.MaxLevel)
         {
             if (costTmp    != null) costTmp.text = "";
             if (upgradeBtn != null) { SetBtnLabel(upgradeBtn, "최대"); upgradeBtn.interactable = false; }
@@ -233,7 +213,14 @@ public class RelicPanelUI : MonoBehaviour
             int  cost      = ReincarnationData.LevelUpCost(level);
             bool canAfford = (_reincData?.ReincarnationPoints ?? 0) >= cost;
 
-            if (costTmp    != null) costTmp.text = $"{cost}pt";
+            // 비용은 강화 버튼 위에 겹쳐 있다 (카드 직계 자식 "CostText").
+            // 포인트가 모자라면 붉게 — 버튼이 왜 안 눌리는지 여기서 바로 보인다.
+            if (costTmp != null)
+            {
+                costTmp.text  = $"{cost} pt";
+                costTmp.color = canAfford ? new Color(1f, 0.85f, 0.35f)
+                                          : new Color(1f, 0.48f, 0.45f);
+            }
             if (upgradeBtn != null)
             {
                 SetBtnLabel(upgradeBtn, "강화");
@@ -281,8 +268,8 @@ public class RelicPanelUI : MonoBehaviour
 
     void OnRelicReset()
     {
-        if (_inventory == null || _reincData == null || _db == null) return;
-        int refund = _inventory.ResetAll(_db);
+        if (_inventory == null || _reincData == null) return;
+        int refund = _inventory.ResetAll();
         _reincData.EarnPoints(refund);
         UserDataManager.Instance?.RequestSave();
         Refresh();

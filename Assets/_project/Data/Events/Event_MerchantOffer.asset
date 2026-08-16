@@ -22,21 +22,23 @@ MonoBehaviour:
   - Label: "\uBE44\uC2F8\uAC8C \uC0B0\uB2E4"
     ResultText: "\uAE08\uD654\uB97C \uAC74\uB138\uC2B5\uB2C8\uB2E4. \uADF8\uAC00
       \uAC74\uB128 \uBB3C\uAC74\uC5D0\uC11C \uD76C\uBBF8\uD55C \uBE5B\uC774 \uB0A9\uB2C8\uB2E4.\n[\uACE8\uB4DC
-      200 \uC18C\uBAA8 / \uC720\uC775\uD55C \uD2B9\uC131 \uD68D\uB4DD]"
+      \uC18C\uBAA8 / \uC720\uC775\uD55C \uD2B9\uC131 \uD68D\uB4DD]"
     SuccessRate: 1
     SuccessRewards:
     - Type: 3
       Item: 0
-      IntValue: 200
+      IntValue: 60
       FloatValue: 0
-      Description: "\uACE8\uB4DC -200"
+      Description: 
+      ScaleByStageReward: 1
     - Type: 9
       Item: -1
       IntValue: 0
       FloatValue: 0
       Description: "\uC720\uC775\uD55C \uD2B9\uC131 \uD68D\uB4DD"
+      ScaleByStageReward: 0
     FailRewards: []
-    CostHint: "\uACE8\uB4DC 200"
+    CostHint: 
   - Label: "\uADF8\uB0E5 \uC9C0\uB098\uCE5C\uB2E4"
     ResultText: "\uACE0\uAC1C\uB97C \uC813\uACE0 \uBC1C\uAC78\uC74C\uC744 \uC62E\uACBC\uC2B5\uB2C8\uB2E4."
     SuccessRate: 1

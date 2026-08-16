@@ -33,6 +33,9 @@ public class RunShopGeneralSlot : MonoBehaviour
     Func<UnitEntry, int, bool> _onHire;   // 반환값 = 실제로 고용했는지
     UnitEntry              _entry;
     int                    _cost;
+
+    /// <summary>이 매물의 고용가. 등급마다 다르므로 헤더 갱신이 이 값을 읽는다.</summary>
+    public int Cost => _cost;
     Texture2D              _portraitTexture;
     bool                   _sold;
 
@@ -72,7 +75,7 @@ public class RunShopGeneralSlot : MonoBehaviour
 
             if (_nameText  != null) _nameText.text  = entry.UnitName;
             if (_jobText   != null) _jobText.text   = JobStyle.GetLabel(job);
-            if (_gradeText != null) { _gradeText.text = GradeStyle.GetLabel(entry.Grade); _gradeText.color = gc; }
+            if (_gradeText != null) { _gradeText.text = GradeStyle.GetLabelWithQuality(entry.Grade, entry.UnitName); _gradeText.color = gc; }
 
             if (_hpText      != null) { _hpText.text      = $"{result.Total(StatType.MaxHp):N0}"; _hpText.color = StatColors.Hp; }
             if (_atkText     != null) { _atkText.text     = $"{result.Total(StatType.Attack):N0}"; _atkText.color = StatColors.Atk; }

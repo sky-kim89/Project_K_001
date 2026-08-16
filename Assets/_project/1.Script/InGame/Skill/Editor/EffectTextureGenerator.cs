@@ -19,6 +19,13 @@ using UnityEngine;
 //    Shard        — 각진 파편 (회전 마름모)
 //  [추가 1종]
 //    ElectricBeam — LineRenderer 전용 전기 빔 (지그재그 코어 + 글로우 + 가지)
+//  [희귀 스킬용 6종]
+//    Blade        — 끝이 뾰족한 초승달 검기 (일도양단)
+//    Beam         — 얇은 코어 + 글로우의 가로 섬광 (참격선)
+//    Halo         — 굵은 이중 동심 링 (붕괴·폭발 충격파)
+//    Vortex       — 4아암 로그 나선 (중력 붕괴 흡입)
+//    HexShield    — 육각 방벽 3중 링 (불멸의 방벽 돔)
+//    Streak       — 머리가 밝고 꼬리가 사라지는 낙하 궤적 (화살 폭풍)
 // ============================================================
 
 public static class EffectTextureGenerator
@@ -60,6 +67,19 @@ public static class EffectTextureGenerator
         // ── 추가 1종 ───────────────────────────────────────────
         SavePng("TX_FX_ElectricBeam", GenElectricBeam());
 
+        // ── 희귀 스킬용 6종 ────────────────────────────────────
+        SavePng("TX_FX_Blade",     GenBlade());
+        SavePng("TX_FX_Beam",      GenBeam());
+        SavePng("TX_FX_Halo",      GenHalo());
+        SavePng("TX_FX_Vortex",    GenVortex());
+        SavePng("TX_FX_HexShield", GenHexShield());
+        SavePng("TX_FX_Streak",    GenStreak());
+        SavePng("TX_FX_ArrowH",    GenArrowH());
+        SavePng("TX_FX_Bolt",      GenBolt());
+        SavePng("TX_FX_Brand",     GenBrand());
+        SavePng("TX_FX_Tomb",      GenTomb());
+        SavePng("TX_FX_Banner",    GenBanner());
+
         AssetDatabase.Refresh();
         ConfigureTextureImports();
 
@@ -91,9 +111,23 @@ public static class EffectTextureGenerator
         // ── 추가 1종 머티리얼 ──────────────────────────────────
         MakeMat("MAT_FX_ElectricBeam_Add", "TX_FX_ElectricBeam", additive: true);
 
+        // ── 희귀 스킬용 6종 머티리얼 ───────────────────────────
+        MakeMat("MAT_FX_Blade_Add",     "TX_FX_Blade",     additive: true);
+        MakeMat("MAT_FX_Beam_Add",      "TX_FX_Beam",      additive: true);
+        MakeMat("MAT_FX_Halo_Add",      "TX_FX_Halo",      additive: true);
+        MakeMat("MAT_FX_Vortex_Add",    "TX_FX_Vortex",    additive: true);
+        MakeMat("MAT_FX_HexShield_Add", "TX_FX_HexShield", additive: true);
+        MakeMat("MAT_FX_Streak_Add",    "TX_FX_Streak",    additive: true);
+        MakeMat("MAT_FX_ArrowH_Add",    "TX_FX_ArrowH",    additive: true);
+        MakeMat("MAT_FX_Bolt_Add",      "TX_FX_Bolt",      additive: true);
+        MakeMat("MAT_FX_Brand_Add",     "TX_FX_Brand",     additive: true);
+        MakeMat("MAT_FX_Tomb_Alpha",    "TX_FX_Tomb",      additive: false);
+        MakeMat("MAT_FX_Tomb_Add",      "TX_FX_Tomb",      additive: true);
+        MakeMat("MAT_FX_Banner_Add",    "TX_FX_Banner",    additive: true);
+
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("[EffectTextureGenerator] ✓ 21 textures + 22 materials generated.");
+        Debug.Log("[EffectTextureGenerator] ✓ 32 textures + 34 materials generated.");
     }
 
     // ── 공통 헬퍼 ───────────────────────────────────────────────────
@@ -432,6 +466,253 @@ public static class EffectTextureGenerator
         return Mathf.Clamp01(core + inner + outer + branch);
     });
 
+    // ══════════════════════════════════════════════════════════════════
+    //  희귀 스킬용 6종
+    //  전부 "코어 + 글로우" 2단 구조다. 코어만 있으면 도형처럼 납작해 보이고,
+    //  글로우만 있으면 뿌옇게 뭉갠다. Additive 로 겹칠 때 이 대비가 세기를 만든다.
+    // ══════════════════════════════════════════════════════════════════
+
+    // 초승달 검기 — 호를 따라가되 양 끝으로 갈수록 얇아져 칼끝처럼 뾰족해진다
+    static Texture2D GenBlade() => BuildTex((cx, cy) =>
+    {
+        float r = Mathf.Sqrt(cx * cx + cy * cy);
+        float a = Mathf.Atan2(cy, cx);
+
+        float t = Mathf.Abs(a) / (Mathf.PI * 0.62f);   // 0 = 호 중앙, 1 = 끝
+        if (t > 1f) return 0f;
+
+        float thick = Mathf.Lerp(0.070f, 0.003f, Mathf.Pow(t, 0.65f));
+        float d     = Mathf.Abs(r - 0.40f);
+
+        float core = Mathf.Pow(Mathf.Clamp01(1f - d / thick), 0.55f);
+        float glow = Mathf.Exp(-d * 26f) * 0.35f;
+        float taper = Mathf.Clamp01(1f - Mathf.Pow(t, 2.6f));
+
+        return Mathf.Clamp01((core + glow) * taper);
+    });
+
+    // 가로 섬광 — 참격선. 코어는 머리카락처럼 얇고 위아래로만 번진다
+    static Texture2D GenBeam() => BuildTex((cx, cy) =>
+    {
+        float ends = Mathf.Pow(Mathf.Clamp01(1f - Mathf.Abs(cx) / 0.5f), 0.45f);
+
+        float core = Mathf.Exp(-(cy * cy) / (2f * 0.014f * 0.014f));
+        float glow = Mathf.Exp(-(cy * cy) / (2f * 0.070f * 0.070f)) * 0.42f;
+        // 중앙이 가장 굵게 부풀어 오른 형태 (양끝은 실선)
+        float belly = Mathf.Exp(-(cx * cx) / (2f * 0.22f * 0.22f)) * 0.35f *
+                      Mathf.Exp(-(cy * cy) / (2f * 0.13f * 0.13f));
+
+        return Mathf.Clamp01((core + glow + belly) * ends);
+    });
+
+    // 이중 링 — 폭발 충격파. 바깥은 굵고 안쪽은 가늘어 퍼져 나가는 인상을 준다
+    static Texture2D GenHalo() => BuildTex((cx, cy) =>
+    {
+        float r = Mathf.Sqrt(cx * cx + cy * cy);
+
+        float outer = Mathf.Pow(Mathf.Clamp01(1f - Mathf.Abs(r - 0.440f) / 0.048f), 0.7f);
+        float inner = Mathf.Clamp01(1f - Mathf.Abs(r - 0.300f) / 0.016f) * 0.65f;
+        float haze  = Mathf.Exp(-Mathf.Abs(r - 0.440f) * 14f) * 0.25f;
+
+        return Mathf.Clamp01(outer + inner + haze);
+    });
+
+    // 4아암 로그 나선 — 중심으로 빨려 들어가는 흐름
+    static Texture2D GenVortex() => BuildTex((cx, cy) =>
+    {
+        float r = Mathf.Sqrt(cx * cx + cy * cy);
+        if (r > 0.5f || r < 0.02f) return 0f;
+
+        float a      = Mathf.Atan2(cy, cx);
+        float spiral = Mathf.Sin(4f * a - Mathf.Log(r) * 3.4f);
+        float arm    = Mathf.Pow(Mathf.Clamp01(spiral), 2.4f);
+
+        // 바깥으로 갈수록 옅어지고, 중심 바로 앞이 가장 진하다 (빨려드는 목)
+        float radial = Mathf.Clamp01(1f - r / 0.5f) * Mathf.Clamp01(r / 0.07f);
+        float core   = Mathf.Exp(-(r * r) / (2f * 0.055f * 0.055f)) * 0.9f;
+
+        return Mathf.Clamp01(arm * radial * 1.25f + core);
+    });
+
+    // 육각 방벽 — 정육각형 3중 링. 돔이 겹겹이 쌓인 느낌
+    static Texture2D GenHexShield() => BuildTex((cx, cy) =>
+    {
+        float x = Mathf.Abs(cx), y = Mathf.Abs(cy);
+        float hex = Mathf.Max(x * 1.1547f, x * 0.5774f + y);   // 정육각형 거리
+
+        float r1 = Mathf.Pow(Mathf.Clamp01(1f - Mathf.Abs(hex - 0.460f) / 0.030f), 0.8f);
+        float r2 = Mathf.Clamp01(1f - Mathf.Abs(hex - 0.320f) / 0.018f) * 0.60f;
+        float r3 = Mathf.Clamp01(1f - Mathf.Abs(hex - 0.185f) / 0.013f) * 0.35f;
+        float fill = Mathf.Clamp01(1f - hex / 0.46f) * 0.10f;   // 옅은 내부 채움
+
+        return Mathf.Clamp01(r1 + r2 + r3 + fill);
+    });
+
+    // 묘비 — 둥근 머리 + 기둥 + 받침, 가운데 십자 각인.
+    //  ⚠ 실루엣이 읽혀야 "비석" 이다
+    //    파티클로 흩뿌리는 조각이 아니라 통째로 하나 떨어지는 물체이므로
+    //    윤곽이 또렷하고 내부는 살짝 채운다 (Alpha 머티리얼로도 쓴다).
+    static Texture2D GenTomb() => BuildTex((cx, cy) =>
+    {
+        float ax = Mathf.Abs(cx);
+
+        // 기둥 — 아래로 갈수록 아주 살짝 넓어진다
+        float bodyW = Mathf.Lerp(0.155f, 0.185f, Mathf.InverseLerp(0.30f, -0.34f, cy));
+        bool  inBody = cy < 0.30f && cy > -0.34f && ax < bodyW;
+
+        // 머리 — 반원
+        float hx = cx / 0.165f, hy = (cy - 0.30f) / 0.165f;
+        bool  inHead = cy >= 0.30f && (hx * hx + hy * hy) < 1f;
+
+        // 받침 — 아래 두 단
+        bool inBase1 = cy <= -0.34f && cy > -0.40f && ax < 0.235f;
+        bool inBase2 = cy <= -0.40f && cy > -0.46f && ax < 0.285f;
+
+        bool solid = inBody || inHead || inBase1 || inBase2;
+        if (!solid) return 0f;
+
+        // 십자 각인 — 비어 보이게 파낸다
+        bool crossV = ax < 0.030f && cy < 0.34f && cy > 0.02f;
+        bool crossH = Mathf.Abs(cy - 0.22f) < 0.030f && ax < 0.095f;
+        if (crossV || crossH) return 0.35f;
+
+        // 가장자리를 밝게 (윤곽선)
+        float edge = Mathf.Min(bodyW - ax, 0.12f) / 0.12f;
+        return Mathf.Lerp(1f, 0.72f, Mathf.Clamp01(edge));
+    });
+
+    // 군기 — 깃대 + 펄럭이는 삼각 깃발.
+    static Texture2D GenBanner() => BuildTex((cx, cy) =>
+    {
+        float a = 0f;
+
+        // 깃대
+        if (Mathf.Abs(cx + 0.28f) < 0.022f && cy > -0.46f && cy < 0.44f)
+            a = 1f;
+
+        // 깃발 — 오른쪽으로 뻗고 끝이 갈라진다. 사인으로 펄럭임을 준다
+        if (cx > -0.26f && cx < 0.44f && cy < 0.40f && cy > -0.02f)
+        {
+            float t    = Mathf.InverseLerp(-0.26f, 0.44f, cx);
+            float wave = Mathf.Sin(t * 5.5f) * 0.035f;
+            float top  = 0.38f + wave;
+            float bot  = Mathf.Lerp(0.02f, 0.20f, t) + wave;   // 끝으로 갈수록 좁아진다
+            // 끝단 제비꼬리
+            if (t > 0.82f) bot = Mathf.Lerp(bot, top - 0.02f, (t - 0.82f) / 0.18f);
+            if (cy < top && cy > bot) a = Mathf.Max(a, 1f);
+        }
+
+        // 깃대 끝 장식
+        float dx = (cx + 0.28f) / 0.055f, dy = (cy - 0.46f) / 0.055f;
+        if (dx * dx + dy * dy < 1f) a = Mathf.Max(a, 1f);
+
+        return a;
+    });
+
+    // 번개 줄기 — LineRenderer 전용. 가로로 길게 늘여도 형태가 살아 있어야 한다.
+    //
+    //  ⚠ 기존 TX_FX_ElectricBeam 과 따로 만든다
+    //    그건 붉은 사슬 연출 전용으로 굵기·가지 밀도가 맞춰져 있다.
+    //    연쇄 번개는 더 날카롭고 밝은 코어에 잔가지가 많아야 "튄다" 로 읽힌다.
+    static Texture2D GenBolt() => BuildTex((cx, cy) =>
+    {
+        // 주 줄기 — 주파수가 다른 사인 3개를 합쳐 규칙성이 안 보이게 한다
+        float jitter = Mathf.Sin(cx * 61f) * 0.052f
+                     + Mathf.Sin(cx * 27f + 1.7f) * 0.030f
+                     + Mathf.Sin(cx * 13f + 0.4f) * 0.014f;
+        float d = Mathf.Abs(cy - jitter);
+
+        float core  = Mathf.Max(0f, 1f - d / 0.013f);     // 흰 코어
+        float inner = Mathf.Exp(-d * 30f) * 0.72f;         // 안쪽 발광
+        float outer = Mathf.Exp(-d * 9f)  * 0.30f;         // 바깥 확산
+
+        // 잔가지 — 주 줄기에서 갈라져 나가는 짧은 방전
+        float branchY = jitter + Mathf.Sin(cx * 95f + 2.3f) * 0.085f;
+        float branchD = Mathf.Abs(cy - branchY);
+        float branchOn = Mathf.Max(0f, Mathf.Sin(cx * 23f + 1.1f) - 0.45f) * 1.8f;
+        float branch  = Mathf.Exp(-branchD * 48f) * 0.42f * branchOn;
+
+        // 양 끝은 살짝 여며 준다 (LineRenderer 이음매가 뚝 끊겨 보이지 않게)
+        float ends = Mathf.Clamp01((0.5f - Mathf.Abs(cx)) / 0.06f);
+
+        return Mathf.Clamp01((core + inner + outer + branch) * ends);
+    });
+
+    // 사형 낙인 — 이중 원 + 안쪽 십자 눈금. 머리 위에 찍히는 표식.
+    static Texture2D GenBrand() => BuildTex((cx, cy) =>
+    {
+        float r  = Mathf.Sqrt(cx * cx + cy * cy);
+        float ax = Mathf.Abs(cx), ay = Mathf.Abs(cy);
+
+        float ring1 = Mathf.Pow(Mathf.Clamp01(1f - Mathf.Abs(r - 0.44f) / 0.030f), 0.8f);
+        float ring2 = Mathf.Clamp01(1f - Mathf.Abs(r - 0.30f) / 0.016f) * 0.7f;
+
+        // 십자 눈금 — 바깥 링에 걸치는 짧은 4개 (조준선 느낌)
+        float tickV = (ay > 0.30f && ay < 0.50f) ? Mathf.Clamp01(1f - ax / 0.020f) : 0f;
+        float tickH = (ax > 0.30f && ax < 0.50f) ? Mathf.Clamp01(1f - ay / 0.020f) : 0f;
+
+        // 중심 점
+        float dot = Mathf.Exp(-(r * r) / (2f * 0.045f * 0.045f)) * 0.85f;
+
+        return Mathf.Clamp01(ring1 + ring2 + tickV + tickH + dot);
+    });
+
+    // 가로 화살 — 촉·샤프트·깃이 전부 있는 진짜 화살 실루엣
+    //
+    //  ⚠ 기존 TX_FX_Arrow 는 세로(+Y) 방향이라 Stretch 렌더에 못 쓴다
+    //    Stretch 는 파티클의 +X 를 진행 방향에 맞춘다. 세로 화살을 넣으면
+    //    90° 누운 채로 늘어나 화살이 아니라 빛 덩어리가 된다.
+    //    → 낙하물용은 반드시 이 가로 버전을 쓴다.
+    static Texture2D GenArrowH() => BuildTex((cx, cy) =>
+    {
+        float a  = 0f;
+        float ay = Mathf.Abs(cy);
+
+        // 샤프트 — 꼬리에서 촉 쪽으로 아주 살짝 굵어진다
+        if (cx > -0.44f && cx < 0.26f)
+        {
+            float w = Mathf.Lerp(0.013f, 0.024f, Mathf.InverseLerp(-0.44f, 0.26f, cx));
+            a = Mathf.Max(a, Mathf.Clamp01(1f - ay / w));
+        }
+
+        // 촉 — 앞이 뾰족한 삼각형
+        if (cx >= 0.18f && cx <= 0.48f)
+        {
+            float t     = Mathf.InverseLerp(0.48f, 0.18f, cx);   // 0 = 끝, 1 = 밑변
+            float halfH = Mathf.Max(0.004f, 0.095f * t);
+            a = Mathf.Max(a, Mathf.Clamp01(1f - ay / halfH));
+        }
+
+        // 깃 — 꼬리 쪽 두 갈래
+        if (cx >= -0.48f && cx <= -0.26f)
+        {
+            float t     = Mathf.InverseLerp(-0.48f, -0.26f, cx);
+            float spread = Mathf.Lerp(0.085f, 0.012f, t);
+            a = Mathf.Max(a, Mathf.Clamp01(1f - Mathf.Abs(ay - spread) / 0.028f) * 0.9f);
+        }
+
+        // 진행 방향으로 눕는 은은한 글로우 (촉 쪽이 밝다)
+        float glow = Mathf.Exp(-(cy * cy) / (2f * 0.045f * 0.045f)) *
+                     Mathf.Clamp01(1f - Mathf.Abs(cx) / 0.5f) *
+                     Mathf.Lerp(0.12f, 0.35f, Mathf.InverseLerp(-0.5f, 0.5f, cx));
+
+        return Mathf.Clamp01(a + glow);
+    });
+
+    // 낙하 궤적 — 머리가 밝고 꼬리로 갈수록 가늘어지며 사라진다
+    static Texture2D GenStreak() => BuildTex((cx, cy) =>
+    {
+        float t = Mathf.InverseLerp(0.5f, -0.5f, cy);          // 0 = 머리(위), 1 = 꼬리
+        float w = Mathf.Lerp(0.042f, 0.005f, t);
+
+        float body = Mathf.Clamp01(1f - Mathf.Abs(cx) / w) * Mathf.Pow(1f - t, 1.5f);
+        float dy   = cy - 0.36f;
+        float head = Mathf.Exp(-((cx * cx) / (2f * 0.045f * 0.045f) +
+                                 (dy * dy) / (2f * 0.055f * 0.055f)));
+
+        return Mathf.Clamp01(body + head);
+    });
+
     // ── 텍스처 임포트 설정 ──────────────────────────────────────────────
 
     static readonly string[] kTexNames =
@@ -443,6 +724,9 @@ public static class EffectTextureGenerator
         "TX_FX_Lightning", "TX_FX_Crystal", "TX_FX_Spiral",
         "TX_FX_Wisp", "TX_FX_Petal", "TX_FX_Shard",
         "TX_FX_ElectricBeam",
+        "TX_FX_Blade", "TX_FX_Beam", "TX_FX_Halo",
+        "TX_FX_Vortex", "TX_FX_HexShield", "TX_FX_Streak", "TX_FX_ArrowH",
+        "TX_FX_Bolt", "TX_FX_Brand", "TX_FX_Tomb", "TX_FX_Banner",
     };
 
     static void ConfigureTextureImports()

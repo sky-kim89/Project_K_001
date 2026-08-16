@@ -21,6 +21,7 @@ namespace BattleGame.Units
     public partial class CombatTriggerSystem : SystemBase
     {
         EntityQuery _enemyQuery;
+        EntityQuery _generalQuery;
 
         protected override void OnCreate()
         {
@@ -29,41 +30,63 @@ namespace BattleGame.Units
                 All  = new ComponentType[] { ComponentType.ReadOnly<UnitIdentityComponent>(), ComponentType.ReadOnly<LocalTransform>() },
                 None = new ComponentType[] { typeof(DeadTag) },
             });
+
+            _generalQuery = GetEntityQuery(new EntityQueryDesc
+            {
+                All = new ComponentType[]
+                {
+                    ComponentType.ReadOnly<GeneralComponent>(),
+                    ComponentType.ReadOnly<GeneralTriggerSetComponent>(),
+                    ComponentType.ReadOnly<AttackComponent>(),
+                    ComponentType.ReadOnly<HealthComponent>(),
+                },
+                None = new ComponentType[] { typeof(DeadTag) },
+            });
         }
 
+        // ⚠ SystemAPI.Query 로 순회하지 않는다.
+        //   여기서 부르는 핸들러(연속 시전의 스킬 재시전, 소환, 이펙트 GO 활성화 등)는
+        //   구조적 변경을 일으킬 수 있고, 그 순간 순회의 TypeHandle 과
+        //   미리 잡아 둔 DynamicBuffer 가 통째로 무효화된다.
+        //   → 대상 엔티티를 배열로 떠 놓고 순회 밖에서 처리하며,
+        //     버퍼 핸들은 절대 핸들러 호출을 가로질러 들고 있지 않는다.
         protected override void OnUpdate()
         {
-            foreach (var (attack, health, entity) in
-                SystemAPI.Query<RefRO<AttackComponent>, RefRO<HealthComponent>>()
-                    .WithAll<GeneralComponent, GeneralTriggerSetComponent>()
-                    .WithNone<DeadTag>()
-                    .WithEntityAccess())
+            var generals = _generalQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+
+            foreach (var entity in generals)
             {
+                if (!EntityManager.Exists(entity)) continue;
+                if (!EntityManager.HasComponent<GeneralTriggerSetComponent>(entity)) continue;
+
                 var trigSet = EntityManager.GetComponentObject<GeneralTriggerSetComponent>(entity);
                 if (trigSet == null) continue;
 
-                var hitBuf       = EntityManager.GetBuffer<HitEventBufferElement>(entity);
-                var killBuf      = EntityManager.GetBuffer<EnemyKillEvent>(entity);
-                var deathBuf     = EntityManager.GetBuffer<SoldierDeathEvent>(entity);
-                var skillBuf     = EntityManager.GetBuffer<SkillUseEvent>(entity);
-                var attackHitBuf = EntityManager.GetBuffer<AttackHitEvent>(entity);
+                var attack = EntityManager.GetComponentData<AttackComponent>(entity);
+                var health = EntityManager.GetComponentData<HealthComponent>(entity);
+
+                // 이벤트 유무·개수만 읽고 버퍼 핸들은 버린다.
+                int soldierDeaths = EntityManager.GetBuffer<SoldierDeathEvent>(entity).Length;
+
+                bool doAttack        = attack.AttackedThisFrame;
+                bool doHit           = EntityManager.GetBuffer<HitEventBufferElement>(entity).Length > 0;
+                bool doKill          = EntityManager.GetBuffer<EnemyKillEvent>(entity).Length        > 0;
+                bool doSoldierDeath  = soldierDeaths                                                 > 0;
+                bool doSkill         = EntityManager.GetBuffer<SkillUseEvent>(entity).Length         > 0;
+                bool doAttackLanded  = EntityManager.GetBuffer<AttackHitEvent>(entity).Length        > 0;
+
+                if (!doAttack && !doHit && !doKill && !doSoldierDeath && !doSkill && !doAttackLanded)
+                    continue;
 
                 var ctx = new PassiveTriggerContext
                 {
                     GeneralEntity     = entity,
                     EntityManager     = EntityManager,
                     EnemyQuery        = _enemyQuery,
-                    Health            = health.ValueRO,
-                    DamageDealt       = attack.ValueRO.LastDamageDealt,
-                    SoldierDeathCount = deathBuf.Length,
+                    Health            = health,
+                    DamageDealt       = attack.LastDamageDealt,
+                    SoldierDeathCount = soldierDeaths,
                 };
-
-                bool doAttack        = attack.ValueRO.AttackedThisFrame;
-                bool doHit           = hitBuf.Length       > 0;
-                bool doKill          = killBuf.Length       > 0;
-                bool doSoldierDeath  = deathBuf.Length      > 0;
-                bool doSkill         = skillBuf.Length      > 0;
-                bool doAttackLanded  = attackHitBuf.Length  > 0;
 
                 // ── 장비 트리거 디스패치 ─────────────────────────
                 for (int s = 0; s < trigSet.ActiveEquipSlots; s++)
@@ -125,9 +148,24 @@ namespace BattleGame.Units
                     handler.OnTrigger(ctx);
                 }
 
-                // OnAttackLanded 이벤트는 이 프레임에서 소비하고 클리어
-                if (doAttackLanded) attackHitBuf.Clear();
+                // ── 이벤트 버퍼 소비 완료 → 클리어 ──────────────────
+                // 이 시스템이 이벤트 버퍼의 마지막 소비자다.
+                // PassiveSkillRuntimeSystem(먼저 도는 시스템)이 지우면 여기까지
+                // 이벤트가 오지 않아 장비·어빌리티·특성 트리거가 통째로 죽는다.
+                //
+                // ⚠ 반드시 여기서 버퍼를 다시 가져온다. 위에서 잡아 둔 핸들은
+                //   핸들러의 구조적 변경으로 이미 무효일 수 있고, 그 상태로 Clear 하면
+                //   ObjectDisposedException 이 나면서 OnUpdate 가 중단된다
+                //   → 버퍼가 안 비워져 이벤트가 쌓이고, 다음 프레임에 몰아서 터진다.
+                if (!EntityManager.Exists(entity)) continue;
+
+                if (doAttackLanded)  EntityManager.GetBuffer<AttackHitEvent>(entity).Clear();
+                if (doSoldierDeath)  EntityManager.GetBuffer<SoldierDeathEvent>(entity).Clear();
+                if (doKill)          EntityManager.GetBuffer<EnemyKillEvent>(entity).Clear();
+                if (doSkill)         EntityManager.GetBuffer<SkillUseEvent>(entity).Clear();
             }
+
+            generals.Dispose();
         }
 
         // ── 장비 트리거 효과 적용 ────────────────────────────────

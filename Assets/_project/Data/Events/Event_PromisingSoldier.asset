@@ -1,0 +1,71 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8e01cea01c8b9704d935c7d725fd2b3f, type: 3}
+  m_Name: Event_PromisingSoldier
+  m_EditorClassIdentifier: 
+  EventId: PromisingSoldier
+  Title: "\uB208\uC5D0 \uB744\uB294 \uBCD1\uC0AC"
+  Body: "\uD6C8\uB828\uC7A5 \uD55C\uCABD\uC5D0\uC11C \uBCD1\uC0AC \uD558\uB098\uAC00
+    \uB208\uC5D0 \uB4E4\uC5B4\uC635\uB2C8\uB2E4.\n\uCC3D\uC744 \uC954 \uC790\uC138\uB3C4,
+    \uB300\uC5F4\uC744 \uC77D\uB294 \uB208\uB3C4 \uC5EC\uB290 \uBCD1\uC0AC\uC640
+    \uB2E4\uB985\uB2C8\uB2E4."
+  Illustration: {fileID: 21300000, guid: cdb22280071bec940a616643a6cb3ff2, type: 3}
+  Choices:
+  - Label: "\uC815\uC2DD\uC73C\uB85C \uBC1C\uD0C1\uD55C\uB2E4"
+    ResultText: "\uADF8\uB97C \uC7A5\uC218\uB85C \uC138\uC6E0\uC2B5\uB2C8\uB2E4.
+      \uC0C8 \uAC11\uC8FC\uAC00 \uC81C\uBC95 \uC5B4\uC6B8\uB9BD\uB2C8\uB2E4.\n[\uACE8\uB4DC
+      \uC18C\uBAA8 / \uC6A9\uBCD1 \uACE0\uC6A9]"
+    SuccessRate: 1
+    SuccessRewards:
+    - Type: 3
+      Item: 0
+      IntValue: 55
+      FloatValue: 0
+      Description: 
+      ScaleByStageReward: 1
+    - Type: 12
+      Item: -1
+      IntValue: 0
+      FloatValue: 0
+      Description: "\uC6A9\uBCD1 \uACE0\uC6A9"
+      ScaleByStageReward: 0
+    FailRewards: []
+    CostHint: 
+  - Label: "\uBD80\uB300\uC5D0\uC11C \uC778\uC7AC\uB97C \uCD94\uB9B0\uB2E4"
+    ResultText: "\uBCD1\uC0AC\uB4E4 \uC0AC\uC774\uC5D0\uC11C \uB420 \uB9CC\uD55C
+      \uC790\uB97C \uCD94\uB824 \uC7A5\uC218\uB85C \uC62C\uB838\uC2B5\uB2C8\uB2E4.\n[\uC6A9\uBCD1
+      \uC870\uAC01 20 \uC18C\uBAA8 / \uC6A9\uBCD1 \uACE0\uC6A9]"
+    SuccessRate: 1
+    SuccessRewards:
+    - Type: 3
+      Item: 105
+      IntValue: 20
+      FloatValue: 0
+      Description: "\uC6A9\uBCD1 \uC870\uAC01 -20"
+      ScaleByStageReward: 0
+    - Type: 12
+      Item: -1
+      IntValue: 0
+      FloatValue: 0
+      Description: "\uC6A9\uBCD1 \uACE0\uC6A9"
+      ScaleByStageReward: 0
+    FailRewards: []
+    CostHint: "\uC6A9\uBCD1 \uC870\uAC01 20"
+  - Label: "\uADF8\uB0E5 \uB454\uB2E4"
+    ResultText: "\uC544\uC9C1\uC740 \uB300\uC5F4 \uC548\uC5D0 \uB450\uAE30\uB85C
+      \uD588\uC2B5\uB2C8\uB2E4."
+    SuccessRate: 1
+    SuccessRewards: []
+    FailRewards: []
+    CostHint: 
+  InstantRewards: []
+  InstantResultText: 

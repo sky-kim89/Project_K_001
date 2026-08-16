@@ -125,9 +125,20 @@ public class StageSelectUI : MonoBehaviour
         UserDataManager.Instance.RequestSave();
 
         var db = EventDatabase.Current;
-        OpenEventPopup(type == RunStageType.Shop
-            ? db.Get(EventDatabase.ShopEventId)
-            : db.GetRandom());
+        if (type == RunStageType.Shop)
+        {
+            OpenEventPopup(db.Get(EventDatabase.ShopEventId));
+            return;
+        }
+
+        // 이번 런에 아직 안 나온 이벤트를 우선 뽑는다.
+        // 이벤트 칸이 10개라 완전 무작위로는 같은 이벤트가 두세 번씩 반복된다.
+        var bonus = UserDataManager.Instance.Get<RunEventBonusData>();
+        var evt   = db.GetRandomUnseen(bonus.SeenEventIds);
+        bonus.MarkEventSeen(evt.EventId);
+        UserDataManager.Instance.RequestSave();
+
+        OpenEventPopup(evt);
     }
 
     // ── 전체 갱신 ─────────────────────────────────────────────

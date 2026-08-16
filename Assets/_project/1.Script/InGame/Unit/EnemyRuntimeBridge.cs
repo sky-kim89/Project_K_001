@@ -27,15 +27,27 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
     };
 
     SpawnUnitType _unitType;
+    bool          _knockbackImmune;
+
+    // 프리팹 원본 크기. 풀 재사용 시 배율이 누적되지 않도록 항상 이 값을 기준으로 다시 잡는다.
+    Vector3 _baseScale;
+
+    void Awake() => _baseScale = transform.localScale;
 
     // ── 공개 API ─────────────────────────────────────────────
 
     /// <summary>EnemySpawner 가 스폰 직후 호출.</summary>
     public void Initialize(string unitName, SpawnUnitType unitType, EnemyRace race,
-                           int level = 1, float statMultiplier = 1f, float stageBias = 0f)
+                           int level = 1, float statMultiplier = 1f, float stageBias = 0f,
+                           float scaleMultiplier = 1f, bool knockbackImmune = false)
     {
-        _unitName = unitName;
-        _unitType = unitType;
+        _unitName        = unitName;
+        _unitType        = unitType;
+        _knockbackImmune = knockbackImmune;
+
+        // 크기는 SpawnEntity() 전에 확정해야 한다 — UnitSizeComponent.Radius 가 localScale 에서 나온다
+        transform.localScale = _baseScale * Mathf.Max(0.01f, scaleMultiplier);
+
         _stat     = EnemyStatRoller.Roll(unitName, unitType, level, statMultiplier, stageBias);
 
         GetComponent<UnitAppearanceBridge>()?.ApplyEnemy(race, unitName);
@@ -54,7 +66,8 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
     protected override void OnEnable()
     {
         base.OnEnable();
-        _unitType = default;
+        _unitType        = default;
+        _knockbackImmune = false;
     }
 
     protected override TeamType GetTeam() => TeamType.Enemy;
@@ -73,26 +86,7 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
         switch (_unitType)
         {
             case SpawnUnitType.Boss:
-                em.AddComponentData(entity, new BossComponent
-                {
-                    PhaseCount             = 1,
-                    CurrentPhase           = 1,
-                    Phase2HpRatio          = 0.5f,
-                    Phase3HpRatio          = 0.25f,
-                    CCResistance           = 1f,
-                    KnockbackResistance    = 0.8f,  // 완전 면역 → 약간 허용
-                    // AoE 공격 설정
-                    AoeRadius              = 2.5f,
-                    AoeSplashRatio         = 0.6f,  // 범위 내 60% 피해
-                    AttackKnockbackForce   = 4.0f,
-                    AttackKnockbackDuration= 0.25f,
-                    // 돌진 패턴 설정
-                    ChargePatternCooldown  = 8f,
-                    ChargePatternTimer     = 4f,    // 첫 돌진은 4초 후
-                    ChargeSpeedMult        = 4.0f,
-                    ChargeDuration         = 1.0f,
-                    ChargeDamageBonus      = 0.5f,  // 돌진 중 공격력 +50%
-                });
+                em.AddComponentData(entity, MakeBossComponent());
                 break;
 
             case SpawnUnitType.Elite:
@@ -119,4 +113,34 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
                 break;
         }
     }
+
+    // 풀에서 꺼낸 Entity 는 AddComponents 를 다시 타지 않는다.
+    // 페이즈·돌진 타이머·넉백 내성이 지난 보스 값 그대로 남으므로 여기서 다시 찍는다.
+    protected override void OnEntityReset(EntityManager em, Entity entity)
+    {
+        if (_unitType == SpawnUnitType.Boss && em.HasComponent<BossComponent>(entity))
+            em.SetComponentData(entity, MakeBossComponent());
+    }
+
+    BossComponent MakeBossComponent() => new()
+    {
+        PhaseCount             = 1,
+        CurrentPhase           = 1,
+        Phase2HpRatio          = 0.5f,
+        Phase3HpRatio          = 0.25f,
+        CCResistance           = 1f,
+        // 기본 보스는 0.8 (완전 면역 → 약간 허용), 무한 보스는 완전 면역
+        KnockbackResistance    = _knockbackImmune ? 1f : 0.8f,
+        // AoE 공격 설정
+        AoeRadius              = 2.5f,
+        AoeSplashRatio         = 0.6f,  // 범위 내 60% 피해
+        AttackKnockbackForce   = 4.0f,
+        AttackKnockbackDuration= 0.25f,
+        // 돌진 패턴 설정
+        ChargePatternCooldown  = 8f,
+        ChargePatternTimer     = 4f,    // 첫 돌진은 4초 후
+        ChargeSpeedMult        = 4.0f,
+        ChargeDuration         = 1.0f,
+        ChargeDamageBonus      = 0.5f,  // 돌진 중 공격력 +50%
+    };
 }

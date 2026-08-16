@@ -84,6 +84,8 @@ public static class TraitCreator
         public PassiveTrigger stackTrigger;
         public int            maxStacks;
         public (StatType stat, float value, bool isPct)[] stackFx;
+        // 스탯 전환 (from 스탯을 perUnit 단위로 세어 to 스탯을 rate 만큼 올린다)
+        public (StatType from, float perUnit, StatType to, float rate)[] conv;
     }
 
     static Def[] BuildDefinitions() => new Def[]
@@ -92,13 +94,13 @@ public static class TraitCreator
         {
             type = TraitType.KnightCommand,
             name = "지휘관의 기질",
-            desc = "전장을 호령하는 기사의 타고난 통솔력.",
+            desc = "전장을 호령하는 기사의 타고난 통솔력. 병사 +5, 지휘력 +5.",
             job  = UnitJob.Knight,
             fx   = new[]
             {
                 (StatType.MaxHp,       0.10f, true ),
-                (StatType.SoldierCount, 2f,   false),
-                (StatType.CommandPower, 2f,   false),
+                (StatType.SoldierCount, 5f,   false),
+                (StatType.CommandPower, 5f,   false),
             },
         },
         new Def
@@ -117,6 +119,15 @@ public static class TraitCreator
             type = TraitType.KnightHeroReturn,
             name = "영웅의 귀환",
             desc = "장군이 쓰러지는 순간, 마지막 기개로 병사들을 전장에 새롭게 소환한다.",
+            job  = UnitJob.Knight,
+            fx   = System.Array.Empty<(StatType, float, bool)>(),
+        },
+        new Def
+        {
+            type = TraitType.KnightMartyr,
+            name = "순교",
+            desc = "쓰러진 병사가 마지막으로 불타오른다. 병사가 사망한 자리에서 폭발이 일어나 " +
+                   "반경 2 안의 적에게 장군 공격력의 80% 피해를 준다.",
             job  = UnitJob.Knight,
             fx   = System.Array.Empty<(StatType, float, bool)>(),
         },
@@ -261,6 +272,152 @@ public static class TraitCreator
             desc = "보급 마차를 늘려 장비를 더 챙겨 다닌다.",
             job  = (UnitJob)255,
             fx   = new[] { (StatType.EquipSlotBonus, 1f, false) },
+        },
+
+        // ── 공통 성장형 특성 ─────────────────────────────────────
+        new Def
+        {
+            type         = TraitType.CommonLateBloom,
+            name         = "대기만성",
+            desc         = "느리게 여무는 그릇. 스테이지를 클리어할 때마다 공격력과 최대 체력이 5%씩 오른다.",
+            job          = (UnitJob)255,
+            fx           = System.Array.Empty<(StatType, float, bool)>(),
+            stackTrigger = PassiveTrigger.StageClear,
+            maxStacks    = 30,   // 게임 최대 스테이지 수와 동일 — 사실상 런 내내 성장
+            stackFx      = new[]
+            {
+                (StatType.Attack, 0.05f, true),
+                (StatType.MaxHp,  0.05f, true),
+            },
+        },
+
+        // ── 스탯 전환 특성 ───────────────────────────────────────
+        //  덧셈 옵션만으로는 "몰빵할 이유" 가 없어 빌드가 갈리지 않는다.
+        //  한 스탯을 다른 스탯으로 환산해 특화에 초과 보상을 준다.
+        //  수치는 "그 스탯에 특화하면 대략 +40~70%" 를 목표로 잡았다.
+        new Def
+        {
+            type = TraitType.ConvHeavyArmor,
+            name = "중갑",
+            desc = "두꺼운 갑주 자체가 무기가 된다. 방어율 1%p마다 공격력이 1.5% 오른다.",
+            job  = (UnitJob)255,
+            fx   = System.Array.Empty<(StatType, float, bool)>(),
+            conv = new[] { (StatType.Defense, 0.01f, StatType.Attack, 0.015f) },
+        },
+        new Def
+        {
+            type = TraitType.ConvTitan,
+            name = "거인",
+            desc = "거대한 몸집에서 나오는 완력. 최대 체력 1000마다 공격력이 6% 오른다.",
+            job  = (UnitJob)255,
+            fx   = System.Array.Empty<(StatType, float, bool)>(),
+            conv = new[] { (StatType.MaxHp, 1000f, StatType.Attack, 0.06f) },
+        },
+        new Def
+        {
+            type = TraitType.ConvSwift,
+            name = "속공",
+            desc = "발이 빠른 만큼 손도 빠르다. 이동속도 1마다 공격속도가 12% 오른다.",
+            job  = (UnitJob)255,
+            fx   = System.Array.Empty<(StatType, float, bool)>(),
+            conv = new[] { (StatType.MoveSpeed, 1f, StatType.AttackSpeed, 0.12f) },
+        },
+        new Def
+        {
+            type = TraitType.ConvSage,
+            name = "현자",
+            desc = "마력의 회전이 곧 파괴력이다. 스킬 쿨감 1%p마다 공격력이 2% 오른다.",
+            job  = (UnitJob)255,
+            fx   = System.Array.Empty<(StatType, float, bool)>(),
+            conv = new[] { (StatType.SkillCooldownReduce, 0.01f, StatType.Attack, 0.02f) },
+        },
+        new Def
+        {
+            type = TraitType.ConvWarlord,
+            name = "군단장",
+            desc = "등 뒤의 병사가 많을수록 검이 무거워진다. 병사 1명마다 공격력이 3% 오른다.",
+            job  = (UnitJob)255,
+            fx   = System.Array.Empty<(StatType, float, bool)>(),
+            conv = new[] { (StatType.SoldierCount, 1f, StatType.Attack, 0.03f) },
+        },
+        new Def
+        {
+            type = TraitType.ConvMarksman,
+            name = "명사수",
+            desc = "멀리 볼수록 정확히 꽂힌다. 공격 사거리 1마다 공격력이 6% 오른다.",
+            job  = (UnitJob)255,
+            fx   = System.Array.Empty<(StatType, float, bool)>(),
+            conv = new[] { (StatType.AttackRange, 1f, StatType.Attack, 0.06f) },
+        },
+        new Def
+        {
+            type = TraitType.ConvBulwark,
+            name = "육중",
+            desc = "단단한 것은 곧 질기다. 방어율 1%p마다 최대 체력이 2% 오른다.",
+            job  = (UnitJob)255,
+            fx   = System.Array.Empty<(StatType, float, bool)>(),
+            conv = new[] { (StatType.Defense, 0.01f, StatType.MaxHp, 0.02f) },
+        },
+
+        // ── 치명타 특성 ──────────────────────────────────────────
+        //  치명 기여도 = 치명확률 × (치명배율 - 1).
+        //  기존에는 치명배율을 올려주는 성장 옵션이 게임 전체에 패시브 1종뿐이라
+        //  확률만 올려도 수익이 납작했다. 확률과 배율을 함께 공급해 곱이 살아나게 한다.
+        new Def
+        {
+            type = TraitType.CritAssassin,
+            name = "암살자의 눈",
+            desc = "급소만 노리는 눈썰미. 치명타 확률과 배율이 함께 오른다.",
+            job  = (UnitJob)255,
+            fx   = new[]
+            {
+                (StatType.CritChance, 0.12f, false),
+                (StatType.CritDamage, 0.30f, false),
+            },
+        },
+        new Def
+        {
+            type = TraitType.CritExecutioner,
+            name = "처형인",
+            desc = "한 번에 끝낸다. 치명타 배율이 크게 오르는 대신 평타가 무뎌진다.",
+            job  = (UnitJob)255,
+            fx   = new[]
+            {
+                (StatType.CritDamage, 0.80f,  false),
+                (StatType.Attack,    -0.12f,  true ),
+            },
+        },
+        new Def
+        {
+            type = TraitType.ConvDeadeye,
+            name = "필살",
+            desc = "노림수가 쌓일수록 일격이 깊어진다. 치명타 확률 1%p마다 치명타 배율이 1.5% 오른다.",
+            job  = (UnitJob)255,
+            fx   = System.Array.Empty<(StatType, float, bool)>(),
+            conv = new[] { (StatType.CritChance, 0.01f, StatType.CritDamage, 0.015f) },
+        },
+
+        // ── 공격속도 특성 ────────────────────────────────────────
+        new Def
+        {
+            type = TraitType.HasteFrenzy,
+            name = "광란",
+            desc = "정확함을 버리고 속도를 택한다. 공격속도가 크게 오르는 대신 공격력이 줄어든다.",
+            job  = (UnitJob)255,
+            fx   = new[]
+            {
+                (StatType.AttackSpeed,  0.40f, true),
+                (StatType.Attack,      -0.25f, true),
+            },
+        },
+        new Def
+        {
+            type = TraitType.HasteRend,
+            name = "파쇄",
+            desc = "때릴 때마다 갑주가 갈라진다. 공격이 적중할 때마다 대상 최대 체력의 2%를 " +
+                   "추가로 깎는다. 보스에게는 33%만 적용되며, 추가 피해는 장군 공격력의 3배를 넘지 않는다.",
+            job  = (UnitJob)255,
+            fx   = System.Array.Empty<(StatType, float, bool)>(),
         },
 
         // ── 이벤트 전용 특성 (EventRewardHandler 가 부여) ────────
@@ -461,6 +618,7 @@ public static class TraitCreator
         (TraitType.KnightCommand,    "Assets/_project/3.Textures/Icons/Traits/trait_knight_command.png"),
         (TraitType.KnightSoldierRage,"Assets/_project/3.Textures/Icons/Traits/trait_knight_soldier_rage.png"),
         (TraitType.KnightHeroReturn, "Assets/_project/3.Textures/Icons/Traits/trait_knight_hero_return.png"),
+        (TraitType.KnightMartyr,     "Assets/_project/3.Textures/Icons/Traits/trait_knight_martyr.png"),
         (TraitType.ArcherPrecision,  "Assets/_project/3.Textures/Icons/Traits/trait_archer_precision.png"),
         (TraitType.ArcherRetreatFire,"Assets/_project/3.Textures/Icons/Traits/trait_archer_retreat_fire.png"),
         (TraitType.ArcherRainFire,   "Assets/_project/3.Textures/Icons/Traits/trait_archer_rain_fire.png"),
@@ -475,6 +633,22 @@ public static class TraitCreator
         (TraitType.CommonSoldierSupply,  "Assets/_project/3.Textures/Icons/Traits/trait_common_soldier_supply.png"),
         (TraitType.CommonForcedLevy,     "Assets/_project/3.Textures/Icons/Traits/trait_common_forced_levy.png"),
         (TraitType.CommonEquipExpand,    "Assets/_project/3.Textures/Icons/Traits/trait_common_equip_expand.png"),
+        (TraitType.CommonLateBloom,      "Assets/_project/3.Textures/Icons/Traits/trait_common_late_bloom.png"),
+        // 스탯 전환
+        (TraitType.ConvHeavyArmor,   "Assets/_project/3.Textures/Icons/Traits/trait_conv_heavy_armor.png"),
+        (TraitType.ConvTitan,        "Assets/_project/3.Textures/Icons/Traits/trait_conv_titan.png"),
+        (TraitType.ConvSwift,        "Assets/_project/3.Textures/Icons/Traits/trait_conv_swift.png"),
+        (TraitType.ConvSage,         "Assets/_project/3.Textures/Icons/Traits/trait_conv_sage.png"),
+        (TraitType.ConvWarlord,      "Assets/_project/3.Textures/Icons/Traits/trait_conv_warlord.png"),
+        (TraitType.ConvMarksman,     "Assets/_project/3.Textures/Icons/Traits/trait_conv_marksman.png"),
+        (TraitType.ConvBulwark,      "Assets/_project/3.Textures/Icons/Traits/trait_conv_bulwark.png"),
+        // 치명타
+        (TraitType.CritAssassin,     "Assets/_project/3.Textures/Icons/Traits/trait_crit_assassin.png"),
+        (TraitType.CritExecutioner,  "Assets/_project/3.Textures/Icons/Traits/trait_crit_executioner.png"),
+        (TraitType.ConvDeadeye,      "Assets/_project/3.Textures/Icons/Traits/trait_crit_deadeye.png"),
+        // 공격속도
+        (TraitType.HasteFrenzy,      "Assets/_project/3.Textures/Icons/Traits/trait_haste_frenzy.png"),
+        (TraitType.HasteRend,        "Assets/_project/3.Textures/Icons/Traits/trait_haste_rend.png"),
         // 이벤트 전용
         (TraitType.Event_BattleWill,      "Assets/_project/3.Textures/Icons/Traits/trait_event_battle_will.png"),
         (TraitType.Event_PotionBuff,      "Assets/_project/3.Textures/Icons/Traits/trait_event_potion_buff.png"),
@@ -525,6 +699,19 @@ public static class TraitCreator
                 Stat      = def.fx[i].stat,
                 Value     = def.fx[i].value,
                 IsPercent = def.fx[i].isPct,
+            };
+        }
+
+        var conv = def.conv ?? System.Array.Empty<(StatType, float, StatType, float)>();
+        so.Conversions = new TraitData.StatConversion[conv.Length];
+        for (int i = 0; i < conv.Length; i++)
+        {
+            so.Conversions[i] = new TraitData.StatConversion
+            {
+                From    = conv[i].from,
+                PerUnit = conv[i].perUnit,
+                To      = conv[i].to,
+                Rate    = conv[i].rate,
             };
         }
 

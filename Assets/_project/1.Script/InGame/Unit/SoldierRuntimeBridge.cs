@@ -72,6 +72,35 @@ public class SoldierRuntimeBridge : UnitRuntimeBridge
             em.AddBuffer<ProjectileLaunchRequest>(entity);
         }
 
+        ApplyRainFireTrait(em, entity);
+    }
+
+    // ── 폭우 사격 (병사도 발동) ───────────────────────────────
+    //  AttackHitEvent 버퍼가 있어야 UnitAttackSystem·ProjectileSystem 이
+    //  착탄 이벤트를 넣어 준다. 트레이트가 없으면 버퍼도 달지 않는다
+    //  — 병사 수십 명에게 쓰지도 않을 버퍼를 붙일 이유가 없다.
+    //  실제 스플래시는 TraitRainFireSoldierSystem 이 처리한다.
+    void ApplyRainFireTrait(EntityManager em, Entity entity)
+    {
+        bool hasTrait = UserDataManager.Instance?.Get<RunTraitData>()
+                                       ?.HasTrait(TraitType.ArcherRainFire) ?? false;
+
+        if (hasTrait)
+        {
+            if (!em.HasComponent<TraitRainFireTag>(entity))
+                em.AddComponent<TraitRainFireTag>(entity);
+            if (!em.HasBuffer<AttackHitEvent>(entity))
+                em.AddBuffer<AttackHitEvent>(entity);
+            else
+                em.GetBuffer<AttackHitEvent>(entity).Clear();
+            return;
+        }
+
+        // 런 도중 특성을 잃는 경로는 없지만, 풀 재사용은 런을 가로지른다.
+        if (em.HasComponent<TraitRainFireTag>(entity))
+            em.RemoveComponent<TraitRainFireTag>(entity);
+        if (em.HasBuffer<AttackHitEvent>(entity))
+            em.GetBuffer<AttackHitEvent>(entity).Clear();
     }
 
     protected override void OnEntityReset(EntityManager em, Entity entity)
@@ -107,6 +136,8 @@ public class SoldierRuntimeBridge : UnitRuntimeBridge
         {
             em.GetBuffer<ProjectileLaunchRequest>(entity).Clear();
         }
+
+        ApplyRainFireTrait(em, entity);
 
         if (em.HasComponent<TauntTag>(entity)) em.RemoveComponent<TauntTag>(entity);
     }

@@ -206,6 +206,37 @@ public static class HeroStatResolver
                         result.TraitBonuses.TryGetValue(fx.Stat, out var cur) ? cur + delta : delta;
                 }
             }
+            // 6-b. 스탯 전환 (중갑·거인·속공 등)
+            //  ⚠ TraitApplier.ApplyConversions 와 반드시 같은 순서·같은 기준이어야 한다.
+            //    · 고정 효과가 전부 들어간 뒤, 전체 감산보다는 앞
+            //    · 재료·보상 모두 "전환 이전" 합계 기준 (계산과 반영을 분리)
+            //  한쪽만 고치면 로비에 뜬 수치와 실제 전투 수치가 어긋난다.
+            List<(StatType to, float delta)> convPending = null;
+            foreach (var type in traitData.AcquiredTraits)
+            {
+                var td = traitDb.Get(type);
+                if (td?.Conversions == null) continue;
+
+                foreach (var c in td.Conversions)
+                {
+                    if (c.PerUnit <= 0f) continue;
+
+                    float units = result.Total(c.From) / c.PerUnit;
+                    if (units <= 0f) continue;
+
+                    float delta = result.Total(c.To) * c.Rate * units;
+                    if (delta == 0f) continue;
+
+                    (convPending ??= new List<(StatType, float)>()).Add((c.To, delta));
+                }
+            }
+            if (convPending != null)
+            {
+                foreach (var (to, delta) in convPending)
+                    result.TraitBonuses[to] =
+                        result.TraitBonuses.TryGetValue(to, out var cur) ? cur + delta : delta;
+            }
+
             if (allStatPenalty > 0f)
             {
                 foreach (StatType s in System.Enum.GetValues(typeof(StatType)))

@@ -38,6 +38,7 @@ public class CheatEditorWindow : EditorWindow
     int       _generalLevel = 1;
     UnitGrade _generalGrade = UnitGrade.Normal;
     bool      _forceGrade   = false;
+    bool      _autoDeploy   = true;   // 보유만 하고 배치를 안 하면 전투에 안 나온다
 
     // ────────────────────────────────────────────────────────────
 
@@ -180,6 +181,29 @@ public class CheatEditorWindow : EditorWindow
             var birthGrade = UnitJobRoller.GetBirthGrade(_generalName);
             EditorGUILayout.LabelField("직업 (이름 기반)", job.ToString());
             EditorGUILayout.LabelField("태생 등급",        birthGrade.ToString());
+
+            // 이 이름이 쓰는 액티브 스킬 — 희귀 스킬 주인인지 여기서 바로 보인다
+            var db = ActiveSkillDatabase.Current;
+            if (db != null)
+            {
+                var skillId = RareSkillArbiter.Resolve(_generalName, job, db, birthGrade);
+                var data    = db.Get(skillId);
+                string tag  = data != null && data.IsRare ? "  ★ 희귀" : "";
+                EditorGUILayout.LabelField("액티브 스킬", $"{data?.SkillName ?? skillId.ToString()}{tag}");
+            }
+
+            // 보유·배치는 별개다. 보유만 하고 배치를 안 하면 전투에 나오지 않는다
+            // — "치트로 받았는데 왜 안 나오냐" 의 원인이 대부분 이것이다.
+            var unitData   = UserDataManager.Instance?.Get<UnitData>();
+            var deployData = UserDataManager.Instance?.Get<DeploymentData>();
+            if (unitData != null && deployData != null)
+            {
+                bool owned    = unitData.HasUnit(_generalName);
+                bool deployed = deployData.GetDeployedUnits().Contains(_generalName);
+                EditorGUILayout.LabelField("현재 상태",
+                    owned ? (deployed ? "보유 O · 배치 O" : "보유 O · 배치 X (전투에 안 나옴)")
+                          : "미보유");
+            }
         }
 
         EditorGUILayout.Space(4);
@@ -199,6 +223,10 @@ public class CheatEditorWindow : EditorWindow
 
         EditorGUILayout.Space(4);
 
+        _autoDeploy = EditorGUILayout.Toggle("획득 후 바로 배치", _autoDeploy);
+
+        EditorGUILayout.Space(4);
+
         GUI.enabled = nameEntered;
 
         if (GUILayout.Button("장수 획득", GUILayout.Height(30)))
@@ -206,9 +234,13 @@ public class CheatEditorWindow : EditorWindow
             var unitData = UserDataManager.Instance?.Get<UnitData>();
             if (unitData == null) { LogNoManager(); GUI.enabled = true; return; }
 
+            // 이미 보유 중이면 획득은 건너뛰되, 배치는 시도한다
+            // (보유만 하고 배치가 안 돼 "왜 전투에 안 나오냐" 가 되는 경우가 대부분이다)
             if (unitData.HasUnit(_generalName))
             {
-                Debug.LogWarning($"[치트] 장수 [{_generalName}] 이미 보유 중.");
+                Debug.LogWarning($"[치트] 장수 [{_generalName}] 이미 보유 중 — 획득은 건너뜀.");
+                if (_autoDeploy) TryDeploy(_generalName);
+                RequestSave();
                 GUI.enabled = true;
                 return;
             }
@@ -224,6 +256,7 @@ public class CheatEditorWindow : EditorWindow
             }
 
             unitData.AddUnit(entry);
+            if (_autoDeploy) TryDeploy(_generalName);
             RequestSave();
             Debug.Log($"[치트] 장수 획득 — {_generalName}  Lv.{_generalLevel}  [{entry.Grade}]  [{UnitJobRoller.GetJob(_generalName)}]");
         }
@@ -267,6 +300,44 @@ public class CheatEditorWindow : EditorWindow
     }
 
     // ── 헬퍼 ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// 빈 배치 슬롯에 넣는다. 빈 칸이 없으면 마지막 칸을 밀어내고 그 자리에 넣는다
+    /// — 치트로 부른 장수를 확인하려는 것이므로 "자리가 없어서 안 됨" 은 쓸모가 없다.
+    /// </summary>
+    static void TryDeploy(string unitName)
+    {
+        var deployData = UserDataManager.Instance?.Get<DeploymentData>();
+        if (deployData == null) { LogNoManager(); return; }
+
+        if (deployData.GetDeployedUnits().Contains(unitName))
+        {
+            Debug.Log($"[치트] 장수 [{unitName}] 이미 배치됨.");
+            return;
+        }
+
+        // 유물·특성으로 열린 칸까지만 실제 슬롯이다 — 잠긴 칸에 넣으면 전투에 안 나온다
+        int activeSlots = Mathf.Min(5, RelicApplier.GetTotalActiveGeneralSlots());
+
+        int slot = -1;
+        for (int i = 0; i < activeSlots; i++)
+            if (string.IsNullOrEmpty(deployData.GetUnitAt(i))) { slot = i; break; }
+
+        bool pushedOut = false;
+        if (slot < 0)
+        {
+            slot = activeSlots - 1;
+            pushedOut = true;
+        }
+
+        string before = deployData.GetUnitAt(slot);
+        deployData.Deploy(unitName, slot);
+        JobSynergyEvaluator.Recalculate();
+
+        Debug.Log(pushedOut
+            ? $"[치트] 장수 [{unitName}] 배치 — {slot + 1}번 칸 (기존 [{before}] 밀어냄)"
+            : $"[치트] 장수 [{unitName}] 배치 — {slot + 1}번 칸");
+    }
 
     static void RequestSave() => UserDataManager.Instance.RequestSave();
 

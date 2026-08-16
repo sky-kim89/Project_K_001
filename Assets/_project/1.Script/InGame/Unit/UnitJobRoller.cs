@@ -17,7 +17,7 @@ using UnityEngine;
 //    Defense 는 최대 0.80 으로 클램프 (80% 데미지 감소 상한).
 //
 //  ■ 직업별 특징
-//    Knight       — 균형 스텟, 이동속도 최고 (4.5~7.0)
+//    Knight       — 병사 특화. 병사 수(3~7)·지휘력(10~45) 최고, 이동속도 최고
 //    Archer       — 사거리 최고 (3.5~6.0), 중간 공격, 낮은 체력
 //    Mage         — 공격력 최고 (120~350), 낮은 체력·연사속도 (0.3~0.7), 크리뎀 ×2.0
 //    ShieldBearer — 체력 최고 (1500~4000), 방어율 최고 (25~50%)
@@ -51,14 +51,17 @@ public static class UnitJobRoller
         stat.SetCombineMode(StatType.SkillCooldownReduce, CombineMode.MultiplyResidual);
 
         // ── 직업 기반 랜덤 스텟 ───────────────────────────────
-        float hp           = ranges.Hp.Lerp(rng.NextFloat());
-        float attack       = ranges.Attack.Lerp(rng.NextFloat());
-        float defense      = ranges.Defense.Lerp(rng.NextFloat());
-        float attackRange  = ranges.AttackRange.Lerp(rng.NextFloat());
-        float attackSpeed  = ranges.AttackSpeed.Lerp(rng.NextFloat());
-        float moveSpeed    = ranges.MoveSpeed.Lerp(rng.NextFloat());
-        float soldierCount = math.round(ranges.SoldierCount.Lerp(rng.NextFloat()));
-        float commandPower = math.round(ranges.CommandPower.Lerp(rng.NextFloat()));
+        // 희귀 스킬 주인은 모든 굴림이 상위 구간([RareQualityFloor, 1])으로 눌러 담긴다
+        float floorT = IsRareOwner(unitName) ? RareQualityFloor : 0f;
+
+        float hp           = ranges.Hp.Lerp(RollT(ref rng, floorT));
+        float attack       = ranges.Attack.Lerp(RollT(ref rng, floorT));
+        float defense      = ranges.Defense.Lerp(RollT(ref rng, floorT));
+        float attackRange  = ranges.AttackRange.Lerp(RollT(ref rng, floorT));
+        float attackSpeed  = ranges.AttackSpeed.Lerp(RollT(ref rng, floorT));
+        float moveSpeed    = ranges.MoveSpeed.Lerp(RollT(ref rng, floorT));
+        float soldierCount = math.round(ranges.SoldierCount.Lerp(RollT(ref rng, floorT)));
+        float commandPower = math.round(ranges.CommandPower.Lerp(RollT(ref rng, floorT)));
 
         // ── 레벨·등급 배율 계산 ──────────────────────────────
         float levelCoef = cfg != null ? cfg.LevelMultPerLevel : 0.01f;
@@ -76,15 +79,21 @@ public static class UnitJobRoller
         float flatHp    = (cfg != null ? cfg.LevelFlatHpPerLevel     : 10f) * levelUps;
         float flatAtk   = (cfg != null ? cfg.LevelFlatAttackPerLevel : 1f)  * levelUps;
 
+        // ── 등급 고정 가산 ────────────────────────────────────
+        //  배율만 쓰면 공격속도·이동속도·사거리처럼 배율이 안 붙는 스텟에
+        //  등급이 전혀 반영되지 않는다 (영웅인데 굼뜬 장수가 나온다).
+        //  → 등급 1단계마다 "해당 스텟 최댓값의 N%" 를 모든 굴림 스텟에 더한다.
+        float flatRatio = (cfg != null ? cfg.GradeFlatMaxRatio : 0.05f) * (int)grade;
+
         // ── 배율 적용 ─────────────────────────────────────────
-        stat.Set(StatType.MaxHp,        hp           * totalMult + flatHp);
-        stat.Set(StatType.Attack,       attack       * totalMult + flatAtk);
-        stat.Set(StatType.Defense,      defense * totalMult); // 소프트캡은 UnitHitSystem에서 처리
-        stat.Set(StatType.AttackRange,  attackRange);   // 배율 미적용
-        stat.Set(StatType.AttackSpeed,  attackSpeed);
-        stat.Set(StatType.MoveSpeed,    moveSpeed);
-        stat.Set(StatType.SoldierCount, math.round(soldierCount * totalMult));
-        stat.Set(StatType.CommandPower, math.round(commandPower * totalMult));
+        stat.Set(StatType.MaxHp,        hp    * totalMult + flatHp  + ranges.Hp.Max      * flatRatio);
+        stat.Set(StatType.Attack,       attack * totalMult + flatAtk + ranges.Attack.Max  * flatRatio);
+        stat.Set(StatType.Defense,      defense * totalMult + ranges.Defense.Max * flatRatio); // 소프트캡은 UnitHitSystem에서 처리
+        stat.Set(StatType.AttackRange,  attackRange + ranges.AttackRange.Max * flatRatio);   // 배율 미적용
+        stat.Set(StatType.AttackSpeed,  attackSpeed + ranges.AttackSpeed.Max * flatRatio);
+        stat.Set(StatType.MoveSpeed,    moveSpeed   + ranges.MoveSpeed.Max   * flatRatio);
+        stat.Set(StatType.SoldierCount, math.round(soldierCount * totalMult + ranges.SoldierCount.Max * flatRatio));
+        stat.Set(StatType.CommandPower, math.round(commandPower * totalMult + ranges.CommandPower.Max * flatRatio));
 
         // ── 고정 스텟 (레벨·등급 미적용) ─────────────────────
         stat.Set(StatType.CritChance, ranges.CritChance);
@@ -92,6 +101,39 @@ public static class UnitJobRoller
 
         return stat;
     }
+
+    // ══════════════════════════════════════════════════════════
+    //  스탯 품질 (0~1)
+    //  Roll() 이 굴리는 t 값 8개의 평균이다.
+    //  0 = 모든 스탯이 범위 최솟값, 1 = 전부 최댓값.
+    //  같은 순서로 같은 난수를 다시 굴려야 하므로 Roll() 을 고칠 때 여기도 같이 고칠 것.
+    // ══════════════════════════════════════════════════════════
+
+    /// <summary>희귀 스킬 주인의 최소 품질. 이 값 아래로는 굴리지 않는다.</summary>
+    public const float RareQualityFloor = 0.9f;
+
+    /// <summary>Roll() 이 소비하는 랜덤 스탯 개수.</summary>
+    const int StatRollCount = 8;
+
+    /// <summary>unitName 의 스탯 품질 (0~1). 등급 옆에 표시한다.</summary>
+    public static float GetQuality(string unitName)
+    {
+        var rng = new Unity.Mathematics.Random(ComputeSeed(unitName));
+        rng.NextInt(0, 4);   // 직업 굴림 — Roll() 과 순서를 맞춘다
+
+        float floorT = IsRareOwner(unitName) ? RareQualityFloor : 0f;
+
+        float sum = 0f;
+        for (int i = 0; i < StatRollCount; i++) sum += RollT(ref rng, floorT);
+        return sum / StatRollCount;
+    }
+
+    // floorT ~ 1 구간으로 눌러 담은 굴림값
+    static float RollT(ref Unity.Mathematics.Random rng, float floorT)
+        => floorT + (1f - floorT) * rng.NextFloat();
+
+    static bool IsRareOwner(string unitName)
+        => RareSkillArbiter.IsRareOwner(unitName);
 
     /// <summary>unitName 시드에서 직업만 반환 — UI 표시·필터링용.</summary>
     public static UnitJob GetJob(string unitName)
@@ -107,6 +149,9 @@ public static class UnitJobRoller
     /// </summary>
     public static UnitGrade GetBirthGrade(string unitName)
     {
+        // 희귀 스킬 주인은 태생부터 영웅 등급이다 — 추첨을 타지 않는다
+        if (IsRareOwner(unitName)) return UnitGrade.Epic;
+
         uint seed = ComputeGradeSeed(unitName);
         var  rng  = new Unity.Mathematics.Random(seed);
         float r   = rng.NextFloat();

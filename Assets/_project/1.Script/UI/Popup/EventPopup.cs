@@ -143,9 +143,12 @@ public class EventPopup : PopupBase
     {
         bool needsAbility = HasReward(_data.InstantRewards, EventRewardType.OpenAbilitySelect);
         bool needsShop    = HasReward(_data.InstantRewards, EventRewardType.OpenRunShop);
+        bool needsMerc    = HasReward(_data.InstantRewards, EventRewardType.OpenMercenary);
         var granted = EventRewardHandler.Apply(_data.InstantRewards, OnAbilitySelectRequired);
-        ShowResult(_data.InstantResultText, granted, suppressConfirm: needsAbility || needsShop);
+        ShowResult(_data.InstantResultText, granted,
+                   suppressConfirm: needsAbility || needsShop || needsMerc);
         if (needsShop) OpenRunShop();
+        if (needsMerc) OpenMercenary();
     }
 
     // ── 선택지 버튼 빌드 ─────────────────────────────────────
@@ -207,9 +210,12 @@ public class EventPopup : PopupBase
 
         bool needsAbility = HasReward(rewards, EventRewardType.OpenAbilitySelect);
         bool needsShop    = HasReward(rewards, EventRewardType.OpenRunShop);
+        bool needsMerc    = HasReward(rewards, EventRewardType.OpenMercenary);
         var granted = EventRewardHandler.Apply(rewards, OnAbilitySelectRequired);
-        ShowResult(choice.ResultText, granted, suppressConfirm: needsAbility || needsShop);
+        ShowResult(choice.ResultText, granted,
+                   suppressConfirm: needsAbility || needsShop || needsMerc);
         if (needsShop) OpenRunShop();
+        if (needsMerc) OpenMercenary();
     }
 
     // ── 런 상점 체이닝 ───────────────────────────────────────
@@ -219,6 +225,18 @@ public class EventPopup : PopupBase
     {
         var shop = PopupManager.Instance.Open<RunShopPopup>(PopupType.RunShop);
         shop.SetOnClose(() => _confirmBtn.interactable = true);
+    }
+
+    // ── 용병 고용 체이닝 ─────────────────────────────────────
+    //  상점과 같은 규칙 — 고용 팝업을 닫아야 이벤트 확인 버튼이 열린다.
+    //  대가(골드·용병조각)는 이벤트 선택지의 SpendItem 이 이미 받았으므로
+    //  여기서는 무료 모드로 연다.
+
+    void OpenMercenary()
+    {
+        var merc = PopupManager.Instance.Open<MercenaryShopPopup>(
+            PopupType.MercenaryShop, onClose: () => _confirmBtn.interactable = true);
+        merc.SetupAsReward();
     }
 
     // ── 결과 표시 ─────────────────────────────────────────────
@@ -326,11 +344,26 @@ public class EventPopup : PopupBase
 
         if (choice.SuccessRewards != null)
             foreach (var r in choice.SuccessRewards)
+            {
+                // 스테이지 비례 보상은 고정 문구를 쓸 수 없다 — 실제 수량을 그때그때 만든다
+                if (r.ScaleByStageReward && r.Item != eItem.None)
+                {
+                    int    amt   = EventRewardHandler.ResolveAmount(r);
+                    bool   spend = r.Type == EventRewardType.SpendItem;
+                    string color = spend ? "FFAA44" : "55EE88";
+                    string sign  = spend ? "-" : "+";
+
+                    if (sb.Length > 0) sb.Append("   ");
+                    sb.Append($"<color=#{color}>{r.Item.DisplayName()} {sign}{amt:N0}</color>");
+                    continue;
+                }
+
                 if (!string.IsNullOrEmpty(r.Description))
                 {
                     if (sb.Length > 0) sb.Append("   ");
                     sb.Append($"<color=#55EE88>{r.Description}</color>");
                 }
+            }
 
         return sb.ToString();
     }

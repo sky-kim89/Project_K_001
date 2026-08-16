@@ -29,6 +29,7 @@ MonoBehaviour:
       IntValue: 505
       FloatValue: 0
       Description: "\uCC98\uD615\uC758 \uC0AC\uAE30: \uACF5\uACA9\uB825 +8%"
+      ScaleByStageReward: 0
     FailRewards: []
     CostHint: 
   - Label: "\uC815\uBCF4\uB97C \uBC1B\uC544\uB0B8\uB2E4"
@@ -41,24 +42,27 @@ MonoBehaviour:
       IntValue: 506
       FloatValue: 0
       Description: "\uCCA9\uC790 \uC815\uBCF4: \uACBD\uD5D8\uCE58 +20%"
+      ScaleByStageReward: 0
     FailRewards: []
     CostHint: 
   - Label: "\uD480\uC5B4\uC900\uB2E4"
     ResultText: "\uCCA9\uC790\uB97C \uD480\uC5B4\uC92C\uC2B5\uB2C8\uB2E4. \uADF8\uB294
       \uBB54\uAC00\uB97C \uB0A8\uAE30\uACE0 \uC0AC\uB77C\uC84C\uC2B5\uB2C8\uB2E4.\n[\uACE8\uB4DC
-      150 \uD68D\uB4DD / \uB2E4\uC74C \uC2A4\uD14C\uC774\uC9C0 \u2192 \uC5D8\uB9AC\uD2B8]"
+      \uD68D\uB4DD / \uB2E4\uC74C \uC2A4\uD14C\uC774\uC9C0 \u2192 \uC5D8\uB9AC\uD2B8]"
     SuccessRate: 1
     SuccessRewards:
     - Type: 2
       Item: 0
-      IntValue: 150
+      IntValue: 180
       FloatValue: 0
-      Description: "\uACE8\uB4DC +150"
+      Description: 
+      ScaleByStageReward: 1
     - Type: 7
       Item: -1
       IntValue: 0
       FloatValue: 0
       Description: "\uB2E4\uC74C \uC2A4\uD14C\uC774\uC9C0 \u2192 \uC5D8\uB9AC\uD2B8"
+      ScaleByStageReward: 0
     FailRewards: []
     CostHint: 
   InstantRewards: []

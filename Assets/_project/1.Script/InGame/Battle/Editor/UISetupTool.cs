@@ -618,9 +618,11 @@ public static class UISetupTool
 
         // ── GeneralPanelContainer ──────────────────────────────
         //  화면 맨 아래에 딱 붙인다 (anchoredPosition.y = 0) — 전투 화면을 최대한 남긴다.
-        //  폭은 균등 분배 — 장군 3명이면 넓게, 5명이면 좁게 잡힌다.
-        //  ⚠ childForceExpandWidth=false 로 두면 5명일 때 캔버스 폭을 넘겨 잘린다.
-        //  ⚠ 카드 내부가 SetTopStretch 로 잡혀 있어야 넓어진 폭을 실제로 채운다.
+        //  폭은 **항상 5칸 기준 고정**이다 — 인원수에 따라 카드 크기가 바뀌지 않는다.
+        //  실제 폭 지정은 InGameHUD.ApplyFixedSlotWidth() 가 카드마다 LayoutElement 로 넣는다
+        //  (컨테이너 폭은 캔버스에 따라 달라지므로 런타임에서만 알 수 있다).
+        //  ⚠ childForceExpandWidth 를 켜면 그 지정이 무시되고 다시 인원수 균등 분배가 된다.
+        //  ⚠ 카드 내부가 SetTopStretch 로 잡혀 있어야 지정된 폭을 실제로 채운다.
         //  ⚠ 버프 아이콘은 카드 **위쪽 바깥**에 뜬다 — 컨테이너 높이에 넣지 않는다.
         //    넣으면 그만큼 카드가 다시 올라와 버프를 밖으로 뺀 의미가 없어진다.
         const float ContainerH = 155f + 8f;   // 카드 높이 + 위 여백
@@ -635,10 +637,10 @@ public static class UISetupTool
         var hlg = container.AddComponent<HorizontalLayoutGroup>();
         hlg.spacing              = 6;
         hlg.padding              = new RectOffset(8, 8, 8, 0);
-        hlg.childAlignment       = TextAnchor.LowerCenter;
+        hlg.childAlignment       = TextAnchor.LowerLeft;   // 슬롯 위치가 늘 같아야 한다
         hlg.childControlWidth      = true;
         hlg.childControlHeight     = false;
-        hlg.childForceExpandWidth  = true;
+        hlg.childForceExpandWidth  = false;               // 5칸 고정 폭 (위 주석 참고)
         hlg.childForceExpandHeight = false;
 
         // ── InGameHUD 필드 연결 ───────────────────────────────

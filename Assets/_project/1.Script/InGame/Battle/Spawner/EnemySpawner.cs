@@ -34,6 +34,13 @@ public class EnemySpawner : MonoBehaviour
     [Tooltip("DelayBefore / DelayBetween 에 곱한다. 0.5 = 절반 시간에 스폰.")]
     public float SpawnDelayMultiplier = 0.5f;
 
+    [Header("호위 대형 (SpawnEntry.EscortCount > 0)")]
+    [Tooltip("대열 간 X 간격. 호위는 본대 뒤(화면 바깥쪽)로 늘어선다.")]
+    public float SquadRowSpacing = 0.8f;
+
+    [Tooltip("같은 대열 안 병사 간 Y 간격")]
+    public float SquadColSpacing = 0.7f;
+
     // 외부(BattleManager)에서 스폰 중 여부 확인용
     public bool IsSpawning { get; private set; }
 
@@ -78,11 +85,29 @@ public class EnemySpawner : MonoBehaviour
                 {
                     if (unit.TryGetComponent<EnemyRuntimeBridge>(out var bridge))
                         bridge.Initialize(entry.Name, entry.UnitType, entry.EnemyRace,
-                                          entry.Level, entry.StatMultiplier, entry.StageBias);
+                                          entry.Level, entry.StatMultiplier, entry.StageBias,
+                                          entry.ScaleMultiplier, entry.KnockbackImmune);
                     PoolController.Instance.Despawn(unit);
                 }
 
                 yield return null; // 프레임당 1유닛 — 스터터 방지
+
+                // 호위대도 데워 둔다. 부대 하나는 이름이 같으므로 1기만 돌리면 된다
+                // — 빼먹으면 엘리트가 등장하는 순간 CharacterBuilder.Rebuild 가 몰린다.
+                if (entry.EscortCount <= 0) continue;
+
+                GameObject escort = PoolController.Instance.Spawn(
+                    PoolType.Unit, SpawnUnitType.Enemy.ToString(), pos, Quaternion.identity);
+
+                if (escort != null)
+                {
+                    if (escort.TryGetComponent<EnemyRuntimeBridge>(out var eb))
+                        eb.Initialize(EscortName(entry, i), SpawnUnitType.Enemy, entry.EnemyRace,
+                                      entry.Level, entry.StatMultiplier, entry.StageBias);
+                    PoolController.Instance.Despawn(escort);
+                }
+
+                yield return null;
             }
         }
     }
@@ -118,8 +143,13 @@ public class EnemySpawner : MonoBehaviour
                     // Name 시드 + 레벨 + 스테이지 배율로 스텟 초기화
                     if (unit.TryGetComponent<EnemyRuntimeBridge>(out var bridge))
                         bridge.Initialize(entry.Name, entry.UnitType, entry.EnemyRace,
-                                          entry.Level, entry.StatMultiplier, entry.StageBias);
+                                          entry.Level, entry.StatMultiplier, entry.StageBias,
+                                          entry.ScaleMultiplier, entry.KnockbackImmune);
                 }
+
+                // 호위 대형 — 본대(엘리트) 뒤에 격자로 붙여 한 덩어리로 진입시킨다
+                if (entry.EscortCount > 0)
+                    yield return StartCoroutine(SpawnEscorts(entry, spawnPos, i));
 
                 if (i < entry.Count - 1)
                 {
@@ -133,6 +163,65 @@ public class EnemySpawner : MonoBehaviour
 
         IsSpawning = false;
     }
+
+    // ── 호위 대형 ────────────────────────────────────────────
+    //
+    //  아군(장군 + 병사) 대형과 같은 격자 계산을 쓴다 — 열 수 = ceil(sqrt(N)),
+    //  각 열은 Y 중앙 정렬, 행이 늘어날수록 X 로 밀린다.
+    //
+    //  ■ 왜 본대 "뒤"(+X) 인가
+    //    적군은 화면 오른쪽 밖에서 나와 왼쪽으로 진군한다. 호위를 앞(-X)에 두면
+    //    화면 안에서 갑자기 튀어나온다. 뒤에 붙여야 부대 전체가 화면 밖에 머물다가
+    //    대형을 유지한 채 함께 걸어 들어온다.
+    //
+    //  ■ 스폰을 프레임에 나눠도 대형은 안 깨진다
+    //    자리를 leaderPos 기준 절대 좌표로 미리 정하기 때문이다.
+    //    (몇 프레임 차이로 앞쪽 유닛이 조금 더 전진하지만 간격 대비 무시할 수준)
+    IEnumerator SpawnEscorts(SpawnEntry entry, Vector3 leaderPos, int squadIndex)
+    {
+        int count = entry.EscortCount;
+        int colsY = Mathf.Max(3, Mathf.CeilToInt(Mathf.Sqrt(count)));
+
+        // 한 부대는 같은 이름 = 같은 스텟·외형. 오합지졸이 아니라 "편성된 부대" 로 보인다.
+        // (프리웜도 이 이름 하나만 데워 두면 된다)
+        string escortName = EscortName(entry, squadIndex);
+
+        for (int k = 0; k < count; k++)
+        {
+            int row      = k / colsY;
+            int col      = k % colsY;
+            int inThisRow = Mathf.Min(colsY, count - row * colsY);
+
+            float yOffset = (col - (inThisRow - 1) * 0.5f) * SquadColSpacing;
+            float xOffset = (row + 1) * SquadRowSpacing;   // 본대 뒤(+X)
+
+            var pos = new Vector3(leaderPos.x + xOffset,
+                                  leaderPos.y + yOffset,
+                                  leaderPos.z);
+
+            GameObject unit = PoolController.Instance.Spawn(
+                PoolType.Unit, SpawnUnitType.Enemy.ToString(), pos, Quaternion.identity);
+
+            if (unit == null)
+            {
+                Debug.LogWarning("[EnemySpawner] 호위 스폰 실패: 'Enemy' 풀");
+                continue;
+            }
+
+            if (unit.TryGetComponent<EnemyRuntimeBridge>(out var bridge))
+                bridge.Initialize(escortName, SpawnUnitType.Enemy, entry.EnemyRace,
+                                  entry.Level, entry.StatMultiplier, entry.StageBias);
+
+            // 생존 카운트는 BattleManager.CountUnits 가 EscortCount 까지 미리 더해 둔다
+            // — 여기서 OnUnitSpawned 를 부르면 이중 계산이 된다.
+
+            yield return null;   // 프레임당 1기 — 스터터 방지 (화면 밖이라 티가 안 난다)
+        }
+    }
+
+    /// <summary>squadIndex 번째 호위대가 공유하는 유닛 이름 (스텟·외형 시드).</summary>
+    static string EscortName(SpawnEntry entry, int squadIndex)
+        => $"{entry.Name}_G{squadIndex}";
 
     float GetSpawnX()
     {

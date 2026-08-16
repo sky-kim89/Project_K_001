@@ -44,6 +44,7 @@ public static class AbilityUIHelper
         {
             StatType.Defense             => Percent(value),
             StatType.CritChance          => Percent(value),
+            StatType.CritDamage          => value >= 0f ? $"+{value:0.##}배" : $"{value:0.##}배",
             StatType.SkillCooldownReduce => Percent(value),
             StatType.ExpGainBonus        => Percent(value),
             StatType.SoldierCount        => Count(value),
@@ -56,6 +57,15 @@ public static class AbilityUIHelper
 
     // 음수면 "-" 가 값에 이미 붙으므로 "+" 만 조건부로 붙인다 ("+-15%" 방지).
     static string Percent(float v) => v >= 0f ? $"+{v * 100f:0.#}%" : $"{v * 100f:0.#}%";
+
+    /// 전환 특성의 "재료 1단위" 표기. 0~1 비율 스탯은 %p 로, 나머지는 실수 그대로.
+    static string FormatUnit(StatType stat, float perUnit) => stat switch
+    {
+        StatType.Defense             => $"{perUnit * 100f:0.#}%p",
+        StatType.CritChance          => $"{perUnit * 100f:0.#}%p",
+        StatType.SkillCooldownReduce => $"{perUnit * 100f:0.#}%p",
+        _                            => $"{perUnit:0.#}",
+    };
 
     static string Count(float v)
     {
@@ -72,6 +82,59 @@ public static class AbilityUIHelper
         {
             if (sb.Length > 0) sb.Append('\n');
             sb.Append($"{LocalizationManager.Instance.Get(e.Stat.ToString())} {FormatStatValue(e.Stat, e.Value, e.IsPercent)}");
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// 특성 SO 전체(고정 효과 + 누적 스택)를 스탯 텍스트로 변환.
+    ///
+    /// 스택 누적 특성(분노 축적·전우의 분노·대기만성)은 고정 효과가 비어 있어서
+    /// Effects 만 읽으면 툴팁 스탯 줄이 통째로 사라진다 — 지금 얼마나 쌓였는지
+    /// 확인할 방법이 없다. 그래서 누적치를 앞에 세우고 계산식을 괄호로 덧붙인다.
+    ///
+    /// showAccumulated=false : 아직 보유하지 않은 특성(상점 매물·보상 카드).
+    ///                        남의 스택을 보여줄 이유가 없으므로 스택당 수치만 쓴다.
+    /// </summary>
+    public static string BuildStatText(TraitData data, bool showAccumulated = true)
+    {
+        if (data == null) return "";
+
+        var sb = new StringBuilder(BuildStatText(data.Effects));
+
+        // 전환 특성은 Effects 가 비어 있다 — 이 줄이 없으면 효과를 볼 방법이 없다.
+        if (data.Conversions != null)
+        {
+            foreach (var c in data.Conversions)
+            {
+                if (c.PerUnit <= 0f) continue;
+                if (sb.Length > 0) sb.Append('\n');
+                sb.Append($"{LocalizationManager.Instance.Get(c.From.ToString())} {FormatUnit(c.From, c.PerUnit)}" +
+                          $" → {LocalizationManager.Instance.Get(c.To.ToString())} {Percent(c.Rate)}");
+            }
+        }
+
+        if (data.StackStatBonuses == null || data.StackStatBonuses.Length == 0)
+            return sb.ToString();
+
+        int stacks = showAccumulated ? TraitApplier.GetMaxStack(data.TraitType) : 0;
+        string cap = data.MaxStacks > 0 ? $"/{data.MaxStacks}" : "";
+
+        foreach (var e in data.StackStatBonuses)
+        {
+            if (sb.Length > 0) sb.Append('\n');
+
+            string name = LocalizationManager.Instance.Get(e.Stat.ToString());
+            string per  = FormatStatValue(e.Stat, e.Value, e.IsPercent);
+
+            if (stacks <= 0)
+            {
+                sb.Append($"{name} 스택당 {per}");
+                continue;
+            }
+
+            string total = FormatStatValue(e.Stat, e.Value * stacks, e.IsPercent);
+            sb.Append($"{name} {total}  ({per} × {stacks}{cap}스택)");
         }
         return sb.ToString();
     }

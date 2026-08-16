@@ -29,6 +29,7 @@ public enum EventRewardType
     RandomTraitBuff   = 9,   // 버프 특성 풀에서 랜덤 1개
     RandomTraitDebuff = 10,  // 디버프 특성 풀에서 랜덤 1개
     OpenRunShop       = 11,  // 런 상점 팝업을 이어서 연다 (행상인 이벤트)
+    OpenMercenary     = 12,  // 용병 고용 팝업을 이어서 연다 (무료 — 비용은 SpendItem 으로 따로 건다)
 }
 
 // ── 보상 단위 ────────────────────────────────────────────────
@@ -41,8 +42,16 @@ public class EventReward
     public eItem           Item      = eItem.None;
     public int             IntValue;
     public float           FloatValue;
-    [Tooltip("UI 결과 텍스트에 표시할 설명 (예: '골드 +200'). 비어도 됨")]
+    [Tooltip("UI 결과 텍스트에 표시할 설명 (예: '골드 +200'). 비어도 됨.\n" +
+             "ScaleByStageReward 를 켜면 비워 둘 것 — 수량이 매번 달라져 고정 문구가 거짓말이 된다.")]
     public string          Description;
+
+    [Tooltip("IntValue 를 '해당 스테이지 클리어 보상 골드 대비 %' 로 해석한다.\n" +
+             "예) IntValue=40 → 그 스테이지 보상의 40%\n\n" +
+             "⚠ 스테이지 번호를 곱하지 않는다\n" +
+             "  클리어 보상은 500 → 1,950 으로 3.9배밖에 안 는다.\n" +
+             "  번호를 곱하면 30배가 되어 후반 비용이 수입을 짓눌러 버린다.")]
+    public bool            ScaleByStageReward;
 }
 
 // ── 선택지 ───────────────────────────────────────────────────

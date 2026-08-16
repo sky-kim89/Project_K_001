@@ -162,7 +162,8 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
 
         // ── 액티브 스킬: 이름+직업 기반 결정론적 선택 ──────────
         var activeDb  = ActiveSkillDatabase.Current;
-        var rolledId  = ActiveSkillRoller.Roll(_unitName, _job, activeDb, _grade);
+        // 희귀 스킬은 직업당 부대에 한 명만 — 중재까지 끝난 결과를 받는다
+        var rolledId  = RareSkillArbiter.Resolve(_unitName, _job, activeDb, _grade);
         var skillData = activeDb?.Get(rolledId);
 
         float baseCooldown = skillData?.Cooldown ?? 15f;
@@ -278,6 +279,10 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
                 em.AddComponent<TraitRainFireTag>(entity);
                 trigSet.TraitTriggers.Add(new TraitRainFireHandler());
             }
+            if (traitData.HasTrait(TraitType.KnightMartyr))
+                trigSet.TraitTriggers.Add(new TraitMartyrHandler());
+            if (traitData.HasTrait(TraitType.HasteRend))
+                trigSet.TraitTriggers.Add(new TraitRendHandler());
             if (traitData.HasTrait(TraitType.ShieldCounterBlow))
             {
                 em.AddComponent<TraitCounterBlowTag>(entity);
@@ -396,7 +401,8 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
 
         // ── 액티브 스킬 갱신 ─────────────────────────────────────
         var activeDb  = ActiveSkillDatabase.Current;
-        var rolledId  = ActiveSkillRoller.Roll(_unitName, _job, activeDb, _grade);
+        // 희귀 스킬은 직업당 부대에 한 명만 — 중재까지 끝난 결과를 받는다
+        var rolledId  = RareSkillArbiter.Resolve(_unitName, _job, activeDb, _grade);
         var skillData = activeDb?.Get(rolledId);
         float effectiveCdr2 = ClampCDR(_stat.Get(StatType.SkillCooldownReduce),
                                        GameplayConfig.Current?.CooldownReduceMax ?? 0.8f);
@@ -456,6 +462,10 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
                 // 행동 기반
                 if (traitData2.HasTrait(TraitType.ArcherRainFire))
                     trigSet.TraitTriggers.Add(new TraitRainFireHandler());
+                if (traitData2.HasTrait(TraitType.KnightMartyr))
+                    trigSet.TraitTriggers.Add(new TraitMartyrHandler());
+                if (traitData2.HasTrait(TraitType.HasteRend))
+                    trigSet.TraitTriggers.Add(new TraitRendHandler());
                 if (traitData2.HasTrait(TraitType.MageAttackCdr))
                     trigSet.TraitTriggers.Add(new TraitAttackCdrHandler());
                 if (traitData2.HasTrait(TraitType.MageEchoSkill))
@@ -599,7 +609,7 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
             }
         }
 
-        var logSkillId   = ActiveSkillRoller.Roll(_unitName, _job, ActiveSkillDatabase.Current);
+        var logSkillId   = RareSkillArbiter.Resolve(_unitName, _job, ActiveSkillDatabase.Current, _grade);
         var logSkillData = ActiveSkillDatabase.Current?.Get(logSkillId);
         string skillName = logSkillData?.SkillName ?? logSkillId.ToString();
 

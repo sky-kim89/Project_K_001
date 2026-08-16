@@ -214,9 +214,12 @@ public static class HeroDetailPopupCreator
         tlRt.offsetMin = new Vector2(30f, 0f); tlRt.offsetMax = Vector2.zero;
 
         // 이름 — 그림자 사본을 먼저 깔아 어떤 배경에서도 읽히게 한다
-        MakeTitle(header, "NameShadow", TitleShadow, 3f);
-        var nameTmp = MakeTitle(header, "NameText", TitleColor, 0f);
-        SetObj(so, "_nameText", nameTmp);
+        // ⚠ 그림자도 반드시 연결한다. 안 하면 프리팹 플레이스홀더("영웅 이름")가
+        //   실제 이름 옆에 검은 글씨로 그대로 보인다.
+        var shadowTmp = MakeTitle(header, "NameShadow", TitleShadow, 3f);
+        var nameTmp   = MakeTitle(header, "NameText",   TitleColor,  0f);
+        SetObj(so, "_nameText",       nameTmp);
+        SetObj(so, "_nameShadowText", shadowTmp);
 
         var accent = Go("AccentLine", panel);
         accent.AddComponent<Image>().color = AccentBlue;

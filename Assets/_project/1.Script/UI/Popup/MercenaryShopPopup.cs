@@ -19,7 +19,7 @@ using UnityEngine.UI;
 //      해고는 HeroDetailPopup 으로 옮겼으므로 여기서는 "고용/분해" 하나만 묻는다.
 //
 //  ■ 두 가지 모드
-//    Setup(slot)      — 유료. 실제로 고용했을 때만 HireMercenaryCost 를 차감한다.
+//    Setup(slot)      — 유료. 실제로 고용했을 때만 고용가를 차감한다 (등급별).
 //    SetupAsReward()  — 무료. 엘리트 스테이지 클리어 보상으로 InGameManager 가 연다.
 //
 //    ⚠ 예전엔 OnAfterClose 가 모드 구분 없이 **무조건** 골드를 뺐다.
@@ -35,6 +35,11 @@ public class MercenaryShopPopup : PopupBase
     [SerializeField] Button                 _prevBtn;
     [SerializeField] Button                 _nextBtn;
     [SerializeField] Image[]                _pageDots;      // 후보 수만큼만 켠다
+
+    [Header("현재 부대 (칸 클릭 → HeroDetailPopup — 해고는 거기서 한다)")]
+    [SerializeField] Button[]          _squadBtns;
+    [SerializeField] TextMeshProUGUI[] _squadNames;
+    [SerializeField] TextMeshProUGUI[] _squadLevels;
 
     [Header("액션")]
     [SerializeField] Button          _hireBtn;
@@ -56,6 +61,7 @@ public class MercenaryShopPopup : PopupBase
     int  _totalCandidateShards;
     bool _isFree;      // true = 보상 모드 (골드 미차감)
     bool _hired;       // 이번 오픈에서 실제로 고용했는가
+    int  _hiredCost;   // 고용 확정 시점의 가격 — 차감은 팝업이 닫힐 때 일어난다
 
     const int CandidateCount = 3;
 
@@ -72,6 +78,12 @@ public class MercenaryShopPopup : PopupBase
         _passBtn ?.onClick.AddListener(OnDecompose);
         _prevBtn ?.onClick.AddListener(() => Move(-1));
         _nextBtn ?.onClick.AddListener(() => Move(+1));
+
+        for (int i = 0; i < _squadBtns.Length; i++)
+        {
+            int slot = i;
+            _squadBtns[i].onClick.AddListener(() => OnSquadSlotClick(slot));
+        }
     }
 
     /// <summary>유료 고용 — 지정 슬롯에 배치한다. 고용을 확정해야 골드가 빠진다.</summary>
@@ -96,6 +108,7 @@ public class MercenaryShopPopup : PopupBase
     protected override void OnAfterOpen()
     {
         _hired     = false;
+        _hiredCost = 0;
         _pageIndex = 0;
 
         ApplyIcon(_passShardIcon, eItem.SoldierShard,        new Color(0.45f, 0.70f, 1.00f));
@@ -114,10 +127,7 @@ public class MercenaryShopPopup : PopupBase
         // 유료 모드에서 실제로 고용했을 때만 차감한다.
         // 그냥 닫거나(고용 안 함) 분해를 골랐으면 돈이 나가면 안 된다.
         if (!_isFree && _hired)
-        {
-            int cost = GameplayConfig.Current?.HireMercenaryCost ?? 500;
-            UserDataManager.Instance?.Get<ItemData>()?.Spend(eItem.Gold, cost);
-        }
+            UserDataManager.Instance?.Get<ItemData>()?.Spend(eItem.Gold, _hiredCost);
         UserDataManager.Instance?.RequestSave();
     }
 
@@ -170,6 +180,7 @@ public class MercenaryShopPopup : PopupBase
     {
         RefreshCard();
         RefreshDots();
+        RefreshSquad();
         RefreshActionBar();
     }
 
@@ -221,7 +232,7 @@ public class MercenaryShopPopup : PopupBase
         if (_hireCostText != null)
         {
             _hireCostText.gameObject.SetActive(!_isFree);
-            int cost = GameplayConfig.Current?.HireMercenaryCost ?? 500;
+            int cost = CurrentHireCost();
             _hireCostText.text  = $"{cost:N0}";
             _hireCostText.color = canPay ? new Color(1.00f, 0.85f, 0.20f)
                                          : new Color(0.90f, 0.35f, 0.35f);
@@ -234,14 +245,77 @@ public class MercenaryShopPopup : PopupBase
         if (_hintText != null)
             _hintText.text = hasSlot
                 ? "한 명을 고용하거나, 전부 돌려보내 용병 조각을 받는다."
-                : "배치 슬롯이 가득 찼다 — 전부 돌려보내 용병 조각으로 바꿀 수 있다.";
+                : "배치 슬롯이 가득 찼다 — 아래 부대에서 한 명을 해고하면 고용할 수 있다.";
+    }
+
+    // ── 현재 부대 ─────────────────────────────────────────────
+    //
+    //  슬롯이 꽉 차면 고용 버튼이 숨겨진다(RefreshActionBar).
+    //  좋은 장수가 떴는데 아무것도 못 하는 상황을 막으려면 여기서 바로
+    //  누굴 내보낼지 정할 수 있어야 한다 — 칸을 누르면 HeroDetailPopup 이 열린다.
+    //
+    //  ⚠ 해고를 여기서 처리하지 않는다
+    //    해고 로직과 "마지막 1명은 해고 불가" 보호는 HeroDetailPopup 이 소유한다.
+    //    여기서 또 구현하면 보호 규칙이 두 벌이 된다.
+
+    static readonly Color SquadDimText = new Color(0.45f, 0.48f, 0.56f);
+    static readonly Color SquadLvText  = new Color(0.78f, 0.82f, 0.90f);
+
+    void RefreshSquad()
+    {
+        var deploy = UserDataManager.Instance?.Get<DeploymentData>();
+        var units  = UserDataManager.Instance?.Get<UnitData>();
+
+        // 유물·특성으로 열린 칸까지만 실제 슬롯이다 — 잠긴 칸에 넣으면 전투에 안 나온다
+        int activeSlots = RelicApplier.GetTotalActiveGeneralSlots();
+
+        for (int i = 0; i < _squadBtns.Length; i++)
+        {
+            bool   unlocked = i < activeSlots;
+            string occupant = unlocked ? deploy?.GetUnitAt(i) : null;
+            var    entry    = string.IsNullOrEmpty(occupant) ? null : units?.GetUnit(occupant);
+
+            _squadBtns[i].interactable = entry != null;
+
+            _squadNames[i].text  = entry != null ? entry.UnitName
+                                 : unlocked      ? "비어 있음"
+                                                 : "잠 김";
+            // 등급은 이름 색으로 표시한다 — 칸 배경을 갈아끼우면 버튼 눌림 색 계산이 어긋난다
+            _squadNames[i].color = entry != null ? GradeStyle.GetColor(entry.Grade) : SquadDimText;
+
+            _squadLevels[i].text  = entry != null ? $"Lv.{entry.Level}" : "—";
+            _squadLevels[i].color = entry != null ? SquadLvText : SquadDimText;
+        }
+    }
+
+    void OnSquadSlotClick(int slot)
+    {
+        var deploy = UserDataManager.Instance.Get<DeploymentData>();
+        var units  = UserDataManager.Instance.Get<UnitData>();
+
+        // 빈 칸·잠긴 칸 버튼은 비활성이라 여기까지 오지 않는다
+        var entry = units.GetUnit(deploy.GetUnitAt(slot));
+
+        var detail = PopupManager.Instance.Open<HeroDetailPopup>(
+            PopupType.HeroDetail, onClose: OnSquadDetailClosed);
+        detail.Setup(entry);
+    }
+
+    // 해고했으면 빈 슬롯이 생겨 고용 버튼이 다시 살아나고,
+    // 등급업·레벨업만 했어도 부대 표시가 달라진다 → 통째로 갱신한다.
+    void OnSquadDetailClosed()
+    {
+        RefreshSquad();
+        RefreshActionBar();
     }
 
     bool CanAffordHire()
-    {
-        int cost = GameplayConfig.Current?.HireMercenaryCost ?? 500;
-        return UserDataManager.Instance?.Get<ItemData>()?.CanSpend(eItem.Gold, cost) ?? false;
-    }
+        => UserDataManager.Instance?.Get<ItemData>()?.CanSpend(eItem.Gold, CurrentHireCost()) ?? false;
+
+    /// <summary>지금 보고 있는 후보의 고용가 — 등급이 높을수록 비싸다.</summary>
+    int CurrentHireCost()
+        => Current != null ? GameplayConfig.HireCost(Current.Grade)
+                           : GameplayConfig.HireCost(UnitGrade.Normal);
 
     // ── 자세히 보기 ───────────────────────────────────────────
 
@@ -275,7 +349,8 @@ public class MercenaryShopPopup : PopupBase
         unitData?.AddUnit(entry);
         deployData?.Deploy(entry.UnitName, slot);
         JobSynergyEvaluator.Recalculate();
-        _hired = true;
+        _hired     = true;
+        _hiredCost = GameplayConfig.HireCost(entry.Grade);
 
         CloseDetailAndSelf();
     }

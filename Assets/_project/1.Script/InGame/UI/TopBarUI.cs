@@ -131,7 +131,11 @@ public class TopBarUI : MonoBehaviour
         int   current = Mathf.Max(1, ctx.CurrentWave);  // 0 방지 (초기화 전 프레임 대응)
         float progress = total > 1 ? Mathf.Clamp01((float)(current - 1) / (total - 1)) : 1f;
 
-        if (_waveText         != null) _waveText.text              = $"웨이브 {current} / {total}";
+        // 무한 보스 구간에서는 웨이브 대신 몇 번째 보스인지 보여준다
+        if (_waveText != null)
+            _waveText.text = ctx.EndlessBossIndex > 0
+                ? $"무한 보스 {ctx.EndlessBossIndex}"
+                : $"웨이브 {current} / {total}";
         if (_waveProgressFill != null) _waveProgressFill.fillAmount = progress;
         if (_waveTimerText    != null) _waveTimerText.text          = FormatTime(_waveElapsed);
     }

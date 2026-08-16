@@ -61,7 +61,7 @@ public class GeneralCandidateCardUI : MonoBehaviour
         if (_jobChipText   != null) _jobChipText.text   = JobStyle.GetLabel(job);
         if (_gradeChipText != null)
         {
-            _gradeChipText.text  = GradeStyle.GetLabel(entry.Grade);
+            _gradeChipText.text  = GradeStyle.GetLabelWithQuality(entry.Grade, entry.UnitName);
             _gradeChipText.color = gc;
         }
         if (_gradeBorder   != null) _gradeBorder.color  = gc;
@@ -107,7 +107,7 @@ public class GeneralCandidateCardUI : MonoBehaviour
         if (_activeSkillIcon != null)
         {
             var activeDb = ActiveSkillDatabase.Current;
-            var rolledId = ActiveSkillRoller.Roll(entry.UnitName, job, activeDb, entry.Grade);
+            var rolledId = RareSkillArbiter.Resolve(entry.UnitName, job, activeDb, entry.Grade);
             _activeSkillIcon.SetActiveSkill(rolledId, activeDb?.Get(rolledId));
         }
 

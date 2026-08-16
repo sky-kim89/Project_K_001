@@ -39,7 +39,7 @@ public class MercSlotCardUI : MonoBehaviour
 
         if (_gradeBorder != null) _gradeBorder.color = gc;
         if (_gradeBadge  != null) _gradeBadge.color  = gc;
-        if (_gradeText   != null) { _gradeText.text = GradeStyle.GetLabel(entry.Grade); _gradeText.color = Color.white; }
+        if (_gradeText   != null) { _gradeText.text = GradeStyle.GetLabelWithQuality(entry.Grade, entry.UnitName); _gradeText.color = Color.white; }
         if (_nameText    != null) _nameText.text  = entry.UnitName;
         if (_levelText   != null) _levelText.text = $"Lv.{entry.Level}";
         if (_jobText     != null) _jobText.text   = JobStyle.GetLabel(job);

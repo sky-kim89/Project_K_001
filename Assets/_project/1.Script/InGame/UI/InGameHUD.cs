@@ -2,6 +2,7 @@
 using Unity.Entities;
 using BattleGame.Units;
 using UnityEngine;
+using UnityEngine.UI;
 using Assets.PixelFantasy.PixelHeroes.Common.Scripts.CharacterScripts;
 
 // ============================================================
@@ -40,6 +41,49 @@ public class InGameHUD : MonoBehaviour
     void Awake()
     {
         GeneralRuntimeBridge.OnSpawned += HandleGeneralSpawned;
+        SetupFixedSlotLayout();
+    }
+
+    // ── 카드 폭 고정 (항상 5칸 기준) ──────────────────────────
+    //
+    //  컨테이너의 childForceExpandWidth 를 켜 두면 카드가 인원수에 맞춰 늘어난다.
+    //  2명이면 화면 절반씩 차지하고 5명이면 좁아져서, 용병을 고용할수록
+    //  같은 장군의 카드가 계속 작아진다 — 슬롯 위치도 매번 달라진다.
+    //  → 강제 확장을 끄고 카드마다 "1/5 폭" 을 직접 지정한다.
+    //
+    //  ⚠ 씬 프리팹을 다시 만들지 않아도 되도록 런타임에서도 끈다
+    //    (UISetupTool 쪽도 같이 고쳐 뒀지만, 이미 저장된 씬에는 옛 설정이 남아 있다)
+
+    void SetupFixedSlotLayout()
+    {
+        if (_generalPanelContainer == null) return;
+        if (!_generalPanelContainer.TryGetComponent<HorizontalLayoutGroup>(out var hlg)) return;
+
+        hlg.childForceExpandWidth = false;
+        hlg.childAlignment        = TextAnchor.LowerLeft;   // 슬롯 위치가 늘 같아야 한다
+    }
+
+    /// <summary>카드 하나가 차지할 폭 — 컨테이너를 항상 _maxGeneralPanels 칸으로 나눈 값.</summary>
+    void ApplyFixedSlotWidth(GameObject card)
+    {
+        if (_generalPanelContainer is not RectTransform contRT) return;
+
+        float pad = 0f, spacing = 0f;
+        if (_generalPanelContainer.TryGetComponent<HorizontalLayoutGroup>(out var hlg))
+        {
+            pad     = hlg.padding.left + hlg.padding.right;
+            spacing = hlg.spacing;
+        }
+
+        int   slots = Mathf.Max(1, _maxGeneralPanels);
+        float width = (contRT.rect.width - pad - spacing * (slots - 1)) / slots;
+        if (width <= 0f) return;   // 레이아웃 전이라 폭을 모른다 — 다음 프레임에 자동으로 잡힌다
+
+        if (!card.TryGetComponent<LayoutElement>(out var le))
+            le = card.AddComponent<LayoutElement>();
+
+        le.preferredWidth = width;
+        le.flexibleWidth  = 0f;
     }
 
     void Start()
@@ -72,6 +116,8 @@ public class InGameHUD : MonoBehaviour
         if (_panels.Count >= _maxGeneralPanels) return;
 
         var go    = Instantiate(_generalPanelPrefab, _generalPanelContainer);
+        ApplyFixedSlotWidth(go);
+
         var panel = go.GetComponent<GeneralPanelUI>();
         if (panel == null)
         {

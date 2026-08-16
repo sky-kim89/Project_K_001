@@ -82,26 +82,10 @@ public class ActiveSummonSkeleton : ActiveSkillData
             // 사망 위치에 이펙트
             SkillEffectHelper.Spawn(BaseEffectKey, spawnPos, EffectDespawnDelay);
 
-            GameObject go = PoolController.Instance.Spawn(
-                PoolType.Unit, SkeletonPoolKey, spawnPos, Quaternion.identity);
-
-            if (go == null)
-            {
-                Debug.LogWarning($"[ActiveSummonSkeleton] 풀 스폰 실패: '{SkeletonPoolKey}'");
-                continue;
-            }
-
-            BattleManager.Instance?.OnUnitSpawned(TeamType.Ally);
-
-            if (go.TryGetComponent<SoldierRuntimeBridge>(out var bridge))
-            {
-                bridge.Initialize(SkeletonPoolKey, generalStat, StatRatio, ctx.CasterEntity,
-                    generalJob, "Skeleton", UnitGrade.Normal);
-
-                // 소환 유닛 마킹 — 딜을 SkillDamageDealt 로 귀속
-                if (go.TryGetComponent<EntityLink>(out var link) && link.Entity != Entity.Null)
-                    em.AddComponent<SummonedTag>(link.Entity);
-            }
+            // 스폰·외형·태그는 SkeletonSpawner 가 소유한다 —
+            // 비석 강림(Gravestone)과 같은 스켈레톤으로 보여야 한다
+            SkeletonSpawner.Spawn(em, SkeletonPoolKey, spawnPos, generalStat, StatRatio,
+                                  ctx.CasterEntity, generalJob);
         }
     }
 }

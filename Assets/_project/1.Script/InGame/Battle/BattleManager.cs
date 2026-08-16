@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Assets.PixelFantasy.PixelHeroes.Common.Scripts.CharacterScripts;
 using Unity.Entities;
 using UnityEngine;
 
@@ -88,6 +89,12 @@ public class BattleManager : Singleton<BattleManager>
     // 아군 패널이 게임 시작과 동시에 표시된다.
     IEnumerator StartBattleRoutine()
     {
+        // ── 지난 스테이지 외형 캐시 회수 ────────────────────────
+        // 적 외형 키는 스테이지 번호(S{n}W{w}E)를 물고 있어 스테이지가 바뀌면 전부 갈린다.
+        // 로딩 팝업이 떠 있는 지금 놓아줘야 전투 중에 언로드 스파이크가 안 생긴다.
+        CharacterBuilder.ClearSharedCache();
+        yield return Resources.UnloadUnusedAssets();
+
         // ── 웨이브 1 아군 즉시 스폰 (프리웜 대기 없음) ──────────
         _context.CurrentWave = 1;
         List<SpawnEntry> ally1 = _mode.GetAllySpawnEntries(1);
@@ -104,6 +111,9 @@ public class BattleManager : Singleton<BattleManager>
 
         // OnBattleStart 트리거 어빌리티 일괄 발동
         FireBattleStartTriggers();
+
+        // 특성 이펙트 프리웜 — 적군 프리웜과 같은 이유로 전투 시작 전에 채운다
+        PrewarmTraitEffects(ally1 is { Count: > 0 } ? CountUnits(ally1) : 0);
 
         // ── 웨이브 1 적군만 프리웜 (즉시 스폰을 위한 최소 준비) ──
         List<SpawnEntry> wave1Enemies = _mode.GetEnemySpawnEntries(1);
@@ -186,6 +196,13 @@ public class BattleManager : Singleton<BattleManager>
             // 실제 지급은 BattleResultPopup 에서 RewardOpener 를 통해 처리
             if (isLastWave)
             {
+                // 최종 스테이지는 클리어되지 않는다 — 보스를 잡을 때마다 더 강한 보스가 나온다
+                if (_mode.IsEndless)
+                {
+                    yield return StartCoroutine(EndlessBossRoutine());
+                    yield break;
+                }
+
                 ApplyStageClearTraitStacks();
                 _mode.ApplyStageClearReward();
                 _context.State = BattleState.BattleVictory;
@@ -243,6 +260,40 @@ public class BattleManager : Singleton<BattleManager>
             yield return new WaitUntil(() =>
                 _context.AliveEnemyCount <= 0 ||
                 _context.State == BattleState.BattleDefeat);
+        }
+    }
+
+    // ── 무한 보스 루틴 (최종 스테이지) ────────────────────────
+    //
+    //  보스를 잡을 때마다 스텟 ×10, 크기 ×2 인 다음 보스가 다시 나온다.
+    //  승리 조건이 없으므로 아군 전멸(또는 포기)로만 끝난다.
+    //
+    //  ⚠ State 를 InWave 로 되돌려야 한다 — EvaluateBattleState 의 패배 판정이
+    //    InWave 상태에서만 돌기 때문에, WaveClear 인 채로 두면 전멸해도 패배가 안 뜬다.
+    IEnumerator EndlessBossRoutine()
+    {
+        int bossIndex = 0;
+
+        while (true)
+        {
+            bossIndex++;
+            _context.EndlessBossIndex = bossIndex;
+
+            List<SpawnEntry> entries = _mode.GetEndlessBossEntries(bossIndex);
+            EnemySpawner.Spawn(entries);
+            _context.AliveEnemyCount += CountUnits(entries);
+            _context.State = BattleState.InWave;
+
+            Debug.Log($"[BattleManager] 무한 보스 {bossIndex} 등장 " +
+                      $"(스텟 ×{entries[0].StatMultiplier:G3}, 크기 ×{entries[0].ScaleMultiplier})");
+
+            // 잔존 적까지 전부 정리해야 다음 보스가 나온다
+            yield return new WaitUntil(() =>
+                (!EnemySpawner.IsSpawning && _context.AliveEnemyCount <= 0) ||
+                _context.State == BattleState.BattleDefeat);
+
+            if (_context.State == BattleState.BattleDefeat)
+                yield break;
         }
     }
 
@@ -464,11 +515,49 @@ public class BattleManager : Singleton<BattleManager>
     }
 
     /// <summary>SpawnEntry 목록의 총 유닛 수를 계산한다.</summary>
+    // 호위 병사(EscortCount)까지 포함한 실제 스폰 수.
+    // 생존 카운트는 웨이브 시작 시 여기서 한 번에 더해지므로, 호위를 빼먹으면
+    // 호위가 아직 살아 있는데 카운트가 0 이 되어 웨이브가 먼저 끝난다.
     static int CountUnits(List<SpawnEntry> entries)
     {
         int total = 0;
         foreach (SpawnEntry entry in entries)
-            total += entry.Count;
+            total += entry.Count * (1 + entry.EscortCount);
+        return total;
+    }
+
+    // ── 특성 이펙트 프리웜 ────────────────────────────────────
+    //  트리거 특성의 이펙트는 전투가 시작되자마자 여러 개가 동시에 필요하다.
+    //  첫 발동 때 Instantiate 가 몰려 프레임이 튀지 않도록 미리 채워 둔다.
+    //  새 특성 이펙트가 늘어나면 여기에 한 줄씩 추가한다.
+    static void PrewarmTraitEffects(int generalCount)
+    {
+        if (generalCount <= 0) return;
+
+        var traits = UserDataManager.Instance?.Get<RunTraitData>();
+        if (traits == null) return;
+
+        // 폭우 사격은 장군뿐 아니라 병사도 발동한다 → 아군 유닛 총량 기준으로 채운다.
+        if (traits.HasTrait(TraitType.ArcherRainFire))
+            RainFireSplash.Prewarm(CountAllyUnits(generalCount));
+    }
+
+    /// <summary>장군 + 그 장군들이 데리고 나가는 병사 수. 전투 시작 시 1회만 계산한다.</summary>
+    static int CountAllyUnits(int generalCount)
+    {
+        int total = generalCount;
+
+        var deploy = UserDataManager.Instance?.Get<DeploymentData>();
+        var units  = UserDataManager.Instance?.Get<UnitData>();
+        if (deploy == null || units == null) return total;
+
+        foreach (string name in deploy.GetDeployedUnits())
+        {
+            var entry = units.GetUnit(name);
+            if (entry == null) continue;
+            total += Mathf.Max(0, Mathf.RoundToInt(
+                HeroStatResolver.Resolve(entry).Total(StatType.SoldierCount)));
+        }
         return total;
     }
 

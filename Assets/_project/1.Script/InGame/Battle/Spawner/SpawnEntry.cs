@@ -46,6 +46,18 @@ public class SpawnEntry
     [Tooltip("스테이지 진행도 기반 스텟 배율. HP·공격력에 곱해진다 (1.0 = 기준값).")]
     public float StatMultiplier = 1f;
 
+    [Tooltip("이 항목의 유닛 1기마다 함께 등장하는 호위 병사 수. 0 이면 호위 없음.\n" +
+             "호위는 Enemy 풀에서 나오며, 한 명씩 흘러나오지 않고\n" +
+             "본대 뒤에 격자 대형을 이루어 한 덩어리로 진입한다 (엘리트 부대 연출).")]
+    public int EscortCount = 0;
+
+    [Tooltip("프리팹 원본 크기에 곱할 배율. 1 = 원본 그대로.\n" +
+             "무한 보스처럼 같은 프리팹을 더 크게 내보낼 때 사용한다.")]
+    public float ScaleMultiplier = 1f;
+
+    [Tooltip("넉백 완전 면역 여부. 보스에만 의미가 있다 (기본 보스 내성 0.8 → 1.0).")]
+    public bool KnockbackImmune = false;
+
     /// <summary>스텟 범위 편향 (0=최솟값 균등, 1=항상 최댓값). NormalMode 가 런타임에 주입.</summary>
     [System.NonSerialized] public float StageBias = 0f;
 

@@ -194,6 +194,7 @@ public static class IconGenerator
         Save(48, 48, TRAIT_PATH + "/trait_knight_command.png",           DrawTraitKnight);
         Save(48, 48, TRAIT_PATH + "/trait_knight_soldier_rage.png",     DrawTraitKnightSoldierRage);
         Save(48, 48, TRAIT_PATH + "/trait_knight_hero_return.png",      DrawTraitKnightHeroReturn);
+        Save(48, 48, TRAIT_PATH + "/trait_knight_martyr.png",           DrawTraitKnightMartyr);
         Save(48, 48, TRAIT_PATH + "/trait_archer_precision.png",        DrawTraitArcher);
         Save(48, 48, TRAIT_PATH + "/trait_archer_retreat_fire.png",     DrawTraitArcherRetreatFire);
         Save(48, 48, TRAIT_PATH + "/trait_archer_rain_fire.png",        DrawTraitArcherRainFire);
@@ -209,6 +210,25 @@ public static class IconGenerator
         Save(48, 48, TRAIT_PATH + "/trait_common_soldier_supply.png",   DrawTraitCommonSoldierSupply);
         Save(48, 48, TRAIT_PATH + "/trait_common_forced_levy.png",      DrawTraitCommonForcedLevy);
         Save(48, 48, TRAIT_PATH + "/trait_common_equip_expand.png",     DrawTraitCommonEquipExpand);
+        Save(48, 48, TRAIT_PATH + "/trait_common_late_bloom.png",       DrawTraitCommonLateBloom);
+
+        // ── 스탯 전환 특성 아이콘 ───────────────────────────────
+        Save(48, 48, TRAIT_PATH + "/trait_conv_heavy_armor.png",        DrawTraitConvHeavyArmor);
+        Save(48, 48, TRAIT_PATH + "/trait_conv_titan.png",              DrawTraitConvTitan);
+        Save(48, 48, TRAIT_PATH + "/trait_conv_swift.png",              DrawTraitConvSwift);
+        Save(48, 48, TRAIT_PATH + "/trait_conv_sage.png",               DrawTraitConvSage);
+        Save(48, 48, TRAIT_PATH + "/trait_conv_warlord.png",            DrawTraitConvWarlord);
+        Save(48, 48, TRAIT_PATH + "/trait_conv_marksman.png",           DrawTraitConvMarksman);
+        Save(48, 48, TRAIT_PATH + "/trait_conv_bulwark.png",            DrawTraitConvBulwark);
+
+        // ── 치명타 특성 아이콘 ──────────────────────────────────
+        Save(48, 48, TRAIT_PATH + "/trait_crit_assassin.png",           DrawTraitCritAssassin);
+        Save(48, 48, TRAIT_PATH + "/trait_crit_executioner.png",        DrawTraitCritExecutioner);
+        Save(48, 48, TRAIT_PATH + "/trait_crit_deadeye.png",            DrawTraitCritDeadeye);
+
+        // ── 공격속도 특성 아이콘 ────────────────────────────────
+        Save(48, 48, TRAIT_PATH + "/trait_haste_frenzy.png",            DrawTraitHasteFrenzy);
+        Save(48, 48, TRAIT_PATH + "/trait_haste_rend.png",              DrawTraitHasteRend);
 
         // ── 이벤트 전용 특성 아이콘 ─────────────────────────────
         Save(48, 48, TRAIT_PATH + "/trait_event_battle_will.png",       DrawEventBattleWill);
@@ -239,7 +259,7 @@ public static class IconGenerator
         AssetDatabase.Refresh();
         ApplySpriteImportSettings(TRAIT_PATH, 48);
         AssetDatabase.SaveAssets();
-        Debug.Log("[IconGenerator] 특성 아이콘 39장 생성 완료.");
+        Debug.Log("[IconGenerator] 특성 아이콘 53장 생성 완료.");
     }
 
     // ─────────────────────────────────────────────────────
@@ -567,6 +587,365 @@ public static class IconGenerator
         p.FillRRect(9,  42, 6, 5, 1, sc);
         p.FillCircle(36, 40, 3, sc);
         p.FillRRect(33, 42, 6, 5, 1, sc);
+    }
+
+    // KnightMartyr — 순교 (쓰러진 병사 + 방사형 폭발)
+    static void DrawTraitKnightMartyr(P p)
+    {
+        p.BgGradient(Hex("1A0602"), Hex("40140A"));
+        p.RoundedBorder(8, 2, Hex("FF7722"));
+
+        // 폭발 방사선 (8방향)
+        var ray = new Color32(255, 140, 40, 150);
+        p.DrawLine(24, 24, 24,  4, ray, 2);
+        p.DrawLine(24, 24, 24, 44, ray, 2);
+        p.DrawLine(24, 24,  4, 24, ray, 2);
+        p.DrawLine(24, 24, 44, 24, ray, 2);
+        var ray2 = new Color32(255, 100, 20, 110);
+        p.DrawLine(24, 24, 10, 10, ray2, 2);
+        p.DrawLine(24, 24, 38, 10, ray2, 2);
+        p.DrawLine(24, 24, 10, 38, ray2, 2);
+        p.DrawLine(24, 24, 38, 38, ray2, 2);
+
+        // 폭발 화염구
+        p.FillCircleAlpha(24, 24, 15, new Color32(255, 90, 20, 55));
+        p.FillCircle(24, 24, 10, Hex("FF6614"));
+        p.FillCircle(24, 24,  6, Hex("FFAA33"));
+        p.FillCircle(24, 24,  3, Hex("FFF0C0"));
+
+        // 쓰러진 병사 실루엣 (하단, 누운 자세)
+        var sc = new Color32(60, 16, 6, 230);
+        p.FillCircle(13, 39, 4, sc);
+        p.FillRRect(16, 36, 19, 6, 2, sc);
+        p.DrawCircle(13, 39, 4, 1, Hex("FF8844"));
+
+        // 흩어지는 파편
+        p.FillRRect(6,  14, 3, 3, 1, new Color32(255, 190, 90, 190));
+        p.FillRRect(40, 16, 3, 3, 1, new Color32(255, 190, 90, 190));
+        p.FillRRect(38, 33, 2, 2, 1, new Color32(255, 160, 60, 160));
+    }
+
+    // CommonLateBloom — 대기만성 (계단식 성장 + 개화)
+    static void DrawTraitCommonLateBloom(P p)
+    {
+        p.BgGradient(Hex("04140A"), Hex("14301A"));
+        p.RoundedBorder(8, 2, Hex("66DD77"));
+
+        // 계단식 누적 바 (왼→오, 점점 높아지고 밝아짐)
+        Color32[] steps =
+        {
+            new Color32(40, 90, 50, 200), new Color32(56, 130, 66, 220),
+            new Color32(80, 180, 90, 240), new Color32(120, 225, 120, 255),
+        };
+        for (int i = 0; i < 4; i++)
+        {
+            int bx = 6 + i * 9;
+            int bh = 6 + i * 6;
+            p.FillRRect(bx, 42 - bh, 7, bh, 1, steps[i]);
+        }
+
+        // 줄기 (마지막 계단에서 위로)
+        p.DrawLine(38, 24, 38, 14, Hex("77CC66"), 2);
+
+        // 개화 (금빛 꽃 — 늦게 핀 결실)
+        p.FillCircleAlpha(38, 12, 9, new Color32(255, 220, 90, 60));
+        var petal = Hex("FFD24A");
+        p.FillCircle(33, 12, 4, petal);
+        p.FillCircle(43, 12, 4, petal);
+        p.FillCircle(38,  7, 4, petal);
+        p.FillCircle(38, 17, 4, petal);
+        p.FillCircle(38, 12, 4, Hex("FFF0A0"));
+
+        // 잎 하나 (줄기 왼쪽)
+        p.FillEllipse(32, 21, 5, 3, Hex("55BB55"));
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  스탯 전환 특성 — 공통 시각 언어
+    //  "왼쪽 = 재료 스탯 / 가운데 = 화살표 / 오른쪽 = 보상 스탯"
+    //  같은 계열임을 한눈에 알아보게 화살표 모티프를 공유한다.
+    // ─────────────────────────────────────────────────────────
+
+    static void ConvArrow(P p, Color32 c)
+    {
+        p.DrawLine(20, 24, 28, 24, c, 3);
+        p.FillTri(32, 24, 26, 20, 26, 28, c);
+    }
+
+    // ConvHeavyArmor — 중갑 (방패 → 검)
+    static void DrawTraitConvHeavyArmor(P p)
+    {
+        p.BgGradient(Hex("0A0E14"), Hex("222C3A"));
+        p.RoundedBorder(8, 2, Hex("8FA6C4"));
+
+        // 좌: 방패
+        var sh = Hex("7C93B4");
+        p.FillRRect(6, 12, 13, 14, 3, sh);
+        p.FillTri(6, 26, 19, 26, 12, 36, sh);
+        p.DrawLine(12, 14, 12, 33, Hex("C6D8F0"), 1);
+
+        ConvArrow(p, Hex("FFD24A"));
+
+        // 우: 검날
+        p.FillRRect(38, 8, 5, 24, 1, Hex("E4EEFA"));
+        p.FillTri(40, 4, 37, 9, 44, 9, Hex("FFFFFF"));
+        p.FillRRect(34, 32, 13, 4, 1, Hex("A8763C"));
+    }
+
+    // ConvTitan — 거인 (체력 → 완력)
+    static void DrawTraitConvTitan(P p)
+    {
+        p.BgGradient(Hex("140A16"), Hex("32203C"));
+        p.RoundedBorder(8, 2, Hex("B07ADA"));
+
+        // 좌: 거대한 심장
+        var hc = Hex("C2569A");
+        p.FillCircle(10, 16, 5, hc);
+        p.FillCircle(18, 16, 5, hc);
+        p.FillTri(4, 18, 24, 18, 14, 33, hc);
+
+        ConvArrow(p, Hex("FFD24A"));
+
+        // 우: 주먹
+        var fc = Hex("D9A0F0");
+        p.FillRRect(34, 14, 13, 12, 3, fc);
+        p.FillRRect(36, 26, 9, 7, 2, Hex("A870C8"));
+        p.DrawLine(36, 20, 45, 20, Hex("7A4C96"), 1);
+    }
+
+    // ConvSwift — 속공 (이동속도 → 공격속도)
+    static void DrawTraitConvSwift(P p)
+    {
+        p.BgGradient(Hex("04141A"), Hex("103440"));
+        p.RoundedBorder(8, 2, Hex("44D8E0"));
+
+        // 좌: 질주 선 + 발
+        var lc = new Color32(80, 220, 230, 190);
+        p.DrawLine(4, 14, 16, 14, lc, 2);
+        p.DrawLine(4, 20, 18, 20, lc, 2);
+        p.DrawLine(4, 26, 14, 26, lc, 2);
+        p.FillEllipse(12, 33, 6, 4, Hex("3FC0CC"));
+
+        ConvArrow(p, Hex("FFD24A"));
+
+        // 우: 교차 연격
+        var sc = Hex("BFF6FA");
+        p.DrawLine(35, 10, 46, 26, sc, 3);
+        p.DrawLine(46, 10, 35, 26, sc, 3);
+        p.FillCircleAlpha(40, 18, 8, new Color32(120, 240, 250, 60));
+    }
+
+    // ConvSage — 현자 (쿨감 → 공격력)
+    static void DrawTraitConvSage(P p)
+    {
+        p.BgGradient(Hex("0A0620"), Hex("241A48"));
+        p.RoundedBorder(8, 2, Hex("8A7AE8"));
+
+        // 좌: 회전하는 룬 고리
+        p.DrawCircle(12, 20, 9, 2, Hex("7A68DC"));
+        p.DrawCircle(12, 20, 4, 1, Hex("BAACFF"));
+        p.FillCircle(12, 11, 2, Hex("D8CCFF"));
+        p.FillCircle(20, 24, 2, Hex("D8CCFF"));
+        p.FillCircle(5,  25, 2, Hex("9A88F0"));
+
+        ConvArrow(p, Hex("FFD24A"));
+
+        // 우: 마력탄
+        p.FillCircleAlpha(40, 20, 11, new Color32(150, 120, 255, 70));
+        p.FillCircle(40, 20, 7, Hex("9B7BFF"));
+        p.FillCircle(38, 18, 3, Hex("EDE4FF"));
+    }
+
+    // ConvWarlord — 군단장 (병사 수 → 공격력)
+    static void DrawTraitConvWarlord(P p)
+    {
+        p.BgGradient(Hex("140F02"), Hex("3A2C0C"));
+        p.RoundedBorder(8, 2, Hex("E0B440"));
+
+        // 좌: 병사 대열 3
+        var sc = Hex("C69A33");
+        for (int i = 0; i < 3; i++)
+        {
+            int sx = 5 + i * 6;
+            p.FillCircle(sx, 16 + (i % 2) * 3, 3, sc);
+            p.FillRRect(sx - 2, 20 + (i % 2) * 3, 5, 8, 1, sc);
+        }
+
+        ConvArrow(p, Hex("FFF0A0"));
+
+        // 우: 지휘검
+        p.FillRRect(38, 6, 5, 22, 1, Hex("FFE9A8"));
+        p.FillTri(40, 2, 37, 7, 44, 7, Hex("FFFFFF"));
+        p.FillRRect(34, 28, 13, 4, 1, Hex("B07E22"));
+        p.FillCircle(40, 35, 3, Hex("FFD24A"));
+    }
+
+    // ConvMarksman — 명사수 (사거리 → 공격력)
+    static void DrawTraitConvMarksman(P p)
+    {
+        p.BgGradient(Hex("041206"), Hex("113018"));
+        p.RoundedBorder(8, 2, Hex("6ADB72"));
+
+        // 좌: 조준환
+        p.DrawCircle(12, 20, 9, 2, Hex("5CC466"));
+        p.DrawLine(12, 8,  12, 14, Hex("A8F0AE"), 1);
+        p.DrawLine(12, 26, 12, 32, Hex("A8F0AE"), 1);
+        p.DrawLine(0,  20, 6,  20, Hex("A8F0AE"), 1);
+        p.DrawLine(18, 20, 24, 20, Hex("A8F0AE"), 1);
+        p.FillCircle(12, 20, 2, Hex("E8FFEA"));
+
+        ConvArrow(p, Hex("FFD24A"));
+
+        // 우: 꽂힌 화살
+        p.DrawLine(34, 32, 45, 12, Hex("D8B478"), 2);
+        p.FillTri(46, 8, 41, 13, 47, 16, Hex("EFF6FF"));
+        p.FillTri(34, 32, 33, 26, 39, 31, Hex("6ADB72"));
+    }
+
+    // ConvBulwark — 육중 (방어율 → 최대 체력)
+    static void DrawTraitConvBulwark(P p)
+    {
+        p.BgGradient(Hex("06101A"), Hex("18303F"));
+        p.RoundedBorder(8, 2, Hex("6FA8C8"));
+
+        // 좌: 두꺼운 방패
+        var sh = Hex("5F8FB0");
+        p.FillRRect(5, 12, 15, 15, 3, sh);
+        p.FillTri(5, 27, 20, 27, 12, 37, sh);
+        p.FillRRect(8, 15, 9, 9, 2, Hex("8FC0DC"));
+
+        ConvArrow(p, Hex("FFD24A"));
+
+        // 우: 심장
+        var hc = Hex("D8607A");
+        p.FillCircle(37, 17, 5, hc);
+        p.FillCircle(45, 17, 5, hc);
+        p.FillTri(31, 19, 51, 19, 41, 35, hc);
+        p.FillCircleAlpha(41, 21, 10, new Color32(255, 140, 160, 45));
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  치명타 특성
+    // ─────────────────────────────────────────────────────────
+
+    // CritAssassin — 암살자의 눈 (확률 + 배율)
+    static void DrawTraitCritAssassin(P p)
+    {
+        p.BgGradient(Hex("120212"), Hex("330A2C"));
+        p.RoundedBorder(8, 2, Hex("E8489A"));
+
+        // 눈 외곽
+        p.FillEllipse(24, 22, 18, 11, Hex("2A0A28"));
+        p.DrawLine(6,  22, 24, 11, Hex("E8489A"), 2);
+        p.DrawLine(42, 22, 24, 11, Hex("E8489A"), 2);
+        p.DrawLine(6,  22, 24, 33, Hex("E8489A"), 2);
+        p.DrawLine(42, 22, 24, 33, Hex("E8489A"), 2);
+
+        // 홍채 = 표적
+        p.FillCircle(24, 22, 8, Hex("FF66B0"));
+        p.DrawCircle(24, 22, 5, 1, Hex("3A0A2E"));
+        p.FillCircle(24, 22, 3, Hex("1A0414"));
+        p.FillCircle(21, 19, 2, new Color32(255, 255, 255, 200));
+
+        // 치명 스파크
+        p.DrawLine(24, 22, 42, 6, new Color32(255, 220, 120, 170), 2);
+        p.FillTri(44, 4, 39, 7, 43, 11, Hex("FFE080"));
+    }
+
+    // CritExecutioner — 처형인 (배율 특화, 공격력 대가)
+    static void DrawTraitCritExecutioner(P p)
+    {
+        p.BgGradient(Hex("160202"), Hex("40080A"));
+        p.RoundedBorder(8, 2, Hex("FF3344"));
+
+        // 처형 도끼 자루
+        p.FillRRect(22, 8, 4, 34, 1, Hex("6E4520"));
+
+        // 도끼날
+        var bc = Hex("E8EEF6");
+        p.FillTri(24, 6, 24, 24, 44, 12, bc);
+        p.FillTri(24, 6, 24, 24, 40, 9,  Hex("FFFFFF"));
+        p.FillTri(24, 6, 24, 24,  6, 12, Hex("C8D4E2"));
+
+        // 핏빛 잔상
+        p.DrawLine(8, 30, 40, 38, new Color32(255, 40, 60, 160), 3);
+        p.FillCircleAlpha(24, 14, 12, new Color32(255, 60, 60, 45));
+
+        // 하락 화살표 (공격력 대가)
+        p.DrawLine(40, 30, 40, 40, Hex("FF6070"), 2);
+        p.FillTri(40, 44, 35, 38, 45, 38, Hex("FF6070"));
+    }
+
+    // ConvDeadeye — 필살 (치명확률 → 치명배율)
+    static void DrawTraitCritDeadeye(P p)
+    {
+        p.BgGradient(Hex("160C02"), Hex("3E220A"));
+        p.RoundedBorder(8, 2, Hex("FFA828"));
+
+        // 좌: 확률 눈금
+        for (int i = 0; i < 4; i++)
+            p.FillRRect(5, 30 - i * 6, 12, 4, 1,
+                new Color32(255, (byte)(150 + i * 25), 60, (byte)(140 + i * 30)));
+
+        ConvArrow(p, Hex("FFE9A8"));
+
+        // 우: 관통된 표적
+        p.DrawCircle(40, 20, 10, 2, Hex("D8791C"));
+        p.DrawCircle(40, 20, 5, 2, Hex("FFB84C"));
+        p.FillCircle(40, 20, 2, Hex("FFF0C0"));
+        p.DrawLine(28, 34, 47, 11, Hex("FFF0C0"), 2);
+        p.FillTri(49, 8, 44, 12, 48, 16, Hex("FFFFFF"));
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  공격속도 특성
+    // ─────────────────────────────────────────────────────────
+
+    // HasteFrenzy — 광란 (공속 ↑ / 공격력 ↓)
+    static void DrawTraitHasteFrenzy(P p)
+    {
+        p.BgGradient(Hex("180602"), Hex("421604"));
+        p.RoundedBorder(8, 2, Hex("FF8822"));
+
+        // 겹치는 연속 참격 4줄
+        Color32[] cs = { Hex("FFE0A0"), Hex("FFB040"), Hex("FF7A18"), Hex("C24A08") };
+        for (int i = 0; i < 4; i++)
+            p.DrawLine(6 + i * 3, 40 - i * 2, 30 + i * 4, 8 + i * 2, cs[i], 3);
+
+        p.FillCircleAlpha(24, 24, 16, new Color32(255, 130, 30, 45));
+
+        // 속도선
+        p.DrawLine(4, 8,  14, 8,  new Color32(255, 200, 120, 150), 1);
+        p.DrawLine(4, 12, 11, 12, new Color32(255, 200, 120, 110), 1);
+
+        // 하락 화살표 (공격력 대가)
+        p.DrawLine(41, 28, 41, 38, Hex("FF6644"), 2);
+        p.FillTri(41, 43, 36, 37, 46, 37, Hex("FF6644"));
+    }
+
+    // HasteRend — 파쇄 (착탄마다 최대 체력 비례 추가 피해)
+    static void DrawTraitHasteRend(P p)
+    {
+        p.BgGradient(Hex("0A0C10"), Hex("26303C"));
+        p.RoundedBorder(8, 2, Hex("9FB8D0"));
+
+        // 갈라진 갑주판
+        var pl = Hex("7891AC");
+        p.FillRRect(8, 10, 14, 28, 2, pl);
+        p.FillRRect(26, 10, 14, 28, 2, pl);
+
+        // 균열 (지그재그)
+        var cr = Hex("FFD24A");
+        p.DrawLine(24, 8,  21, 17, cr, 2);
+        p.DrawLine(21, 17, 27, 23, cr, 2);
+        p.DrawLine(27, 23, 22, 31, cr, 2);
+        p.DrawLine(22, 31, 25, 40, cr, 2);
+        p.FillCircleAlpha(24, 24, 12, new Color32(255, 210, 74, 40));
+
+        // 떨어져 나가는 조각
+        p.FillRRect(4,  32, 4, 4, 1, new Color32(180, 200, 220, 190));
+        p.FillRRect(41, 14, 4, 4, 1, new Color32(180, 200, 220, 190));
+        p.FillRRect(43, 33, 3, 3, 1, new Color32(160, 180, 200, 160));
     }
 
     // ArcherRetreatFire — 퇴각 사격 (뒤로 향하는 발자국 + 앞으로 향하는 화살)
@@ -1972,12 +2351,26 @@ public static class IconGenerator
         SkillIcon("swift_strike",     DrawSwiftStrike,     SkRanged, IconArt.Frame.Cut,    IconArt.Badge.Up);
         SkillIcon("summon_elite",     DrawSummonElite,     SkSummon, IconArt.Frame.Double, IconArt.Badge.Star);
 
+        // 희귀 스킬 4종 — 테두리는 전부 Double 로 통일해 한눈에 구분되게 한다
+        SkillIcon("bisect",           DrawBisect,          SkMelee,  IconArt.Frame.Double, IconArt.Badge.Bolt);
+        SkillIcon("arrow_storm",      DrawArrowStorm,      SkRanged, IconArt.Frame.Double, IconArt.Badge.Bolt);
+        SkillIcon("gravity_collapse", DrawGravityCollapse, SkArcane, IconArt.Frame.Double, IconArt.Badge.Clock);
+        SkillIcon("bulwark",          DrawBulwark,         SkGuard,  IconArt.Frame.Double, IconArt.Badge.Plus);
+
+        // 공통 희귀 스킬 6종 — 직업 제한이 없어 계열색은 스킬 성질로 고른다
+        SkillIcon("chain_lightning",  DrawChainLightning,  SkArcane, IconArt.Frame.Double, IconArt.Badge.Bolt);
+        SkillIcon("death_sentence",   DrawDeathSentence,   SkBlood,  IconArt.Frame.Double, IconArt.Badge.Clock);
+        SkillIcon("blood_price",      DrawBloodPrice,      SkBlood,  IconArt.Frame.Double, IconArt.Badge.Bolt);
+        SkillIcon("piercing_dash",    DrawPiercingDash,    SkMelee,  IconArt.Frame.Double, IconArt.Badge.Bolt);
+        SkillIcon("war_banner",       DrawWarBanner,       SkGuard,  IconArt.Frame.Double, IconArt.Badge.Up);
+        SkillIcon("gravestone",       DrawGravestone,      SkSummon, IconArt.Frame.Double, IconArt.Badge.Star);
+
         AssetDatabase.Refresh();
         // Sprite 임포트 설정 적용
         ApplySpriteImportSettings(CLASS_PATH, 64);
         ApplySpriteImportSettings(SKILL_PATH, 48);
         AssetDatabase.SaveAssets();
-        Debug.Log("[IconGenerator] 아이콘 24장 생성 완료.");
+        Debug.Log("[IconGenerator] 아이콘 34장 생성 완료.");
     }
 
     // ── 액티브 스킬 계열색 (테두리·뱃지에 쓴다) ───────────────
@@ -1989,6 +2382,7 @@ public static class IconGenerator
     static readonly Color32 SkGuard  = Hex("FFC24A");   // 방어·강화
     static readonly Color32 SkSummon = Hex("C9B08A");   // 소환
     static readonly Color32 SkCurse  = Hex("A6D13C");   // 독·저주
+    static readonly Color32 SkBlood  = Hex("E0424A");   // 피·처형 (공통 희귀)
 
     static void SkillIcon(string fileName, Action<P> draw,
                           Color32 accent, IconArt.Frame frame, IconArt.Badge badge)
@@ -2685,6 +3079,306 @@ public static class IconGenerator
         p.FillCircle(36, 12, 2, Orange);
         p.FillCircle(42, 20, 2, Yellow);
         p.FillCircle(38,  8, 2, Yellow);
+    }
+
+    // ─────────────────────────────────────────────────────
+    //  ■ 희귀 스킬 아이콘 4종
+    //    한 벌로 보이도록 배경은 어둡게 깔고, 주인공 형태 하나만 크게 세운다.
+    //    (48×48 에 요소를 늘어놓으면 축소했을 때 뭉개진다)
+    // ─────────────────────────────────────────────────────
+
+    // 일도양단 — 대각선 참격선이 화면을 가르고 그 뒤에 칼이 선다
+    static void DrawBisect(P p)
+    {
+        p.BgGradient(Hex("02040A"), Hex("0A1428"));
+        p.RoundedBorder(8, 1, Hex("5AA0FF"));
+
+        // 갈라진 배경 (참격선 위/아래로 밝기가 다르다)
+        p.FillTri(0, 0, 48, 0, 48, 24, Hex("101E38"));
+
+        // 참격선 — 글로우 → 코어 순으로 겹친다
+        p.DrawLine(3, 40, 45, 8, new Color32(90, 160, 255, 70),  7);
+        p.DrawLine(3, 40, 45, 8, new Color32(150, 205, 255, 140), 4);
+        p.DrawLine(3, 40, 45, 8, White, 2);
+
+        // 칼 — 참격선과 직교하게 세워 대비를 만든다
+        p.FillTri(14, 40, 20, 40, 17, 34, Silver);
+        p.FillRect(14, 40, 6, 6, Silver);
+        p.FillRRect(11, 44, 12, 3, 1, Gold);
+        p.FillRect(16, 46, 2, 2, Hex("6A4A22"));
+
+        // 절단 불티
+        p.FillCircle(40, 12, 2, White);
+        p.FillCircle(34, 18, 1, Hex("AFD6FF"));
+        p.FillCircle(44, 6,  1, Hex("AFD6FF"));
+    }
+
+    // 화살 폭풍 — 화살 다발이 한 점으로 쏟아진다
+    static void DrawArrowStorm(P p)
+    {
+        p.BgGradient(Hex("040A04"), Hex("0C2410"));
+        p.RoundedBorder(8, 1, Hex("6ED96A"));
+
+        // 낙하 지점 글로우
+        p.FillEllipse(24, 42, 18, 4, new Color32(110, 217, 106, 55));
+        p.FillEllipse(24, 42, 11, 3, new Color32(180, 255, 170, 70));
+
+        // 화살 7발 — 가운데로 모이는 각도
+        int[] sx = { 4, 11, 18, 24, 30, 37, 44 };
+        int[] ex = { 16, 19, 22, 24, 26, 29, 32 };
+        for (int i = 0; i < 7; i++)
+        {
+            p.DrawLine(sx[i], 4, ex[i], 38, Hex("C8A840"), 2);
+            p.FillTri(ex[i], 40, ex[i] - 3, 33, ex[i] + 3, 33, Silver);   // 촉
+            p.FillTri(sx[i], 4, sx[i] - 3, 9, sx[i], 8, Hex("6ED96A"));   // 깃
+        }
+
+        // 착탄 불티
+        p.FillCircle(20, 40, 2, Yellow);
+        p.FillCircle(29, 41, 2, Orange);
+        p.FillCircle(24, 38, 1, White);
+    }
+
+    // 중력 붕괴 — 나선이 중심의 검은 특이점으로 빨려든다
+    static void DrawGravityCollapse(P p)
+    {
+        p.BgGradient(Hex("0A0418"), Hex("1E0A38"));
+        p.RoundedBorder(8, 1, Hex("B15CFF"));
+
+        // 바깥 헤일로 (링 3중 — 안쪽일수록 밝다)
+        p.DrawCircle(24, 24, 20, 2, new Color32(120, 60, 200, 90));
+        p.DrawCircle(24, 24, 15, 2, new Color32(160, 100, 240, 140));
+        p.DrawCircle(24, 24, 10, 2, new Color32(210, 170, 255, 190));
+
+        // 나선 팔 4개 — 짧은 선분을 이어 곡선을 만든다
+        DrawSpiralArm(p, 24, 24,  0);
+        DrawSpiralArm(p, 24, 24, 90);
+        DrawSpiralArm(p, 24, 24, 180);
+        DrawSpiralArm(p, 24, 24, 270);
+
+        // 중심 특이점 — 가장 어두운 점 하나가 있어야 "빨려든다" 로 읽힌다
+        p.FillCircle(24, 24, 6, Hex("2A0A55"));
+        p.FillCircle(24, 24, 4, Hex("0A0018"));
+        p.FillCircleAlpha(22, 22, 1, new Color32(200, 160, 255, 120));
+    }
+
+    static void DrawSpiralArm(P p, int cx, int cy, float startDeg)
+    {
+        int prevX = cx, prevY = cy;
+        for (int i = 1; i <= 6; i++)
+        {
+            float r   = 3f + i * 2.9f;
+            float deg = startDeg + i * 17f;
+            float rad = deg * Mathf.Deg2Rad;
+            int   x   = cx + Mathf.RoundToInt(Mathf.Cos(rad) * r);
+            int   y   = cy + Mathf.RoundToInt(Mathf.Sin(rad) * r);
+
+            byte a = (byte)Mathf.Lerp(230f, 60f, i / 6f);   // 바깥으로 갈수록 옅게
+            if (i > 1) p.DrawLine(prevX, prevY, x, y, new Color32(190, 130, 255, a), 2);
+            prevX = x; prevY = y;
+        }
+    }
+
+    // 불멸의 방벽 — 육각 방벽 안에 방패가 서 있다
+    static void DrawBulwark(P p)
+    {
+        p.BgGradient(Hex("0A0802"), Hex("241A06"));
+        p.RoundedBorder(8, 1, Hex("FFC24A"));
+
+        // 육각 방벽 2중 (꼭짓점을 이어 육각형을 그린다)
+        DrawHexRing(p, 24, 24, 21, new Color32(255, 194, 74, 110), 2);
+        DrawHexRing(p, 24, 24, 16, new Color32(255, 225, 150, 190), 2);
+
+        // 방패
+        p.FillRRect(15, 12, 18, 16, 3, Hex("C9A03A"));
+        p.FillTri(15, 28, 33, 28, 24, 40, Hex("C9A03A"));
+        p.FillRRect(18, 15, 12, 11, 2, Hex("F2D98A"));
+        p.FillTri(18, 26, 30, 26, 24, 35, Hex("F2D98A"));
+
+        // 방패 중앙 십자 — 치유를 뜻한다
+        p.FillRect(23, 17, 2, 14, Hex("6A4A12"));
+        p.FillRect(19, 22, 10, 2, Hex("6A4A12"));
+
+        // 방벽 광택
+        p.FillCircle(38, 14, 2, White);
+        p.FillCircleAlpha(10, 32, 2, new Color32(255, 230, 160, 150));
+    }
+
+    // ─────────────────────────────────────────────────────
+    //  ■ 공통 희귀 스킬 6종
+    //    직업 제한이 없어 계열색이 애매하다 — 스킬의 "성질" 로 색을 고른다.
+    //    (연쇄 번개=마법 / 사형 선고·피의 대가=피 / 관통 돌진=근접 /
+    //     군기 강림=강화 / 비석 강림=소환)
+    // ─────────────────────────────────────────────────────
+
+    // 연쇄 번개 — 번개가 세 대상을 지그재그로 잇는다
+    static void DrawChainLightning(P p)
+    {
+        p.BgGradient(Hex("05010F"), Hex("140A2E"));
+        p.RoundedBorder(8, 1, Hex("B15CFF"));
+
+        // 감전된 대상 3 — 위치가 곧 "연쇄" 를 설명한다
+        int[] tx = { 8, 25, 41 };
+        int[] ty = { 12, 30, 14 };
+        for (int i = 0; i < 3; i++)
+            p.FillCircleAlpha(tx[i], ty[i], 6, new Color32(160, 100, 255, 60));
+
+        // 번개 — 글로우 → 코어 순으로 겹쳐야 빛나 보인다
+        int[] zx = { 5, 14, 10, 24, 20, 33, 30, 44 };
+        int[] zy = { 6, 17, 22, 31, 26, 35, 20, 10 };
+        for (int i = 0; i < zx.Length - 1; i++)
+        {
+            p.DrawLine(zx[i], zy[i], zx[i + 1], zy[i + 1], new Color32(120, 70, 220, 90), 6);
+            p.DrawLine(zx[i], zy[i], zx[i + 1], zy[i + 1], new Color32(190, 150, 255, 160), 3);
+            p.DrawLine(zx[i], zy[i], zx[i + 1], zy[i + 1], White, 1);
+        }
+
+        // 착탄 불티
+        for (int i = 0; i < 3; i++)
+        {
+            p.FillCircle(tx[i], ty[i], 2, White);
+            p.FillCircle(tx[i] + 3, ty[i] + 3, 1, Hex("D9B8FF"));
+        }
+    }
+
+    // 사형 선고 — 낙인이 찍히고 시간이 다하면 목이 떨어진다
+    static void DrawDeathSentence(P p)
+    {
+        p.BgGradient(Hex("0C0206"), Hex("240814"));
+        p.RoundedBorder(8, 1, Hex("E0424A"));
+
+        // 바닥의 처형 낙인
+        p.FillEllipse(24, 40, 16, 5, new Color32(224, 66, 74, 55));
+        p.DrawCircle(24, 40, 10, 1, new Color32(255, 120, 120, 120));
+
+        // 떨어지는 처형 칼날 — 위에서 아래로 향하는 무게
+        p.FillTri(10, 8, 38, 8, 24, 30, Silver);                  // 날
+        p.FillTri(12, 9, 36, 9, 24, 26, Tint(Silver, White, 0.5f));
+        p.FillRect(9, 4, 30, 5, Hex("6A6A78"));                   // 등대
+        p.FillRect(9, 4, 30, 2, Hex("9AA0B0"));
+
+        // 낙인 — X 표식 (폰트 글리프가 아니라 직접 그린다)
+        p.DrawLine(18, 34, 30, 44, new Color32(255, 80, 80, 220), 3);
+        p.DrawLine(30, 34, 18, 44, new Color32(255, 80, 80, 220), 3);
+
+        p.FillCircle(24, 30, 2, White);
+    }
+
+    // 피의 대가 — 스스로 피를 흘려 힘을 얻는다
+    static void DrawBloodPrice(P p)
+    {
+        p.BgGradient(Hex("10020A"), Hex("2C0714"));
+        p.RoundedBorder(8, 1, Hex("E0424A"));
+
+        // 베인 단검
+        p.FillTri(30, 6, 36, 6, 33, 2, Silver);
+        p.FillRect(30, 6, 6, 20, Silver);
+        p.FillRect(32, 7, 2, 18, Tint(Silver, White, 0.55f));
+        p.FillRRect(27, 26, 12, 3, 1, Gold);
+        p.FillRect(31, 29, 4, 7, Hex("6A4A22"));
+
+        // 흘러내리는 피 — 굵은 방울 하나가 가장 잘 읽힌다
+        p.FillCircle(17, 34, 9, new Color32(200, 40, 50, 235));
+        p.FillTri(8, 32, 26, 32, 17, 12, new Color32(200, 40, 50, 235));
+        p.FillCircle(14, 32, 3, new Color32(255, 120, 120, 160));   // 하이라이트
+
+        // 튄 자국
+        p.FillCircle(9, 44, 2, new Color32(180, 30, 40, 220));
+        p.FillCircle(29, 42, 2, new Color32(180, 30, 40, 200));
+        p.FillCircle(36, 46, 1, new Color32(180, 30, 40, 180));
+    }
+
+    // 관통 돌진 — 창이 적을 꿰뚫고 지나간다
+    static void DrawPiercingDash(P p)
+    {
+        p.BgGradient(Hex("0A0402"), Hex("241005"));
+        p.RoundedBorder(8, 1, Hex("FF6A3D"));
+
+        // 속도선 — 뒤로 흘려 방향을 만든다
+        p.DrawLine(2, 14, 20, 14, new Color32(255, 150, 90, 110), 2);
+        p.DrawLine(2, 24, 16, 24, new Color32(255, 150, 90, 150), 3);
+        p.DrawLine(2, 34, 20, 34, new Color32(255, 150, 90, 110), 2);
+
+        // 꿰뚫린 적
+        p.FillCircleAlpha(34, 24, 9, new Color32(255, 90, 60, 70));
+        p.DrawCircle(34, 24, 9, 1, new Color32(255, 140, 100, 130));
+
+        // 창 — 자루 → 날 순서로 겹친다
+        p.DrawLine(6, 30, 40, 18, Hex("6A4A22"), 4);
+        p.DrawLine(6, 30, 40, 18, Hex("8A6432"), 2);
+        p.FillTri(38, 22, 40, 12, 47, 15, Silver);
+        p.FillTri(39, 20, 40, 14, 45, 16, Tint(Silver, White, 0.5f));
+
+        // 관통 섬광
+        p.FillCircle(34, 21, 3, White);
+        p.FillCircle(30, 27, 2, Yellow);
+    }
+
+    // 군기 강림 — 깃발이 꽂히고 주변이 달아오른다
+    static void DrawWarBanner(P p)
+    {
+        p.BgGradient(Hex("0C0802"), Hex("2A1C05"));
+        p.RoundedBorder(8, 1, Hex("FFC24A"));
+
+        // 퍼져나가는 사기 — 동심원 3겹
+        p.DrawCircle(24, 34, 19, 1, new Color32(255, 194, 74, 60));
+        p.DrawCircle(24, 34, 14, 1, new Color32(255, 194, 74, 95));
+        p.FillEllipse(24, 44, 17, 4, new Color32(255, 194, 74, 55));
+
+        // 깃대
+        p.FillRect(22, 4, 3, 40, Hex("8A6432"));
+        p.FillRect(22, 4, 1, 40, Hex("B08850"));
+        p.FillCircle(23, 3, 3, Gold);      // 창끝 장식
+
+        // 깃발 — 끝을 갈라 펄럭이는 느낌을 준다
+        p.FillTri(25, 7, 44, 11, 25, 15, Hex("D63B3B"));
+        p.FillTri(25, 15, 44, 11, 44, 20, Hex("B02C2C"));
+        p.FillTri(25, 15, 44, 20, 25, 24, Hex("D63B3B"));
+        p.FillRect(26, 12, 8, 3, Gold);    // 문장
+
+        // 바닥 충격
+        p.FillCircle(23, 44, 2, White);
+    }
+
+    // 비석 강림 — 비석이 꽂히고 그 자리에서 망자가 일어난다
+    static void DrawGravestone(P p)
+    {
+        p.BgGradient(Hex("06060A"), Hex("16161F"));
+        p.RoundedBorder(8, 1, Hex("C9B08A"));
+
+        // 뒤쪽 비석 2기 — 작게 깔아 "우수수" 를 만든다
+        p.FillRRect(4, 18, 11, 18, 5, Hex("55555F"));
+        p.FillRRect(5, 20, 9, 16, 4, Hex("6B6B77"));
+        p.FillRRect(34, 15, 11, 21, 5, Hex("55555F"));
+        p.FillRRect(35, 17, 9, 19, 4, Hex("6B6B77"));
+
+        // 앞쪽 비석 — 주인공. 둥근 윗머리가 비석의 정체를 만든다
+        p.FillRRect(15, 8, 18, 30, 8, Hex("7A7A88"));
+        p.FillRRect(17, 10, 14, 28, 7, Hex("9A9AA8"));
+        p.FillRect(21, 16, 6, 2, Hex("55555F"));    // 십자 낙인
+        p.FillRect(23, 13, 2, 10, Hex("55555F"));
+
+        // 착탄 먼지 — 바닥에 낮게 깔린다
+        p.FillEllipse(24, 40, 20, 4, new Color32(180, 170, 150, 70));
+        p.FillEllipse(24, 40, 12, 3, new Color32(220, 210, 190, 90));
+
+        // 일어나는 망령 불빛
+        p.FillCircleAlpha(10, 42, 3, new Color32(140, 255, 200, 130));
+        p.FillCircleAlpha(39, 41, 3, new Color32(140, 255, 200, 110));
+        p.FillCircle(24, 38, 2, White);
+    }
+
+    static void DrawHexRing(P p, int cx, int cy, int r, Color32 col, int thick)
+    {
+        int prevX = 0, prevY = 0;
+        for (int i = 0; i <= 6; i++)
+        {
+            float rad = (60f * i) * Mathf.Deg2Rad;
+            int   x   = cx + Mathf.RoundToInt(Mathf.Cos(rad) * r);
+            int   y   = cy + Mathf.RoundToInt(Mathf.Sin(rad) * r);
+            if (i > 0) p.DrawLine(prevX, prevY, x, y, col, thick);
+            prevX = x; prevY = y;
+        }
     }
 
     static void DrawShockArc(P p, int ofsX, int ofsY, Color32 col, int thick, float alpha)

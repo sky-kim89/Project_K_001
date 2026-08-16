@@ -224,7 +224,8 @@ public static class RewardInfoResolver
             Accent      = TraitColor,
             Name        = data.TraitName,
             Description = data.Description,
-            StatText    = AbilityUIHelper.BuildStatText(data.Effects),
+            // 아직 안 받은 보상이므로 누적 스택 대신 스택당 수치를 보여준다.
+            StatText    = AbilityUIHelper.BuildStatText(data, showAccumulated: false),
             AmountLabel = "",
         };
     }

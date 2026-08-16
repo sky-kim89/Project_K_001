@@ -19,7 +19,7 @@ using UnityEngine.UI;
 //  AccentLine  Y=136  H=  3
 //  Body        Y=156  → 하단 26
 //    Left  832  ◀ [장수 카드 620×862] ▶     ← MainPanelCreator.BuildHeroCard
-//    Right 888  "선 택" 구분선 → 안내 문구 → [고용] / [돌려보내기]
+//    Right 888  "선 택" 구분선 → 안내 문구 → 현재 부대 5칸 → [고용] / [돌려보내기]
 //
 //  ⚠ 카드 높이(862)가 Body 높이를 결정한다
 //    Body = H - 156 - 26. 1080 캔버스에서 866 → 862 가 겨우 들어간다.
@@ -55,6 +55,11 @@ public static class MercenaryPopupCreator
     const float BtnH     =  112f;   // FontMd 라벨 + FontSm 힌트 2줄
     const float BtnGap   =   16f;
 
+    // 현재 부대 행 — 안내 문구 아래, 선택 버튼 위
+    const float SquadTop  = DivH + 24f + HintH + 20f;   // 200
+    const float SquadRowH =  124f;                      // 이름 한 줄 + Lv 한 줄
+    const float SquadGap  =    6f;                      // 칸 사이 좌우 여백
+
     // ── 색상 (EventPopup 톤 — 용병은 청록 계열로 구분) ────────
     static readonly Color BgOverlay    = new Color(0f,     0f,     0f,     0.78f);
     static readonly Color PanelBg      = new Color(0.07f,  0.075f, 0.13f,  1f);
@@ -71,6 +76,8 @@ public static class MercenaryPopupCreator
 
     static readonly Color HireBtnC     = new Color(0.13f,  0.52f,  0.38f,  1f);
     static readonly Color PassBtnC     = new Color(0.26f,  0.28f,  0.36f,  1f);
+    static readonly Color SquadSlotC   = new Color(0.17f,  0.20f,  0.28f,  1f);
+    static readonly Color SquadLblC    = new Color(0.64f,  0.76f,  0.82f,  1f);
     static readonly Color CloseBtnC    = new Color(0.50f,  0.14f,  0.14f,  1f);
     static readonly Color LabelWhite   = new Color(0.98f,  0.99f,  1.00f,  1f);
     static readonly Color HintGreen    = new Color(0.50f,  0.94f,  0.66f,  1f);
@@ -331,6 +338,8 @@ public static class MercenaryPopupCreator
         EditorUIBuilder.AnchorTop(hint.rectTransform, DivH + 24f, HintH, padH: 8f);
         SetObj(so, "_hintText", hint);
 
+        BuildSquadSection(col, so);
+
         // ── 선택 버튼 2개 (하단 정렬) ────────────────────────
         //  아래에서 위로 쌓는다 — 카드 높이가 캔버스에 따라 달라져도 붙어 있다.
         var passBtn = BuildChoiceButton(col, "PassButton", "돌 려 보 내 기", PassBtnC,
@@ -346,6 +355,97 @@ public static class MercenaryPopupCreator
         SetObj(so, "_hireBtn",      hireBtn);
         SetObj(so, "_hireCostText", hireCost);
         SetObj(so, "_hireCostIcon", hireIcon);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  현재 부대 (5칸) — 해고 진입점
+    // ══════════════════════════════════════════════════════════
+    //
+    //  ⚠ 해고 UI 를 여기에 만들지 않는다
+    //    칸을 누르면 HeroDetailPopup 이 정식 모드로 열리고, [해고] 버튼과
+    //    "마지막 1명은 해고 불가" 규칙이 거기 이미 있다.
+    //    두 곳에 두면 보호 규칙이 갈라진다 — 여기는 진입점일 뿐이다.
+    //
+    //  ⚠ 칸 배경을 등급색으로 칠하지 않는다
+    //    RaisedBtn 의 눌림·비활성 색은 targetGraphic(Body) 색에 곱해지는 값을
+    //    빌드 시점 face 색 기준으로 역산해 둔 것이다 (UI 규칙 1).
+    //    런타임에 Body 색을 갈아끼우면 그 계산이 어긋난다 → 등급은 이름 색으로 표시한다.
+
+    static void BuildSquadSection(GameObject col, SerializedObject so)
+    {
+        var lbl = TMP(col, "SquadLabel", "현재 부대 — 칸을 누르면 상세·해고", UIScale.FontSm, FontStyles.Bold);
+        lbl.color            = SquadLblC;
+        lbl.alignment        = TextAlignmentOptions.MidlineLeft;
+        lbl.raycastTarget    = false;
+        lbl.textWrappingMode = TextWrappingModes.NoWrap;
+        EditorUIBuilder.AnchorTop(lbl.rectTransform, SquadTop, UIScale.RowSm, padH: 8f);
+
+        var row = Go("SquadRow", col);
+        EditorUIBuilder.AnchorTop(row.GetComponent<RectTransform>(),
+                                  SquadTop + UIScale.RowSm + 8f, SquadRowH, padH: 8f);
+
+        const int SlotCount = 5;
+        var btns   = new Button[SlotCount];
+        var names  = new TextMeshProUGUI[SlotCount];
+        var levels = new TextMeshProUGUI[SlotCount];
+
+        for (int i = 0; i < SlotCount; i++)
+        {
+            var btn = EditorUIBuilder.RaisedBtn(row, $"Slot{i}", SquadSlotC, out var body);
+
+            // 폭을 숫자로 박지 않는다 — 앵커로 5등분해야 패널 폭이 바뀌어도 따라간다
+            var rt = btn.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(i       / (float)SlotCount, 0f);
+            rt.anchorMax = new Vector2((i + 1) / (float)SlotCount, 1f);
+            rt.offsetMin = new Vector2(SquadGap,  0f);
+            rt.offsetMax = new Vector2(-SquadGap, 0f);
+
+            // ⚠ 라벨은 body 아래 (UI 규칙 1) — 루트에 붙이면 눌려도 안 내려간다
+            var nameTmp = TMP(body, "NameText", "비어 있음", UIScale.FontSm, FontStyles.Bold);
+            nameTmp.alignment        = TextAlignmentOptions.Center;
+            nameTmp.raycastTarget    = false;
+            nameTmp.textWrappingMode = TextWrappingModes.NoWrap;
+            nameTmp.overflowMode     = TextOverflowModes.Overflow;
+            // 이름 길이가 칸을 넘으면 줄바꿈 대신 폰트를 줄인다 (UI 규칙 5 — 칸 높이 유지)
+            nameTmp.enableAutoSizing = true;
+            nameTmp.fontSizeMin      = 24f;
+            nameTmp.fontSizeMax      = UIScale.FontSm;
+            var nRt = nameTmp.rectTransform;
+            nRt.anchorMin = new Vector2(0f, 1f); nRt.anchorMax = new Vector2(1f, 1f);
+            nRt.pivot     = new Vector2(0.5f, 1f);
+            nRt.anchoredPosition = new Vector2(0f, -14f);
+            nRt.sizeDelta        = new Vector2(-12f, UIScale.RowSm);
+
+            var lvTmp = TMP(body, "LevelText", "—", UIScale.FontSm, FontStyles.Normal);
+            lvTmp.alignment     = TextAlignmentOptions.Center;
+            lvTmp.raycastTarget = false;
+            var vRt = lvTmp.rectTransform;
+            vRt.anchorMin = new Vector2(0f, 0f); vRt.anchorMax = new Vector2(1f, 0f);
+            vRt.pivot     = new Vector2(0.5f, 0f);
+            vRt.anchoredPosition = new Vector2(0f, 14f);
+            vRt.sizeDelta        = new Vector2(-12f, UIScale.RowSm);
+
+            btns[i]   = btn;
+            names[i]  = nameTmp;
+            levels[i] = lvTmp;
+        }
+
+        SetArray(so, "_squadBtns",   btns);
+        SetArray(so, "_squadNames",  names);
+        SetArray(so, "_squadLevels", levels);
+    }
+
+    static void SetArray(SerializedObject so, string field, Object[] items)
+    {
+        var prop = so.FindProperty(field);
+        if (prop == null)
+        {
+            Debug.LogError($"[MercenaryPopupCreator] 필드 없음: {field}");
+            return;
+        }
+        prop.arraySize = items.Length;
+        for (int i = 0; i < items.Length; i++)
+            prop.GetArrayElementAtIndex(i).objectReferenceValue = items[i];
     }
 
     /// <summary>

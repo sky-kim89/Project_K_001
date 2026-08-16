@@ -9,6 +9,10 @@ public class BattleContext
     public int TotalWaves  { get; set; }   // 이번 배틀의 총 웨이브 수
     public int CurrentWave { get; set; }   // 현재 웨이브 (1부터 시작)
 
+    // ── 무한 보스 (최종 스테이지) ─────────────────────────────
+    /// <summary>현재 상대 중인 무한 보스 번호 (1부터). 0 이면 무한 구간이 아니다.</summary>
+    public int EndlessBossIndex { get; set; }
+
     // ── 진행 상태 ─────────────────────────────────────────────
     public BattleState State       { get; set; } = BattleState.None;
     public BattleMode  Mode        { get; set; } = BattleMode.Normal;

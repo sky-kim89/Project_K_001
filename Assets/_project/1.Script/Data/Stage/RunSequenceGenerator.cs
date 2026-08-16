@@ -1,40 +1,48 @@
 using System;
-using System.Collections.Generic;
 
 // ============================================================
 //  RunSequenceGenerator.cs
-//  런(30스테이지)의 스테이지 타입 시퀀스를 무작위로 생성.
+//  런(30스테이지)의 스테이지 타입 시퀀스를 생성.
 //
 //  고정 규칙:
-//    - 1스테이지(index 0)      → 항상 일반
-//    - 5의 배수 스테이지        → 엘리트 (index 4, 9, 14, 19, 24, 29)
-//    - 2~4스테이지(index 1~3)  → 이 중 한 칸은 반드시 상점
-//  랜덤 배치:
-//    - 상점  : 위 확정 1개 포함 총 4개
-//    - 이벤트: 3개
+//    - 1스테이지(index 0)  → 항상 일반
+//    - 5의 배수 스테이지    → 엘리트 = 허들 (index 4, 9, 14, 19, 24, 29)
+//    - 허들 바로 앞 스테이지 → 상점    (index 3, 8, 13, 18, 23, 28)
+//  간격 배치:
+//    - 이벤트: 10개를 2~4 스테이지 간격으로 고르게 배치
+//
+//  결과 배치 (30칸 기준):
+//    일반 8 · 상점 6 · 엘리트 6 · 이벤트 10
 //
 //  ⚠ 1스테이지를 일반으로 고정하는 이유
 //    런 시작(= 신규 시작·패배 후 환생) 직후 로비에 들어서자마자
 //    상점·이벤트 팝업이 자동으로 뜨면 무슨 상황인지 알 수 없다.
 //    첫 스테이지는 전투로 시작해 바로 진입할 수 있어야 한다.
 //
-//  ⚠ 2~4스테이지에 상점을 하나 보장하는 이유
-//    첫 전투 보상을 바로 써 볼 수 있어야 런의 성장 흐름이 잡힌다.
-//    완전 무작위면 상점이 10스테이지 뒤에 몰릴 수 있다.
+//  ⚠ 상점을 허들 직전에 고정하는 이유
+//    허들(5의 배수)은 스텟 배율이 뛰는 관문이다. 그 앞에서 반드시 한 번
+//    장비·용병·특성을 정비할 수 있어야 한다. 무작위로 뿌리면 상점이 허들
+//    직후에 몰려 정작 필요한 순간에 빈손으로 들어가게 된다.
+//
+//  ⚠ 이벤트를 간격으로 배치하는 이유
+//    무작위로 뿌리면 두 칸 연속으로 붙거나 여덟 스테이지 넘게 안 나오는
+//    구간이 생긴다. 이벤트는 특성·용병을 얻는 거의 유일한 칸이라
+//    "언제 또 나오나" 가 예측되어야 런 계획이 선다.
 //
 //  ⚠ 규칙을 바꾸면 IsValid() 도 같이 고칠 것
 //    시퀀스는 세이브에 남는다. IsValid() 가 옛 세이브를 걸러 내
 //    StageProgressData.EnsureRunSequence() 가 새로 뽑게 한다.
+//    단 진행 중인 런은 다시 뽑지 않는다 — 진행 인덱스가 날아가기 때문이다.
 // ============================================================
 
 public static class RunSequenceGenerator
 {
-    /// <summary>상점이 반드시 하나 들어가는 구간 (index — 2~4스테이지).</summary>
-    public const int GuaranteedShopMin = 1;
-    public const int GuaranteedShopMax = 3;
+    /// <summary>허들(엘리트) 스테이지 주기. StageConfig.IsHurdle 과 반드시 같아야 한다.</summary>
+    public const int HurdleInterval = 5;
 
-    const int ShopCount  = 4;
-    const int EventCount = 3;
+    const int EventCount  = 10;
+    const int EventGapMin = 2;   // 이벤트 사이 최소 스테이지 간격
+    const int EventGapMax = 4;   // 이벤트 사이 최대 스테이지 간격
 
     public static RunStageType[] Generate(int total = 30)
     {
@@ -44,24 +52,16 @@ public static class RunSequenceGenerator
         // 기본: 일반
         for (int i = 0; i < total; i++) seq[i] = RunStageType.Normal;
 
-        // 5의 배수 → 엘리트 (index 4, 9, 14, 19, 24, 29)
-        for (int i = 4; i < total; i += 5)
+        // 허들 = 엘리트, 그 앞 칸 = 상점
+        for (int i = HurdleInterval - 1; i < total; i += HurdleInterval)
+        {
             seq[i] = RunStageType.Elite;
 
-        // 배치 후보 = index 1 이후의 일반 스테이지 (첫 스테이지는 후보에서 제외)
-        var pool = new List<int>();
-        for (int i = 1; i < total; i++)
-            if (seq[i] == RunStageType.Normal) pool.Add(i);
+            int shop = i - 1;
+            if (shop > 0) seq[shop] = RunStageType.Shop;   // index 0 은 항상 일반
+        }
 
-        // ① 2~4스테이지 중 한 칸은 확정 상점
-        int guaranteed = PickInRange(pool, GuaranteedShopMin, GuaranteedShopMax, rng);
-        seq[guaranteed] = RunStageType.Shop;
-        pool.Remove(guaranteed);
-
-        // ② 나머지 상점 + 이벤트 무작위 배치
-        PlaceRandom(seq, pool, RunStageType.Shop,  ShopCount - 1, rng);
-        PlaceRandom(seq, pool, RunStageType.Event, EventCount,    rng);
-
+        PlaceEvents(seq, rng, EventCount);
         return seq;
     }
 
@@ -74,28 +74,55 @@ public static class RunSequenceGenerator
         if (seq == null || seq.Length == 0) return false;
         if (seq[0] != RunStageType.Normal) return false;
 
-        for (int i = GuaranteedShopMin; i <= GuaranteedShopMax && i < seq.Length; i++)
-            if (seq[i] == RunStageType.Shop) return true;
+        for (int i = HurdleInterval - 1; i < seq.Length; i += HurdleInterval)
+        {
+            if (seq[i] != RunStageType.Elite) return false;
 
-        return false;
+            int shop = i - 1;
+            if (shop > 0 && seq[shop] != RunStageType.Shop) return false;
+        }
+        return true;
     }
 
     // ── 내부 ─────────────────────────────────────────────────
 
-    // 구간에 후보가 없으면 그대로 터뜨린다 — 규칙이 깨진 채로 넘어가면 안 된다.
-    static int PickInRange(List<int> pool, int min, int max, Random rng)
+    // 이벤트를 EventGapMin~Max 간격으로 놓는다.
+    // 목표 지점이 상점·엘리트면 뒤쪽 일반 칸으로 밀리므로 실제 간격은 조금 더 벌어진다.
+    // 남은 칸이 빠듯해지면 간격을 좁혀 개수를 맞춘다 — 안 그러면 후반 이벤트가 잘려 나간다.
+    static void PlaceEvents(RunStageType[] seq, Random rng, int count)
     {
-        var candidates = pool.FindAll(i => i >= min && i <= max);
-        return candidates[rng.Next(candidates.Count)];
+        int cursor = 0;   // index 0 은 항상 일반이므로 여기서 간격만큼 건너뛰며 시작한다
+
+        for (int placed = 0; placed < count; placed++)
+        {
+            int maxGap = (seq.Length - cursor) / (count - placed);
+            if (maxGap < EventGapMin) maxGap = EventGapMin;
+            if (maxGap > EventGapMax) maxGap = EventGapMax;
+
+            cursor += rng.Next(EventGapMin, maxGap + 1);
+
+            // 상점·엘리트 칸은 건너뛴다
+            while (cursor < seq.Length && seq[cursor] != RunStageType.Normal) cursor++;
+
+            // 끝까지 밀렸다 — 남은 이벤트는 앞쪽 빈 칸에 채운다.
+            // 간격보다 개수가 우선이다 (이벤트가 특성·용병의 주 공급원이라).
+            if (cursor >= seq.Length)
+            {
+                FillRemaining(seq, count - placed);
+                return;
+            }
+
+            seq[cursor] = RunStageType.Event;
+        }
     }
 
-    static void PlaceRandom(RunStageType[] seq, List<int> pool, RunStageType type, int count, Random rng)
+    static void FillRemaining(RunStageType[] seq, int remaining)
     {
-        for (int placed = 0; placed < count && pool.Count > 0; placed++)
+        for (int i = 1; i < seq.Length && remaining > 0; i++)
         {
-            int pick = rng.Next(pool.Count);
-            seq[pool[pick]] = type;
-            pool.RemoveAt(pick);
+            if (seq[i] != RunStageType.Normal) continue;
+            seq[i] = RunStageType.Event;
+            remaining--;
         }
     }
 }

@@ -159,6 +159,13 @@ public class UnitData : ISaveSection
         _raw = new UnitRawData();
     }
 
+    /// <summary>
+    /// 게임에 존재하는 모든 장수 이름. 보유 여부와 무관한 고정 목록이다.
+    /// RareSkillArbiter 가 희귀 스킬 주인을 정할 때 이 목록 전체를 본다
+    /// (보유 목록을 쓰면 누굴 뽑았느냐에 따라 주인이 바뀐다).
+    /// </summary>
+    public static IReadOnlyList<string> AllNames => s_namePool;
+
     static readonly string[] s_namePool =
     {
         // ── 1~100 (기존) ──────────────────────────────────────

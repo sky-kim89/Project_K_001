@@ -316,6 +316,229 @@ public static class ActiveSkillCreator
         summonElite.SpawnRadius  = 1.5f;
         EditorUtility.SetDirty(summonElite);
 
+        // ══════════════════════════════════════════════════════
+        //  희귀 스킬 (직업당 부대에 1명만 — RareSkillArbiter)
+        //  IsRare=true 는 추첨 가중치가 등급에 비례하고(Normal 은 등장 안 함),
+        //  같은 직업 장수가 겹치면 한 명만 남는다.
+        // ══════════════════════════════════════════════════════
+
+        // ── ㉑ 일도양단 (기사 · 희귀) ────────────────────────
+        var bisect = Make<ActiveBisect>(db,
+            id          : ActiveSkillId.Bisect,
+            fileName    : "Active_Bisect",
+            skillName   : "일도양단",
+            description : "전방 직선 위의 적을 2초간 얼어붙게 한 뒤 한 번에 베어 넘긴다. " +
+                          "공격력 600% 피해 + 강한 넉백. 시전 중에는 그 자리에 선다.",
+            cooldown    : 26f,
+            effectValue : 1f,
+            radius      : 22f,     // 참격선 길이 — 타겟이 더 멀면 그 뒤까지 자동으로 늘어난다
+            duration    : 0f,
+            jobs        : new[] { UnitJob.Knight });
+        bisect.IsRare           = true;
+        bisect.DamageMultiplier = 6f;
+        bisect.LineWidth        = 9f;    // 4.5 → 배폭
+        bisect.ChargeTime       = 0.35f;
+        bisect.TrembleTime      = 2f;
+        bisect.KnockbackMult    = 7f;
+        bisect.ReachMargin      = 6f;
+        EditorUtility.SetDirty(bisect);
+
+        // ── ㉒ 화살 폭풍 (궁수 · 희귀) ───────────────────────
+        var arrowStorm = Make<ActiveArrowStorm>(db,
+            id          : ActiveSkillId.ArrowStorm,
+            fileName    : "Active_ArrowStorm",
+            skillName   : "화살 폭풍",
+            description : "전방으로 화살 산탄을 3연발 퍼붓는다. 발사 중에는 그 자리에 서며, " +
+                          "맞은 적은 강하게 밀려나고 이동속도가 누적 감소한다. " +
+                          "마지막 발은 공격력 450% 피해 + 경직.",
+            cooldown    : 24f,
+            effectValue : 1f,
+            radius      : 9f,      // 산탄 사거리 (부채꼴 반경)
+            duration    : 0f,
+            jobs        : new[] { UnitJob.Archer });
+        arrowStorm.IsRare                = true;
+        arrowStorm.DamageMultiplier      = 2.0f;
+        arrowStorm.FinalDamageMultiplier = 4.5f;
+        arrowStorm.WaveCount             = 3;
+        arrowStorm.WaveInterval          = 0.5f;    // 발 사이 텀
+        arrowStorm.WarningTime           = 0.35f;
+        arrowStorm.ConeAngleDegrees      = 60f;
+        arrowStorm.SlowRatio             = 0.4f;
+        arrowStorm.SlowDuration          = 3f;
+        arrowStorm.FinalStunDuration     = 1.5f;
+        arrowStorm.KnockbackMult         = 9f;   // 산탄 — 세게 민다
+        EditorUtility.SetDirty(arrowStorm);
+
+        // ── ㉓ 중력 붕괴 (법사 · 희귀) ───────────────────────
+        var gravity = Make<ActiveGravityCollapse>(db,
+            id          : ActiveSkillId.GravityCollapse,
+            fileName    : "Active_GravityCollapse",
+            skillName   : "중력 붕괴",
+            description : "붕괴점을 만들어 2.5초간 적을 한곳으로 빨아들이며 발을 묶는다. " +
+                          "종료 시 공격력 800% 폭발.",
+            cooldown    : 30f,
+            effectValue : 1f,
+            radius      : 7f,      // 흡입 반경
+            duration    : 2.5f,
+            jobs        : new[] { UnitJob.Mage });
+        gravity.IsRare            = true;
+        gravity.DotMultiplier     = 0.8f;
+        gravity.ExplodeMultiplier = 8f;
+        gravity.TickInterval      = 0.15f;
+        gravity.PullForce         = 3.5f;
+        gravity.RootRatio         = 0.9f;
+        gravity.ExplodeKnockback  = 8f;
+        EditorUtility.SetDirty(gravity);
+
+        // ── ㉔ 불멸의 방벽 (방패병 · 희귀) ───────────────────
+        var bulwark = Make<ActiveBulwark>(db,
+            id          : ActiveSkillId.Bulwark,
+            fileName    : "Active_Bulwark",
+            skillName   : "불멸의 방벽",
+            description : "5초간 아군 전체의 방어율을 45%p 끌어올린다. 방벽이 무너질 때 " +
+                          "공격력 700% 폭발 + 아군 전체 최대 체력 25% 회복.",
+            cooldown    : 32f,
+            effectValue : 1f,
+            radius      : 6.5f,    // 방벽 폭발 반경
+            duration    : 5f,
+            jobs        : new[] { UnitJob.ShieldBearer });
+        bulwark.IsRare            = true;
+        bulwark.DefenseBonus      = 0.45f;
+        bulwark.ExplodeMultiplier = 7f;
+        bulwark.KnockbackMult     = 6f;
+        bulwark.HealRatio         = 0.25f;
+        EditorUtility.SetDirty(bulwark);
+
+        // ══════════════════════════════════════════════════════
+        //  희귀 스킬 — 공통 (직업 제한 없음 · 전체에서 1명만)
+        //  AllowedJobs 를 비우면 RareSkillArbiter 가 전 직업 이름에서 주인을 고른다.
+        // ══════════════════════════════════════════════════════
+
+        // ── ㉕ 연쇄 번개 (공통 · 희귀) ───────────────────────
+        var chain = Make<ActiveChainLightning>(db,
+            id          : ActiveSkillId.ChainLightning,
+            fileName    : "Active_ChainLightning",
+            skillName   : "연쇄 번개",
+            description : "번개가 적 사이를 최대 8번 튀며, 튈 때마다 피해가 15%씩 커진다. " +
+                          "맞은 적은 2초간 감전되어 발이 묶인다.",
+            cooldown    : 20f,
+            effectValue : 1f,
+            radius      : 5f,      // 다음 대상을 찾는 거리
+            duration    : 0f,
+            jobs        : new UnitJob[0]);
+        chain.IsRare           = true;
+        chain.DamageMultiplier = 2.2f;
+        chain.MaxChains        = 8;
+        chain.DamageGrowth     = 0.15f;
+        chain.ChainInterval    = 0.09f;
+        chain.ShockSlowRatio   = 0.7f;
+        chain.ShockDuration    = 2f;
+        chain.KnockbackMult    = 1.5f;
+        EditorUtility.SetDirty(chain);
+
+        // ── ㉖ 사형 선고 (공통 · 희귀) ───────────────────────
+        var sentence = Make<ActiveDeathSentence>(db,
+            id          : ActiveSkillId.DeathSentence,
+            fileName    : "Active_DeathSentence",
+            skillName   : "사형 선고",
+            description : "범위 내 적에게 낙인을 찍고 2초 뒤 일제히 처형한다. " +
+                          "그때 체력 35% 이하인 적은 즉사하고, 살아남은 적은 공격력 400% 피해를 받는다. " +
+                          "처형한 수만큼 시전자 공격력이 누적된다.",
+            cooldown    : 34f,
+            effectValue : 1f,
+            radius      : 6f,
+            duration    : 2f,      // 낙인 → 처형까지
+            jobs        : new UnitJob[0]);
+        sentence.IsRare           = true;
+        sentence.ExecuteHpRatio   = 0.35f;
+        sentence.DamageMultiplier = 4f;
+        sentence.AttackPerExecute = 6f;
+        sentence.ExecuteBosses    = false;   // 보스 즉사는 막는다 — 최종 콘텐츠가 무너진다
+        sentence.KnockbackMult    = 3f;
+        EditorUtility.SetDirty(sentence);
+
+        // ── ㉗ 피의 대가 (방패병 · 희귀) ────────────────────
+        var blood = Make<ActiveBloodPrice>(db,
+            id          : ActiveSkillId.BloodPrice,
+            fileName    : "Active_BloodPrice",
+            skillName   : "피의 대가",
+            description : "현재 체력의 40%를 태워 전방을 쓸어버린다. 잃은 체력의 250% + " +
+                          "공격력 200% 광역 피해 + 강한 넉백. 체력이 많을수록 강해진다.",
+            cooldown    : 18f,
+            effectValue : 1f,
+            radius      : 6f,
+            duration    : 0f,
+            // 잃은 체력에 비례해 피해가 오르는 스킬 — 체력·방어가 가장 높은 방패병 전용
+            jobs        : new[] { UnitJob.ShieldBearer });
+        blood.IsRare           = true;
+        blood.HpCostRatio      = 0.4f;
+        blood.DamagePerHp      = 2.5f;
+        blood.AttackMultiplier = 2f;
+        blood.ConeAngleDegrees = 120f;
+        blood.KnockbackMult    = 7f;
+        EditorUtility.SetDirty(blood);
+
+        // ── ㉘ 관통 돌진 (근거리 · 희귀) ────────────────────
+        //  1초 쿨 평타형 — 배율을 낮게 잡아야 다른 스킬을 압도하지 않는다
+        var dash = Make<ActivePiercingDash>(db,
+            id          : ActiveSkillId.PiercingDash,
+            fileName    : "Active_PiercingDash",
+            skillName   : "관통 돌진",
+            description : "전방으로 짧게 돌진하며 직선 위의 적을 모두 관통 타격한다. " +
+                          "공격력 140% 피해. 쿨타임 1초.",
+            cooldown    : 1f,
+            effectValue : 1f,
+            radius      : 4f,      // 돌진 거리 = 관통 길이
+            duration    : 0f,
+            jobs        : new[] { UnitJob.Knight, UnitJob.ShieldBearer });
+        dash.IsRare           = true;
+        dash.DamageMultiplier = 1.4f;
+        dash.LineWidth        = 1.6f;
+        dash.DashSpeed        = 26f;
+        dash.KnockbackMult    = 1.2f;
+        EditorUtility.SetDirty(dash);
+
+        // ── ㉙ 군기 강림 (공통 · 희귀) ──────────────────────
+        var banner = Make<ActiveWarBanner>(db,
+            id          : ActiveSkillId.WarBanner,
+            fileName    : "Active_WarBanner",
+            skillName   : "군기 강림",
+            description : "군기를 세워 주변 아군의 공격력·공격속도를 40%, 이동속도를 15% " +
+                          "8초 동안 끌어올린다.",
+            cooldown    : 26f,
+            effectValue : 1f,
+            radius      : 6f,
+            duration    : 8f,
+            jobs        : new UnitJob[0]);
+        banner.IsRare                = true;
+        banner.AttackMultiplier      = 1.4f;
+        banner.AttackSpeedMultiplier = 1.4f;
+        banner.MoveSpeedMultiplier   = 1.15f;
+        EditorUtility.SetDirty(banner);
+
+        // ── ㉚ 비석 강림 (법사 · 희귀) ──────────────────────
+        var grave = Make<ActiveGravestone>(db,
+            id          : ActiveSkillId.Gravestone,
+            fileName    : "Active_Gravestone",
+            skillName   : "비석 강림",
+            description : "비석 12기가 순서대로 우수수 떨어져 꽂힌다. 착탄 지점마다 " +
+                          "공격력 150% 피해 + 넉백, 그 자리에서 스켈레톤이 하나씩 일어난다.",
+            // 스켈레톤 12기가 그대로 남는다 — 쿨이 짧으면 아군이 계속 불어나 전장이 잠긴다
+            cooldown    : 60f,
+            effectValue : 12f,     // 비석 개수
+            radius      : 2f,      // 비석 1개의 착탄 반경
+            duration    : 0.5f,    // 예고 → 착탄
+            // 소환 스킬이라 법사 전용 — 주인도 법사 이름 중에서만 뽑힌다
+            jobs        : new[] { UnitJob.Mage });
+        grave.IsRare           = true;
+        grave.DamageMultiplier = 1.5f;
+        grave.ScatterRadius    = 5f;
+        grave.DropInterval     = 0.12f;
+        grave.SkeletonPoolKey  = "Soldier";
+        grave.StatRatio        = 0.45f;
+        grave.KnockbackMult    = 5f;
+        EditorUtility.SetDirty(grave);
+
         // ── 저장 ─────────────────────────────────────────────
         EditorUtility.SetDirty(db);
         AssetDatabase.SaveAssets();

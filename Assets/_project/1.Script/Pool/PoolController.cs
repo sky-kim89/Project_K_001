@@ -64,6 +64,23 @@ public class PoolController : Singleton<PoolController>
                       Quaternion rotation = default) where T : Component
         => Spawn(type, name, position, rotation)?.GetComponent<T>();
 
+    /// <summary>등록된 원본 프리팹 조회 — 프리팹이 들고 있는 머티리얼 등을 읽을 때.</summary>
+    public GameObject GetPrefab(PoolType type, string name)
+        => _byType.TryGetValue(type, out var pool) ? pool.GetPrefab(name) : null;
+
+    // ── 미리 만들어 두기 ──────────────────────────────────────
+    /// <summary>전투 시작 전 등 미리 인스턴스를 채워 둔다 (런타임 Instantiate 끊김 방지).</summary>
+    public void Prewarm(PoolType type, string name, int count)
+    {
+        if (!_byType.TryGetValue(type, out var pool))
+        {
+            Debug.LogError($"[PoolController] 등록되지 않은 PoolType: {type}");
+            return;
+        }
+
+        pool.Prewarm(name, count);
+    }
+
     // ── 디스폰 ────────────────────────────────────────────────
     /// <summary>오브젝트를 풀로 반납 — 어디서든 gameObject 하나만 넘기면 됨</summary>
     public void Despawn(GameObject obj)

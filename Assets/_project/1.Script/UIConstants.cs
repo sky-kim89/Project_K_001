@@ -21,6 +21,28 @@ public static class GradeStyle
 
     public static string GetLabel(UnitGrade grade)
         => LocalizationManager.Instance?.Get(grade.ToString()) ?? grade.ToString();
+
+    // ── 스탯 품질 ─────────────────────────────────────────────
+    //  같은 등급이라도 굴림이 좋았는지 나빴는지가 갈린다.
+    //  내부 계산은 0~1 이고, 표시는 10배 해서 **버림**한 정수다 (0.93 → 9).
+
+    /// <summary>표시용 품질 점수 (0~10, 버림).</summary>
+    public static int QualityScore(string unitName)
+        => Mathf.FloorToInt(UnitJobRoller.GetQuality(unitName) * 10f);
+
+    /// <summary>"영웅 9" — 등급 라벨 + 품질 점수.</summary>
+    public static string GetLabelWithQuality(UnitGrade grade, string unitName)
+        => $"{GetLabel(grade)} {QualityScore(unitName)}";
+
+    /// <summary>품질 색 — 낮으면 회색, 높을수록 밝은 금색.</summary>
+    public static Color QualityColor(float quality) => quality switch
+    {
+        >= 0.90f => new Color(1.00f, 0.60f, 0.10f),   // 최상 (희귀 스킬 주인 구간)
+        >= 0.75f => new Color(0.70f, 0.30f, 1.00f),
+        >= 0.55f => new Color(0.20f, 0.50f, 1.00f),
+        >= 0.35f => new Color(0.25f, 0.80f, 0.35f),
+        _        => new Color(0.60f, 0.62f, 0.68f),
+    };
 }
 
 // ── 유물 희귀도 색상 ─────────────────────────────────────────

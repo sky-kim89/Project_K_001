@@ -51,7 +51,7 @@ ProjectileSystem.cs     →  ProjectileView.cs (managed)
 ## 직업 시스템 (UnitJob)
 
 ```csharp
-Knight       = 0  // 균형 스텟, 이동속도 최고
+Knight       = 0  // 병사 특화 — 병사 수·지휘력 최고, 이동속도 최고
 Archer       = 1  // 사거리 최고, 낮은 체력
 Mage         = 2  // 공격력 최고, 낮은 체력·연사
 ShieldBearer = 3  // 방어율·체력 최고

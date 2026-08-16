@@ -34,9 +34,45 @@ public class GameplayConfig : ScriptableObject
     // ■ 로비 비용
     // ──────────────────────────────────────────────────────────
 
-    [Header("로비 비용")]
-    [Tooltip("용병 고용 시 소모 골드")]
-    public int HireMercenaryCost = 500;
+    // ── 장수 고용 비용 (등급별) ──────────────────────────────
+    //  등급은 스탯 배율 + 패시브 슬롯을 동시에 올린다.
+    //  단일 가격이면 낮은 등급 매물은 아무도 안 사고, 높은 등급은 거저 얻는다.
+    //  → 등급 차이를 가격으로 드러내 "지금 이 값을 낼 만한가" 를 묻게 한다.
+
+    [Header("장수 고용 비용 — 등급별 (골드)")]
+    [Tooltip("일반 등급 고용가")]
+    public int HireCostNormal   = 400;
+    [Tooltip("고급 등급 고용가")]
+    public int HireCostUncommon = 650;
+    [Tooltip("희귀 등급 고용가")]
+    public int HireCostRare     = 1000;
+    [Tooltip("유니크 등급 고용가")]
+    public int HireCostUnique   = 1500;
+    [Tooltip("영웅 등급 고용가")]
+    public int HireCostEpic     = 2200;
+
+    public int GetHireCost(UnitGrade grade) => grade switch
+    {
+        UnitGrade.Uncommon => HireCostUncommon,
+        UnitGrade.Rare     => HireCostRare,
+        UnitGrade.Unique   => HireCostUnique,
+        UnitGrade.Epic     => HireCostEpic,
+        _                  => HireCostNormal,
+    };
+
+    /// <summary>Config 미할당 시에도 안전한 정적 진입점 — 상점·용병 팝업 공용.</summary>
+    public static int HireCost(UnitGrade grade)
+    {
+        if (Current != null) return Current.GetHireCost(grade);
+        return grade switch
+        {
+            UnitGrade.Uncommon => 650,
+            UnitGrade.Rare     => 1000,
+            UnitGrade.Unique   => 1500,
+            UnitGrade.Epic     => 2200,
+            _                  => 400,
+        };
+    }
 
     [Header("장수 레벨업 비용 — Lv N → N+1 = Base + (N-1) × PerLevel")]
     [Tooltip("Lv1 → Lv2 비용 (골드)")]
@@ -99,31 +135,12 @@ public class GameplayConfig : ScriptableObject
     // ■ 유물 비용
     // ──────────────────────────────────────────────────────────
 
-    [Header("유물 비용 — 획득")]
-    [Tooltip("Common 유물 첫 획득 비용 (환생 포인트)")]
-    public int RelicAcquireCostCommon    = 1;
-    [Tooltip("Uncommon 유물 첫 획득 비용 (환생 포인트)")]
-    public int RelicAcquireCostUncommon  = 2;
-    [Tooltip("Rare 유물 첫 획득 비용 (환생 포인트)")]
-    public int RelicAcquireCostRare      = 3;
-    [Tooltip("Epic 유물 첫 획득 비용 (환생 포인트)")]
-    public int RelicAcquireCostEpic      = 4;
-    [Tooltip("Legendary 유물 첫 획득 비용 (환생 포인트)")]
-    public int RelicAcquireCostLegendary = 5;
+    // ⚠ 희귀도별 "첫 획득 비용" 은 삭제됐다.
+    //   유물은 전부 0레벨로 존재하며 획득 단계가 없다. 비용은 강화 비용 하나뿐.
 
-    [Header("유물 비용 — 레벨업")]
-    [Tooltip("레벨업 비용 지수. 기본 2 → (현재레벨+1)^지수 pt.\n예) 지수 2: 0→1: 1pt, 1→2: 4pt, 4→5: 25pt")]
+    [Header("유물 비용 — 강화")]
+    [Tooltip("강화 비용 지수. 기본 2 → (현재레벨+1)^지수 pt.\n예) 지수 2: 0→1: 1pt, 1→2: 4pt, 4→5: 25pt")]
     public float RelicLevelUpCostExponent = 2f;
-
-    public int GetRelicAcquireCost(RelicRarity rarity) => rarity switch
-    {
-        RelicRarity.Common    => RelicAcquireCostCommon,
-        RelicRarity.Uncommon  => RelicAcquireCostUncommon,
-        RelicRarity.Rare      => RelicAcquireCostRare,
-        RelicRarity.Epic      => RelicAcquireCostEpic,
-        RelicRarity.Legendary => RelicAcquireCostLegendary,
-        _ => RelicAcquireCostUncommon,
-    };
 
     // ──────────────────────────────────────────────────────────
     // ■ 디버그
@@ -195,6 +212,13 @@ public class GameplayConfig : ScriptableObject
 
     [Tooltip("등급 1단계당 스텟 배율 증가량.\n기본 0.10 → Normal=×1.0, Epic(4단계)=×1.4")]
     public float GradeMultPerTier  = 0.10f;
+
+    [Tooltip("등급 1단계당 '해당 스텟 최댓값의 N%' 를 고정 가산한다.\n" +
+             "기본 0.05 → Epic(4단계) = 최댓값의 20% 추가.\n\n" +
+             "배율(GradeMultPerTier)만으로는 공격속도·이동속도·사거리처럼\n" +
+             "배율이 안 붙는 스텟에 등급이 전혀 반영되지 않는다.\n" +
+             "이 값은 모든 굴림 스텟에 동일하게 더해진다.")]
+    public float GradeFlatMaxRatio = 0.05f;
 
     [Header("레벨업 고정 성장 (배율과 별개로 매 레벨 그대로 더해진다)")]
     [Tooltip("레벨 1당 기본 최대체력 가산량")]
@@ -304,9 +328,9 @@ public class GameplayConfig : ScriptableObject
         };
         EliteRange = new EnemyGradeStatRange
         {
-            Hp          = new FloatRange(700f,  2000f),  // ×1.7 상향
-            Attack      = new FloatRange(70f,   210f),   // ×1.5 상향
-            Defense     = new FloatRange(0.12f, 0.32f),
+            Hp          = new FloatRange(600f,  1800f),  // ×1.5 상향 — 엘리트 체감이 약했다
+            Attack      = new FloatRange(75f,   225f),   // ×1.5 상향
+            Defense     = new FloatRange(0.10f, 0.55f),  // 에셋 실값과 동기화
             AttackRange = new FloatRange(1.5f,  3.0f),
             AttackSpeed = new FloatRange(0.8f,  2.0f),
             MoveSpeed   = new FloatRange(2.5f,  4.5f),
@@ -331,12 +355,12 @@ public class GameplayConfig : ScriptableObject
         {
             Hp           = new FloatRange(800f,   1600f),
             Attack       = new FloatRange(90f,    200f),   // ↑ 근접 고위험 고딜 정체성
-            Defense      = new FloatRange(0.08f,  0.20f),
+            Defense      = new FloatRange(0.06f,  0.15f),   // ↓ 하향 — 방패병과 격차 확보 (기사는 체력·공격으로 버틴다)
             AttackRange  = new FloatRange(0.8f,   1.2f),
             AttackSpeed  = new FloatRange(0.9f,   1.9f),
             MoveSpeed    = new FloatRange(2.5f,   3.0f),
-            SoldierCount = new FloatRange(1f,     2f),
-            CommandPower = new FloatRange(1f,     30f),
+            SoldierCount = new FloatRange(3f,     7f),     // ↑ 병사 특화 — 타 직업(1~4) 대비 상향
+            CommandPower = new FloatRange(10f,    45f),    // ↑ 병사 특화 — 타 직업(1~30) 대비 상향
             CritChance   = 0.13f,                          // ↑ 10% → 13%
             CritDamage   = 1.50f,
         };
@@ -370,7 +394,9 @@ public class GameplayConfig : ScriptableObject
         {
             Hp           = new FloatRange(1200f,  3000f),  // -25% 하향 (과도한 HP 조정)
             Attack       = new FloatRange(50f,    120f),   // +50% 상향 (DPS 보정)
-            Defense      = new FloatRange(0.30f,  0.55f),  // +5% 상향 (탱킹 특화)
+            Defense      = new FloatRange(0.22f,  0.32f),  // 상한만 조인다 — 하한이 낮으면 "방패병인데 물렁한"
+                                                           //   개체가 나온다. 폭을 좁혀 항상 단단하되
+                                                           //   장비·유물을 얹어도 실효 90% 에는 쉽게 닿지 않게.
             AttackRange  = new FloatRange(0.7f,   1.0f),
             AttackSpeed  = new FloatRange(0.6f,   1.4f),   // 소폭 상향
             MoveSpeed    = new FloatRange(2.0f,   2.5f),

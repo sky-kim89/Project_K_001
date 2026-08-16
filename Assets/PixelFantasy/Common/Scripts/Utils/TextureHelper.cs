@@ -11,11 +11,21 @@ namespace Assets.PixelFantasy.Common.Scripts.Utils
     /// </summary>
     public static class TextureHelper
     {
+        // 합성 스크래치 버퍼. 576×928 한 장이 2MB 라 매번 새로 잡으면 그대로 GC 압력이 된다
+        // (메인 스레드 전용 — 합성은 항상 메인에서 일어난다).
+        private static Color32[] _mergeBuffer = Array.Empty<Color32>();
+
         public static Texture2D MergeLayers(Texture2D texture, params Color32[][] layers)
         {
             if (layers.Length == 0) throw new Exception("No layers to merge.");
-            
-            var result = new Color32[texture.width * texture.height];
+
+            var size = texture.width * texture.height;
+
+            // SetPixels32 는 길이가 정확히 width*height 여야 한다 — 남는 버퍼를 그냥 쓰면 안 된다
+            if (_mergeBuffer.Length != size) _mergeBuffer = new Color32[size];
+            else Array.Clear(_mergeBuffer, 0, size);
+
+            var result = _mergeBuffer;
 
             foreach (var layer in layers.Where(i => i != null))
             {

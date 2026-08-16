@@ -92,7 +92,7 @@ public class DeploySlotUI : MonoBehaviour
         if (_gradeBadge  != null) _gradeBadge.color  = gc;
         if (_nameText    != null) _nameText.text      = entry.UnitName;
         if (_levelText   != null) _levelText.text     = $"Lv.{entry.Level}";
-        if (_gradeText   != null) { _gradeText.text   = GradeStyle.GetLabel(entry.Grade); _gradeText.color = Color.white; }
+        if (_gradeText   != null) { _gradeText.text   = GradeStyle.GetLabelWithQuality(entry.Grade, entry.UnitName); _gradeText.color = Color.white; }
         if (_jobText     != null) _jobText.text        = JobStyle.GetLabel(job);
         if (_hpText      != null) _hpText.text         = $"{result.Total(StatType.MaxHp):N0}";
         if (_atkText     != null) _atkText.text        = $"{result.Total(StatType.Attack):N0}";

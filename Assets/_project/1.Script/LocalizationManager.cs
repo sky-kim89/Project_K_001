@@ -93,6 +93,18 @@ public class LocalizationManager : SingletonPure<LocalizationManager>
         { "SwiftStrike",      "신속 연격"     },
         { "SummonElite",      "정예 소환"     },
 
+        // ── 희귀 액티브 스킬 (직업당 부대에 1명) ───────────────
+        { "Bisect",           "일도양단"      },
+        { "ArrowStorm",       "화살 폭풍"     },
+        { "GravityCollapse",  "중력 붕괴"     },
+        { "Bulwark",          "불멸의 방벽"   },
+        { "ChainLightning",   "연쇄 번개"     },
+        { "DeathSentence",    "사형 선고"     },
+        { "BloodPrice",       "피의 대가"     },
+        { "PiercingDash",     "관통 돌진"     },
+        { "WarBanner",        "군기 강림"     },
+        { "Gravestone",       "비석 강림"     },
+
         // ── UnitGrade ─────────────────────────────────────────
         { "Normal",   "일반" },
         { "Uncommon", "비범" },

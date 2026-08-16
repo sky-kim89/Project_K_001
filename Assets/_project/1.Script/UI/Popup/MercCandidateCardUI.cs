@@ -46,7 +46,7 @@ public class MercCandidateCardUI : MonoBehaviour
         Color          gc     = GradeStyle.GetColor(entry.Grade);
 
         if (_gradeBorder != null) _gradeBorder.color = gc;
-        if (_gradeText   != null) { _gradeText.text  = GradeStyle.GetLabel(entry.Grade); _gradeText.color = gc; }
+        if (_gradeText   != null) { _gradeText.text  = GradeStyle.GetLabelWithQuality(entry.Grade, entry.UnitName); _gradeText.color = gc; }
         if (_nameText    != null) _nameText.text    = entry.UnitName;
         if (_jobText     != null) _jobText.text     = JobStyle.GetLabel(job);
         if (_hpText      != null) _hpText.text      = $"체력 {result.Total(StatType.MaxHp):N0}";
@@ -80,7 +80,7 @@ public class MercCandidateCardUI : MonoBehaviour
         var activeDb = ActiveSkillDatabase.Current;
         if (activeDb != null)
         {
-            var activeId   = ActiveSkillRoller.Roll(entry.UnitName, job, activeDb, entry.Grade);
+            var activeId   = RareSkillArbiter.Resolve(entry.UnitName, job, activeDb, entry.Grade);
             var activeData = activeDb.Get(activeId);
 
             if (_activeSkillIcon != null)

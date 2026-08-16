@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Transforms;
 using Unity.Mathematics;
 using Unity.Burst;
@@ -21,7 +21,11 @@ namespace BattleGame.Units
         ComponentLookup<HealthComponent>      _healthLookup;
         ComponentLookup<DoubleStrikeTag>      _doubleStrikeLookup;
         ComponentLookup<KnightChargeComponent> _chargeLookup;
-        ComponentLookup<GeneralComponent>     _generalLookup;
+        // 착탄 이벤트를 받을 대상은 "버퍼를 가진 유닛" 으로 판단한다.
+        // 예전에는 GeneralComponent 유무로 걸렀는데, 그러면 병사는 아무리
+        // 버퍼를 달아 줘도 착탄 이벤트를 못 받아 폭우 사격이 발동하지 않는다.
+        // (원거리 경로인 ProjectileSystem 은 이미 버퍼 유무로 판단하고 있었다)
+        BufferLookup<AttackHitEvent>          _attackHitLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -30,7 +34,7 @@ namespace BattleGame.Units
             _healthLookup       = state.GetComponentLookup<HealthComponent>(isReadOnly: true);
             _doubleStrikeLookup = state.GetComponentLookup<DoubleStrikeTag>(isReadOnly: true);
             _chargeLookup       = state.GetComponentLookup<KnightChargeComponent>(isReadOnly: true);
-            _generalLookup      = state.GetComponentLookup<GeneralComponent>(isReadOnly: true);
+            _attackHitLookup    = state.GetBufferLookup<AttackHitEvent>(isReadOnly: true);
         }
 
         [BurstCompile]
@@ -42,7 +46,7 @@ namespace BattleGame.Units
             _healthLookup.Update(ref state);
             _doubleStrikeLookup.Update(ref state);
             _chargeLookup.Update(ref state);
-            _generalLookup.Update(ref state);
+            _attackHitLookup.Update(ref state);
 
             // ① 쿨다운 감소 (병렬, 근거리 + 원거리 + 기사 돌진)
             new CooldownTickJob { DeltaTime = deltaTime }.ScheduleParallel();
@@ -51,14 +55,14 @@ namespace BattleGame.Units
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb          = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
-            // ② 근거리 공격 — 타겟 HitEventBuffer + (장군이면) AttackHitEvent 에 직접 추가
+            // ② 근거리 공격 — 타겟 HitEventBuffer + (버퍼 보유 유닛이면) AttackHitEvent 에 직접 추가
             new MeleeAttackJob
             {
                 TransformLookup    = _transformLookup,
                 HealthLookup       = _healthLookup,
                 DoubleStrikeLookup = _doubleStrikeLookup,
                 ChargeLookup       = _chargeLookup,
-                GeneralLookup      = _generalLookup,
+                AttackHitLookup    = _attackHitLookup,
                 Ecb                = ecb,
             }.ScheduleParallel();
 
@@ -123,7 +127,7 @@ namespace BattleGame.Units
         [ReadOnly] public ComponentLookup<HealthComponent>       HealthLookup;
         [ReadOnly] public ComponentLookup<DoubleStrikeTag>       DoubleStrikeLookup;
         [ReadOnly] public ComponentLookup<KnightChargeComponent> ChargeLookup;
-        [ReadOnly] public ComponentLookup<GeneralComponent>      GeneralLookup;
+        [ReadOnly] public BufferLookup<AttackHitEvent>           AttackHitLookup;
         public EntityCommandBuffer.ParallelWriter                 Ecb;
 
         public void Execute(
@@ -194,8 +198,9 @@ namespace BattleGame.Units
                     AttackerEntity = entity,
                 });
 
-            // 장군의 근거리 공격 착탄 — OnAttackLanded 트리거용 (ECB → 다음 프레임 CombatTriggerSystem)
-            if (GeneralLookup.HasComponent(entity))
+            // 근거리 공격 착탄 — OnAttackLanded 트리거용 (ECB → 다음 프레임)
+            // 장군은 CombatTriggerSystem, 병사는 TraitRainFireSoldierSystem 이 소비한다.
+            if (AttackHitLookup.HasBuffer(entity))
                 Ecb.AppendToBuffer(chunkIndex, entity, new AttackHitEvent
                 {
                     TargetEntity = attack.TargetEntity,

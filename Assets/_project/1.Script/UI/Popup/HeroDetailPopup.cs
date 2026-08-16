@@ -36,6 +36,9 @@ public class HeroDetailPopup : PopupBase
 
     [Header("헤더")]
     [SerializeField] TextMeshProUGUI _nameText;
+    // 이름 뒤에 깔리는 그림자 사본. 같이 갱신하지 않으면 프리팹의 플레이스홀더
+    // ("영웅 이름") 가 실제 이름 옆에 검은 글씨로 그대로 남는다.
+    [SerializeField] TextMeshProUGUI _nameShadowText;
     [SerializeField] Button          _closeBtn;
 
     [Header("초상화")]
@@ -193,9 +196,10 @@ public class HeroDetailPopup : PopupBase
 
         _gradeBorder.color = gc;
         _gradeBadge.color  = gc;
-        _gradeText.text    = GradeStyle.GetLabel(_entry.Grade);
+        _gradeText.text    = GradeStyle.GetLabelWithQuality(_entry.Grade, _entry.UnitName);
         _gradeText.color   = Color.white;
         _nameText.text     = _entry.UnitName;
+        if (_nameShadowText != null) _nameShadowText.text = _entry.UnitName;
         _levelText.text    = $"Lv.{_entry.Level}";
         _jobText.text      = JobStyle.GetLabel(job);
 
@@ -214,7 +218,7 @@ public class HeroDetailPopup : PopupBase
         var activeDb  = ActiveSkillDatabase.Current;
         var passiveDb = PassiveSkillDatabase.Current;
 
-        var activeId   = ActiveSkillRoller.Roll(entry.UnitName, job, activeDb, entry.Grade);
+        var activeId   = RareSkillArbiter.Resolve(entry.UnitName, job, activeDb, entry.Grade);
         var activeData = activeDb.Get(activeId);
         _activeSkillText.text     = activeData?.SkillName   ?? "-";
         _activeSkillDescText.text = activeData?.Description ?? "";

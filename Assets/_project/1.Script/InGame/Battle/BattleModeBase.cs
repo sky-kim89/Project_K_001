@@ -69,6 +69,18 @@ public abstract class BattleModeBase
     /// </summary>
     public abstract void ApplyStageClearReward();
 
+    // ── 무한 보스 ─────────────────────────────────────────────
+
+    /// <summary>
+    /// true 면 마지막 웨이브를 비워도 승리로 끝나지 않는다.
+    /// 보스를 잡을 때마다 GetEndlessBossEntries() 로 다음 보스가 계속 나오며,
+    /// 전투는 아군 전멸(패배)로만 종료된다.
+    /// </summary>
+    public virtual bool IsEndless => false;
+
+    /// <summary>bossIndex(1부터) 번째 무한 보스의 스폰 항목. IsEndless 인 모드만 구현한다.</summary>
+    public virtual List<SpawnEntry> GetEndlessBossEntries(int bossIndex) => null;
+
     // ── 파생 클래스에서 오버라이드 가능한 훅 ─────────────────
 
     /// <summary>각 웨이브 시작 직전 호출. 연출·로직 추가 가능.</summary>

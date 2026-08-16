@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -53,5 +54,20 @@ public class EventDatabase : ScriptableObject
     {
         var valid = GetAll().Where(e => e.EventId != excludeId).ToArray();
         return valid.Length == 0 ? null : valid[Random.Range(0, valid.Length)];
+    }
+
+    /// <summary>
+    /// 이번 런에 아직 안 나온 이벤트 중에서 추첨한다.
+    /// 전부 소진되면 다시 전체 풀에서 뽑는다 — 이벤트 칸이 빈손으로 지나가면 안 된다.
+    /// </summary>
+    public EventData GetRandomUnseen(IEnumerable<string> seenIds)
+    {
+        var pool   = GetAll().Where(e => e.EventId != ShopEventId).ToArray();
+        var unseen = seenIds == null
+            ? pool
+            : pool.Where(e => !seenIds.Contains(e.EventId)).ToArray();
+
+        var pick = unseen.Length > 0 ? unseen : pool;
+        return pick.Length == 0 ? null : pick[Random.Range(0, pick.Length)];
     }
 }

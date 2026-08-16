@@ -81,9 +81,12 @@ namespace Assets.PixelFantasy.Common.Scripts.CollectionScripts
 
         public Color32[] GetPixels(int index, Color paint, float h, float s, float v, Color32[] mask)
         {
-            var hash = $"{index}.{paint}.{h}.{s}.{v}.{mask}";
+            // mask 는 배열 내용이 매번 달라지는데 문자열로는 "UnityEngine.Color32[]" 로만 찍힌다.
+            // 그대로 해시에 넣으면 헬멧이 바뀌어도 이전 마스크가 적용된 픽셀이 그대로 반환된다
+            // — 마스크가 있으면 캐시를 쓰지 않고 항상 다시 만든다.
+            var hash = mask == null ? $"{index}.{paint}.{h}.{s}.{v}" : null;
 
-            if (hash == _hash) return _pixels;
+            if (hash != null && hash == _hash) return _pixels;
 
             _hash = hash;
             _pixels = Textures[index].GetPixels32();

@@ -77,7 +77,8 @@ public class TraitIconUI : MonoBehaviour
 
     void OpenTooltip()
     {
-        string stat = _showStat ? AbilityUIHelper.BuildStatText(_data.Effects) : "";
+        // 보유 중인 특성이므로 누적 스택까지 포함해 보여준다.
+        string stat = _showStat ? AbilityUIHelper.BuildStatText(_data) : "";
         _tooltip.Show(_data.TraitName, _data.Description, stat);
     }
 }

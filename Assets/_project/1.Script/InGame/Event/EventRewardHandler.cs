@@ -89,7 +89,7 @@ public static class EventRewardHandler
 
         foreach (var r in rewards)
             if (r.Type == EventRewardType.SpendItem && r.Item != eItem.None)
-                if (!items.CanSpend(r.Item, r.IntValue)) return false;
+                if (!items.CanSpend(r.Item, ResolveAmount(r))) return false;
 
         return true;
     }
@@ -132,15 +132,33 @@ public static class EventRewardHandler
 
                 // ── 아이템 획득 / 소비 ─────────────────────────
                 case EventRewardType.AddItem:
-                    if (r.Item != eItem.None)
+                {
+                    if (r.Item == eItem.None) break;
+
+                    // ⚠ 상자는 받는 즉시 깐다
+                    //   이 게임에는 인벤토리 화면이 없다. 상자를 그대로 주면 플레이어가
+                    //   나중에 열 방법이 없고, 보상 카드도 "장비 박스 ×1" 이라 뭘 얻었는지
+                    //   알 수 없다. RewardOpener 가 개봉까지 처리하므로 그 결과를 보여 준다.
+                    if (r.Item.IsBoxType())
                     {
-                        items?.Add(r.Item, r.IntValue);
-                        granted.Add(RewardView.OfItem(r.Item, r.IntValue));
+                        int count = Mathf.Max(1, ResolveAmount(r));
+                        for (int i = 0; i < count; i++)
+                        {
+                            var opened = RewardOpener.Commit(
+                                new ItemAmount { Item = r.Item, Amount = 1 }, CurrentStageLevel());
+                            granted.Add(RewardOpener.ToView(opened));
+                        }
+                        break;
                     }
+
+                    int amount = ResolveAmount(r);
+                    items?.Add(r.Item, amount);
+                    granted.Add(RewardView.OfItem(r.Item, amount));
                     break;
+                }
                 case EventRewardType.SpendItem:
                     // 소비는 "얻은 것" 이 아니므로 카드로 보여주지 않는다.
-                    if (r.Item != eItem.None) items?.Spend(r.Item, r.IntValue);
+                    if (r.Item != eItem.None) items?.Spend(r.Item, ResolveAmount(r));
                     break;
 
                 // ── 병사 수 ───────────────────────────────────
@@ -175,6 +193,13 @@ public static class EventRewardHandler
                 // (EventPopup.HasRunShopReward 참고).
                 case EventRewardType.OpenRunShop:
                     break;
+
+                // ── 용병 고용 열기 ────────────────────────────
+                // 상점과 같다. 고용 여부는 팝업에서 정해지므로 여기서 줄 것이 없다.
+                // 대가를 받으려면 이 보상 앞에 SpendItem 을 같이 걸면 된다
+                // (EventPopup.HasMercenaryReward 참고).
+                case EventRewardType.OpenMercenary:
+                    break;
             }
         }
 
@@ -187,6 +212,42 @@ public static class EventRewardHandler
     }
 
     // ── 내부 헬퍼 ─────────────────────────────────────────────
+
+    /// <summary>
+    /// 보상 수량을 확정한다.
+    /// ScaleByStageReward 면 IntValue 를 "그 스테이지 클리어 보상 대비 %" 로 해석한다.
+    ///
+    /// ⚠ 스테이지 번호를 곱하면 안 된다
+    ///   클리어 보상은 500(1스테이지) → 1,950(30스테이지) 으로 3.9배만 는다.
+    ///   번호를 곱하면 30배가 되어 후반 비용이 수입을 짓눌러 버린다.
+    ///   수입 곡선에 직접 묶어야 언제 만나도 체감이 같다.
+    ///
+    /// ⚠ 지급·차감·표시가 전부 이 함수를 거쳐야 한다
+    ///   한 곳이라도 IntValue 를 직접 쓰면 표시와 실제가 어긋난다.
+    /// </summary>
+    public static int ResolveAmount(EventReward r)
+    {
+        if (!r.ScaleByStageReward) return r.IntValue;
+        return Mathf.Max(1, Mathf.RoundToInt(StageGoldReward() * r.IntValue / 100f));
+    }
+
+    /// <summary>현재 스테이지의 클리어 보상 골드 — 이벤트 금액의 기준선.</summary>
+    static float StageGoldReward()
+    {
+        var cfg = StageConfig.Current;
+        int stage = CurrentStageLevel();
+
+        float baseGold = cfg != null ? cfg.GoldRewardBase     : 500f;
+        float perStage = cfg != null ? cfg.GoldRewardPerStage : 50f;
+        return baseGold + Mathf.Max(0, stage - 1) * perStage;
+    }
+
+    /// <summary>상자 개봉 등급·스테이지 비례 보상의 기준이 되는 현재 스테이지 (1부터).</summary>
+    public static int CurrentStageLevel()
+    {
+        var progress = UserDataManager.Instance?.Get<StageProgressData>();
+        return progress != null ? progress.CurrentRunStage + 1 : 1;
+    }
 
     static void AddRandomTrait(RunTraitData traits, TraitType[] pool, List<RewardView> granted)
     {

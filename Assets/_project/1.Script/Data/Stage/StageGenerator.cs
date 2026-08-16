@@ -136,6 +136,22 @@ public static class StageGenerator
                         : eliteSlots > 0 ? Mathf.Max(1, enemyCount - eliteSlots)
                         : enemyCount;
 
+        // ── 엘리트 호위 부대 ─────────────────────────────────────
+        //  엘리트는 혼자 걸어 나오지 않고 호위 병사를 데리고 대형으로 진입한다.
+        //  ⚠ 호위는 "추가" 가 아니라 일반 적 트리클에서 떼어 온다.
+        //    그냥 얹으면 웨이브 총 물량이 통째로 늘어 난이도가 따로 논다.
+        //    같은 수의 적이 한 명씩 흘러나오느냐, 부대로 몰려오느냐의 차이다.
+        int escortPerElite = 0;
+        if (eliteSlots > 0)
+        {
+            int want     = 4 + stageNumber / 6;                        // 1스테이지 4기 → 30스테이지 9기
+            int borrowed = Mathf.Min(normalCount - 1, eliteSlots * want);
+
+            // 떼어 올 여유가 없으면 호위를 붙이지 않는다 (총 물량 유지가 우선)
+            escortPerElite = borrowed > 0 ? borrowed / eliteSlots : 0;
+            normalCount   -= escortPerElite * eliteSlots;
+        }
+
         entries.Add(new SpawnEntry
         {
             Name           = $"S{stageNumber}W{wave}E",
@@ -163,6 +179,7 @@ public static class StageGenerator
                 DelayBetween   = 1.0f,
                 EnemyRace      = race,
                 StatMultiplier = statMult,
+                EscortCount    = escortPerElite,   // 부대 대형으로 함께 진입
             });
         }
 

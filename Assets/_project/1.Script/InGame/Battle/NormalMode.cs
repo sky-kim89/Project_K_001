@@ -84,6 +84,51 @@ public class NormalMode : BattleModeBase
         return entries;
     }
 
+    // ── 무한 보스 (최종 스테이지 전용) ────────────────────────
+    //
+    //  최종 스테이지(기본 30)는 클리어할 수 없다.
+    //  마지막 웨이브 보스를 잡으면 스텟 ×10, 크기 ×2 인 보스가 다시 나오고,
+    //  그 보스를 잡으면 또 ×10 (누적) 보스가 나오는 식으로 무한히 반복된다.
+
+    /// <summary>보스 1기마다 곱해지는 스텟 배율.</summary>
+    public const float EndlessStatStep = 10f;
+
+    /// <summary>무한 보스 크기 — 기본 보스 프리팹의 2배 (보스마다 동일).</summary>
+    public const float EndlessScaleMult = 2f;
+
+    // float 무한대(≈3.4e38)로 넘어가면 HP 가 Infinity 가 되어 피해 계산이 전부 NaN 이 된다.
+    const float EndlessStatCap = 1e30f;
+
+    public override bool IsEndless => _stage.StageNumber >= GameplayConfig.Current.MaxStage;
+
+    public override List<SpawnEntry> GetEndlessBossEntries(int bossIndex)
+    {
+        // 마지막 웨이브 보스를 원본으로 삼는다 (레벨·종족·스테이지 배율 승계)
+        SpawnEntry origin = _stage.Waves[^1].EnemyEntries.First(e => e.UnitType == SpawnUnitType.Boss);
+
+        float statMult = Mathf.Min(EndlessStatCap,
+                                   origin.StatMultiplier * Mathf.Pow(EndlessStatStep, bossIndex));
+
+        return new List<SpawnEntry>
+        {
+            new()
+            {
+                // 이름이 바뀌면 외형·기본 스텟 시드도 바뀐다 — 매번 다른 보스로 보인다
+                Name            = $"S{_stage.StageNumber}EndlessBoss{bossIndex}",
+                Level           = origin.Level,
+                UnitType        = SpawnUnitType.Boss,
+                Count           = 1,
+                DelayBefore     = 2f,
+                DelayBetween    = 0f,
+                EnemyRace       = origin.EnemyRace,
+                StatMultiplier  = statMult,
+                StageBias       = 1f,   // 최종 스테이지 — 스텟 범위 최댓값
+                ScaleMultiplier = EndlessScaleMult,
+                KnockbackImmune = true,
+            }
+        };
+    }
+
     public override void ApplyStageClearReward()
     {
         Context.StageLevel = _stage.StageNumber;

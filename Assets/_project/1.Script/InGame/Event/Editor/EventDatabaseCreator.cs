@@ -24,6 +24,13 @@ using UnityEditor;
 //    09. WarRelic           — 전쟁 유물      (즉시보상형)
 //    10. BlackMarket        — 상인의 밀거래  (선택지형)
 //    11. TravelingMerchant  — 행상인의 좌판  (상점 스테이지 전용)
+//    12. StragglerSoldiers  — 패잔병 무리    (선택지형 · 용병 고용)
+//    13. WanderingMercenary — 떠돌이 용병    (선택지형 · 용병 고용)
+//    14. PromisingSoldier   — 눈에 띄는 병사 (선택지형 · 용병 고용)
+//
+//  ⚠ 12~14 로 고용되는 장수는 아군 영웅 외형이고 직업도 무작위다
+//    (기사·궁수·법사·방패병). 적을 포섭하는 컨셉이나 특정 직업을 가리키는
+//    이름("검객" 등)을 쓰면 실제로 뽑히는 장수와 그림이 어긋난다.
 //
 //  ⚠ 11번은 랜덤 이벤트 풀에 들어가면 안 된다.
 //    상점 스테이지에서만 EventDatabase.ShopEventId 로 직접 꺼내 쓰고,
@@ -53,6 +60,9 @@ public static class EventDatabaseCreator
         { "WarRelic",           "evt_forest"   },  // 전쟁 유물
         { "BlackMarket",        "evt_merchant" },  // 상인의 밀거래
         { "TravelingMerchant",  "evt_merchant" },  // 행상인의 좌판 (상점 스테이지)
+        { "StragglerSoldiers",  "evt_soldier"  },  // 패잔병 무리
+        { "WanderingMercenary", "evt_forest"   },  // 떠돌이 용병
+        { "PromisingSoldier",   "evt_soldier"  },  // 눈에 띄는 병사
     };
 
     [MenuItem(ProjectKMenu.Data + "이벤트", priority = ProjectKMenu.DataPrio + 18)]
@@ -120,9 +130,8 @@ public static class EventDatabaseCreator
             "낡은 짐마차에서 상인이 손짓합니다.\n" +
             "\"장군님, 좋은 물건이 있습죠. 조금 비싸지만 후회는 없을 겁니다.\"",
             Choice("비싸게 산다",
-                "금화를 건넸습니다. 그가 건넨 물건에서 희미한 빛이 납니다.\n[골드 200 소모 / 유익한 특성 획득]",
-                costHint: "골드 200",
-                Reward(EventRewardType.SpendItem,       eItem.Gold, 200, "골드 -200"),
+                "금화를 건넸습니다. 그가 건넨 물건에서 희미한 빛이 납니다.\n[골드 소모 / 유익한 특성 획득]",
+                ScaledReward(EventRewardType.SpendItem, eItem.Gold, 60),
                 Reward(EventRewardType.RandomTraitBuff, "유익한 특성 획득")),
             Choice("그냥 지나친다",
                 "고개를 젓고 발걸음을 옮겼습니다.")
@@ -157,8 +166,8 @@ public static class EventDatabaseCreator
                 "첩자에게서 적진의 이동 경로를 캐냈습니다.\n[경험치 획득 +20% 특성]",
                 Reward(EventRewardType.AddTrait, intVal: (int)TraitType.Event_SpyInfo, "첩자 정보: 경험치 +20%")),
             Choice("풀어준다",
-                "첩자를 풀어줬습니다. 그는 뭔가를 남기고 사라졌습니다.\n[골드 150 획득 / 다음 스테이지 → 엘리트]",
-                Reward(EventRewardType.AddItem,        eItem.Gold, 150, "골드 +150"),
+                "첩자를 풀어줬습니다. 그는 뭔가를 남기고 사라졌습니다.\n[골드 획득 / 다음 스테이지 → 엘리트]",
+                ScaledReward(EventRewardType.AddItem, eItem.Gold, 180),
                 Reward(EventRewardType.NextStageElite, "다음 스테이지 → 엘리트"))
         ));
 
@@ -181,9 +190,9 @@ public static class EventDatabaseCreator
         Add(arr, MakeInstant("AbandonedWarehouse", "방치된 창고",
             "길가의 허름한 창고 문이 반쯤 열려 있습니다.\n" +
             "안을 들여다보니 오래된 상자들이 쌓여 있습니다.",
-            "창고를 뒤졌습니다. 먼지 쌓인 상자 안에 쓸만한 것들이 있습니다.\n[장비 박스 1개 + 골드 100 획득]",
-            Reward(EventRewardType.AddItem, eItem.EquipBox, 1,   "장비 박스 +1"),
-            Reward(EventRewardType.AddItem, eItem.Gold,     100, "골드 +100")
+            "창고를 뒤졌습니다. 먼지 쌓인 상자 안에 쓸만한 것들이 있습니다.\n[장비 박스 1개 + 골드 획득]",
+            Reward(EventRewardType.AddItem, eItem.EquipBox, 1, "장비 박스 +1"),
+            ScaledReward(EventRewardType.AddItem, eItem.Gold, 220)
         ));
 
         // ── 09. 전쟁 유물 (즉시보상) ─────────────────────────
@@ -200,9 +209,8 @@ public static class EventDatabaseCreator
             "수상한 행색의 상인이 슬쩍 다가옵니다.\n" +
             "\"장군님... 공식 루트에선 구하기 어려운 물건이죠.\"",
             Choice("골드로 산다",
-                "금화를 건네자 상인이 묵직한 상자를 넘겼습니다.\n[골드 300 소모 / 장비 박스 2개]",
-                costHint: "골드 300",
-                Reward(EventRewardType.SpendItem, eItem.Gold,     300, "골드 -300"),
+                "금화를 건네자 상인이 묵직한 상자를 넘겼습니다.\n[골드 소모 / 장비 박스 2개]",
+                ScaledReward(EventRewardType.SpendItem, eItem.Gold, 85),
                 Reward(EventRewardType.AddItem,   eItem.EquipBox,   2, "장비 박스 +2")),
             Choice("전투석으로 산다",
                 "희귀한 전투석을 대가로 치렀습니다. 상인이 환하게 웃으며 상자를 건넸습니다.\n[전투석 3개 소모 / 장비 박스 2개]",
@@ -227,6 +235,51 @@ public static class EventDatabaseCreator
             Choice("그냥 지나친다",
                 "행상인에게 눈길만 주고 발걸음을 옮겼습니다.\n" +
                 "\"...다음 길목에서 또 뵙지요.\"")
+        ));
+
+        // ── 12. 패잔병 무리 (용병 고용 — 무료) ────────────────
+        //  고용을 고르면 MercenaryShopPopup 이 이어서 열린다.
+        //  "돌려보낸다" 에 보상을 달지 않는 이유: 고용 팝업 안에 이미
+        //  '전부 돌려보내 용병 조각으로 바꾼다' 가 있다. 여기서 또 주면 이중 보상이다.
+        Add(arr, Make("StragglerSoldiers", "패잔병 무리",
+            "무너진 전선에서 빠져나온 병사 몇이 무기를 든 채 다가옵니다.\n" +
+            "\"소속을 잃었습니다. 싸울 곳만 있으면 됩니다.\"",
+            Choice("무리를 받아준다",
+                "무리를 부대에 들였습니다. 그중 쓸 만한 자를 한 명 골라 보십시오.\n[용병 고용]",
+                Reward(EventRewardType.OpenMercenary, "용병 고용")),
+            Choice("돌려보낸다",
+                "먹일 입을 늘릴 여유가 없습니다. 무리는 말없이 발길을 돌렸습니다.")
+        ));
+
+        // ── 13. 떠돌이 용병 (용병 고용 — 골드) ────────────────
+        Add(arr, Make("WanderingMercenary", "떠돌이 용병",
+            "야영지 불빛을 보고 낯선 이가 찾아왔습니다. 행색은 남루하지만 눈매가 매섭습니다.\n" +
+            "\"값을 쳐주신다면 이 한 몸 맡기겠습니다.\"",
+            Choice("선금을 치른다",
+                "금화를 세어 건넸습니다. 그가 짐을 풀고 막사 한켠에 자리를 잡습니다.\n[골드 소모 / 용병 고용]",
+                ScaledReward(EventRewardType.SpendItem, eItem.Gold, 70),
+                Reward(EventRewardType.OpenMercenary, "용병 고용")),
+            Choice("거절한다",
+                "고개를 젓자 그는 어깨를 으쓱하고 어둠 속으로 사라졌습니다.")
+        ));
+
+        // ── 14. 눈에 띄는 병사 (용병 고용 — 골드 또는 조각) ───
+        //  용병 조각으로도 살 수 있는 유일한 고용 경로.
+        //  조각은 병사를 늘리는 재화이므로 "병사 중에서 발탁한다" 는 이 이벤트에만 붙인다.
+        Add(arr, Make("PromisingSoldier", "눈에 띄는 병사",
+            "훈련장 한쪽에서 병사 하나가 눈에 들어옵니다.\n" +
+            "창을 쥔 자세도, 대열을 읽는 눈도 여느 병사와 다릅니다.",
+            Choice("정식으로 발탁한다",
+                "그를 장수로 세웠습니다. 새 갑주가 제법 어울립니다.\n[골드 소모 / 용병 고용]",
+                ScaledReward(EventRewardType.SpendItem, eItem.Gold, 55),
+                Reward(EventRewardType.OpenMercenary, "용병 고용")),
+            Choice("부대에서 인재를 추린다",
+                "병사들 사이에서 될 만한 자를 추려 장수로 올렸습니다.\n[용병 조각 20 소모 / 용병 고용]",
+                costHint: "용병 조각 20",
+                Reward(EventRewardType.SpendItem,     eItem.SoldierShard, 20, "용병 조각 -20"),
+                Reward(EventRewardType.OpenMercenary, "용병 고용")),
+            Choice("그냥 둔다",
+                "아직은 대열 안에 두기로 했습니다.")
         ));
 
         // ── 저장 ──────────────────────────────────────────────
@@ -344,6 +397,25 @@ public static class EventDatabaseCreator
 
     static EventReward Reward(EventRewardType type, eItem item, int amount, string desc = "")
         => new EventReward { Type = type, Item = item, IntValue = amount, Description = desc };
+
+    /// <summary>
+    /// 스테이지 보상 대비 비율로 정하는 보상/비용. percent 는 % 값이다.
+    ///
+    /// ⚠ 고정 골드는 후반에 무의미해진다
+    ///   30스테이지 클리어 보상이 1,950 골드인데 이벤트가 100 골드를 주면
+    ///   "얻었다" 는 감각이 없다. 비율로 두면 언제 만나도 체감이 같다.
+    ///
+    /// ■ 기준선
+    ///   획득 : 180~250%  — 스테이지 클리어를 웃돌아야 "한몫 챙겼다" 가 된다.
+    ///                      이벤트는 런에 10칸뿐이고 그중 골드를 주는 건 일부다.
+    ///                      클리어 보상보다 적게 주면 이벤트를 만날 이유가 없다.
+    ///   비용 : 55~85%    — 한 스테이지 수입을 통째로 쓰는 무게.
+    ///
+    /// ⚠ Description 을 비워 둔다
+    ///   실제 수량은 매번 다르다. EventPopup 이 그때그때 계산해 표시한다.
+    /// </summary>
+    static EventReward ScaledReward(EventRewardType type, eItem item, int percent)
+        => new EventReward { Type = type, Item = item, IntValue = percent, ScaleByStageReward = true };
 
     static EventReward[] Rewards(params EventReward[] r) => r;
 

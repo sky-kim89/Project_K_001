@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cadf0233cbf4ca744a6649911ca92877, type: 3}
+  m_Name: Trait_ConvDeadeye
+  m_EditorClassIdentifier: 
+  TraitType: 32
+  TraitName: "\uD544\uC0B4"
+  Description: "\uB178\uB9BC\uC218\uAC00 \uC313\uC77C\uC218\uB85D \uC77C\uACA9\uC774
+    \uAE4A\uC5B4\uC9C4\uB2E4. \uCE58\uBA85\uD0C0 \uD655\uB960 1%p\uB9C8\uB2E4 \uCE58\uBA85\uD0C0
+    \uBC30\uC728\uC774 1.5% \uC624\uB978\uB2E4."
+  RequiredJob: 255
+  Icon: {fileID: 21300000, guid: 2932bd8992fd1324989af64a0706e47c, type: 3}
+  Effects: []
+  Conversions:
+  - From: 6
+    PerUnit: 0.01
+    To: 7
+    Rate: 0.015
+  StackTrigger: 0
+  MaxStacks: 0
+  StackStatBonuses: []

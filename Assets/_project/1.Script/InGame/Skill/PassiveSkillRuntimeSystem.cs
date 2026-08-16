@@ -81,7 +81,9 @@ namespace BattleGame.Units
                             SoldierDeathCount = deathEvents.Length,
                             DamageDealt       = 0f,
                         }));
-                        deathEvents.Clear();
+                        // ⚠ 여기서 Clear 하지 않는다 — 이 시스템 뒤에 도는
+                        //   CombatTriggerSystem(장비·어빌리티·특성)이 같은 버퍼를 읽는다.
+                        //   소비가 끝난 뒤 CombatTriggerSystem 이 Clear 한다.
                     }
                 })
                 .Run();
@@ -128,7 +130,7 @@ namespace BattleGame.Units
                             SoldierDeathCount = 0,
                             DamageDealt       = 0f,
                         }));
-                        killEvents.Clear();
+                        // Clear 는 CombatTriggerSystem 이 담당 (위 ② 주석 참고)
                     }
                 })
                 .Run();
@@ -152,7 +154,7 @@ namespace BattleGame.Units
                             SoldierDeathCount = 0,
                             DamageDealt       = 0f,
                         }));
-                        skillEvents.Clear();
+                        // Clear 는 CombatTriggerSystem 이 담당 (위 ② 주석 참고)
                     }
                 })
                 .Run();
