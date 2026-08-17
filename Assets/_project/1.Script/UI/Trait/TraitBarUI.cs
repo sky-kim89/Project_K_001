@@ -29,6 +29,7 @@ public class TraitBarUI : MonoBehaviour
     {
         RunTraitData.OnTraitsChanged           += Refresh;
         JobSynergyEvaluator.OnSynergiesChanged += Refresh;
+        DifficultyData.OnChanged               += Refresh;
         Refresh();
     }
 
@@ -36,6 +37,36 @@ public class TraitBarUI : MonoBehaviour
     {
         RunTraitData.OnTraitsChanged           -= Refresh;
         JobSynergyEvaluator.OnSynergiesChanged -= Refresh;
+        DifficultyData.OnChanged               -= Refresh;
+    }
+
+    // ── 난이도 디버프 ─────────────────────────────────────────
+
+    /// <summary>
+    /// 현재 난이도의 디버프를 1행 앞쪽에 채운다. 채운 개수를 돌려준다.
+    /// 출정(디버프 없음)이면 0 을 돌려주고 아무것도 안 그린다.
+    /// </summary>
+    int FillDifficultyDebuffs()
+    {
+        var tier = DifficultyConfig.CurrentTier();
+        if (tier == null) return 0;
+
+        var sprites = SpriteManager.Instance;
+        int idx = 0;
+
+        foreach (var d in tier.ActiveDebuffs())
+        {
+            if (idx >= _traitIcons.Length) break;
+
+            _traitIcons[idx].SetupCustom(
+                sprites != null ? sprites.Get(d.IconKey()) : null,
+                d.Label(),
+                DifficultyConfig.Flavor(d),
+                tier.DescribeDebuff(d));
+            _traitIcons[idx].gameObject.SetActive(true);
+            idx++;
+        }
+        return idx;
     }
 
     // ── 갱신 ──────────────────────────────────────────────────
@@ -51,7 +82,10 @@ public class TraitBarUI : MonoBehaviour
         var traitData = UserDataManager.Instance?.Get<RunTraitData>();
         var db        = TraitDatabase.Current;
 
-        int idx = 0;
+        // 난이도 디버프를 특성 앞에 먼저 깐다.
+        // 별도 UI 를 만들지 않고 같은 줄에 끼워 넣는다 — 플레이어 입장에서
+        // "지금 이 판에 걸려 있는 것" 이라는 성격이 특성과 똑같기 때문이다.
+        int idx = FillDifficultyDebuffs();
         if (traitData != null && db != null)
         {
             foreach (var t in traitData.AcquiredTraits)

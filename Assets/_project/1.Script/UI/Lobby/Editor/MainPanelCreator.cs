@@ -53,7 +53,6 @@ public static class MainPanelCreator
     // ⚠ CardW 620 은 스탯 값이 두 줄로 접히지 않는 최소 폭이다 (440 에서 접혔다).
     //   MercenaryPopupCreator 도 이 카드를 그대로 쓴다 — 줄이면 양쪽이 같이 깨진다.
     public const float CardW = 620f;
-    const float CardOffX  =  70f;   // 카드 중심 오른쪽으로 이동
     const float CardTopY  =  46f;
     const int   Lp        =  16;    // 카드 내부 좌 여백 (GradeW 포함)
     const int   Rp        =  16;
@@ -69,7 +68,10 @@ public static class MainPanelCreator
 
     // 화살표 (CardContainer 기준 — 카드 밖 좌우, 초상화 수직 중심)
     public const float ArrSize = 88f;
+    // ArrGap — 카드 '바깥' 간격. MercenaryPopupCreator 가 그대로 쓴다 (건드리지 말 것).
     public const float ArrGap  = 18f;
+    // ArrInset — 카드 '안쪽' 여백. MainPanel 은 화살표를 초상화 옆에 넣는다.
+    const float ArrInset = 10f;
 
     // 카드 내부 Y (top-anchor 기준 = card 상단에서 몇 px)
     //  직업·등급은 초상화 위 배지로 올려서 별도 행을 없앴다.
@@ -98,10 +100,23 @@ public static class MainPanelCreator
     const float GroupDivX   = 116f;                  // 특성 ┃ 스킬 구분선
     const float SkillX      = 132f;
 
-    // 시작 버튼
-    static readonly float SBtnTopY = CardTopY + CardH + 30f;   // 938
-    const float SBtnH     =  88f;
-    const float SBtnW     = 520f;
+    // ── 3열 레이아웃: [사이드] [카드] [조작 컬럼] ──────────────
+    //
+    //  ⚠ 열 사이 간격을 손으로 적지 말 것
+    //    예전엔 카드 34 / 우단 40 처럼 제각각 적어서 사이드↔카드는 붙고
+    //    카드↔난이도는 286 이나 벌어졌다. 눈에 바로 어긋나 보인다.
+    //    간격 하나(ColGap)만 정하고 조작 컬럼은 남는 폭을 채운다.
+    //
+    //  ⚠ 절대 폭으로 계산하지 않는다
+    //    UIScale.RefWidth 는 1080(인게임 세로) 이고 로비는 1920 가로다.
+    //    앵커 스트레치로 두면 캔버스 폭이 바뀌어도 세 간격이 유지된다.
+    //
+    //    │←ColGap→│ 카드 620 │←ColGap→│ 조작(남는 폭) │←ColGap→│
+    const float ColGap    = 120f;
+    const float CardLeftX = ColGap;   // RightArea 좌단 기준
+
+    // 시작 버튼 — 조작 컬럼 맨 아래에 붙는다 (높이만 쓴다)
+    const float SBtnH     = 108f;
 
     // ── 색상 ──────────────────────────────────────────────────
     static readonly Color SideBg   = new Color(0.05f, 0.06f, 0.11f, 0.92f);
@@ -169,53 +184,81 @@ public static class MainPanelCreator
             rt.offsetMax = Vector2.zero;
         }
 
-        // 카드 컨테이너 (center-top anchor, CardOffX 오른쪽 이동)
+        // 카드 컨테이너 — 좌측 정렬.
+        // ⚠ 카드와 '난이도 + 시작 버튼' 은 세로줄이 달라야 한다
+        //   예전엔 둘 다 화면 중앙(CardOffX)에 있어서 카드 하단의
+        //   '자세히 보기' 버튼과 난이도 줄이 그대로 겹쳤다.
+        //   카드는 왼쪽, 조작(난이도·출정)은 오른쪽으로 완전히 갈랐다.
         var card = MakeImg("CardContainer", right, CardBg);
         {
             var rt = card.GetComponent<RectTransform>();
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f);
-            rt.pivot     = new Vector2(0.5f, 1f);
-            rt.anchoredPosition = new Vector2(CardOffX, -CardTopY);
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot     = new Vector2(0f, 1f);
+            rt.anchoredPosition = new Vector2(CardLeftX, -CardTopY);
             rt.sizeDelta = new Vector2(CardW, CardH);
         }
         var cardUI = card.AddComponent<GeneralCandidateCardUI>();
         var dots   = BuildCardContent(card, cardUI, withDots: true, withRefresh: true,
                                       withTrait: true, out var refreshBtnGo);
 
-        // 화살표 (소형 56×56, CardContainer 자식 — 카드 기준 배치)
-        // anchor(0,1)+pivot(1,0.5) → 오른쪽 엣지가 카드 왼쪽에 ArrGap 간격
-        // anchor(1,1)+pivot(0,0.5) → 왼쪽 엣지가 카드 오른쪽에 ArrGap 간격
+        // 화살표 — 카드 **안쪽** 초상화 양옆.
+        //
+        // ⚠ 예전엔 카드 밖으로 내보냈다 (pivot 을 반대로 줘서 바깥에 붙임)
+        //   그러면 왼쪽 화살표가 사이드바를 침범하고 오른쪽 화살표는
+        //   카드와 난이도 패널 사이 허공에 떠서, 무엇을 넘기는 버튼인지
+        //   한눈에 안 잡혔다. 초상화 바로 옆에 있어야 "이 캐릭터를 넘긴다" 가 읽힌다.
+        //
+        // anchor(0,1)+pivot(0,0.5) → 카드 왼쪽 안쪽에서 ArrInset 만큼 들어옴
+        // anchor(1,1)+pivot(1,0.5) → 카드 오른쪽 안쪽에서 ArrInset 만큼 들어옴
         // Y: -(PortPad + PortH*0.5) = 초상화 수직 중심
         var arrL = BuildArrow(card, "LeftArrowBtn",  180f);
         var arrR = BuildArrow(card, "RightArrowBtn",   0f);
         {
             var rt = arrL.GetComponent<RectTransform>();
-            rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);  // 카드 좌상단 앵커
-            rt.pivot     = new Vector2(1f, 0.5f);               // 오른쪽 중앙 피벗
-            rt.anchoredPosition = new Vector2(-ArrGap, -(PortPad + PortH * 0.5f));
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot     = new Vector2(0f, 0.5f);
+            rt.anchoredPosition = new Vector2(ArrInset, -(PortPad + PortH * 0.5f));
             rt.sizeDelta = new Vector2(ArrSize, ArrSize);
         }
         {
             var rt = arrR.GetComponent<RectTransform>();
-            rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);  // 카드 우상단 앵커
-            rt.pivot     = new Vector2(0f, 0.5f);               // 왼쪽 중앙 피벗
-            rt.anchoredPosition = new Vector2(ArrGap, -(PortPad + PortH * 0.5f));
+            rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot     = new Vector2(1f, 0.5f);
+            rt.anchoredPosition = new Vector2(-ArrInset, -(PortPad + PortH * 0.5f));
             rt.sizeDelta = new Vector2(ArrSize, ArrSize);
         }
 
-        // 게임 시작 버튼
-        var startBtn = MakeBtn(right, "StartBtn", "게 임 시 작", StartC, UIScale.FontLg);
+        // ── 우측 조작 컬럼 — 난이도(위) + 게임 시작(아래) ─────
+        //  카드와 세로줄이 달라 겹칠 일이 없고, 출전 직전에 보는 것
+        //  (뭘 상대할지 → 시작)이 위아래로 자연스럽게 이어진다.
+        var opCol = new GameObject("OperationColumn", typeof(RectTransform));
+        opCol.transform.SetParent(right.transform, false);
+        {
+            // 좌우 스트레치 — 카드 오른쪽 끝에서 ColGap 띄우고, 화면 우단에서 ColGap 남긴다.
+            // 남는 폭을 그대로 쓰므로 세 간격이 항상 같아진다.
+            var rt = opCol.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.offsetMin = new Vector2(CardLeftX + CardW + ColGap, -(CardTopY + CardH));
+            rt.offsetMax = new Vector2(-ColGap, -CardTopY);
+        }
+
+        BuildDifficultyPanel(opCol);
+
+        // 게임 시작 버튼 — 컬럼 맨 아래
+        var startBtn = MakeBtn(opCol, "StartBtn", "게 임 시 작", StartC, UIScale.FontXl);
         {
             var lbl = startBtn.GetComponentInChildren<TextMeshProUGUI>();
             lbl.fontStyle = FontStyles.Bold;
             NoWrap(lbl);
         }
         {
+            // 컬럼 폭을 그대로 채운다 (좌우 스트레치)
             var rt = startBtn.GetComponent<RectTransform>();
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f);
-            rt.pivot     = new Vector2(0.5f, 1f);
-            rt.anchoredPosition = new Vector2(CardOffX, -SBtnTopY);
-            rt.sizeDelta = new Vector2(SBtnW, SBtnH);
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(1f, 0f);
+            rt.offsetMin = new Vector2(0f, 0f);
+            rt.offsetMax = new Vector2(0f, SBtnH);
         }
 
         // MainPanelUI 연결
@@ -950,6 +993,236 @@ public static class MainPanelCreator
 
     static GameObject MakeImg(string name, GameObject parent, Color color)
         => EditorUIBuilder.Panel(parent, name, color);
+
+
+    // ── 난이도 패널 (우측 조작 컬럼 상단) ─────────────────────
+    //
+    //  ┌──────────── 560 ────────────┐
+    //  │  N A N I D O               │  ← 얇은 라벨
+    //  │  ┌───┐                     │
+    //  │  │ ‹ │  [아이콘]  어려움  ›│  ← 등급 색이 테두리·글자에 함께
+    //  │  └───┘                     │
+    //  │  ● ● ● ○ ○                 │  ← 단계 게이지 (몇 번째인지 한눈에)
+    //  │  ─────────────────────     │
+    //  │  적이 더 강해지고 수도       │
+    //  │  늘어난다.                  │
+    //  │                            │
+    //  │  적용 중인 제약             │
+    //  │  [광포][물량]               │  ← 눌러서 수치 툴팁
+    //  │                            │
+    //  │  환생 포인트 ×1.4          │  ← 올릴 이유
+    //  └────────────────────────────┘
+    //
+    //  ■ 왜 이렇게 크게 두나
+    //    출전 직전에 "무엇을 상대하는가" 를 판단하는 화면이다.
+    //    작은 배지로 두면 아무도 안 보고 기본값으로 시작한다.
+    //    카드(왼쪽)와 세로줄이 달라 공간이 남으므로 크게 쓰는 편이 낫다.
+    //
+    //  화살표는 폰트에 없는 '‹ ›' 대신 EditorUIBuilder.Chevron 으로 그린다
+    //  (UI 규칙 2 — 없는 글리프는 두부로 나온다).
+    static GameObject BuildDifficultyPanel(GameObject parent)
+    {
+        // ⚠ const 로 못 쓴다 — CardH 가 static readonly 다
+        float PanH            = CardH - SBtnH - 24f;   // 시작 버튼 위 전부
+        const float Pad       = 22f;
+        const float BtnSz     = 64f;
+        const float IconSz    = 72f;
+        const float DebuffSz  = 76f;
+        const int   DebuffMax = 4;
+        const int   TierCount = 5;
+
+        var panel = MakeImg("DifficultyPanel", parent, new Color(0.05f, 0.06f, 0.11f, 0.94f));
+        {
+            // 컬럼 폭을 그대로 채운다 — 폭을 숫자로 알 필요가 없다
+            var rt = panel.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.offsetMin = new Vector2(0f, -PanH);
+            rt.offsetMax = Vector2.zero;
+        }
+
+        var ui = panel.AddComponent<DifficultySelectorUI>();
+
+        // 상단 강조선 — 로비 팝업 헤더와 같은 언어
+        var accent = MakeImg("Accent", panel, new Color(0.40f, 0.72f, 1.00f, 0.55f));
+        {
+            var rt = accent.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 1f); rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot     = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = new Vector2(0f, 3f);
+        }
+        accent.GetComponent<Image>().raycastTarget = false;
+
+        float y = 18f;   // 위에서부터 쌓는다
+
+        // 라벨
+        var head = MakeTMP(panel, "Head", "난 이 도", UIScale.FontSm, FontStyles.Bold);
+        head.color = Muted; head.alignment = TextAlignmentOptions.MidlineLeft; head.raycastTarget = false;
+        NoWrap(head);
+        PlaceTop(head.rectTransform, Pad, y, UIScale.RowSm);
+        y += UIScale.RowSm + 6f;
+
+        // ── 선택 줄 ───────────────────────────────────────────
+        var prev = EditorUIBuilder.RaisedBtn(panel, "PrevBtn", new Color(0.18f, 0.20f, 0.28f), out var pBody);
+        var next = EditorUIBuilder.RaisedBtn(panel, "NextBtn", new Color(0.18f, 0.20f, 0.28f), out var nBody);
+        EditorUIBuilder.Chevron(pBody, "Ico", 20f, 180f, Color.white);
+        EditorUIBuilder.Chevron(nBody, "Ico", 20f,   0f, Color.white);
+        SetCornerLike(prev.gameObject, new Vector2(0f, 1f), new Vector2(Pad, -(y + (IconSz - BtnSz) * 0.5f)), BtnSz);
+        SetCornerLike(next.gameObject, new Vector2(1f, 1f), new Vector2(-Pad, -(y + (IconSz - BtnSz) * 0.5f)), BtnSz);
+
+        var icon = MakeImg("TierIcon", panel, Color.white);
+        {
+            var rt = icon.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f);
+            rt.pivot     = new Vector2(1f, 1f);
+            rt.anchoredPosition = new Vector2(-12f, -y);
+            rt.sizeDelta = new Vector2(IconSz, IconSz);
+        }
+        var iconImg = icon.GetComponent<Image>();
+        iconImg.preserveAspect = true; iconImg.raycastTarget = false;
+
+        var label = MakeTMP(panel, "TierLabel", "보통", UIScale.FontXl, FontStyles.Bold);
+        label.alignment = TextAlignmentOptions.MidlineLeft; label.raycastTarget = false;
+        NoWrap(label);
+        {
+            var rt = label.rectTransform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f);
+            rt.pivot     = new Vector2(0f, 1f);
+            rt.anchoredPosition = new Vector2(4f, -y);
+            rt.sizeDelta = new Vector2(190f, IconSz);
+        }
+        y += IconSz + 14f;
+
+        // ── 단계 게이지 — 5칸 중 몇 번째인지 한눈에 ───────────
+        var gaugeRow = new GameObject("StepGauge", typeof(RectTransform));
+        gaugeRow.transform.SetParent(panel.transform, false);
+        PlaceTop(gaugeRow.GetComponent<RectTransform>(), Pad, y, 16f);
+        var ghlg = gaugeRow.AddComponent<HorizontalLayoutGroup>();
+        ghlg.spacing = 10; ghlg.childAlignment = TextAnchor.MiddleCenter;
+        ghlg.childControlWidth = ghlg.childControlHeight = false;
+        ghlg.childForceExpandWidth = ghlg.childForceExpandHeight = false;
+
+        var steps = new Image[TierCount];
+        for (int i = 0; i < TierCount; i++)
+        {
+            // MakeImg 는 GameObject 를 돌려준다 — Image 는 GetComponent 로 꺼낸다
+            var stepGo  = MakeImg($"Step{i}", gaugeRow, new Color(0.2f, 0.22f, 0.30f));
+            var stepImg = stepGo.GetComponent<Image>();
+            stepImg.rectTransform.sizeDelta = new Vector2(64f, 8f);
+            stepImg.raycastTarget = false;
+            steps[i] = stepImg;
+        }
+        y += 16f + 16f;
+
+        // 구분선
+        var divGo = MakeImg("Div", panel, DivC);
+        PlaceTop(divGo.GetComponent<RectTransform>(), Pad, y, 2f);
+        divGo.GetComponent<Image>().raycastTarget = false;
+        y += 2f + 16f;
+
+        // ── 요약 설명 ─────────────────────────────────────────
+        var summary = MakeTMP(panel, "SummaryLabel", "", UIScale.FontMd, FontStyles.Normal);
+        summary.alignment = TextAlignmentOptions.TopLeft; summary.raycastTarget = false;
+        summary.textWrappingMode = TextWrappingModes.Normal;
+        PlaceTop(summary.rectTransform, Pad, y, UIScale.Line(UIScale.FontMd) * 2f);
+        y += UIScale.Line(UIScale.FontMd) * 2f + 20f;
+
+        // ── 적용 중인 제약 ────────────────────────────────────
+        var dHead = MakeTMP(panel, "DebuffHead", "적용 중인 제약", UIScale.FontSm, FontStyles.Bold);
+        dHead.color = Muted; dHead.alignment = TextAlignmentOptions.MidlineLeft; dHead.raycastTarget = false;
+        NoWrap(dHead);
+        PlaceTop(dHead.rectTransform, Pad, y, UIScale.RowSm);
+        y += UIScale.RowSm + 8f;
+
+        var debuffRow = new GameObject("DebuffRow", typeof(RectTransform));
+        debuffRow.transform.SetParent(panel.transform, false);
+        PlaceTop(debuffRow.GetComponent<RectTransform>(), Pad, y, DebuffSz);
+        var hlg = debuffRow.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing = 12; hlg.childAlignment = TextAnchor.MiddleLeft;
+        hlg.childControlWidth = hlg.childControlHeight = false;
+        hlg.childForceExpandWidth = hlg.childForceExpandHeight = false;
+
+        var debuffIcons = new TraitIconUI[DebuffMax];
+        for (int i = 0; i < DebuffMax; i++)
+            debuffIcons[i] = TraitIconSlotBuilder.Build(debuffRow, i, DebuffSz);
+
+        // 제약이 없을 때 자리를 채우는 문구 (아이콘 0개면 빈칸만 남는다)
+        var noneLbl = MakeTMP(panel, "NoDebuffLabel", "없음", UIScale.FontSm, FontStyles.Normal);
+        noneLbl.color = new Color(0.42f, 0.45f, 0.55f);
+        noneLbl.alignment = TextAlignmentOptions.MidlineLeft; noneLbl.raycastTarget = false;
+        NoWrap(noneLbl);
+        PlaceTop(noneLbl.rectTransform, Pad + 4f, y + 18f, UIScale.RowSm);
+
+        // ── 하단: 보상 배율 + 잠금 안내 ───────────────────────
+        var reward = MakeTMP(panel, "RewardLabel", "", UIScale.FontSm, FontStyles.Bold);
+        reward.color = new Color(0.45f, 0.86f, 0.62f);
+        reward.alignment = TextAlignmentOptions.MidlineLeft; reward.raycastTarget = false;
+        NoWrap(reward);
+        PlaceBottom(reward.rectTransform, Pad, 44f, UIScale.RowSm);
+
+        var lockLbl = MakeTMP(panel, "LockLabel", "", UIScale.FontSm, FontStyles.Normal);
+        lockLbl.color = new Color(0.88f, 0.66f, 0.32f);
+        lockLbl.alignment = TextAlignmentOptions.MidlineLeft; lockLbl.raycastTarget = false;
+        NoWrap(lockLbl);
+        AutoFit(lockLbl, UIScale.FontSm * 0.75f, UIScale.FontSm);
+        PlaceBottom(lockLbl.rectTransform, Pad, 12f, UIScale.RowSm);
+
+        var so = new SerializedObject(ui);
+        so.Update();
+        SetRef(so, "_tierIcon",      iconImg);
+        SetRef(so, "_tierLabel",     label);
+        SetRef(so, "_summaryLabel",  summary);
+        SetRef(so, "_rewardLabel",   reward);
+        SetRef(so, "_lockLabel",     lockLbl);
+        SetRef(so, "_noDebuffLabel", noneLbl);
+        SetRef(so, "_prevBtn",       prev);
+        SetRef(so, "_nextBtn",       next);
+        SetObjArrayLocal(so, "_debuffIcons", debuffIcons);
+        SetObjArrayLocal(so, "_stepMarks",   steps);
+        so.ApplyModifiedProperties();
+
+        return panel;
+    }
+
+    /// <summary>
+    /// 패널 상단 기준 배치 — 좌우는 padX 만큼 띄우고 스트레치한다.
+    /// 부모 폭을 숫자로 몰라도 되므로 컬럼이 늘어나면 같이 늘어난다.
+    /// </summary>
+    static void PlaceTop(RectTransform rt, float padX, float y, float h)
+    {
+        rt.anchorMin = new Vector2(0f, 1f);
+        rt.anchorMax = new Vector2(1f, 1f);
+        rt.offsetMin = new Vector2(padX, -(y + h));
+        rt.offsetMax = new Vector2(-padX, -y);
+    }
+
+    /// <summary>패널 하단 기준 배치 — 좌우 스트레치.</summary>
+    static void PlaceBottom(RectTransform rt, float padX, float y, float h)
+    {
+        rt.anchorMin = new Vector2(0f, 0f);
+        rt.anchorMax = new Vector2(1f, 0f);
+        rt.offsetMin = new Vector2(padX, y);
+        rt.offsetMax = new Vector2(-padX, y + h);
+    }
+
+    static void SetObjArrayLocal(SerializedObject so, string field, Object[] items)
+    {
+        var p = so.FindProperty(field);
+        if (p == null) return;
+        p.arraySize = items.Length;
+        for (int i = 0; i < items.Length; i++)
+            p.GetArrayElementAtIndex(i).objectReferenceValue = items[i];
+    }
+
+    static void SetCornerLike(GameObject go, Vector2 anchor, Vector2 pos, float size)
+    {
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = anchor;
+        rt.pivot     = anchor;
+        rt.anchoredPosition = pos;
+        rt.sizeDelta = new Vector2(size, size);
+    }
 
     // UI 규칙: 누를 수 있는 버튼은 음각 처리 (EditorUIBuilder.RaisedTextBtn)
     static GameObject MakeBtn(GameObject parent, string name, string label, Color bg, float fontSize)

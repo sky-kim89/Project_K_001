@@ -88,6 +88,8 @@ public class InGameHUD : MonoBehaviour
 
     void Start()
     {
+        UIClickSfx.Bind(gameObject);   // 상단바 버튼(배속·AUTO·일시정지)에 클릭음
+
         // Awake 구독 이전에 이미 스폰된 장군 처리
         // (AllySpawner 실행 순서가 빠를 경우 OnSpawned 를 놓칠 수 있음)
         var existing = FindObjectsByType<GeneralRuntimeBridge>(FindObjectsSortMode.None);

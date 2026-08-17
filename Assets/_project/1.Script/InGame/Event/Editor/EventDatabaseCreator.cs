@@ -1,12 +1,19 @@
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEditor;
 
 // ============================================================
 //  EventDatabaseCreator.cs  [Editor Only]
-//  이벤트 SO 10종 + EventDatabase.asset 자동 생성 도구.
+//  이벤트 SO 14종 + EventDatabase.asset 자동 생성 도구.
 //
-//  Tools > Project K > Event > Create Event Database
+//  Tools > Project K > 데이터 생성 > 이벤트
+//
+//  ⚠ 이 메뉴를 돌리지 않으면 코드만 바뀌고 게임은 예전 그대로다
+//    이벤트는 전부 SO 에 구워진다. 아래 목록을 고쳐도 .asset 을 다시
+//    만들지 않으면 인게임에서는 옛 내용이 뜬다 —
+//    실제로 발견형 4종이 "선택지 없이 보상만 주는" 상태로 한동안 남아 있었다.
+//    삽화 PNG 는 EnsureIllustrations() 가 알아서 먼저 만든다.
 //
 //  생성 위치:
 //    Assets/_project/Data/Events/   ← 개별 EventData SO
@@ -18,10 +25,10 @@ using UnityEditor;
 //    03. MerchantOffer      — 상인의 제안    (선택지형)
 //    04. BloodAltar         — 피의 제단      (선택지형)
 //    05. Crossroads         — 갈림길의 첩자  (선택지형)
-//    06. AbilityDiscovery   — 어빌리티 발견  (즉시보상형)
-//    07. LoneVeteran        — 고독한 노병    (즉시보상형)
-//    08. AbandonedWarehouse — 방치된 창고    (즉시보상형)
-//    09. WarRelic           — 전쟁 유물      (즉시보상형)
+//    06. AbilityDiscovery   — 어빌리티 발견  (발견형 · 안전/도박)
+//    07. LoneVeteran        — 고독한 노병    (발견형 · 무료/유료/사양)
+//    08. AbandonedWarehouse — 방치된 창고    (발견형 · 안전/도박)
+//    09. WarRelic           — 전쟁 유물      (발견형 · 실리/명예)
 //    10. BlackMarket        — 상인의 밀거래  (선택지형)
 //    11. TravelingMerchant  — 행상인의 좌판  (상점 스테이지 전용)
 //    12. StragglerSoldiers  — 패잔병 무리    (선택지형 · 용병 고용)
@@ -70,6 +77,15 @@ public static class EventDatabaseCreator
     [MenuItem(ProjectKMenu.Data + "이벤트", priority = ProjectKMenu.DataPrio + 18)]
     public static void CreateAll()
     {
+        // ── 삽화 선행 생성 ────────────────────────────────────
+        //  ⚠ 순서 함정을 여기서 막는다
+        //    LoadIllust 는 PNG 가 없으면 Illustration 에 null 을 넣는다.
+        //    "데이터 생성 > 이벤트" 를 "아이콘·텍스처 > 이벤트 일러스트" 보다
+        //    먼저 돌리면 삽화가 통째로 빠진 SO 가 저장되고, 그 상태로
+        //    커밋되면 게임에서는 빈 상자만 보인다 (실제로 그랬다).
+        //    → 매핑된 PNG 가 하나라도 없으면 삽화부터 만들고 진행한다.
+        EnsureIllustrations();
+
         // ── 폴더 준비 ──────────────────────────────────────────
         if (!AssetDatabase.IsValidFolder(DataRoot))
             AssetDatabase.CreateFolder("Assets/_project", "Data");
@@ -178,45 +194,97 @@ public static class EventDatabaseCreator
         //    예전엔 팝업이 열리자마자 어빌리티 선택창이 떠서, 플레이어는
         //    "무엇 때문에" 고르는지 모른 채 카드부터 봤다. 지금은
         //    발견 서술 → 행동 버튼 → 그 결과로 보상이 열린다.
+        //  ⚠ 안전한 쪽과 도박하는 쪽을 같이 둔다
+        //    안전 선택지의 보상은 예전 즉시보상 그대로다 —
+        //    재는 걸 싫어하는 플레이어는 손해 없이 같은 걸 받는다.
         Add(arr, Make("AbilityDiscovery", "어빌리티 발견",
             "무너진 서고 바닥에서 전조가 새겨진 상자를 찾았습니다.\n" +
-            "봉인을 뜯자 빛바랜 전술서 한 권이 모습을 드러냅니다.",
+            "봉인을 뜯자 빛바랜 전술서 한 권이 모습을 드러냅니다.\n" +
+            "무너진 서가 안쪽에도 책등이 몇 권 더 보입니다.",
             Choice("전술서를 펼친다",
                 "전조에 숨겨진 고대의 전술을 찾았습니다.\n" +
                 "페이지를 넘길수록 새로운 싸움법이 머릿속에 그려집니다.\n[어빌리티 1택]",
-                Reward(EventRewardType.OpenAbilitySelect, intVal: 1, "어빌리티 1택"))
+                Reward(EventRewardType.OpenAbilitySelect, intVal: 1, "어빌리티 1택")),
+            ChoiceProb("서가 안쪽까지 파헤친다",
+                successText : "서까래를 밀어내고 안쪽 책장을 통째로 끌어냈습니다.\n" +
+                              "손대지 않은 전술서가 두 권 더 있었습니다.\n[어빌리티 2택]",
+                failText    : "무너지던 서까래가 내려앉았습니다.\n" +
+                              "병사 하나를 잃고 겨우 한 권만 들고 나왔습니다.\n[병사 -1 / 어빌리티 1택]",
+                rate        : 0.55f,
+                successRewards: Rewards(
+                    Reward(EventRewardType.OpenAbilitySelect, intVal: 2, "어빌리티 2택")),
+                failRewards: Rewards(
+                    Reward(EventRewardType.RemoveSoldier,     intVal: 1, "병사 -1 (영구)"),
+                    Reward(EventRewardType.OpenAbilitySelect, intVal: 1, "어빌리티 1택")))
         ));
 
         // ── 07. 고독한 노병 ──────────────────────────────────
+        //  "노병의 유산" 을 주는 이벤트. 예전엔 팝업이 열리자마자 특성이
+        //  꽂혀서 왜 받았는지 안 보였다 — 대화를 한 번 거치게 했다.
         Add(arr, Make("LoneVeteran", "고독한 노병",
             "한쪽 다리가 불편한 노병이 막사 밖에 홀로 앉아 있습니다.\n" +
+            "비어 있는 술잔을 만지작거리며 그가 올려다봅니다.\n" +
             "\"장군님, 제가 당신 같았을 때의 이야기를 해드릴까요?\"",
             Choice("이야기를 듣는다",
                 "노병은 젊은 날의 행군을 밤새 들려주었습니다.\n" +
                 "그 걸음걸이를 흉내 내자 부대의 발이 한결 가벼워집니다.\n[이동속도 +10% 특성]",
-                Reward(EventRewardType.AddTrait, intVal: (int)TraitType.Event_VeteranHeritage, "노병의 유산: 이동속도 +10%"))
+                Reward(EventRewardType.AddTrait, intVal: (int)TraitType.Event_VeteranHeritage,
+                       "노병의 유산: 이동속도 +10%")),
+            Choice("술 한 병을 내어준다",
+                "잔이 몇 번 오가자 노병의 말문이 트였습니다.\n" +
+                "행군 요령에 이어 살아남는 칼 쓰는 법까지 밤새 이어졌습니다.\n" +
+                "[골드 소모 / 이동속도 +10%, 공격력 +5% 특성]",
+                ScaledReward(EventRewardType.SpendItem, eItem.Gold, 45),
+                Reward(EventRewardType.AddTrait, intVal: (int)TraitType.Event_VeteranHeritage,
+                       "노병의 유산: 이동속도 +10%"),
+                Reward(EventRewardType.AddTrait, intVal: (int)TraitType.Event_BattleWill,
+                       "전투 의지: 공격력 +5%")),
+            Choice("예를 표하고 물러난다",
+                "가볍게 목례하고 자리를 비켜 주었습니다.\n" +
+                "노병은 다시 빈 잔을 들여다봅니다.")
         ));
 
         // ── 08. 방치된 창고 ──────────────────────────────────
         Add(arr, Make("AbandonedWarehouse", "방치된 창고",
             "길가의 허름한 창고 문이 반쯤 열려 있습니다.\n" +
-            "안을 들여다보니 오래된 상자들이 먼지를 뒤집어쓴 채 쌓여 있습니다.",
+            "안을 들여다보니 오래된 상자들이 먼지를 뒤집어쓴 채 쌓여 있습니다.\n" +
+            "천장 들보가 위태롭게 휘어 있습니다.",
             Choice("상자를 열어본다",
                 "못질을 뜯어내자 기름 먹인 천에 싸인 장비 한 벌이 나왔습니다.\n" +
                 "구석의 낡은 자루에서는 동전 소리가 납니다.\n[장비 박스 1개 + 골드 획득]",
                 Reward(EventRewardType.AddItem, eItem.EquipBox, 1, "장비 박스 +1"),
-                ScaledReward(EventRewardType.AddItem, eItem.Gold, 220))
+                ScaledReward(EventRewardType.AddItem, eItem.Gold, 220)),
+            ChoiceProb("창고를 통째로 턴다",
+                successText : "위쪽 상자까지 전부 끌어내렸습니다.\n" +
+                              "들보는 끝내 버텨 주었습니다.\n[장비 박스 2개 + 골드 획득]",
+                failText    : "쌓인 상자를 건드리자 들보가 내려앉았습니다.\n" +
+                              "깔린 병사를 끌어내느라 짐은 대부분 두고 나왔습니다.\n[병사 -1 / 골드만 획득]",
+                rate        : 0.5f,
+                successRewards: Rewards(
+                    Reward(EventRewardType.AddItem, eItem.EquipBox, 2, "장비 박스 +2"),
+                    ScaledReward(EventRewardType.AddItem, eItem.Gold, 220)),
+                failRewards: Rewards(
+                    Reward(EventRewardType.RemoveSoldier, intVal: 1, "병사 -1 (영구)"),
+                    ScaledReward(EventRewardType.AddItem, eItem.Gold, 220)))
         ));
 
         // ── 09. 전쟁 유물 ────────────────────────────────────
+        //  실리(런 강화)와 명예(영구 자원)를 맞바꾸는 선택.
+        //  환생 포인트는 런이 끝나도 남으므로, 이번 판을 포기하는 대신
+        //  다음 판이 세지는 쪽을 고를 수 있다.
         Add(arr, Make("WarRelic", "전쟁 유물",
             "전장터 구석에서 오래된 전쟁의 흔적을 발견했습니다.\n" +
-            "녹슨 갑옷 조각에서 아직도 전투의 기운이 느껴집니다.",
+            "녹슨 갑옷 조각에서 아직도 전투의 기운이 느껴집니다.\n" +
+            "그 아래로 수습되지 못한 유해가 흙에 반쯤 묻혀 있습니다.",
             Choice("유물을 수습한다",
                 "흙을 걷어내자 갑옷에서 떨어져 나온 강화석 조각이 드러났습니다.\n" +
                 "먼저 스러진 이름들이 손끝에 닿는 듯합니다.\n[장비 강화석 3개 + 환생 포인트 5 획득]",
                 Reward(EventRewardType.AddItem, eItem.EquipUpgradeStone,   3, "장비 강화석 +3"),
-                Reward(EventRewardType.AddItem, eItem.ReincarnationPoint,  5, "환생 포인트 +5"))
+                Reward(EventRewardType.AddItem, eItem.ReincarnationPoint,  5, "환생 포인트 +5")),
+            Choice("전사자를 묻어 준다",
+                "갑옷은 그대로 두고 유해부터 거두어 흙을 덮었습니다.\n" +
+                "병사들이 말없이 투구를 벗었습니다.\n[환생 포인트 12 획득]",
+                Reward(EventRewardType.AddItem, eItem.ReincarnationPoint, 12, "환생 포인트 +12"))
         ));
 
         // ── 10. 상인의 밀거래 ─────────────────────────────────
@@ -331,8 +399,14 @@ public static class EventDatabaseCreator
     /// ⚠ 지금 이걸 쓰는 이벤트는 하나도 없다 — 일부러 그렇다
     ///   팝업이 열리는 순간 보상이 튀어나오면 "무엇 때문에 받았는지" 가 안 보여
     ///   뜬금없다는 인상만 남는다. 발견형 4종(어빌리티 발견·고독한 노병·
-    ///   방치된 창고·전쟁 유물)은 전부 선택지 1개짜리로 바꿔
-    ///   서술 → 행동 버튼 → 보상 순서를 만들었다.
+    ///   방치된 창고·전쟁 유물)은 전부 선택지형으로 바꿔
+    ///   서술 → 선택 → 보상 순서를 만들었다.
+    ///
+    /// ■ 선택지 1개도 허용된다
+    ///   서술 → 행동 버튼 → 보상 순서만 지켜지면 즉시보상보다 낫다.
+    ///   다만 가능하면 재는 축(안전/도박, 무료/유료, 실리/명예)을 하나 두는 쪽이
+    ///   좋다 — 발견형 4종은 그렇게 잡아 뒀다.
+    ///
     ///   새 이벤트도 같은 이유로 Make + Choice 를 쓸 것.
     ///   (EventPopup 의 즉시보상 경로 자체는 살아 있어 언제든 되살릴 수 있다)
     /// </summary>
@@ -348,6 +422,23 @@ public static class EventDatabaseCreator
         data.InstantResultText = resultText;
         EditorUtility.SetDirty(data);
         return data;
+    }
+
+    /// <summary>
+    /// IllustMap 이 가리키는 PNG 가 전부 있는지 확인하고, 하나라도 없으면
+    /// EventIllustrationGenerator 를 돌린다.
+    /// 이미 다 있으면 아무것도 하지 않는다 (매번 12장을 다시 그리면 느리다).
+    /// </summary>
+    static void EnsureIllustrations()
+    {
+        foreach (var file in IllustMap.Values)
+        {
+            if (File.Exists($"{IllustDir}/{file}.png")) continue;
+
+            Debug.Log($"[EventDatabaseCreator] 삽화 {file}.png 가 없어 이벤트 일러스트를 먼저 생성합니다.");
+            EventIllustrationGenerator.Generate();
+            return;
+        }
     }
 
     static EventData LoadOrCreate(string id)

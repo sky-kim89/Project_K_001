@@ -48,7 +48,12 @@ public static class SpriteManagerCreator
         var genAtlas       = CreateAtlas(GenAtlasPath,       new[] { $"{IconRoot}/Classes", $"{IconRoot}/Skills" });
         var equipAtlas     = CreateAtlas(EquipAtlasPath,     new[] { $"{IconRoot}/Equipments" });
         var abilityAtlas   = CreateAtlas(AbilityAtlasPath,   new[] { $"{IconRoot}/Abilities" });
-        var traitAtlas     = CreateAtlas(TraitAtlasPath,     new[] { $"{IconRoot}/Traits" });
+        // 난이도 아이콘(등급 5 + 디버프 4)은 특성 아틀라스에 얹는다.
+        // 디버프가 특성 바에 같이 표시되므로 같은 아틀라스에 있어야
+        // 드로우콜이 안 갈라진다. SpriteManager.Get 은 아틀라스를 전부 훑으므로
+        // 키(difficulty_* / debuff_*)만 안 겹치면 된다.
+        var traitAtlas     = CreateAtlas(TraitAtlasPath,
+                                         new[] { $"{IconRoot}/Traits", $"{IconRoot}/Difficulty" });
         var relicAtlas     = CreateAtlas(RelicAtlasPath,     new[] { $"{IconRoot}/Relics" });
         var stageNodeAtlas = CreateAtlas(StageNodeAtlasPath, new[] { $"{IconRoot}/StageNodes" });
         var lobbyBtnAtlas  = CreateAtlas(LobbyBtnAtlasPath,  new[] { $"{IconRoot}/LobbyBtns" });

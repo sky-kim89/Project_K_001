@@ -158,6 +158,8 @@ public class UserDataManager : PureSingleton<UserDataManager>
         RegisterSection(new RelicInventoryData());
         RegisterSection(new ReincarnationData());
         RegisterSection(new CodexData());
+        RegisterSection(new BattleSettingsData());
+        RegisterSection(new DifficultyData());
 
         LoadAll();
         AutoDeployFirstHeroIfNeeded();

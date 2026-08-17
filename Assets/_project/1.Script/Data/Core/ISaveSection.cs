@@ -27,6 +27,8 @@ public enum SaveKey
     RunShop         = 10,
     RunEventBonus   = 11,  // 이벤트 런 스코프 보너스 (병사 수 + 직접 스탯)
     Codex           = 12,  // 도감 — 한 번이라도 획득한 장비·어빌리티·특성·장수 (영구)
+    BattleSettings  = 13,  // 전투 조작 설정 — 자동 스킬 / 배속 (영구, 환생 무관)
+    Difficulty      = 14,  // 난이도 선택·해금 기록 (영구, 환생 무관)
 }
 
 public interface ISaveSection

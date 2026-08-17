@@ -125,7 +125,11 @@ public class GeneralPanelUI : MonoBehaviour
         if (_portraitIcon != null) _portraitIcon.sprite = portrait;
         if (_nameText     != null) _nameText.text       = bridge.UnitName ?? bridge.name;
         if (_jobChipText  != null) _jobChipText.text    = JobStyle.GetLabel(job);
-        if (_skillSlot    != null) _skillSlot.SetIcon(skillIcon);
+        if (_skillSlot    != null)
+        {
+            _skillSlot.SetIcon(skillIcon);
+            _skillSlot.BindClick(UseActiveSkill);
+        }
 
         // 등급 — 로비와 같은 색·라벨을 쓴다 (GradeStyle 이 정본)
         if (_gradeBorder != null) _gradeBorder.color = GradeStyle.GetColor(grade);
@@ -226,6 +230,24 @@ public class GeneralPanelUI : MonoBehaviour
 
         var skill = _em.GetComponentData<GeneralActiveSkillComponent>(_entity);
         _skillSlot.UpdateCooldown(skill.CooldownRemaining, skill.Cooldown);
+        _skillSlot.SetUsable(SkillUsePolicy.CanUseNow(_em, _entity));
+    }
+
+    // ── 수동 스킬 사용 ────────────────────────────────────────
+    //
+    //  AUTO 토글이 꺼져 있으면 이 클릭이 스킬을 내보내는 유일한 경로다.
+    //  판정은 자동 발동(ActiveSkillAISystem)과 같은 SkillUsePolicy 를 쓴다 —
+    //  여기만 느슨하게 두면 사거리 밖에서 눌러 쿨다운만 날리게 된다.
+    //
+    //  태그만 붙이고 끝낸다. 쿨다운 리셋과 실행 이벤트 생성은
+    //  ActiveSkillCooldownSystem 이 같은 프레임에 처리한다.
+
+    void UseActiveSkill()
+    {
+        if (!_initialized || _entity == Entity.Null) return;
+        if (!SkillUsePolicy.CanUseNow(_em, _entity)) return;
+
+        _em.AddComponent<UseActiveSkillTag>(_entity);
     }
 
     void RefreshBuffs()
@@ -349,6 +371,9 @@ public class GeneralPanelUI : MonoBehaviour
         if (cg != null) cg.alpha = dead ? 0.42f : 1f;
         if (_deadBadge != null && _deadBadge.activeSelf != dead)
             _deadBadge.SetActive(dead);
+
+        // 죽은 장수 카드는 눌러도 안 나간다 — RefreshSkill 이 도는 경로가 아니므로 여기서 끈다
+        if (dead && _skillSlot != null) _skillSlot.SetUsable(false);
     }
 
     // ── 정리 ─────────────────────────────────────────────────

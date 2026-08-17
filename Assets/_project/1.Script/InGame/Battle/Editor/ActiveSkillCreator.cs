@@ -11,6 +11,27 @@ using UnityEditor;
 //  생성 위치:
 //    Assets/_project/Data/Actives/  ← 개별 액티브 SO
 //    Assets/_project/ActiveSkillDatabase.asset  ← 기존 파일 갱신
+//
+// ------------------------------------------------------------
+//  ⚠ 쿨타임 기준 (2026-08 리밸런싱) — 숫자를 만지기 전에 읽을 것
+// ------------------------------------------------------------
+//  쿨을 "스킬 1회 성능"으로 잡으면 안 된다. 광역기는 맞는 적 수만큼
+//  성능이 곱해지고, 단일기는 아무리 배율을 올려도 그 자리에 머문다.
+//
+//   1. 광역기는 실제 타격 수로 환산한다
+//      메테오 500% 는 1명 기준이 아니다. 20~30명이 겹치는 후반 웨이브에선
+//      한 방이 강타(500% 단일) 수십 방과 맞먹는다. 그래서 쿨이 길다.
+//   2. 장판형은 딜로스를 깎아준다
+//      블리자드·독성 지대는 앞줄을 죽이며 전진하므로 지속시간의 절반쯤은
+//      빈 땅을 때린다. 명목 총딜의 6할만 계산한다.
+//   3. 병사를 태우는 스킬은 페널티를 쿨에서 돌려준다
+//      자폭 병사·병사 희생은 자원(병사)을 잃는다. 같은 딜이면 쿨이 더 짧다.
+//   4. 소환·버프는 공격기보다 짧게
+//      소환수는 즉발 딜이 아니라 "시간을 두고 회수되는 딜"이고,
+//      버프는 전투가 끝나면 사라진다. 쌓을 시간을 줘야 빌드가 성립한다.
+//   5. 직업 보정 — 법사 ×1.1, 그 외 ×0.8
+//      법사는 쿨감 옵션을 추가로 받을 창구가 많아 실효 쿨이 더 내려간다.
+//      아래 숫자에는 이 보정이 이미 반영돼 있다.
 // ============================================================
 
 public static class ActiveSkillCreator
@@ -42,13 +63,13 @@ public static class ActiveSkillCreator
             id          : ActiveSkillId.HeavyStrike,
             fileName    : "Active_HeavyStrike",
             skillName   : "강타",
-            description : "사정거리 내 적을 즉시 강타. 공격력 300% 단일 타격 + 강한 넉백.",
-            cooldown    : 4f,
+            description : "사정거리 내 적을 즉시 강타. 공격력 500% 단일 타격 + 강한 넉백.",
+            cooldown    : 3f,
             effectValue : 1f,
             radius      : 0f,
             duration    : 0f,
             jobs        : new[] { UnitJob.Knight, UnitJob.ShieldBearer });
-        heavyStrike.DamageMultiplier = 3f;
+        heavyStrike.DamageMultiplier = 5f;
         heavyStrike.KnockbackMult    = 5f;
         EditorUtility.SetDirty(heavyStrike);
 
@@ -58,7 +79,7 @@ public static class ActiveSkillCreator
             fileName    : "Active_VolleyFire",
             skillName   : "일제 사격",
             description : "제너럴과 소속 병사 전체가 공격력 150%로 현재 타겟에 즉시 공격을 발동한다.",
-            cooldown    : 12f,
+            cooldown    : 13f,
             effectValue : 1.5f,
             radius      : 0f,
             duration    : 0f,
@@ -70,7 +91,7 @@ public static class ActiveSkillCreator
             fileName    : "Active_LeapStrike",
             skillName   : "도약 강타",
             description : "전방으로 도약하여 착지 반경 내 모든 적을 공격력 250% 강타 + 넉백.",
-            cooldown    : 18f,
+            cooldown    : 10f,
             effectValue : 1f,
             radius      : 2.5f,
             duration    : 0f,
@@ -86,7 +107,7 @@ public static class ActiveSkillCreator
             fileName    : "Active_HealAura",
             skillName   : "치유 오라",
             description : "피해 입은 아군 장군 중 랜덤 1명과 그 휘하 병사 전체의 체력을 최대 HP의 25% 즉시 회복.",
-            cooldown    : 20f,
+            cooldown    : 13f,
             effectValue : 0.25f,
             radius      : 0f,
             duration    : 0f,
@@ -98,19 +119,22 @@ public static class ActiveSkillCreator
             fileName    : "Active_TargetHeal",
             skillName   : "집중 치유",
             description : "아군 장군 중 체력 비율이 가장 낮은 장군 1명을 최대 HP의 40% 집중 치유.",
-            cooldown    : 25f,
+            cooldown    : 7f,
             effectValue : 0.4f,
             radius      : 0f,
             duration    : 0f,
             jobs        : new UnitJob[0]);
 
         // ── ⑥ 돌격 병사 (방패) ──────────────────────────────
+        //  ⚠ 이 스킬은 병사를 3명 소환한다 (돌진 딜 + 소환 둘 다 하는 스킬).
+        //    딜 배율 200% 만 보고 "약한 스킬"로 판단해 쿨을 내리지 말 것 —
+        //    스켈레톤 소환(2기) 보다 소환량이 많고 돌진 피해까지 얹힌다.
         var chargeSoldier = Make<ActiveChargeSoldier>(db,
             id          : ActiveSkillId.ChargeSoldier,
             fileName    : "Active_ChargeSoldier",
             skillName   : "돌격 병사",
             description : "후방에 돌격 병사 3명을 소환해 전방으로 돌진. 경로 위 적에게 공격력×200% 피해 + 넉백.",
-            cooldown    : 20f,
+            cooldown    : 11f,
             effectValue : 2f,
             radius      : 0f,
             duration    : 0f,
@@ -126,14 +150,14 @@ public static class ActiveSkillCreator
             id          : ActiveSkillId.SummonSkeleton,
             fileName    : "Active_SummonSkeleton",
             skillName   : "스켈레톤 소환",
-            description : "시전자 스텟 40% 수준의 스켈레톤 2기를 소환한다.",
-            cooldown    : 30f,
+            description : "시전자 스텟 70% 수준의 스켈레톤 2기를 소환한다.",
+            cooldown    : 9f,
             effectValue : 2f,
             radius      : 0f,
             duration    : 0f,
             jobs        : new UnitJob[0]);
         summonSkeleton.SkeletonPoolKey = "Soldier";
-        summonSkeleton.StatRatio       = 0.4f;
+        summonSkeleton.StatRatio       = 0.7f;
         summonSkeleton.SpawnRadius     = 1.5f;
         EditorUtility.SetDirty(summonSkeleton);
 
@@ -143,7 +167,7 @@ public static class ActiveSkillCreator
             fileName    : "Active_PoisonZone",
             skillName   : "독성 지대",
             description : "타겟 위치에 독성 지대 생성. 이동속도 50% 감소 + 0.5초마다 공격력 30% 지속 피해.",
-            cooldown    : 18f,
+            cooldown    : 13f,
             effectValue : 0.30f,
             radius      : 2.5f,
             duration    : 6f,
@@ -158,7 +182,7 @@ public static class ActiveSkillCreator
             fileName    : "Active_Meteor",
             skillName   : "메테오",
             description : "1.5초 후 타겟 위치에 메테오 낙하. 공격력 500% AoE 피해 + 강한 넉백.",
-            cooldown    : 25f,
+            cooldown    : 31f,
             effectValue : 1f,
             radius      : 3.5f,
             duration    : 1.5f,
@@ -173,7 +197,7 @@ public static class ActiveSkillCreator
             fileName    : "Active_Blizzard",
             skillName   : "블리자드",
             description : "타겟 위치에 블리자드 지대. 이동속도·공격속도 감소 + 0.5초마다 공격력 40% 지속 피해.",
-            cooldown    : 22f,
+            cooldown    : 24f,
             effectValue : 0.40f,
             radius      : 3f,
             duration    : 8f,
@@ -188,11 +212,12 @@ public static class ActiveSkillCreator
             id          : ActiveSkillId.SacrificeSoldier,
             fileName    : "Active_SacrificeSoldier",
             skillName   : "병사 희생",
-            description : "체력 최저 병사를 즉사시키고, 그 공격력의 80%를 시전자 공격력 버프로 흡수.",
-            cooldown    : 30f,
+            description : "체력 최저 병사를 즉사시키고, 그 공격력의 80%를 시전자 공격력으로 흡수한다.\n" +
+                          "스테이지가 끝날 때까지 유지되며 쓸수록 계속 누적된다.",
+            cooldown    : 20f,
             effectValue : 0.8f,
             radius      : 0f,
-            duration    : 12f,
+            duration    : 999f,
             jobs        : new UnitJob[0]);
 
         // ── ⑫ 속박 (공통) ───────────────────────────────────
@@ -201,7 +226,7 @@ public static class ActiveSkillCreator
             fileName    : "Active_Bind",
             skillName   : "속박",
             description : "현재 타겟을 3초 동안 행동불능으로 만들고 매초 공격력 30% 지속 피해를 가한다.",
-            cooldown    : 20f,
+            cooldown    : 11f,
             effectValue : 0.3f,
             radius      : 0f,
             duration    : 3f,
@@ -213,7 +238,7 @@ public static class ActiveSkillCreator
             fileName    : "Active_SuicideSoldier",
             skillName   : "자폭 병사",
             description : "병사를 포물선 궤도로 던져 착탄 시 공격력 300% 범위 폭발 피해 + 넉백.",
-            cooldown    : 25f,
+            cooldown    : 15f,
             effectValue : 3f,
             radius      : 2.5f,
             duration    : 0f,
@@ -229,7 +254,7 @@ public static class ActiveSkillCreator
             fileName    : "Active_Berserker",
             skillName   : "광전사",
             description : "시전자와 소속 병사 전체의 공격속도를 8초 동안 1.8배로 증가.",
-            cooldown    : 20f,
+            cooldown    : 10f,
             effectValue : 1.8f,
             radius      : 0f,
             duration    : 8f,
@@ -241,7 +266,7 @@ public static class ActiveSkillCreator
             fileName    : "Active_IronShield",
             skillName   : "철벽 방어",
             description : "시전자의 방어율을 8초 동안 +30% 증가. 지속 시간 동안 도발 상태가 되어 적의 우선 타겟이 됨.",
-            cooldown    : 20f,
+            cooldown    : 8f,
             effectValue : 0.3f,
             radius      : 0f,
             duration    : 8f,
@@ -253,7 +278,7 @@ public static class ActiveSkillCreator
             fileName    : "Active_ArrowRain",
             skillName   : "화살 비",
             description : "타겟 위치에 5초 동안 화살 비를 내려 0.4초마다 공격력 50% 범위 지속 피해.",
-            cooldown    : 18f,
+            cooldown    : 9f,
             effectValue : 0.50f,
             radius      : 2f,
             duration    : 5f,
@@ -267,7 +292,7 @@ public static class ActiveSkillCreator
             fileName    : "Active_BattleCry",
             skillName   : "전투 함성",
             description : "반경 5m 내 모든 아군의 공격력을 8초 동안 1.3배로 증가.",
-            cooldown    : 20f,
+            cooldown    : 13f,
             effectValue : 1.3f,
             radius      : 5f,
             duration    : 8f,
@@ -279,7 +304,7 @@ public static class ActiveSkillCreator
             fileName    : "Active_Shockwave",
             skillName   : "충격파",
             description : "전방 120도 부채꼴 범위의 모든 적에게 공격력 150% 피해 + 강한 넉백.",
-            cooldown    : 18f,
+            cooldown    : 8f,
             effectValue : 1.5f,
             radius      : 4f,
             duration    : 0f,
@@ -294,7 +319,7 @@ public static class ActiveSkillCreator
             fileName    : "Active_SwiftStrike",
             skillName   : "신속 연격",
             description : "시전자와 소속 병사 전체의 공격속도를 6초 동안 2배로 증가.",
-            cooldown    : 20f,
+            cooldown    : 14f,
             effectValue : 2f,
             radius      : 0f,
             duration    : 6f,
@@ -305,14 +330,14 @@ public static class ActiveSkillCreator
             id          : ActiveSkillId.SummonElite,
             fileName    : "Active_SummonElite",
             skillName   : "정예 소환",
-            description : "시전자 스텟 70% 수준의 정예 병사 3기를 소환한다.",
-            cooldown    : 35f,
+            description : "시전자 스텟 200% 수준의 정예 병사 3기를 소환한다.",
+            cooldown    : 31f,
             effectValue : 3f,
             radius      : 0f,
             duration    : 0f,
             jobs        : new[] { UnitJob.Mage });
         summonElite.ElitePoolKey = "Soldier";
-        summonElite.StatRatio    = 0.7f;
+        summonElite.StatRatio    = 2.0f;
         summonElite.SpawnRadius  = 1.5f;
         EditorUtility.SetDirty(summonElite);
 
@@ -329,7 +354,7 @@ public static class ActiveSkillCreator
             skillName   : "일도양단",
             description : "전방 직선 위의 적을 2초간 얼어붙게 한 뒤 한 번에 베어 넘긴다. " +
                           "공격력 600% 피해 + 강한 넉백. 시전 중에는 그 자리에 선다.",
-            cooldown    : 26f,
+            cooldown    : 19f,
             effectValue : 1f,
             radius      : 22f,     // 참격선 길이 — 타겟이 더 멀면 그 뒤까지 자동으로 늘어난다
             duration    : 0f,
@@ -351,7 +376,7 @@ public static class ActiveSkillCreator
             description : "전방으로 화살 산탄을 3연발 퍼붓는다. 발사 중에는 그 자리에 서며, " +
                           "맞은 적은 강하게 밀려나고 이동속도가 누적 감소한다. " +
                           "마지막 발은 공격력 450% 피해 + 경직.",
-            cooldown    : 24f,
+            cooldown    : 19f,
             effectValue : 1f,
             radius      : 9f,      // 산탄 사거리 (부채꼴 반경)
             duration    : 0f,
@@ -376,7 +401,7 @@ public static class ActiveSkillCreator
             skillName   : "중력 붕괴",
             description : "붕괴점을 만들어 2.5초간 적을 한곳으로 빨아들이며 발을 묶는다. " +
                           "종료 시 공격력 800% 폭발.",
-            cooldown    : 30f,
+            cooldown    : 42f,
             effectValue : 1f,
             radius      : 7f,      // 흡입 반경
             duration    : 2.5f,
@@ -397,7 +422,7 @@ public static class ActiveSkillCreator
             skillName   : "불멸의 방벽",
             description : "5초간 아군 전체의 방어율을 45%p 끌어올린다. 방벽이 무너질 때 " +
                           "공격력 700% 폭발 + 아군 전체 최대 체력 25% 회복.",
-            cooldown    : 32f,
+            cooldown    : 24f,
             effectValue : 1f,
             radius      : 6.5f,    // 방벽 폭발 반경
             duration    : 5f,
@@ -422,7 +447,7 @@ public static class ActiveSkillCreator
             description : "번개가 맞은 적마다 둘로 갈라지며 4번 번진다 (최대 15명). " +
                           "갈라질 때마다 피해가 15%씩 커진다. " +
                           "맞은 적은 2초간 감전되어 발이 묶인다.",
-            cooldown    : 20f,
+            cooldown    : 13f,
             effectValue : 1f,
             radius      : 5f,      // 다음 대상을 찾는 거리
             duration    : 0f,
@@ -448,7 +473,7 @@ public static class ActiveSkillCreator
             description : "범위 내 적을 즉시 선고·처형한다. " +
                           "체력 35% 이하인 적은 즉사하고, 살아남은 적은 공격력 400% 피해를 받는다. " +
                           "처형한 수만큼 시전자 공격력이 누적된다.",
-            cooldown    : 34f,
+            cooldown    : 31f,
             effectValue : 1f,
             radius      : 6f,
             duration    : 0.8f,    // 인장·낙인이 화면에 남는 시간 (처형은 즉발)
@@ -467,17 +492,17 @@ public static class ActiveSkillCreator
             id          : ActiveSkillId.BloodPrice,
             fileName    : "Active_BloodPrice",
             skillName   : "피의 대가",
-            description : "현재 체력의 40%를 태워 전방을 쓸어버린다. 잃은 체력의 250% + " +
+            description : "현재 체력의 30%를 태워 전방을 쓸어버린다. 잃은 체력의 250% + " +
                           "공격력 200% 광역 피해 + 강한 넉백. 체력이 많을수록 강해진다.",
-            cooldown    : 18f,
+            cooldown    : 11f,
             effectValue : 1f,
-            // 체력 40% 를 태우는 한 방이다 — 사거리·각도가 좁으면 지를 이유가 없다
+            // 체력 30% 를 태우는 한 방이다 — 사거리·각도가 좁으면 지를 이유가 없다
             radius      : 9f,
             duration    : 0f,
             // 잃은 체력에 비례해 피해가 오르는 스킬 — 체력·방어가 가장 높은 방패병 전용
             jobs        : new[] { UnitJob.ShieldBearer });
         blood.IsRare           = true;
-        blood.HpCostRatio      = 0.4f;
+        blood.HpCostRatio      = 0.3f;
         blood.DamagePerHp      = 2.5f;
         blood.AttackMultiplier = 2f;
         blood.ConeAngleDegrees = 160f;   // 전방을 거의 반원으로 쓸어버린다
@@ -492,14 +517,14 @@ public static class ActiveSkillCreator
             fileName    : "Active_PiercingDash",
             skillName   : "관통 돌진",
             description : "전방으로 짧게 돌진하며 직선 위의 적을 모두 관통 타격한다. " +
-                          "공격력 140% 피해. 쿨타임 1초.",
+                          "공격력 100% 피해. 쿨타임 1초.",
             cooldown    : 1f,
             effectValue : 1f,
             radius      : 4f,      // 돌진 거리 = 관통 길이
             duration    : 0f,
             jobs        : new[] { UnitJob.Knight, UnitJob.ShieldBearer });
         dash.IsRare           = true;
-        dash.DamageMultiplier = 1.4f;
+        dash.DamageMultiplier = 1.0f;
         dash.LineWidth        = 1.6f;
         dash.DashSpeed        = 26f;
         dash.KnockbackMult    = 1.2f;
@@ -512,7 +537,7 @@ public static class ActiveSkillCreator
             skillName   : "군기 강림",
             description : "군기를 세워 주변 아군의 공격력·공격속도를 40%, 이동속도를 15% " +
                           "8초 동안 끌어올린다.",
-            cooldown    : 26f,
+            cooldown    : 24f,
             effectValue : 1f,
             radius      : 6f,
             duration    : 8f,
@@ -532,7 +557,7 @@ public static class ActiveSkillCreator
             description : "비석 12기가 순서대로 우수수 떨어져 꽂힌다. 착탄 지점마다 " +
                           "공격력 150% 피해 + 넉백, 그 자리에서 스켈레톤이 하나씩 일어난다.",
             // 스켈레톤 12기가 그대로 남는다 — 쿨이 짧으면 아군이 계속 불어나 전장이 잠긴다
-            cooldown    : 60f,
+            cooldown    : 50f,
             effectValue : 12f,     // 비석 개수
             radius      : 2f,      // 비석 1개의 착탄 반경
             duration    : 0.5f,    // 예고 → 착탄
@@ -546,6 +571,55 @@ public static class ActiveSkillCreator
         grave.StatRatio        = 0.45f;
         grave.KnockbackMult    = 5f;
         EditorUtility.SetDirty(grave);
+
+        // ── ㉛ 돌진 (우두머리 전용 패턴) ─────────────────────
+        //  예전엔 BossPatternSystem + BossComponent 필드로 돌던 행동이었다.
+        //  쿨다운·타겟팅·이펙트를 스킬이 이미 갖고 있어 스킬로 옮겼다.
+        //  ⚠ AllowedJobs 를 비워도 아군 추첨에 들어가지 않는다 —
+        //    ActiveSkillRoller 가 IsBossPattern() 으로 따로 거른다.
+        var bossCharge = Make<ActiveBossCharge>(db,
+            id          : ActiveSkillId.BossCharge,
+            fileName    : "Active_BossCharge",
+            skillName   : "돌진",
+            description : "몸을 날려 적진을 관통한다. 경로 위의 적을 한 번씩 밀어내며 " +
+                          "공격력 220% 피해를 준다.",
+            cooldown    : 9f,
+            effectValue : 1f,
+            radius      : 2.6f,
+            duration    : 0f,
+            jobs        : new UnitJob[0]);
+        bossCharge.ChargeSpeed      = 26f;
+        bossCharge.OvershootDistance= 8f;
+        bossCharge.WindupTime       = 0.45f;
+        bossCharge.WindupBackstep   = 1.2f;
+        bossCharge.RecoverTime      = 0.35f;
+        bossCharge.DamageMultiplier = 2.2f;
+        bossCharge.HitRadius        = 2.6f;
+        bossCharge.KnockbackMult    = 7f;
+        EditorUtility.SetDirty(bossCharge);
+
+        // ── ㉜ 분쇄 강타 (보스 전용 패턴) ────────────────────
+        //  돌진과 정반대로 잡았다 — 제자리 / 넓은 원 / 위로 띄운다.
+        //  둘 다 "달려와서 때린다" 면 패턴을 두 개 만든 의미가 없다.
+        var bossSlam = Make<ActiveBossSlam>(db,
+            id          : ActiveSkillId.BossSlam,
+            fileName    : "Active_BossSlam",
+            skillName   : "분쇄 강타",
+            description : "도약해 내려찍으며 발밑을 분쇄한다. 반경 7 안의 적에게 " +
+                          "공격력 350% 피해와 강한 넉백. 가장자리는 피해가 줄어든다.",
+            cooldown    : 13f,
+            effectValue : 1f,
+            radius      : 7f,
+            duration    : 0f,
+            jobs        : new UnitJob[0]);
+        bossSlam.WindupTime       = 0.8f;
+        bossSlam.JumpHeight       = 2.2f;
+        bossSlam.SlamTime         = 0.22f;
+        bossSlam.RecoverTime      = 0.5f;
+        bossSlam.DamageMultiplier = 3.5f;
+        bossSlam.SlamRadius       = 7f;
+        bossSlam.KnockbackMult    = 9f;
+        EditorUtility.SetDirty(bossSlam);
 
         // ── 저장 ─────────────────────────────────────────────
         EditorUtility.SetDirty(db);

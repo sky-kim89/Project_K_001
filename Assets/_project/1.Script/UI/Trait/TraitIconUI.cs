@@ -65,6 +65,32 @@ public class TraitIconUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// TraitData 가 아닌 것을 같은 슬롯에 띄운다 (난이도 디버프 등).
+    ///
+    /// 난이도 디버프는 특성이 아니라 TraitDatabase 에 없다. 그렇다고 TraitData 로
+    /// 만들면 상점·이벤트 추첨 풀에 섞여 플레이어가 '적 강화' 를 사 버린다.
+    /// 그래서 데이터는 따로 두고 표시만 이 슬롯을 빌려 쓴다 —
+    /// 툴팁 동작이 일반 특성과 완전히 같아진다.
+    /// </summary>
+    public void SetupCustom(Sprite icon, string title, string desc, string stat = "")
+    {
+        CloseTooltip();
+        _data = null;
+
+        if (_iconImage != null)
+        {
+            _iconImage.sprite = icon;
+            _iconImage.color  = icon != null ? Color.white : new Color(0.25f, 0.25f, 0.38f);
+        }
+
+        if (_iconBtn != null)
+        {
+            _iconBtn.onClick.RemoveAllListeners();
+            _iconBtn.onClick.AddListener(() => _tooltip.Show(title, desc, stat));
+        }
+    }
+
     public void CloseTooltip()
     {
         if (_tooltip != null) _tooltip.Close();

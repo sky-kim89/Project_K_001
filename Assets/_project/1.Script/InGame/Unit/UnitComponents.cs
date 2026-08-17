@@ -126,23 +126,10 @@ namespace BattleGame.Units
         /// <summary>넉백 지속 시간 (초).</summary>
         public float AttackKnockbackDuration;
 
-        // ── 돌진 패턴 ────────────────────────────────────────
-        /// <summary>돌진 패턴 쿨다운 (초).</summary>
-        public float ChargePatternCooldown;
-        /// <summary>현재 쿨다운 잔여 시간. 0 이하가 되면 돌진 개시.</summary>
-        public float ChargePatternTimer;
-        /// <summary>돌진 중 이동속도 배율.</summary>
-        public float ChargeSpeedMult;
-        /// <summary>돌진 지속 시간 (초).</summary>
-        public float ChargeDuration;
-        /// <summary>돌진 중 공격력 추가 배율 (0.5 = +50%).</summary>
-        public float ChargeDamageBonus;
-        /// <summary>현재 돌진 중 여부.</summary>
-        public bool  IsCharging;
-        /// <summary>돌진 목표 위치 (돌진 시작 시 가장 가까운 적 위치를 고정).</summary>
-        public float3 ChargeTarget;
-        /// <summary>돌진 잔여 시간.</summary>
-        public float ChargeTimer;
+        // ⚠ 돌진 필드는 전부 없앴다
+        //   돌진이 ActiveSkillId.BossCharge 스킬로 옮겨가면서
+        //   쿨다운·타겟·이동을 ActiveSkillSlot + BossChargeRunner 가 갖는다.
+        //   패턴을 추가할 때마다 이 컴포넌트에 필드를 늘리던 구조를 끝냈다.
     }
 
     // ──────────────────────────────────────────

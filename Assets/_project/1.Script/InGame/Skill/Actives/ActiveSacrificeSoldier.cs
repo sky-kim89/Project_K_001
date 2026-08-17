@@ -6,8 +6,13 @@ using BattleGame.Units;
 //  ActiveSacrificeSoldier.cs — 병사 희생 (공통)
 //
 //  소속 병사 중 체력이 가장 낮은 병사 하나를 즉사시키고,
-//  그 병사의 Attack × EffectValue 만큼 시전자 공격력을 일시 강화한다.
+//  그 병사의 Attack × EffectValue 만큼 시전자 공격력을 강화한다.
 //  버프 지속시간 = EffectDuration (초).
+//
+//  ⚠ EffectDuration 은 999 로 잡혀 있다 (사실상 스테이지 내내 유지).
+//    버프는 매번 새 항목으로 Add 되므로 중첩 상한이 없다 — 병사를 계속
+//    태워 장수를 무한히 키우는 것이 이 스킬의 설계 의도다.
+//    "너무 세다" 싶으면 지속시간이 아니라 병사 소모 비용으로 조절할 것.
 // ============================================================
 
 [UnityEngine.CreateAssetMenu(fileName = "Active_SacrificeSoldier", menuName = "BattleGame/Actives/SacrificeSoldier")]

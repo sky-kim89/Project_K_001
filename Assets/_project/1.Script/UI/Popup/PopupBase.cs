@@ -106,6 +106,8 @@ public abstract class PopupBase : MonoBehaviour
         ApplyAnimProgress(_openAnimation, 0f);
         gameObject.SetActive(true);
 
+        AudioManager.Instance?.Play(SfxKey.UI_Popup_Open);
+
         OnBeforeOpen();
         StartCoroutine(OpenRoutine());
     }
@@ -135,6 +137,13 @@ public abstract class PopupBase : MonoBehaviour
         yield return StartCoroutine(PlayAnim(_openAnimation, opening: true, _openDuration));
         _openComplete = true;
         OnAfterOpen();
+
+        // ⚠ 클릭음은 반드시 OnAfterOpen 뒤에 건다
+        //   여러 팝업이 OnBeforeOpen/OnAfterOpen 에서 onClick.RemoveAllListeners() 를
+        //   부른다 (PausePopup·EventPopup 등). 그보다 먼저 걸면 그 자리에서 지워지고,
+        //   UIClickSfxMark 때문에 다시 걸리지도 않아 그 팝업만 소리가 사라진다.
+        //   여기서 걸면 런타임에 만들어진 선택지 버튼까지 같이 잡힌다.
+        UIClickSfx.Bind(gameObject);
     }
 
     IEnumerator CloseRoutine()
@@ -146,6 +155,8 @@ public abstract class PopupBase : MonoBehaviour
 
         IsOpen = false;
         _canvasGroup.blocksRaycasts = false;
+
+        AudioManager.Instance?.Play(SfxKey.UI_Popup_Close);
 
         yield return StartCoroutine(PlayAnim(_closeAnimation, opening: false, _closeDuration));
 

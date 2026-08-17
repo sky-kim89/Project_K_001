@@ -13,12 +13,23 @@ using TMPro;
 //    - 웨이브 텍스트 / 진행 바 / 경과 타이머
 //    - 보스 HP 바 (BossComponent 엔티티가 존재할 때만 표시)
 //    - 적 처치 수 (BattleManager.OnUnitKilled 이벤트)
-//    - 우상단: [배속 토글] [일시 정지]
+//    - 우상단: [AUTO 토글] [배속 토글] [일시 정지]
 //
 //  ■ 배속은 버튼 하나짜리 토글이다
 //    누를 때마다 1× → 2× → 3× → 1× 로 돌아간다.
 //    ⚠ 예전엔 1×/2×/3× 버튼 3개가 따로 있어 상단 폭을 셋이서 나눠 먹었다.
 //      셋 중 하나만 켜져 있으므로 정보량은 같은데 자리만 3배로 썼다.
+//
+//  ■ AUTO 는 아군 장수 스킬 자동 사용 토글이다
+//    꺼져 있으면 장수 카드의 스킬 슬롯을 눌러야만 스킬이 나간다
+//    (ActiveSkillAISystem 이 BattleSettingsData.AutoSkillEnabled 를 본다).
+//
+//  ■ 배속·AUTO 는 둘 다 저장된다 (BattleSettingsData)
+//    누를 때마다 섹션에 쓰고 RequestSave() 한다. 다음 전투에 그대로 복원된다.
+//
+//  ⚠ 씬을 떠날 때 timeScale 을 1 로 되돌린다
+//    저장된 3× 를 그대로 두고 로비로 나가면 로비 연출까지 3배로 돈다.
+//    저장값(SpeedIndex)은 남으므로 다음 전투에서는 다시 3× 로 시작한다.
 //
 //  ⚠ 일시 정지 중에는 배속을 바꾸지 않는다
 //    PausePopup 이 timeScale=0 을 걸고 닫힐 때 이전 값으로 되돌린다.
@@ -37,6 +48,11 @@ public class TopBarUI : MonoBehaviour
     [SerializeField] Image           _bossHpFill;
     [SerializeField] TextMeshProUGUI _bossHpText;
 
+    [Header("보스 스킬 쿨다운 (HP 바 아래 작은 아이콘)")]
+    [SerializeField] Image[]           _bossSkillIcons;     // 아이콘
+    [SerializeField] Image[]           _bossSkillCooldowns; // Radial360 오버레이
+    [SerializeField] TextMeshProUGUI[] _bossSkillTimers;    // 남은 초 숫자
+
     [Header("킬 카운터")]
     [SerializeField] TextMeshProUGUI _killCountText;
 
@@ -46,6 +62,12 @@ public class TopBarUI : MonoBehaviour
     // ⚠ 버튼 본체가 아니라 그 위에 얹은 색 띠를 가리킨다.
     //   본체는 Button.targetGraphic 이라 색을 바꾸면 눌림 색 역산이 어긋난다.
     [SerializeField] Image           _speedFace;
+
+    [Header("AUTO 토글 (스킬 자동 사용)")]
+    [SerializeField] Button          _autoButton;
+    [SerializeField] TextMeshProUGUI _autoLabel;
+    // 배속과 같은 이유로 버튼 본체가 아니라 그 위 색 띠를 가리킨다.
+    [SerializeField] Image           _autoFace;
 
     [Header("일시 정지")]
     [SerializeField] Button _pauseButton;
@@ -60,6 +82,13 @@ public class TopBarUI : MonoBehaviour
         new Color(0.52f, 0.36f, 0.10f, 1f),   // 3× — 금빛 (가장 빠름)
     };
 
+    // AUTO 켜짐/꺼짐 — 띠 색과 글자 색을 함께 바꾼다.
+    // 6px 띠 하나만으로는 켜졌는지 한눈에 안 잡힌다.
+    static readonly Color AutoOnFace   = new Color(0.30f, 0.82f, 0.45f, 1f);
+    static readonly Color AutoOffFace  = new Color(0.28f, 0.30f, 0.38f, 1f);
+    static readonly Color AutoOnLabel  = Color.white;
+    static readonly Color AutoOffLabel = new Color(0.55f, 0.58f, 0.66f, 1f);
+
     // ── 런타임 상태 ─────────────────────────────────────────────
     int         _killCount;
     float       _waveElapsed;
@@ -73,10 +102,14 @@ public class TopBarUI : MonoBehaviour
     void Awake()
     {
         _speedButton?.onClick.AddListener(CycleSpeed);
+        _autoButton?.onClick.AddListener(ToggleAuto);
         _pauseButton?.onClick.AddListener(OpenPausePopup);
 
-        _speedIndex = 0;
+        // 저장된 조작 설정 복원 (배속 · 자동 스킬)
+        var settings = UserDataManager.Instance.Get<BattleSettingsData>();
+        _speedIndex = Mathf.Clamp(settings.SpeedIndex, 0, SpeedSteps.Length - 1);
         ApplySpeed();
+        ApplyAuto(settings.AutoSkill);
 
         BattleManager.OnUnitKilled += HandleUnitKilled;
     }
@@ -98,6 +131,9 @@ public class TopBarUI : MonoBehaviour
     {
         BattleManager.OnUnitKilled -= HandleUnitKilled;
         if (_em != default) _bossQuery.Dispose();
+
+        // 배속을 켠 채 씬을 나가면 로비까지 그 속도로 돈다 (저장값은 그대로 둔다)
+        Time.timeScale = 1f;
     }
 
     // ── 프레임 갱신 ─────────────────────────────────────────────
@@ -164,6 +200,74 @@ public class TopBarUI : MonoBehaviour
 
         if (_bossHpFill != null) _bossHpFill.fillAmount = ratio;
         if (_bossHpText != null) _bossHpText.text       = $"보스   {Mathf.CeilToInt(cur):N0} / {Mathf.RoundToInt(maxHp):N0}";
+
+        RefreshBossSkills(boss);
+    }
+
+    // ── 보스 스킬 쿨다운 ──────────────────────────────────────
+    //
+    //  대표 스킬 1개 + 패턴 슬롯(돌진·분쇄 강타)을 한 줄에 늘어놓는다.
+    //  보스가 뭘 들고 있고 언제 터지는지 보이면 "갑자기 죽었다" 가 줄어든다.
+    //  오토배틀이라 피할 수는 없지만, 무슨 일이 벌어질지는 알아야 한다.
+    void RefreshBossSkills(Entity boss)
+    {
+        if (_bossSkillIcons == null || _bossSkillIcons.Length == 0) return;
+
+        int idx = 0;
+        var sprites = SpriteManager.Instance;
+
+        // ① 대표 스킬
+        if (_em.HasComponent<GeneralActiveSkillComponent>(boss))
+        {
+            var s = _em.GetComponentData<GeneralActiveSkillComponent>(boss);
+            ShowBossSkill(idx++, (ActiveSkillId)s.SkillId, s.CooldownRemaining, s.Cooldown, sprites);
+        }
+
+        // ② 패턴 슬롯
+        if (_em.HasBuffer<ActiveSkillSlot>(boss))
+        {
+            var slots = _em.GetBuffer<ActiveSkillSlot>(boss, true);
+            for (int i = 0; i < slots.Length && idx < _bossSkillIcons.Length; i++)
+                ShowBossSkill(idx++, (ActiveSkillId)slots[i].SkillId,
+                              slots[i].CooldownRemaining, slots[i].Cooldown, sprites);
+        }
+
+        for (; idx < _bossSkillIcons.Length; idx++)
+            if (_bossSkillIcons[idx] != null)
+                _bossSkillIcons[idx].transform.parent.gameObject.SetActive(false);
+    }
+
+    void ShowBossSkill(int i, ActiveSkillId id, float remaining, float total, SpriteManager sprites)
+    {
+        if (i >= _bossSkillIcons.Length || _bossSkillIcons[i] == null) return;
+
+        var icon = _bossSkillIcons[i];
+        icon.transform.parent.gameObject.SetActive(true);
+
+        string key = id.IconKey();
+        icon.sprite = (sprites != null && key != null) ? sprites.Get(key) : null;
+        icon.color  = icon.sprite != null ? Color.white : new Color(0.3f, 0.3f, 0.42f);
+
+        bool ready = remaining <= 0f;
+
+        if (_bossSkillCooldowns != null && i < _bossSkillCooldowns.Length
+                                        && _bossSkillCooldowns[i] != null)
+        {
+            _bossSkillCooldowns[i].gameObject.SetActive(!ready);
+            _bossSkillCooldowns[i].fillAmount =
+                ready ? 0f : Mathf.Clamp01(remaining / Mathf.Max(total, 0.001f));
+        }
+
+        // 남은 초를 숫자로. 링만으로는 "곧 온다" 가 정확히 안 읽힌다.
+        // 올림이라 마지막 1초 동안 "1" 로 머문다 — 소수점이 빠르게 굴러가면
+        // 오히려 시선을 끌어 전투를 못 본다. 장수 카드 쿨다운도 같은 규칙이다.
+        if (_bossSkillTimers != null && i < _bossSkillTimers.Length
+                                     && _bossSkillTimers[i] != null)
+        {
+            var t = _bossSkillTimers[i];
+            t.gameObject.SetActive(!ready);
+            if (!ready) t.text = Mathf.CeilToInt(remaining).ToString();
+        }
     }
 
     void RefreshKillCount()
@@ -202,6 +306,10 @@ public class TopBarUI : MonoBehaviour
 
         _speedIndex = (_speedIndex + 1) % SpeedSteps.Length;
         ApplySpeed();
+
+        var settings = UserDataManager.Instance.Get<BattleSettingsData>();
+        settings.SetSpeedIndex(_speedIndex);
+        UserDataManager.Instance.RequestSave();
     }
 
     void ApplySpeed()
@@ -211,6 +319,23 @@ public class TopBarUI : MonoBehaviour
 
         if (_speedLabel != null) _speedLabel.text  = $"{speed:0}×";
         if (_speedFace  != null) _speedFace.color  = SpeedColors[_speedIndex];
+    }
+
+    // ── 자동 스킬 토글 ─────────────────────────────────────────
+
+    void ToggleAuto()
+    {
+        ApplyAuto(!BattleSettingsData.AutoSkillEnabled);
+        UserDataManager.Instance.RequestSave();
+    }
+
+    /// <summary>설정값 기록 + 버튼 표시를 한 번에. 상태의 정본은 BattleSettingsData 다.</summary>
+    void ApplyAuto(bool on)
+    {
+        UserDataManager.Instance.Get<BattleSettingsData>().SetAutoSkill(on);
+
+        if (_autoFace  != null) _autoFace.color  = on ? AutoOnFace  : AutoOffFace;
+        if (_autoLabel != null) _autoLabel.color = on ? AutoOnLabel : AutoOffLabel;
     }
 
     // ── 유틸 ─────────────────────────────────────────────────

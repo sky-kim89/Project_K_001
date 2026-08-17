@@ -117,7 +117,12 @@ public static class StageGenerator
         int   enemyLevel = Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(config.EnemyLevelMin, config.EnemyLevelMax, levelT)));
 
         // 허들 스테이지 적 수 추가
-        int baseCount  = Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(config.EnemyCountMin, config.EnemyCountMax, stageProgress)));
+        // 난이도 '물량' — 적 등장 수를 늘린다.
+        // ⚠ +80% 가 상한이다 — 후반 웨이브가 이미 1,000마리라
+        //   그 이상은 난이도가 아니라 프레임이 먼저 무너진다.
+        float countMul = 1f + Mathf.Max(0f, DifficultyConfig.CurrentTier()?.EnemyCountBonus ?? 0f);
+        int baseCount  = Mathf.Max(1, Mathf.RoundToInt(
+                             Mathf.Lerp(config.EnemyCountMin, config.EnemyCountMax, stageProgress) * countMul));
         int enemyCount = isHurdle ? baseCount + config.HurdleExtraEnemies : baseCount;
 
         EnemyRace race = AllRaces[rng.Next(AllRaces.Length)];

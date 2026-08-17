@@ -8,14 +8,15 @@ using UnityEngine;
 //  Tools > Project K > Cheat Editor
 //
 //  플레이 모드 전용 치트 에디터.
-//  어빌리티 / 특성 / 장비 / 장수 를 즉시 획득할 수 있다.
+//  어빌리티 / 특성 / 장비 / 장수 를 즉시 획득하고,
+//  난이도 해금 제한을 풀 수 있다.
 // ============================================================
 
 public class CheatEditorWindow : EditorWindow
 {
     // ── 탭 ──────────────────────────────────────────────────────
     int _tab;
-    static readonly string[] kTabs = { "어빌리티", "특성", "장비", "장수", "도감" };
+    static readonly string[] kTabs = { "어빌리티", "특성", "장비", "장수", "도감", "난이도" };
 
     // ── 어빌리티 ─────────────────────────────────────────────────
     AbilityData[] _allAbilities;
@@ -70,6 +71,105 @@ public class CheatEditorWindow : EditorWindow
             case 2: DrawEquipTab();    break;
             case 3: DrawGeneralTab();  break;
             case 4: DrawCodexTab();    break;
+            case 5: DrawDifficultyTab(); break;
+        }
+    }
+
+    // ── 난이도 탭 ─────────────────────────────────────────────────
+    //
+    //  ⚠ 해금은 '완주' 기록이라 정상 플레이로는 되돌릴 수 없다
+    //    테스트할 때마다 30스테이지를 다섯 번 깰 수는 없으므로 여기서 연다.
+    //    ClearedTier 를 직접 올리는 것이라 세이브에 그대로 남는다 —
+    //    되돌리려면 '해금 초기화' 를 쓸 것.
+
+    void DrawDifficultyTab()
+    {
+        var data = UserDataManager.Instance?.Get<DifficultyData>();
+        if (data == null)
+        {
+            EditorGUILayout.HelpBox("DifficultyData 를 불러올 수 없습니다.", MessageType.Warning);
+            return;
+        }
+
+        var cfg = DifficultyConfig.Current;
+        if (cfg == null)
+            EditorGUILayout.HelpBox(
+                "DifficultyConfig.asset 이 없습니다 — 디버프가 전부 0 으로 동작합니다.\n" +
+                "Tools > Project K > 데이터 생성 > 난이도 를 실행하세요.", MessageType.Warning);
+
+        // ── 현재 상태 ────────────────────────────────────────
+        EditorGUILayout.LabelField("현재 상태", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField("  선택된 난이도", $"{data.SelectedTier.Label()} ({(int)data.SelectedTier})");
+        EditorGUILayout.LabelField("  완주한 최고 등급",
+            data.ClearedTierIndex < 0 ? "없음" : ((DifficultyTier)data.ClearedTierIndex).Label());
+        EditorGUILayout.LabelField("  선택 가능 상한",
+            ((DifficultyTier)data.MaxSelectableIndex).Label());
+
+        bool runInProgress = UserDataManager.Instance?.Get<StageProgressData>()?.RunInProgress ?? false;
+        if (runInProgress)
+            EditorGUILayout.HelpBox("런 진행 중입니다. 난이도를 바꾸면 이번 판 중간부터 적용됩니다.",
+                                    MessageType.Info);
+
+        EditorGUILayout.Space(10);
+
+        // ── 해금 ─────────────────────────────────────────────
+        EditorGUILayout.LabelField("해금", EditorStyles.boldLabel);
+
+        if (GUILayout.Button("전 난이도 해금", GUILayout.Height(32)))
+        {
+            int last = System.Enum.GetValues(typeof(DifficultyTier)).Length - 1;
+            data.RecordClear((DifficultyTier)last);
+            UserDataManager.Instance.RequestSave();
+            Debug.Log("[Cheat] 전 난이도 해금 완료");
+        }
+
+        if (GUILayout.Button("해금 초기화 (출정만)", GUILayout.Height(26)))
+        {
+            data.SetDefaults();
+            UserDataManager.Instance.RequestSave();
+            Debug.Log("[Cheat] 난이도 해금 초기화 — 선택도 출정으로 되돌림");
+        }
+
+        EditorGUILayout.Space(10);
+
+        // ── 직접 선택 ────────────────────────────────────────
+        //  해금 여부와 무관하게 바로 꽂는다 — 특정 난이도만 확인하고 싶을 때 쓴다.
+        EditorGUILayout.LabelField("바로 적용 (해금 무시)", EditorStyles.boldLabel);
+
+        foreach (DifficultyTier t in System.Enum.GetValues(typeof(DifficultyTier)))
+        {
+            var tier  = t;
+            var entry = cfg?.Get(tier);
+
+            string debuffs = "제약 없음";
+            if (entry != null)
+            {
+                var list = entry.ActiveDebuffs();
+                if (list.Length > 0)
+                    debuffs = string.Join(" · ", list.Select(d => d.Label()));
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                bool cur = data.SelectedTier == tier;
+                if (GUILayout.Button(cur ? $"▶ {tier.Label()}" : tier.Label(), GUILayout.Width(90)))
+                {
+                    // Select() 는 해금 검사를 하므로 우회해서 기록부터 올린다
+                    data.RecordClear(tier);
+                    data.Select(tier);
+                    UserDataManager.Instance.RequestSave();
+                    Debug.Log($"[Cheat] 난이도 → {tier.Label()}");
+                }
+                EditorGUILayout.LabelField(debuffs, EditorStyles.miniLabel);
+            }
+
+            if (entry != null)
+                EditorGUILayout.LabelField(
+                    $"    적 공·체 +{entry.EnemyStatBonus * 100f:0}%   " +
+                    $"적 수 +{entry.EnemyCountBonus * 100f:0}%   " +
+                    $"우두머리 쿨 -{entry.BossCooldownCut * 100f:0}%   " +
+                    $"환생 ×{entry.ReincarnationMultiplier:0.0#}",
+                    EditorStyles.miniLabel);
         }
     }
 

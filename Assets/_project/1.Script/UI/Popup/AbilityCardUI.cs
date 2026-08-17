@@ -19,6 +19,22 @@ public class AbilityCardUI : MonoBehaviour
     [SerializeField] Button           _selectBtn;
     [SerializeField] TextMeshProUGUI  _levelTmp;
 
+    // ── 트리거 표기 ───────────────────────────────────────────
+    //
+    //  ⚠ 카드 한 칸이 좁다 (328px 중 절반 ≈ 150px)
+    //    예전엔 "발동: 피격 시" 처럼 접두어를 붙여 8글자가 되면서 두 줄로 접혔다.
+    //    이 줄은 이미 [등급][대상] 자리라 "발동:" 을 안 붙여도 뜻이 통한다.
+    //
+    //  ⚠ 긴 트리거는 짧은 말로 바꿔 쓴다
+    //    "스테이지 클리어 시"(9글자)는 접두어를 떼도 안 들어간다.
+    //    툴팁·설명에는 원래 문구가 그대로 나가고, 카드에서만 줄인다.
+    static string TriggerLabel(PassiveTrigger t) => t switch
+    {
+        PassiveTrigger.StageClear    => "클리어 시",
+        PassiveTrigger.OnBattleStart => "전투 시작",
+        _                            => LocalizationManager.Instance.Get(t.ToString()),
+    };
+
     /// <param name="currentLevel">현재 보유 레벨 (0=미보유). 선택 후 currentLevel+1 이 됨.</param>
     public void Setup(AbilityData data, Action<AbilityData> onClicked, int currentLevel = 0)
     {
@@ -36,7 +52,7 @@ public class AbilityCardUI : MonoBehaviour
         if (_nameTmp   != null) _nameTmp.text   = data.AbilityName;
         if (_targetTmp != null)
             _targetTmp.text = (data.Grade == AbilityGrade.Special || data.Grade == AbilityGrade.Mastery)
-                ? $"발동: {LocalizationManager.Instance.Get(data.GetTriggerType().ToString())}"
+                ? TriggerLabel(data.GetTriggerType())
                 : LocalizationManager.Instance.Get(data.Target.ToString());
         if (_descTmp   != null) _descTmp.text   = BuildDesc(data);
 

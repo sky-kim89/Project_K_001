@@ -299,8 +299,13 @@ public static class AbilitySelectPopupCreator
         gradeTmp.color         = AccentPurple;
         gradeTmp.alignment     = TextAlignmentOptions.MidlineRight;
         gradeTmp.raycastTarget = false;
+        // ⚠ 반반으로 나누지 않는다
+        //   등급은 "일반/고급/특수/숙련" 두 글자로 고정인데,
+        //   오른쪽은 대상("전체") 이거나 트리거("스테이지 클리어 시") 라 길이 편차가 크다.
+        //   반반이면 오른쪽이 모자라 두 줄로 접힌다 — 실제로 그랬다.
+        const float GradeSplit = 0.38f;
         var grRt = gradeTmp.rectTransform;
-        grRt.anchorMin = new Vector2(0f, 1f); grRt.anchorMax = new Vector2(0.5f, 1f);
+        grRt.anchorMin = new Vector2(0f, 1f); grRt.anchorMax = new Vector2(GradeSplit, 1f);
         grRt.pivot     = new Vector2(0.5f, 1f);
         grRt.anchoredPosition = new Vector2(0f, -y);
         grRt.sizeDelta        = new Vector2(-14f, UIScale.RowSm);
@@ -309,8 +314,16 @@ public static class AbilitySelectPopupCreator
         targetTmp.color         = LabelColor;
         targetTmp.alignment     = TextAlignmentOptions.MidlineLeft;
         targetTmp.raycastTarget = false;
+        // 접히느니 살짝 줄어드는 쪽이 낫다 — 한 줄 유지가 우선이다.
+        // AutoSize 하한은 FontSm 의 88% 로만 둔다 (UI 규칙 4: 너무 줄이면 안 읽힌다).
+        targetTmp.textWrappingMode = TextWrappingModes.NoWrap;
+        targetTmp.overflowMode     = TextOverflowModes.Overflow;
+        targetTmp.enableAutoSizing = true;
+        targetTmp.fontSizeMin      = UIScale.FontSm * 0.88f;
+        targetTmp.fontSizeMax      = UIScale.FontSm;
+
         var tgRt = targetTmp.rectTransform;
-        tgRt.anchorMin = new Vector2(0.5f, 1f); tgRt.anchorMax = new Vector2(1f, 1f);
+        tgRt.anchorMin = new Vector2(GradeSplit, 1f); tgRt.anchorMax = new Vector2(1f, 1f);
         tgRt.pivot     = new Vector2(0.5f, 1f);
         tgRt.anchoredPosition = new Vector2(0f, -y);
         tgRt.sizeDelta        = new Vector2(-14f, UIScale.RowSm);

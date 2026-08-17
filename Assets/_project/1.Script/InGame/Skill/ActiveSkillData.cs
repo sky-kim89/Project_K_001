@@ -183,6 +183,14 @@ public enum ActiveSkillId : int
     PiercingDash     = 28,  // 관통 돌진      — 1초 쿨 평타형 돌진 관통          (근거리)
     WarBanner        = 29,  // 군기 강림      — 주변 아군 공·공속·이속 강화      (공통)
     Gravestone       = 30,  // 비석 강림      — 비석 낙하 피해 + 스켈레톤 소환   (공통)
+
+    // ── 우두머리 행동 패턴 (적 전용, 31~) ───────────────────────
+    //  패턴도 결국 "쿨다운 돌고 → 타겟 잡고 → 이펙트 내고 → 피해 준다" 라
+    //  스킬과 구조가 같다. 별도 패턴 시스템을 두지 않고 스킬로 만들어
+    //  쿨다운·타겟팅·이펙트·Execute() 를 전부 재사용한다.
+    //  ⚠ 아군 스킬 추첨 풀에 절대 넣지 말 것 — ActiveSkillRoller 가 걸러야 한다.
+    BossCharge       = 31,  // 돌진          — 적을 관통하며 몸통박치기      (보스/엘리트)
+    BossSlam         = 32,  // 분쇄 강타      — 예고 후 제자리 대반경 강타     (보스)
 }
 
 public static class ActiveSkillIdExtensions
@@ -219,6 +227,57 @@ public static class ActiveSkillIdExtensions
         ActiveSkillId.PiercingDash     => "skill_piercing_dash",
         ActiveSkillId.WarBanner        => "skill_war_banner",
         ActiveSkillId.Gravestone       => "skill_gravestone",
+        ActiveSkillId.BossCharge       => "skill_boss_charge",
+        ActiveSkillId.BossSlam         => "skill_boss_slam",
         _                              => null,
+    };
+
+    /// <summary>
+    /// 우두머리 전용 패턴 스킬인가.
+    /// 아군 스킬 추첨·상점·도감에서 제외하는 기준이다.
+    /// </summary>
+    public static bool IsBossPattern(this ActiveSkillId id)
+        => id == ActiveSkillId.BossCharge || id == ActiveSkillId.BossSlam;
+
+    /// <summary>
+    /// 버프·치유·소환 계열인가.
+    ///
+    /// ■ 왜 나누나
+    ///   공격 스킬은 "적이 공격 사거리 안에 들어왔을 때" 만 나간다 (SkillUsePolicy).
+    ///   사거리 밖에서 터뜨리면 긴 쿨다운이 허공에 날아간다.
+    ///   반대로 버프·치유·소환은 적과의 거리와 상관없는 스킬이라 그 조건에서 빼야 한다.
+    ///
+    /// ■ 판정 기준
+    ///   "시전 순간 시전자가 적 옆에 있어야 하는가" 로만 가른다.
+    ///   병사가 대신 달려가는 소환형(돌격병사·자폭병사)은 거리가 필요 없으므로 여기에 넣는다.
+    ///   피해가 섞여 있어도 주 효과가 아군 강화면 버프로 본다 (불멸의 방벽).
+    /// </summary>
+    public static bool IsSupport(this ActiveSkillId id) => id switch
+    {
+        ActiveSkillId.HealAura         => true,   // 치유 오라
+        ActiveSkillId.TargetHeal       => true,   // 집중 치유
+        ActiveSkillId.ChargeSoldier    => true,   // 소환 — 병사가 달려간다
+        ActiveSkillId.SummonSkeleton   => true,   // 소환
+        ActiveSkillId.SacrificeSoldier => true,   // 자기 강화
+        ActiveSkillId.SuicideSoldier   => true,   // 소환 — 병사가 달려가 폭발
+        ActiveSkillId.Berserker        => true,   // 버프
+        ActiveSkillId.IronShield       => true,   // 버프
+        ActiveSkillId.BattleCry        => true,   // 버프
+        ActiveSkillId.SwiftStrike      => true,   // 버프
+        ActiveSkillId.SummonElite      => true,   // 소환
+        ActiveSkillId.Bulwark          => true,   // 보호막 + 치유
+        ActiveSkillId.WarBanner        => true,   // 버프
+        _                              => false,
+    };
+
+    /// <summary>
+    /// 발동에 필요한 최소 사거리 배율. 1 이면 평소 공격 사거리 그대로.
+    /// 돌진처럼 '멀리서 달려드는' 패턴은 사거리 밖에서 시작해야 의미가 있다.
+    /// </summary>
+    public static float RangeScale(this ActiveSkillId id) => id switch
+    {
+        ActiveSkillId.BossCharge => 6f,   // 사거리 6배 밖까지 — 멀리서 달려든다
+        ActiveSkillId.BossSlam   => 1.5f, // 근접 직전
+        _                        => 1f,
     };
 }

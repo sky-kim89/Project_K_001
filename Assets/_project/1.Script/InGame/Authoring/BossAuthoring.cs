@@ -52,19 +52,6 @@ namespace BattleGame.Units
         [Tooltip("넉백 지속 시간 (초)")]
         public float AttackKnockbackDuration = 0.25f;
 
-        [Header("보스 — 돌진 패턴")]
-        [Tooltip("돌진 쿨다운 (초)")]
-        public float ChargePatternCooldown = 8f;
-
-        [Tooltip("돌진 이동속도 배율")]
-        public float ChargeSpeedMult = 4.0f;
-
-        [Tooltip("돌진 지속 시간 (초)")]
-        public float ChargeDuration = 1.0f;
-
-        [Tooltip("돌진 중 공격력 추가 배율 (0.5 = +50%)")]
-        public float ChargeDamageBonus = 0.5f;
-
         [Header("보스 — 스킬 목록 (페이즈별 최대 3개, 없으면 비워두기)")]
         public SkillData SkillPhase1;
         public SkillData SkillPhase2;
@@ -90,11 +77,6 @@ namespace BattleGame.Units
                 AoeSplashRatio          = authoring.AoeSplashRatio,
                 AttackKnockbackForce    = authoring.AttackKnockbackForce,
                 AttackKnockbackDuration = authoring.AttackKnockbackDuration,
-                ChargePatternCooldown   = authoring.ChargePatternCooldown,
-                ChargePatternTimer      = authoring.ChargePatternCooldown * 0.5f,
-                ChargeSpeedMult         = authoring.ChargeSpeedMult,
-                ChargeDuration          = authoring.ChargeDuration,
-                ChargeDamageBonus       = authoring.ChargeDamageBonus,
             });
 
             // 1페이즈 스킬을 초기 액티브 스킬로 설정

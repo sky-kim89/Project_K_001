@@ -120,7 +120,7 @@ namespace BattleGame.Units
     /// 사거리 내 타겟이 있고 쿨다운 0 이면 HitEventBuffer 에 직접 추가.
     /// </summary>
     [BurstCompile]
-    [WithNone(typeof(DeadTag), typeof(RangedTag), typeof(BossComponent))]
+    [WithNone(typeof(DeadTag), typeof(RangedTag), typeof(BossComponent), typeof(SkillCastLock))]
     public partial struct MeleeAttackJob : IJobEntity
     {
         [ReadOnly] public ComponentLookup<LocalTransform>        TransformLookup;
@@ -233,7 +233,7 @@ namespace BattleGame.Units
     /// </summary>
     [BurstCompile]
     [WithAll(typeof(RangedTag))]
-    [WithNone(typeof(DeadTag))]
+    [WithNone(typeof(DeadTag), typeof(SkillCastLock))]
     public partial struct RangedAttackJob : IJobEntity
     {
         [ReadOnly] public ComponentLookup<LocalTransform>  TransformLookup;

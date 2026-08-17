@@ -49,6 +49,11 @@ public class LobbyNavUI : MonoBehaviour
         for (int i = 0; i < _panels.Length; i++)
             _panels[i]?.SetActive(i == index);
 
+        // 탭을 켤 때마다 그 패널의 버튼에 클릭음을 건다.
+        // 카드·슬롯이 런타임에 만들어지므로 Start 에서 한 번만 걸면 새 버튼이 빠진다.
+        // 이미 걸린 버튼은 UIClickSfxMark 로 건너뛰므로 반복 호출해도 싸다.
+        UIClickSfx.Bind(gameObject);
+
         for (int i = 0; i < _navButtons.Length; i++)
         {
             if (_navButtons[i] == null) continue;

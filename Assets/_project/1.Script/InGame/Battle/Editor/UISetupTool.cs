@@ -92,7 +92,21 @@ public static class UISetupTool
     // ⚠ 초상화를 키우면 그만큼 바(HP·병사) 폭이 줄어든다.
     //   세로 화면 5명일 때 카드 폭이 208 밖에 안 돼 80 이 한계다.
     const float GpPortSz  =  80f;
-    const float GpSkillSz =  48f;
+    // ⚠ 스킬 슬롯은 이제 **손가락으로 누르는 버튼**이다 (AUTO 꺼짐 시 유일한 발동 수단).
+    //   48 은 코너 버튼 최소선(66)에도 못 미쳐 자주 빗나갔다.
+    //   RaisedBtn 은 아래 6px 을 그림자로 쓰므로 실제 누르는 면은 72-6=66 이다.
+    const float GpSkillSz =  72f;
+
+    // 카드 높이 = 위여백 + max(초상화열, 텍스트열) + 아래여백
+    //   초상화열 = 초상화(80) + 4 + 스킬(72)          = 156
+    //   텍스트열 = 이름(43) + 4 + HP(44) + 4 + 병사(44) = 139
+    // ⚠ 손으로 적지 말 것 — 스킬 슬롯을 키우면 카드가 자동으로 따라 커져야 한다.
+    //   GeneralPanelContainer 높이도 이 값을 쓴다 (두 곳이 어긋나면 카드가 잘린다).
+    static readonly float GpNameH    = UIScale.RowSm;
+    static readonly float GpBarH     = UIScale.RowSm + 1f;
+    static readonly float GpPortColH = GpPortSz + 4f + GpSkillSz;
+    static readonly float GpTextColH = GpNameH + 4f + GpBarH + 4f + GpBarH;
+    static readonly float GpPanelH   = GpPad + Mathf.Max(GpPortColH, GpTextColH) + GpPad;
 
     static GameObject CreateGeneralPanelPrefab()
     {
@@ -105,22 +119,19 @@ public static class UISetupTool
         // └──────────────────────────────────────────────────────────┘
         //
         // ⚠ 바 높이 44 는 FontSm(34) 한 줄(Line=43)을 담기 위한 값이다 (UI 규칙 5).
-        float nameH = UIScale.RowSm;          // 43
-        float barH  = UIScale.RowSm + 1f;     // 44
+        float nameH = GpNameH;                // 43
+        float barH  = GpBarH;                 // 44
         float buffH = 36f;
 
         float innerL = GpGradeW + GpPad;               // 14 — 등급 바 오른쪽
         float textL  = innerL + GpPortSz + 6f;         // 100 — 텍스트 열 시작
-
-        // 텍스트 열(이름+HP+병사)이 초상화보다 길다 — 그쪽이 행 높이를 정한다
-        float textColH = nameH + 4f + barH + 4f + barH;   // 139
 
         float rowAY  = GpPad;                             // 8
         float nameY  = rowAY;
         float hpY    = nameY + nameH + 4f;                // 55
         float solY   = hpY   + barH  + 4f;                // 103
         float skillY = rowAY + GpPortSz + 4f;             //  92 — 초상화 아래 빈 자리
-        float PH     = rowAY + textColH + GpPad;          // 155 — 버프는 카드 밖이라 안 센다
+        float PH     = GpPanelH;                          // 172 — 버프는 카드 밖이라 안 센다
 
         // 버프는 카드 **위쪽 바깥**에 띄운다 (y 음수 = 카드 상단보다 위).
         // 카드 배경이 없는 자리라 전장 위에 아이콘만 얹힌 것처럼 보인다.
@@ -178,20 +189,34 @@ public static class UISetupTool
         jobChipText.overflowMode     = TextOverflowModes.Overflow;
 
         // ── 스킬 슬롯 (초상화 아래 남는 자리) ─────────────────
-        //  텍스트 열(139)이 초상화(88)보다 길어 그 아래가 비어 있다. 거기에 넣는다.
+        //  텍스트 열(139)이 초상화(80)보다 길어 그 아래가 비어 있다. 거기에 넣는다.
+        //
+        //  ⚠ 라벨이 아니라 **버튼**이다 — RaisedBtnOn 으로만 만든다 (UI 규칙 1).
+        //    AUTO 토글이 꺼져 있으면 여기를 눌러야만 스킬이 나간다.
+        //  ⚠ 아이콘·오버레이는 반드시 body 아래에 넣는다.
+        //    루트에 넣으면 눌려도 같이 내려가지 않는다.
+        //  ⚠ 준비 완료 노란 커버(ReadyGlow)는 없앴다 — 아이콘을 가려 무슨 스킬인지 안 보였다.
+        //    쿨다운 오버레이가 걷히는 것 자체가 준비 완료 신호다.
         var skillSlotGo = MakeRect(root, "SkillSlot");
         SetTL(skillSlotGo, innerL + (GpPortSz - GpSkillSz) * 0.5f, skillY, GpSkillSz, GpSkillSz);
         var skillSlot = skillSlotGo.AddComponent<SkillSlotUI>();
+        var skillBtn  = EditorUIBuilder.RaisedBtnOn(skillSlotGo,
+                                                    new Color(0.16f, 0.18f, 0.28f), out var skillBody);
 
-        var skillBg = MakeImg(skillSlotGo, "SkillBg", new Color(0.12f, 0.13f, 0.20f));
-        Stretch(skillBg.gameObject);
-
-        var skillIcon = MakeImg(skillSlotGo, "Icon", Color.white);
-        Stretch(skillIcon.gameObject);
+        // 아이콘 — 위아래 테두리(TopEdge/BottomEdge)가 보이도록 4px 안쪽으로 넣는다
+        var skillIcon = MakeImg(skillBody, "Icon", Color.white);
+        {
+            var rt = skillIcon.rectTransform;
+            rt.anchorMin = Vector2.zero;  rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2( 4f,  4f);
+            rt.offsetMax = new Vector2(-4f, -4f);
+        }
         skillIcon.preserveAspect = true;
+        skillIcon.raycastTarget  = false;
 
-        var cdOverlay = MakeImg(skillSlotGo, "CooldownOverlay", new Color(0f, 0f, 0f, 0.78f));
+        var cdOverlay = MakeImg(skillBody, "CooldownOverlay", new Color(0f, 0f, 0f, 0.78f));
         Stretch(cdOverlay.gameObject);
+        cdOverlay.raycastTarget = false;
         {
             var imgSO = new SerializedObject(cdOverlay);
             imgSO.FindProperty("m_Type").intValue           = (int)Image.Type.Filled;
@@ -201,16 +226,12 @@ public static class UISetupTool
             imgSO.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        var cdText = MakeTMP(skillSlotGo, "CooldownText", "", (int)UIScale.FontSm, FontStyle.Bold);
+        var cdText = MakeTMP(skillBody, "CooldownText", "", (int)UIScale.FontSm, FontStyle.Bold);
         Stretch(cdText.gameObject);
-        cdText.outlineWidth = 0.25f;
-        cdText.outlineColor = Color.black;
+        cdText.outlineWidth  = 0.25f;
+        cdText.outlineColor  = Color.black;
+        cdText.raycastTarget = false;
         cdText.gameObject.SetActive(false);
-
-        var readyGlow = MakeRect(skillSlotGo, "ReadyGlow");
-        readyGlow.AddComponent<Image>().color = new Color(1f, 0.9f, 0.2f, 0.45f);
-        Stretch(readyGlow);
-        readyGlow.SetActive(false);
 
         // ── 이름 + 등급 (한 줄, 이름 좌 / 등급 우) ────────────
         //  ⚠ 여기부터는 전부 좌우 스트레치다. 패널이 넓어지면 같이 늘어난다.
@@ -317,10 +338,10 @@ public static class UISetupTool
         pso.ApplyModifiedPropertiesWithoutUndo();
 
         var sso = new SerializedObject(skillSlot);
+        sso.FindProperty("_button").objectReferenceValue          = skillBtn;
         sso.FindProperty("_iconImage").objectReferenceValue       = skillIcon;
         sso.FindProperty("_cooldownOverlay").objectReferenceValue = cdOverlay;
         sso.FindProperty("_cooldownText").objectReferenceValue    = cdText;
-        sso.FindProperty("_readyGlow").objectReferenceValue       = readyGlow;
         sso.ApplyModifiedPropertiesWithoutUndo();
 
         var prefab = PrefabUtility.SaveAsPrefabAsset(root, PANEL_PREFAB);
@@ -495,7 +516,7 @@ public static class UISetupTool
         //
         //  ⚠ 높이 예산
         //    가로 화면(1920×1080 참조단위)에서 세로 여유가 1080 뿐이다.
-        //    상단 78 + 하단 203 = 281 (26%). 예전 180+340=520 은 화면의 48% 를 먹어
+        //    상단 78 + 하단 180 = 258 (24%). 예전 180+340=520 은 화면의 48% 를 먹어
         //    전투가 거의 안 보였다. 늘릴 때는 이 합계를 먼저 계산할 것.
         //
         //  정보는 한 줄에 몰아넣는다: [웨이브] [처치] [타이머] ......... [배속][퍼즈]
@@ -564,9 +585,62 @@ public static class UISetupTool
         bossHpText.alignment    = TextAlignmentOptions.Center;
         bossHpText.outlineWidth = 0.22f;
         bossHpText.outlineColor = Color.black;
+
+        // ── 보스 스킬 쿨다운 아이콘 (HP 바 바로 아래) ──────────
+        //  보스가 뭘 들고 있고 언제 터지는지 보이면 "갑자기 죽었다" 가 줄어든다.
+        //  대표 스킬 1 + 패턴 2(돌진·분쇄 강타) = 3칸이면 충분하다.
+        const int   BossSkillSlots = 3;
+        const float BsSz = 46f, BsGap = 8f;
+        var bossSkillIcons = new Image[BossSkillSlots];
+        var bossSkillCds   = new Image[BossSkillSlots];
+        var bossSkillTimers= new TextMeshProUGUI[BossSkillSlots];
+
+        for (int i = 0; i < BossSkillSlots; i++)
+        {
+            float totalW = BossSkillSlots * BsSz + (BossSkillSlots - 1) * BsGap;
+            float x      = -totalW * 0.5f + BsSz * 0.5f + i * (BsSz + BsGap);
+
+            var slot = MakeImg(bossHpRoot, $"BossSkill{i}", new Color(0.10f, 0.04f, 0.05f, 0.92f));
+            {
+                var rt = slot.rectTransform;
+                rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0f);
+                rt.pivot     = new Vector2(0.5f, 1f);
+                rt.anchoredPosition = new Vector2(x, -6f);
+                rt.sizeDelta        = new Vector2(BsSz, BsSz);
+            }
+
+            var ic = MakeImg(slot.gameObject, "Icon", Color.white);
+            Stretch(ic.gameObject);
+            ic.preserveAspect = true;
+            bossSkillIcons[i] = ic;
+
+            var cd = MakeImg(slot.gameObject, "Cooldown", new Color(0f, 0f, 0f, 0.78f));
+            Stretch(cd.gameObject);
+            {
+                var so2 = new SerializedObject(cd);
+                so2.FindProperty("m_Type").intValue           = (int)Image.Type.Filled;
+                so2.FindProperty("m_FillMethod").intValue     = (int)Image.FillMethod.Radial360;
+                so2.FindProperty("m_FillClockwise").boolValue = false;
+                so2.FindProperty("m_FillAmount").floatValue   = 0f;
+                so2.ApplyModifiedPropertiesWithoutUndo();
+            }
+            bossSkillCds[i] = cd;
+
+            // 남은 초 숫자 — 링 위에 겹쳐 올린다
+            var tm = MakeTMP(slot.gameObject, "Timer", "", (int)(UIScale.FontSm * 0.9f), FontStyle.Bold);
+            Stretch(tm.gameObject);
+            tm.alignment    = TextAlignmentOptions.Center;
+            tm.outlineWidth = 0.28f;
+            tm.outlineColor = Color.black;
+            tm.raycastTarget = false;
+            bossSkillTimers[i] = tm;
+
+            slot.gameObject.SetActive(false);
+        }
+
         bossHpRoot.SetActive(false);
 
-        // ── 우상단 코너 버튼: [배속 토글] [일시 정지] ─────────
+        // ── 우상단 코너 버튼: [AUTO 토글] [배속 토글] [일시 정지] ─────────
         //  배속은 버튼 하나짜리 토글이다 (1× → 2× → 3×).
         //  UI 규칙 1 — 누를 수 있는 버튼은 음각(RaisedBtn).
         var pauseBtn = EditorUIBuilder.RaisedBtn(topBarGo, "PauseButton",
@@ -600,6 +674,38 @@ public static class UISetupTool
         }
         speedAccent.raycastTarget = false;
 
+        // ── AUTO 토글 (배속 왼쪽) ──────────────────────────────
+        //  ⚠ 정사각형으로 두면 "AUTO" 가 안 들어간다.
+        //    FontSm(34) 4글자는 폭 76 쯤을 먹는데 코너 버튼은 66 뿐이다.
+        //    글자를 줄이면 UI 규칙 4(FontSm 미만 금지)에 걸리므로 버튼을 넓힌다.
+        const float AutoW = 106f;
+        var autoBtn = EditorUIBuilder.RaisedBtn(topBarGo, "AutoButton",
+                                                new Color(0.22f, 0.24f, 0.32f), out var autoBody);
+        {
+            var rt = autoBtn.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot     = new Vector2(1f, 1f);
+            rt.anchoredPosition = new Vector2(-12f - (CornerSz + 10f) * 2f, CornerY);
+            rt.sizeDelta        = new Vector2(AutoW, CornerSz);
+        }
+        var autoLabel = MakeTMP(autoBody, "Label", "AUTO", (int)UIScale.FontSm, FontStyle.Bold);
+        Stretch(autoLabel.gameObject);
+        autoLabel.alignment        = TextAlignmentOptions.Center;
+        autoLabel.textWrappingMode = TextWrappingModes.NoWrap;
+        autoLabel.overflowMode     = TextOverflowModes.Overflow;
+        autoLabel.raycastTarget    = false;
+
+        // 켜짐/꺼짐 색 띠 — 배속과 같은 이유로 본체(targetGraphic)를 물들이지 않는다
+        var autoAccent = MakeImg(autoBody, "AutoAccent", new Color(0.28f, 0.30f, 0.38f));
+        {
+            var rt = autoAccent.rectTransform;
+            rt.anchorMin = new Vector2(0f, 0f); rt.anchorMax = new Vector2(1f, 0f);
+            rt.pivot     = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(0f, 3f);
+            rt.sizeDelta        = new Vector2(-14f, 6f);
+        }
+        autoAccent.raycastTarget = false;
+
         // TopBarUI 필드 연결
         var tso = new SerializedObject(topBar);
         tso.FindProperty("_waveText").objectReferenceValue         = waveText;
@@ -608,10 +714,25 @@ public static class UISetupTool
         tso.FindProperty("_bossHpRoot").objectReferenceValue       = bossHpRoot;
         tso.FindProperty("_bossHpFill").objectReferenceValue       = bossHpFill;
         tso.FindProperty("_bossHpText").objectReferenceValue       = bossHpText;
+
+        var bsi = tso.FindProperty("_bossSkillIcons");
+        var bsc = tso.FindProperty("_bossSkillCooldowns");
+        var bst = tso.FindProperty("_bossSkillTimers");
+        bsi.arraySize = bsc.arraySize = bst.arraySize = BossSkillSlots;
+        for (int i = 0; i < BossSkillSlots; i++)
+        {
+            bsi.GetArrayElementAtIndex(i).objectReferenceValue = bossSkillIcons[i];
+            bsc.GetArrayElementAtIndex(i).objectReferenceValue = bossSkillCds[i];
+            bst.GetArrayElementAtIndex(i).objectReferenceValue = bossSkillTimers[i];
+        }
+
         tso.FindProperty("_killCountText").objectReferenceValue    = killCountText;
         tso.FindProperty("_speedButton").objectReferenceValue      = speedBtn;
         tso.FindProperty("_speedLabel").objectReferenceValue       = speedLabel;
         tso.FindProperty("_speedFace").objectReferenceValue        = speedAccent;
+        tso.FindProperty("_autoButton").objectReferenceValue       = autoBtn;
+        tso.FindProperty("_autoLabel").objectReferenceValue        = autoLabel;
+        tso.FindProperty("_autoFace").objectReferenceValue         = autoAccent;
         tso.FindProperty("_pauseButton").objectReferenceValue      = pauseBtn;
 
         tso.ApplyModifiedPropertiesWithoutUndo();
@@ -625,7 +746,7 @@ public static class UISetupTool
         //  ⚠ 카드 내부가 SetTopStretch 로 잡혀 있어야 지정된 폭을 실제로 채운다.
         //  ⚠ 버프 아이콘은 카드 **위쪽 바깥**에 뜬다 — 컨테이너 높이에 넣지 않는다.
         //    넣으면 그만큼 카드가 다시 올라와 버프를 밖으로 뺀 의미가 없어진다.
-        const float ContainerH = 155f + 8f;   // 카드 높이 + 위 여백
+        float ContainerH = GpPanelH + 8f;   // 카드 높이 + 위 여백 (카드가 커지면 같이 커진다)
         var container = MakeRect(hudGo, "GeneralPanelContainer");
         var contRT    = container.GetComponent<RectTransform>();
         contRT.anchorMin        = new Vector2(0f, 0f);

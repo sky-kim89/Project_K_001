@@ -42,6 +42,11 @@ public static class EnemyStatRoller
         // HP·ATK에만 레벨 배율 + 스테이지 배율을 곱한다
         float hpAtkMult = levelMult * Mathf.Max(0.1f, statMultiplier);
 
+        // 난이도 '광포' — 적 공격력·최대체력을 통째로 올린다.
+        // ⚠ 여기 한 곳에서만 곱한다 — 스폰 경로가 여러 개라
+        //   부르는 쪽에서 곱하면 빠뜨리는 경로가 생긴다.
+        hpAtkMult *= 1f + Mathf.Max(0f, DifficultyConfig.CurrentTier()?.EnemyStatBonus ?? 0f);
+
         var stat = new UnitStat();
         stat.Set(StatType.MaxHp,       range.Hp.Lerp(B(ref rng, stageBias))        * hpAtkMult);
         stat.Set(StatType.Attack,      range.Attack.Lerp(B(ref rng, stageBias))     * hpAtkMult);
@@ -84,11 +89,15 @@ public static class EnemyStatRoller
             AttackSpeed = new FloatRange(0.8f, 2.0f), MoveSpeed = new FloatRange(2.5f, 4.5f),
             CritChance = 0.08f, CritDamage = 1.60f,
         },
+        // ⚠ 보스는 '느리고 무겁게' — 공격속도 1/3, 공격력 3배 (DPS 는 그대로)
+        //   초당 여러 번 깨작거리면 1,000마리 난전 속에서 보스가 안 보인다.
+        //   한 대씩 크게 때려야 "보스한테 맞았다" 가 화면과 숫자로 읽힌다.
+        //   AoE·넉백까지 이 한 방에 얹히므로 체감 차이가 더 벌어진다.
         SpawnUnitType.Boss => new EnemyGradeStatRange
         {
-            Hp = new FloatRange(5000f, 14000f), Attack = new FloatRange(220f, 550f),
+            Hp = new FloatRange(5000f, 14000f), Attack = new FloatRange(660f, 1650f),
             Defense = new FloatRange(0.25f, 0.50f), AttackRange = new FloatRange(2.5f, 4.5f),
-            AttackSpeed = new FloatRange(0.40f, 0.90f), MoveSpeed = new FloatRange(2.0f, 3.5f),
+            AttackSpeed = new FloatRange(0.133f, 0.30f), MoveSpeed = new FloatRange(2.0f, 3.5f),
             CritChance = 0.08f, CritDamage = 1.60f,
         },
         _ => new EnemyGradeStatRange

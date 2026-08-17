@@ -289,12 +289,31 @@ namespace BattleGame.Units
             _transformLookup.Update(ref state);
             float dt = SystemAPI.Time.DeltaTime;
 
-            // 쿨다운 감소
+            // 쿨다운 감소 — 대표 스킬
             foreach (var skill in SystemAPI.Query<RefRW<GeneralActiveSkillComponent>>()
                                            .WithNone<DeadTag>())
             {
                 if (skill.ValueRO.CooldownRemaining > 0f)
                     skill.ValueRW.CooldownRemaining -= dt;
+            }
+
+            // 쿨다운 감소 — 추가 슬롯(패턴 등). 슬롯마다 따로 돈다.
+            //
+            // ⚠ foreach 분해 변수에는 쓸 수 없다 (CS1654)
+            //   DynamicBuffer 는 내부 포인터를 공유하므로 로컬 변수로 받아도
+            //   같은 메모리를 가리킨다. 로컬로 옮겨야 컴파일러가 쓰기를 허용한다.
+            //   (PassiveSkillAuraSystem 이 같은 이유로 같은 처리를 한다)
+            foreach (var slotsRO in SystemAPI.Query<DynamicBuffer<ActiveSkillSlot>>()
+                                             .WithNone<DeadTag>())
+            {
+                var slots = slotsRO;
+                for (int i = 0; i < slots.Length; i++)
+                {
+                    if (slots[i].CooldownRemaining <= 0f) continue;
+                    var s = slots[i];
+                    s.CooldownRemaining -= dt;
+                    slots[i] = s;
+                }
             }
 
             // UseActiveSkillTag 처리 — 쿨다운 확인 + 실행 이벤트 버퍼에 추가

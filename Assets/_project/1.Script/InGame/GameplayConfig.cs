@@ -337,13 +337,17 @@ public class GameplayConfig : ScriptableObject
             CritChance  = 0.08f,
             CritDamage  = 1.60f,
         };
+        // ⚠ 보스는 '느리고 무겁게' — 공격속도 1/3, 공격력 3배 (DPS 는 그대로)
+        //   초당 여러 번 깨작거리면 1,000마리 난전 속에서 보스가 안 보인다.
+        //   한 대씩 크게 때려야 "보스한테 맞았다" 가 화면과 숫자로 읽힌다.
+        //   AoE·넉백이 이 한 방에 얹히므로 체감 차이가 더 벌어진다.
         BossRange = new EnemyGradeStatRange
         {
             Hp          = new FloatRange(5000f, 14000f), // ×1.8 상향 (AoE 공격 보정)
-            Attack      = new FloatRange(220f,  550f),   // AoE 기준 단일 피해
+            Attack      = new FloatRange(660f,  1650f),  // ×3 — 한 방이 무겁다
             Defense     = new FloatRange(0.25f, 0.50f),
             AttackRange = new FloatRange(2.5f,  4.5f),
-            AttackSpeed = new FloatRange(0.40f, 0.90f),  // AoE라 느리게 유지
+            AttackSpeed = new FloatRange(0.133f, 0.30f), // ÷3 — 3~7.5초에 한 번
             MoveSpeed   = new FloatRange(2.0f,  3.5f),
             CritChance  = 0.08f,
             CritDamage  = 1.60f,

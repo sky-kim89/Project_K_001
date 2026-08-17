@@ -118,7 +118,6 @@ namespace BattleGame.Units
             }.ScheduleParallel();
 
             // ⑤ 목적지 이동 ────────────────────────────────────────
-            var bossLookup         = SystemAPI.GetComponentLookup<BossComponent>(isReadOnly: true);
             var retreatFireLookup  = SystemAPI.GetComponentLookup<TraitRetreatFireTag>(isReadOnly: true);
             new MoveToDestinationJob
             {
@@ -126,7 +125,6 @@ namespace BattleGame.Units
                 AllyDefeated       = allyDefeated,
                 EnemyDefeated      = enemyDefeated,
                 AnyEnemyOnScreen   = anyEnemyOnScreen,
-                BossLookup         = bossLookup,
                 RetreatFireLookup  = retreatFireLookup,
             }.ScheduleParallel();
 
@@ -286,7 +284,7 @@ namespace BattleGame.Units
     // ──────────────────────────────────────────
 
     [BurstCompile]
-    [WithNone(typeof(DeadTag))]
+    [WithNone(typeof(DeadTag), typeof(SkillCastLock))]
     public partial struct SeparationJob : IJobEntity
     {
         [ReadOnly] public NativeParallelMultiHashMap<int2, SeparationEntry> Grid;
@@ -351,14 +349,13 @@ namespace BattleGame.Units
     // ──────────────────────────────────────────
 
     [BurstCompile]
-    [WithNone(typeof(DeadTag))]
+    [WithNone(typeof(DeadTag), typeof(SkillCastLock))]
     public partial struct MoveToDestinationJob : IJobEntity
     {
         public float DeltaTime;
         public bool  AllyDefeated;
         public bool  EnemyDefeated;
         public bool  AnyEnemyOnScreen;
-        [ReadOnly] public ComponentLookup<BossComponent>       BossLookup;
         [ReadOnly] public ComponentLookup<TraitRetreatFireTag> RetreatFireLookup;
 
         public void Execute(
@@ -391,27 +388,10 @@ namespace BattleGame.Units
             // 돌진 중 — KnightChargeJob 이 이동·속도 담당
             if (unitState.Current == UnitState.Charging) return;
 
-            // 보스 돌진 패턴 — ChargeTarget 방향으로 ChargeSpeedMult 배 이동
-            if (BossLookup.HasComponent(entity))
-            {
-                BossComponent boss = BossLookup[entity];
-                if (boss.IsCharging)
-                {
-                    float3 toTarget = boss.ChargeTarget - transform.Position;
-                    float  dist     = math.length(toTarget);
-                    if (dist > 0.3f)
-                    {
-                        float  speed  = stat.Final[StatType.MoveSpeed] * boss.ChargeSpeedMult;
-                        float3 dir    = toTarget / dist;
-                        movement.Velocity   = dir * speed;
-                        transform.Position += movement.Velocity * DeltaTime;
-                        movement.IsMoving   = true;
-                        if (unitState.Current != UnitState.Moving)
-                            ChangeState(ref unitState, UnitState.Moving);
-                    }
-                    return;  // 돌진 중에는 일반 이동 로직 스킵
-                }
-            }
+            // ⚠ 보스 돌진은 여기서 처리하지 않는다
+            //   돌진이 ActiveSkillId.BossCharge 스킬로 옮겨가면서
+            //   BossChargeRunner 가 transform 을 직접 제어한다.
+            //   시전 중에는 SkillCastLock 이 붙어 이 잡 자체가 안 돈다.
 
             // 공격 상태 전환 처리
             if (unitState.Current == UnitState.Attacking)

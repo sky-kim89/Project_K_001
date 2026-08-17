@@ -91,6 +91,7 @@ public static class ProjectKBatch
         EquipmentIconGenerator.GenerateEquipmentIcons();
         IconGenerator.GenerateStageNodeIcons();
         IconGenerator.GenerateLobbyButtonIcons();
+        DifficultyIconGenerator.Generate();
         EventIllustrationGenerator.Generate();
         EffectTextureGenerator.GenerateAll();
 

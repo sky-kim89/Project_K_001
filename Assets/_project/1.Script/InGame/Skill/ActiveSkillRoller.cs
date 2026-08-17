@@ -54,6 +54,11 @@ public static class ActiveSkillRoller
             // 희귀 스킬은 주인이 이름으로 고정돼 있다 — 추첨 풀에 아예 넣지 않는다
             if (entry.IsRare) continue;
 
+            // 우두머리 전용 패턴(돌진·분쇄 강타)은 적만 쓴다.
+            // AllowedJobs 를 비워 두면 '공통 스킬' 로 잡혀 아군에게 뽑히므로
+            // 여기서 명시적으로 걸러야 한다.
+            if (entry.SkillId.IsBossPattern()) continue;
+
             bool isCommon = entry.AllowedJobs == null || entry.AllowedJobs.Length == 0;
             if (isCommon)
             {

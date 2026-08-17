@@ -97,7 +97,12 @@ public class ReincarnationData : ISaveSection
 
     /// <summary>스테이지 기반 포인트 자동 계산 후 적립.</summary>
     public void EarnPointsByStage(int clearedNormalStage)
-        => EarnPoints(CalculateReincarnationPoints(clearedNormalStage));
+    {
+        // 난이도 배율 — 올릴 이유가 없으면 아무도 안 올린다.
+        float mul = DifficultyConfig.CurrentTier()?.ReincarnationMultiplier ?? 1f;
+        EarnPoints(Mathf.RoundToInt(
+            CalculateReincarnationPoints(clearedNormalStage) * Mathf.Max(1f, mul)));
+    }
 
     public void EarnPoints(int amount)
         => ReincarnationPoints += Mathf.Max(0, amount);

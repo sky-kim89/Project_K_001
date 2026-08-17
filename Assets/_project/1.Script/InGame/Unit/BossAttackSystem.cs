@@ -129,8 +129,9 @@ namespace BattleGame.Units
                     float roll   = rng.NextFloat();
                     attack.RandomSeed = rng.state;
 
+                    // 돌진 중 공격력 보너스는 없앴다 — 돌진이 스킬(BossCharge)로
+                    // 옮겨가면서 피해를 러너가 직접 계산한다. 여기서 또 얹으면 이중 적용이다.
                     float baseAtk = stat.Final[StatType.Attack];
-                    if (boss.IsCharging) baseAtk *= (1f + boss.ChargeDamageBonus);
                     float damage = roll < stat.Final[StatType.CritChance]
                         ? baseAtk * stat.Final[StatType.CritDamage]
                         : baseAtk;

@@ -14,18 +14,59 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   EventId: AbilityDiscovery
   Title: "\uC5B4\uBE4C\uB9AC\uD2F0 \uBC1C\uACAC"
-  Body: "\uC624\uB798\uB41C \uC804\uC220\uC11C\uB97C \uBC1C\uACAC\uD588\uC2B5\uB2C8\uB2E4.
-    \uBE5B\uBC14\uB79C \uD398\uC774\uC9C0\uC5D0\uC11C \uAC15\uB825\uD55C \uC804\uC220\uC774
-    \uB208\uC5D0 \uB4E4\uC5B4\uC635\uB2C8\uB2E4."
-  Illustration: {fileID: 21300000, guid: 4c7626c131efc714e8b593de98b5d962, type: 3}
-  Choices: []
-  InstantRewards:
-  - Type: 8
-    Item: -1
-    IntValue: 1
-    FloatValue: 0
-    Description: "\uC5B4\uBE4C\uB9AC\uD2F0 1\uD0DD"
-    ScaleByStageReward: 0
-  InstantResultText: "\uC804\uC220\uC11C\uB97C \uC77D\uC5C8\uC2B5\uB2C8\uB2E4. \uC0C8\uB85C\uC6B4
-    \uB2A5\uB825\uC744 \uC2B5\uB4DD\uD560 \uAE30\uD68C\uC785\uB2C8\uB2E4.\n[\uC5B4\uBE4C\uB9AC\uD2F0
-    1\uD0DD]"
+  Body: "\uBB34\uB108\uC9C4 \uC11C\uACE0 \uBC14\uB2E5\uC5D0\uC11C \uC804\uC870\uAC00
+    \uC0C8\uACA8\uC9C4 \uC0C1\uC790\uB97C \uCC3E\uC558\uC2B5\uB2C8\uB2E4.\n\uBD09\uC778\uC744
+    \uB72F\uC790 \uBE5B\uBC14\uB79C \uC804\uC220\uC11C \uD55C \uAD8C\uC774 \uBAA8\uC2B5\uC744
+    \uB4DC\uB7EC\uB0C5\uB2C8\uB2E4.\n\uBB34\uB108\uC9C4 \uC11C\uAC00 \uC548\uCABD\uC5D0\uB3C4
+    \uCC45\uB4F1\uC774 \uBA87 \uAD8C \uB354 \uBCF4\uC785\uB2C8\uB2E4."
+  Illustration: {fileID: 21300000, guid: 09b6c8d48cdaf0947a65e874e2df9f1d, type: 3}
+  Choices:
+  - Label: "\uC804\uC220\uC11C\uB97C \uD3BC\uCE5C\uB2E4"
+    ResultText: "\uC804\uC870\uC5D0 \uC228\uACA8\uC9C4 \uACE0\uB300\uC758 \uC804\uC220\uC744
+      \uCC3E\uC558\uC2B5\uB2C8\uB2E4.\n\uD398\uC774\uC9C0\uB97C \uB118\uAE38\uC218\uB85D
+      \uC0C8\uB85C\uC6B4 \uC2F8\uC6C0\uBC95\uC774 \uBA38\uB9BF\uC18D\uC5D0 \uADF8\uB824\uC9D1\uB2C8\uB2E4.\n[\uC5B4\uBE4C\uB9AC\uD2F0
+      1\uD0DD]"
+    FailResultText: 
+    SuccessRate: 1
+    SuccessRewards:
+    - Type: 8
+      Item: -1
+      IntValue: 1
+      FloatValue: 0
+      Description: "\uC5B4\uBE4C\uB9AC\uD2F0 1\uD0DD"
+      ScaleByStageReward: 0
+    FailRewards: []
+    CostHint: 
+  - Label: "\uC11C\uAC00 \uC548\uCABD\uAE4C\uC9C0 \uD30C\uD5E4\uCE5C\uB2E4"
+    ResultText: "\uC11C\uAE4C\uB798\uB97C \uBC00\uC5B4\uB0B4\uACE0 \uC548\uCABD \uCC45\uC7A5\uC744
+      \uD1B5\uC9F8\uB85C \uB04C\uC5B4\uB0C8\uC2B5\uB2C8\uB2E4.\n\uC190\uB300\uC9C0
+      \uC54A\uC740 \uC804\uC220\uC11C\uAC00 \uB450 \uAD8C \uB354 \uC788\uC5C8\uC2B5\uB2C8\uB2E4.\n[\uC5B4\uBE4C\uB9AC\uD2F0
+      2\uD0DD]"
+    FailResultText: "\uBB34\uB108\uC9C0\uB358 \uC11C\uAE4C\uB798\uAC00 \uB0B4\uB824\uC549\uC558\uC2B5\uB2C8\uB2E4.\n\uBCD1\uC0AC
+      \uD558\uB098\uB97C \uC783\uACE0 \uACA8\uC6B0 \uD55C \uAD8C\uB9CC \uB4E4\uACE0
+      \uB098\uC654\uC2B5\uB2C8\uB2E4.\n[\uBCD1\uC0AC -1 / \uC5B4\uBE4C\uB9AC\uD2F0
+      1\uD0DD]"
+    SuccessRate: 0.55
+    SuccessRewards:
+    - Type: 8
+      Item: -1
+      IntValue: 2
+      FloatValue: 0
+      Description: "\uC5B4\uBE4C\uB9AC\uD2F0 2\uD0DD"
+      ScaleByStageReward: 0
+    FailRewards:
+    - Type: 5
+      Item: -1
+      IntValue: 1
+      FloatValue: 0
+      Description: "\uBCD1\uC0AC -1 (\uC601\uAD6C)"
+      ScaleByStageReward: 0
+    - Type: 8
+      Item: -1
+      IntValue: 1
+      FloatValue: 0
+      Description: "\uC5B4\uBE4C\uB9AC\uD2F0 1\uD0DD"
+      ScaleByStageReward: 0
+    CostHint: 
+  InstantRewards: []
+  InstantResultText: 

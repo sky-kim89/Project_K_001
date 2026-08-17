@@ -2365,12 +2365,17 @@ public static class IconGenerator
         SkillIcon("war_banner",       DrawWarBanner,       SkGuard,  IconArt.Frame.Double, IconArt.Badge.Up);
         SkillIcon("gravestone",       DrawGravestone,      SkSummon, IconArt.Frame.Double, IconArt.Badge.Star);
 
+        // 우두머리 전용 패턴 스킬 — 적만 쓴다.
+        // 계열색을 피(SkBlood)로 통일해 아군 스킬 목록에서 확실히 튀게 한다.
+        SkillIcon("boss_charge",      DrawBossCharge,      SkBlood,  IconArt.Frame.Rivet,  IconArt.Badge.Bolt);
+        SkillIcon("boss_slam",        DrawBossSlam,        SkBlood,  IconArt.Frame.Rivet,  IconArt.Badge.Down);
+
         AssetDatabase.Refresh();
         // Sprite 임포트 설정 적용
         ApplySpriteImportSettings(CLASS_PATH, 64);
         ApplySpriteImportSettings(SKILL_PATH, 48);
         AssetDatabase.SaveAssets();
-        Debug.Log("[IconGenerator] 아이콘 34장 생성 완료.");
+        Debug.Log("[IconGenerator] 아이콘 36장 생성 완료.");
     }
 
     // ── 액티브 스킬 계열색 (테두리·뱃지에 쓴다) ───────────────
@@ -2391,6 +2396,56 @@ public static class IconGenerator
             draw(p);
             IconArt.Overlay(p, accent, frame, badge);
         });
+
+
+    // ─────────────────────────────────────────────────────
+    //  ■ 우두머리 패턴 스킬 아이콘
+    // ─────────────────────────────────────────────────────
+
+    // 돌진 — 앞으로 쏠린 속도선 + 뿔 달린 머리
+    static void DrawBossCharge(P p)
+    {
+        p.BgGradient(Hex("2A0507"), Hex("5A0F12"));
+
+        // 속도선 — 뒤로 흘러가는 잔상
+        var trail = new Color32(255, 120, 90, 130);
+        p.DrawLine(4, 16, 22, 16, trail, 2);
+        p.DrawLine(2, 24, 20, 24, trail, 3);
+        p.DrawLine(4, 32, 22, 32, trail, 2);
+
+        // 돌진체 — 앞으로 뾰족한 쐐기
+        var body = new Color32(255, 200, 180, 245);
+        p.FillTri(44, 24, 26, 12, 26, 36, body);
+        p.FillRRect(22, 18, 8, 12, 2, new Color32(220, 120, 100, 240));
+
+        // 충돌 섬광
+        p.FillCircleAlpha(42, 24, 10, new Color32(255, 220, 160, 90));
+    }
+
+    // 분쇄 강타 — 내려찍는 주먹 + 갈라진 지면
+    static void DrawBossSlam(P p)
+    {
+        p.BgGradient(Hex("2A0507"), Hex("55140C"));
+
+        // 낙하선 — 위에서 내려온다
+        var fall = new Color32(255, 150, 90, 120);
+        p.DrawLine(18, 2, 18, 14, fall, 2);
+        p.DrawLine(24, 0, 24, 12, fall, 3);
+        p.DrawLine(30, 2, 30, 14, fall, 2);
+
+        // 주먹
+        var fist = new Color32(255, 205, 175, 245);
+        p.FillRRect(16, 12, 16, 13, 4, fist);
+        p.FillRRect(14, 22, 20, 5, 2, new Color32(215, 130, 105, 245));
+
+        // 갈라진 지면 — 바깥으로 뻗는 균열
+        var crack = new Color32(255, 170, 70, 235);
+        p.DrawLine(24, 30, 8,  42, crack, 2);
+        p.DrawLine(24, 30, 18, 45, crack, 2);
+        p.DrawLine(24, 30, 30, 45, crack, 2);
+        p.DrawLine(24, 30, 40, 42, crack, 2);
+        p.FillCircleAlpha(24, 32, 13, new Color32(255, 160, 60, 80));
+    }
 
     // ─────────────────────────────────────────────────────
     //  ■ 직업 아이콘
