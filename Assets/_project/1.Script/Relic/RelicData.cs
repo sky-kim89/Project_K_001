@@ -51,6 +51,19 @@ public class RelicData : ScriptableObject
     [Tooltip("true 이면 값을 % 배율이 아닌 절대값으로 적용 (SoldierCount, SkillCooldownReduce 등)")]
     public bool IsAbsoluteValue;
 
+    [Header("가격")]
+    [Tooltip("강화 비용 가중치. 1 = 희귀도 기본가.\n같은 희귀도인데 효과가 유독 세거나 약할 때만 건드린다 (1.5 = 1.5배).")]
+    public float CostWeight = 1f;
+
+    // ── 가격 ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// 현재 레벨 → 다음 레벨 강화 비용 (pt).
+    /// ⚠ 유물 가격을 묻는 곳은 전부 여기를 거친다 — 희귀도·가중치를 빠뜨릴 수 없게.
+    /// </summary>
+    public int LevelUpCost(int currentLevel)
+        => ReincarnationData.LevelUpCost(currentLevel, Rarity, CostWeight);
+
     // ── 카테고리 ──────────────────────────────────────────────
 
     public RelicCategory GetCategory()
@@ -111,6 +124,7 @@ public class RelicData : ScriptableObject
             RelicSystemEffect.EnemyMaxHpReduction   => $"적 최대 체력 -{v * 100f:0}%",
             RelicSystemEffect.EnemyAttackReduction  => $"적 공격력 -{v * 100f:0}%",
             RelicSystemEffect.GeneralSlotBonus      => $"장수 배치 슬롯 +{Mathf.RoundToInt(v)}칸",
+            RelicSystemEffect.BattleSpeedUnlock      => $"전투 배속 {1 + Mathf.RoundToInt(v)}× 까지 사용",
             _ => string.Empty,
         };
     }

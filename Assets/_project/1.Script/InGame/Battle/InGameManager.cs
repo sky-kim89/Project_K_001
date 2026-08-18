@@ -43,16 +43,28 @@ public class InGameManager : MonoBehaviour
         ValidateDependencies();
     }
 
+    /// <summary>
+    /// true 면 Start 에서 스스로 전투를 시작하지 않는다.
+    ///
+    /// ⚠ 씬 상주 모델에서 필요하다
+    ///   Lobby·InGame 이 함께 떠 있으면 이 오브젝트는 '전투 스위치' 가 아니라
+    ///   그냥 상주하는 매니저가 된다. 켜지자마자 전투를 시작해 버리면
+    ///   출전 대기 화면이 성립하지 않는다. 진행은 LobbyManager 가 잡는다.
+    /// </summary>
+    public static bool ExternallyDriven;
+
     void Start()
     {
-        // 로딩 팝업 오픈 (장군 스폰 전 화면 가리기)
-        if (PopupManager.Instance != null)
-            PopupManager.Instance.Open(PopupType.Loading);
-
-        // 배틀 이벤트 구독
+        // 배틀 이벤트 구독 — 승패 처리·보상은 외부 주도 여부와 무관하게 여기서 한다
         BattleManager.OnAlliesReady += HandleAlliesReady;
         BattleManager.OnVictory     += HandleVictory;
         BattleManager.OnDefeat      += HandleDefeat;
+
+        if (ExternallyDriven) return;
+
+        // 로딩 팝업 오픈 (장군 스폰 전 화면 가리기)
+        if (PopupManager.Instance != null)
+            PopupManager.Instance.Open(PopupType.Loading);
 
         if (AutoStartDelay > 0f)
             Invoke(nameof(StartBattle), AutoStartDelay);
@@ -72,7 +84,9 @@ public class InGameManager : MonoBehaviour
     /// <summary>장군 스폰 완료 → 로딩 팝업 닫기 + 전투 타이머 시작.</summary>
     void HandleAlliesReady()
     {
-        if (PopupManager.Instance != null)
+        // 외부 주도(출전 대기)에서는 아군이 섰다고 가림막을 걷으면 안 된다 —
+        // 카메라를 대기 뷰로 옮긴 뒤 LobbyManager 가 닫는다.
+        if (!ExternallyDriven && PopupManager.Instance != null)
             PopupManager.Instance.Close(PopupType.Loading);
         _battleStartTime = Time.time;
     }
@@ -242,7 +256,35 @@ public class InGameManager : MonoBehaviour
 
     // ── 배틀 시작 ────────────────────────────────────────────
 
+    /// <summary>
+    /// 아군만 세우는 '출전 대기' 까지 준비한다 (적 없음).
+    /// 모드 생성 규칙을 한 곳에 두려고 StartBattle 과 같은 경로를 쓴다.
+    /// </summary>
+    public void PrepareStandby()
+    {
+        BattleModeBase mode = BuildMode();
+        if (mode == null) return;
+        BattleManager.Instance.PrepareBattle(mode);
+    }
+
+    /// <summary>대기 중인 전투의 웨이브를 시작한다.</summary>
+    public void BeginWaves()
+    {
+        // 경과 시간은 '실제로 싸운 시간' 이어야 한다 —
+        // 출전 대기·카메라 무빙에 머문 시간은 빼고 여기서 다시 잡는다.
+        _battleStartTime = Time.time;
+        BattleManager.Instance.BeginWaves();
+    }
+
     void StartBattle()
+    {
+        BattleModeBase mode = BuildMode();
+        if (mode == null) return;
+        BattleManager.Instance.StartBattle(mode);
+    }
+
+    /// <summary>현재 상황에 맞는 배틀 모드를 만든다 (로비 진입 · 에디터 직접 실행 공용).</summary>
+    BattleModeBase BuildMode()
     {
         BattleModeBase mode;
 
@@ -259,7 +301,7 @@ public class InGameManager : MonoBehaviour
             if (WaveSetup == null || WaveSetup.Waves.Count == 0)
             {
                 Debug.LogError("[InGameManager] WaveSetup 이 비어있습니다.");
-                return;
+                return null;
             }
             var editorStage = new StageData
             {
@@ -273,8 +315,7 @@ public class InGameManager : MonoBehaviour
             Debug.Log($"[InGameManager] 배틀 시작 (에디터 직접) — 모드: {StartMode}, 웨이브: {WaveSetup.Waves.Count}개");
         }
 
-        if (mode == null) return;
-        BattleManager.Instance.StartBattle(mode);
+        return mode;
     }
 
     // ── 모드 생성 ─────────────────────────────────────────────

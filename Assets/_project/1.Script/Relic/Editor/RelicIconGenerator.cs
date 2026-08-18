@@ -2,7 +2,7 @@
 //  RelicIconGenerator.cs
 //  Tools > Project K > 에셋 > Generate Relic Icons
 //
-//  유물 22종 아이콘 PNG(64×64)를 생성하고
+//  유물 24종 아이콘 PNG(64×64)를 생성하고
 //  Assets/Resources/Relics/ 의 RelicData SO 에 자동 연결한다.
 //
 //  저장: Assets/_project/3.Textures/Icons/Relics/
@@ -46,6 +46,7 @@ public static class RelicIconGenerator
         (RelicId.R_EnemyHpDown,       "relic_r107", RelicRarity.Rare),
         (RelicId.R_EnemyAtkDown,      "relic_r108", RelicRarity.Rare),
         (RelicId.R_GeneralSlotExpand, "relic_r109", RelicRarity.Epic),
+        (RelicId.R_BattleSpeed,       "relic_r110", RelicRarity.Epic),
         (RelicId.R_GeneralHp,         "relic_r201", RelicRarity.Common),
         (RelicId.R_GeneralAtk,        "relic_r202", RelicRarity.Common),
         (RelicId.R_GeneralDef,        "relic_r203", RelicRarity.Common),
@@ -73,7 +74,7 @@ public static class RelicIconGenerator
         {
             DrawR101, DrawR102, DrawR103,
             DrawR104, DrawR105, DrawR106, DrawR107, DrawR108,
-            DrawR109,
+            DrawR109, DrawR110,
             DrawR201, DrawR202, DrawR203, DrawR204, DrawR205,
             DrawR206, DrawR207, DrawR208,
             DrawR211, DrawR212, DrawR213, DrawR214,
@@ -421,6 +422,30 @@ public static class RelicIconGenerator
 
         // 하단 구분선
         p.DrawLine(4, 10, 60, 10, H("6633AA"), 1);
+
+        Border(p, RelicRarity.Epic);
+    }
+
+    // 시간의 고삐 — 모래시계 + 앞으로 튀어나가는 이중 화살표 (배속)
+    static void DrawR110(P p)
+    {
+        Bg(p, RelicRarity.Epic);
+        Color32 glass = H("CC99EE");
+        Color32 sand  = H("FFCC33");
+        Color32 frame = H("8844CC");
+
+        // 모래시계 (좌측) — 위아래 삼각형이 허리에서 만난다
+        p.FillTri(10, 48, 26, 48, 18, 33, glass);
+        p.FillTri(10, 16, 26, 16, 18, 31, glass);
+        p.DrawLine(10, 48, 26, 48, frame, 2);   // 상판
+        p.DrawLine(10, 16, 26, 16, frame, 2);   // 하판
+        p.FillTri(13, 45, 23, 45, 18, 35, sand);  // 남은 모래
+        p.DrawLine(18, 33, 18, 24, sand, 1);      // 떨어지는 줄기
+        p.FillTri(15, 19, 21, 19, 18, 25, sand);  // 쌓인 모래
+
+        // 이중 화살표 (우측) — 배속 버튼과 같은 기호
+        p.FillTri(32, 42, 32, 22, 44, 32, White);
+        p.FillTri(42, 42, 42, 22, 54, 32, sand);
 
         Border(p, RelicRarity.Epic);
     }

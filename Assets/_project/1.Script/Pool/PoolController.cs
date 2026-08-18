@@ -23,8 +23,9 @@ public class PoolController : Singleton<PoolController>
     // PoolType → ObjectPool
     readonly Dictionary<PoolType, ObjectPool> _byType = new();
 
-    // 활성 인스턴스 ID → (풀, 오브젝트 이름)  —  Despawn 역방향 조회용
-    readonly Dictionary<int, (ObjectPool pool, string name)> _active = new();
+    // 활성 인스턴스 ID → (풀, 이름, 오브젝트)  —  Despawn 역방향 조회용
+    // ⚠ 오브젝트 참조까지 들고 있는 이유: DespawnAll 이 ID 만으로는 되찾을 수 없다.
+    readonly Dictionary<int, (ObjectPool pool, string name, GameObject go)> _active = new();
 
     // ── 초기화 ────────────────────────────────────────────────
     protected override void Awake()
@@ -53,7 +54,7 @@ public class PoolController : Singleton<PoolController>
 
         var obj = pool.Get(name, position, rotation);
         if (obj != null)
-            _active[obj.GetInstanceID()] = (pool, name);
+            _active[obj.GetInstanceID()] = (pool, name, obj);
 
         return obj;
     }
@@ -90,6 +91,7 @@ public class PoolController : Singleton<PoolController>
         int id = obj.GetInstanceID();
         if (_active.TryGetValue(id, out var entry))
         {
+            TraceUnitDespawn(entry, obj);
             entry.pool.Release(entry.name, obj);
             _active.Remove(id);
         }
@@ -98,6 +100,54 @@ public class PoolController : Singleton<PoolController>
             Debug.LogWarning($"[PoolController] 풀에서 꺼낸 오브젝트가 아님: {obj.name}");
             Destroy(obj);
         }
+    }
+
+
+    /// <summary>
+    /// 해당 풀에서 나가 있는 오브젝트를 전부 반납한다.
+    ///
+    /// ⚠ 아레나(전투 세션)를 닫을 때 쓰는 청소용이다
+    ///   이펙트·발사체는 자기 수명 타이머로 돌아오므로, 전투를 끝낸 순간에는
+    ///   아직 공중에 떠 있는 것들이 남는다. 다음 아레나로 넘어가서 터지면
+    ///   "로비인데 폭발이 보이는" 그림이 된다.
+    /// </summary>
+    public void DespawnAll(PoolType type)
+    {
+        if (!_byType.TryGetValue(type, out var pool)) return;
+
+        // 순회 중 _active 가 바뀌므로 대상을 먼저 모은다
+        var targets = new List<int>();
+        foreach (var kvp in _active)
+            if (kvp.Value.pool == pool) targets.Add(kvp.Key);
+
+        foreach (int id in targets)
+        {
+            if (!_active.TryGetValue(id, out var entry)) continue;
+            _active.Remove(id);
+
+            entry.pool.Release(entry.name, entry.go);
+        }
+    }
+
+    /// <summary>
+    /// 전투가 아닌 상태에서 유닛이 반납되면 호출자를 스택과 함께 남긴다.
+    ///
+    /// ⚠ 임시 추적용이다 — 원인을 잡으면 지울 것
+    ///   출전 대기 중에 장수·병사가 조용히 풀로 돌아가는 문제를 쫓는다.
+    ///   Despawn 을 부를 수 있는 곳은 넷뿐이라(아레나 청소·재준비·사망 연출·프리웜)
+    ///   스택 한 줄이면 어느 경로인지 바로 판별된다.
+    /// </summary>
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    static void TraceUnitDespawn((ObjectPool pool, string name, GameObject go) entry, GameObject obj)
+    {
+        if (entry.pool == null || entry.pool.Type != PoolType.Unit) return;
+
+        var flow = LobbyManager.Instance != null ? LobbyManager.Instance.Flow : LobbyFlow.Boot;
+        if (flow is not (LobbyFlow.Standby or LobbyFlow.Preparing)) return;
+
+        Debug.LogWarning(
+            $"[PoolTrace] 대기 중 유닛 반납 — {obj.name} ({entry.name}) / 상태 {flow}\n"
+            + System.Environment.StackTrace);
     }
 
     // ── 정리 ──────────────────────────────────────────────────

@@ -75,9 +75,31 @@ public class UserDataManager : PureSingleton<UserDataManager>
         Debug.Log("[UserDataManager] 저장 완료");
     }
 
+    // ── 최초 실행 판별 ───────────────────────────────────────
+
+    // ⚠ "세이브가 하나도 없었다" 가 유일하게 믿을 수 있는 신호다
+    //   장수 수·클리어 수로 판단하면 환생 직후와 구분이 안 된다 —
+    //   환생하면 장수도 스테이지도 0 으로 돌아가지만 그때는 장수를 골라야 한다.
+    //   UserData 는 환생해도 남으므로 이 키의 유무가 설치 직후인지를 가른다.
+    bool _firstLaunch;
+
+    /// <summary>
+    /// 설치 후 첫 실행이면 true 를 한 번만 돌려주고 플래그를 내린다.
+    /// ⚠ 반드시 소비형이어야 한다 — 전투를 마치고 로비 씬을 다시 로드해도
+    ///   매니저는 살아 있어서, 플래그가 남아 있으면 자동 진입이 무한히 반복된다.
+    /// </summary>
+    public bool ConsumeFirstLaunch()
+    {
+        bool was = _firstLaunch;
+        _firstLaunch = false;
+        return was;
+    }
+
     /// <summary>전체 섹션의 데이터를 디스크에서 로드한다.</summary>
     public void LoadAll()
     {
+        _firstLaunch = !PlayerPrefs.HasKey(GetPrefKey(SaveKey.UserData));
+
         foreach (ISaveSection section in _sections.Values)
         {
             string prefKey = GetPrefKey(section.SaveKey);

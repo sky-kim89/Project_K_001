@@ -17,6 +17,8 @@ using TMPro;
 //
 //  ■ 배속은 버튼 하나짜리 토글이다
 //    누를 때마다 1× → 2× → 3× → 1× 로 돌아간다.
+//    ⚠ 단, 도는 범위는 '시간의 고삐'(R_BattleSpeed) 유물이 정한다.
+//      0레벨 = 1× 고정(버튼 비활성), Lv1 = 2× 까지, Lv2 = 3× 까지.
 //    ⚠ 예전엔 1×/2×/3× 버튼 3개가 따로 있어 상단 폭을 셋이서 나눠 먹었다.
 //      셋 중 하나만 켜져 있으므로 정보량은 같은데 자리만 3배로 썼다.
 //
@@ -75,6 +77,13 @@ public class TopBarUI : MonoBehaviour
     /// <summary>토글 순서. 여기에 값을 더하면 버튼이 그대로 따라간다.</summary>
     static readonly float[] SpeedSteps = { 1f, 2f, 3f };
 
+    // ⚠ 처음부터 3× 를 쓸 수 있는 게 아니다
+    //   '시간의 고삐'(R_BattleSpeed) 유물이 여는 만큼만 돈다 —
+    //   0레벨이면 1× 고정이라 버튼이 아예 안 눌리고, Lv1 이면 1×↔2×, Lv2 라야 3× 까지 간다.
+    //   SpeedSteps 를 직접 세지 말 것. 유물을 빼먹으면 잠금이 통째로 풀린다.
+    static int UnlockedSpeedCount
+        => Mathf.Clamp(RelicApplier.GetBattleSpeedStepCount(), 1, SpeedSteps.Length);
+
     static readonly Color[] SpeedColors =
     {
         new Color(0.18f, 0.30f, 0.46f, 1f),   // 1× — 차분한 남색
@@ -107,11 +116,17 @@ public class TopBarUI : MonoBehaviour
 
         // 저장된 조작 설정 복원 (배속 · 자동 스킬)
         var settings = UserDataManager.Instance.Get<BattleSettingsData>();
-        _speedIndex = Mathf.Clamp(settings.SpeedIndex, 0, SpeedSteps.Length - 1);
+        // 유물을 초기화(환생 리셋)했으면 저장된 3× 가 남아 있어도 잠긴 단계다 — 잘라 낸다.
+        _speedIndex = Mathf.Clamp(settings.SpeedIndex, 0, UnlockedSpeedCount - 1);
         ApplySpeed();
         ApplyAuto(settings.AutoSkill);
 
-        BattleManager.OnUnitKilled += HandleUnitKilled;
+        BattleManager.OnUnitKilled     += HandleUnitKilled;
+
+        // ⚠ 처치 수·경과 시간은 '이번 전투' 의 값이다
+        //   씬이 상주하면서 이 오브젝트도 계속 살아 있으므로,
+        //   새 전투를 준비할 때 직접 0 으로 되돌려야 지난 판 숫자가 이어지지 않는다.
+        BattleManager.OnBattlePrepared += ResetBattleCounters;
     }
 
     void Start()
@@ -129,7 +144,8 @@ public class TopBarUI : MonoBehaviour
 
     void OnDestroy()
     {
-        BattleManager.OnUnitKilled -= HandleUnitKilled;
+        BattleManager.OnUnitKilled     -= HandleUnitKilled;
+        BattleManager.OnBattlePrepared -= ResetBattleCounters;
         if (_em != default) _bossQuery.Dispose();
 
         // 배속을 켠 채 씬을 나가면 로비까지 그 속도로 돈다 (저장값은 그대로 둔다)
@@ -278,6 +294,14 @@ public class TopBarUI : MonoBehaviour
 
     // ── 이벤트 ─────────────────────────────────────────────────
 
+    /// <summary>새 전투 준비 — 처치 수·경과 시간을 0 으로.</summary>
+    void ResetBattleCounters()
+    {
+        _killCount   = 0;
+        _waveElapsed = 0f;
+        RefreshKillCount();
+    }
+
     void HandleUnitKilled(TeamType team)
     {
         if (team == TeamType.Enemy)
@@ -304,7 +328,8 @@ public class TopBarUI : MonoBehaviour
         // 여기서 바꾸면 그 복원값이 0 으로 덮여 게임이 멈춘 채 돌아온다.
         if (Time.timeScale <= 0f) return;
 
-        _speedIndex = (_speedIndex + 1) % SpeedSteps.Length;
+        // 해금된 단계 안에서만 순환한다 (유물 0레벨이면 1× 하나뿐이라 제자리).
+        _speedIndex = (_speedIndex + 1) % UnlockedSpeedCount;
         ApplySpeed();
 
         var settings = UserDataManager.Instance.Get<BattleSettingsData>();
@@ -319,6 +344,9 @@ public class TopBarUI : MonoBehaviour
 
         if (_speedLabel != null) _speedLabel.text  = $"{speed:0}×";
         if (_speedFace  != null) _speedFace.color  = SpeedColors[_speedIndex];
+
+        // 1× 하나뿐이면 눌러도 바뀌는 게 없다 — 눌리지 않게 해서 이유를 보여 준다.
+        if (_speedButton != null) _speedButton.interactable = UnlockedSpeedCount > 1;
     }
 
     // ── 자동 스킬 토글 ─────────────────────────────────────────

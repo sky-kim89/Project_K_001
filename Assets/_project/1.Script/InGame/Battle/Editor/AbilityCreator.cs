@@ -60,8 +60,12 @@ public static class AbilityCreator
 
         new Def { Id=AbilityId.A12, Name="장군의 위엄",   Grade=AbilityGrade.Normal, Target=AbilityTarget.Unit_General,
                   Stat1=StatType.MaxHp,    Value1=0.10f, HasStat2=true, Stat2=StatType.Defense,            Value2=0.06f },
+        // ⚠ 병사 어빌리티는 같은 등급의 1.5배다
+        //   장수 스탯이 오르면 병사도 지휘력 비율만큼 같이 오른다 (SoldierRuntimeBridge.StatRatio).
+        //   즉 'All' 어빌리티는 장수 + 병사를 동시에 올리는데, 병사 전용은 병사만 올린다.
+        //   같은 수치면 고를 이유가 없어서 배율로 값을 벌어 둔다.
         new Def { Id=AbilityId.A13, Name="병사의 투지",   Grade=AbilityGrade.Normal, Target=AbilityTarget.Unit_Soldier,
-                  Stat1=StatType.Attack,   Value1=0.10f, HasStat2=true, Stat2=StatType.MoveSpeed,          Value2=0.06f },
+                  Stat1=StatType.Attack,   Value1=0.15f, HasStat2=true, Stat2=StatType.MoveSpeed,          Value2=0.09f },
 
         new Def { Id=AbilityId.A14, Name="치명의 감각",   Grade=AbilityGrade.Normal, Target=AbilityTarget.All,
                   Stat1=StatType.CritChance, Value1=0.06f },
@@ -99,8 +103,9 @@ public static class AbilityCreator
 
         new Def { Id=AbilityId.B11, Name="영웅의 기상",   Grade=AbilityGrade.Advanced, Target=AbilityTarget.Unit_General,
                   Stat1=StatType.MaxHp,    Value1=0.18f, HasStat2=true, Stat2=StatType.Defense,            Value2=0.12f },
+        // 병사 전용 — A13 과 같은 이유로 ×1.5
         new Def { Id=AbilityId.B12, Name="병사의 맹세",   Grade=AbilityGrade.Advanced, Target=AbilityTarget.Unit_Soldier,
-                  Stat1=StatType.Attack,   Value1=0.18f, HasStat2=true, Stat2=StatType.MoveSpeed,          Value2=0.12f },
+                  Stat1=StatType.Attack,   Value1=0.27f, HasStat2=true, Stat2=StatType.MoveSpeed,          Value2=0.18f },
 
         new Def { Id=AbilityId.B13, Name="병사 대규모",   Grade=AbilityGrade.Advanced, Target=AbilityTarget.Unit_General,
                   Stat1=StatType.SoldierCount, Value1=2f },

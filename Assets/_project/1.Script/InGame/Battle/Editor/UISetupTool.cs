@@ -791,11 +791,10 @@ public static class UISetupTool
             Debug.Log("[UISetupTool] PopupManager 생성");
         }
 
-        // _popupRoot 를 Canvas 로 설정
-        var pmSO = new SerializedObject(pm);
-        pmSO.FindProperty("_popupRoot").objectReferenceValue = canvasGo.transform;
-        pmSO.ApplyModifiedPropertiesWithoutUndo();
-        Debug.Log("[UISetupTool] PopupManager._popupRoot → Canvas");
+        // ⚠ 팝업 루트는 더 이상 씬 캔버스를 가리키지 않는다
+        //   PopupManager 가 런타임에 자기 캔버스(PopupCanvas)를 만들어 소유한다.
+        //   씬 캔버스를 물려 두면 Lobby·InGame 이 함께 떠 있을 때
+        //   그 캔버스가 꺼지는 순간 팝업이 통째로 사라진다.
     }
 
     // ══════════════════════════════════════════════════════════

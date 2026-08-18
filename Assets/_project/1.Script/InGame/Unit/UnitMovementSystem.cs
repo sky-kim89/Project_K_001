@@ -616,6 +616,14 @@ namespace BattleGame.Units
                 Min = new float2(camX - w, camY - h),
                 Max = new float2(camX + w, camY + h),
                 Ecb = ecb,
+
+                // ⚠ 화면 밖 사망 판정은 웨이브가 도는 동안에만 켠다
+                //   출전 대기 화면은 카메라를 옆으로 밀어 두므로 스폰 지점이 화면 밖으로
+                //   빠질 수 있다. 그 상태에서 이 규칙이 살아 있으면 방금 세운 부대가
+                //   미진입(HasEnteredScreen=false) 상태로 걸려 즉시 사망 → 1초 뒤 풀 반납된다.
+                //   이 규칙의 목적은 '전투 중 넉백으로 화면 밖에 영구 방치되는 유닛 정리' 다.
+                KillOutOfBounds = BattleManager.Instance != null
+                               && BattleManager.Instance.IsWaveRunning,
             }.ScheduleParallel();
         }
     }
@@ -627,6 +635,9 @@ namespace BattleGame.Units
         public float2 Min;
         public float2 Max;
         public EntityCommandBuffer.ParallelWriter Ecb;
+
+        /// <summary>화면 밖 사망 판정 사용 여부. 웨이브 진행 중에만 true.</summary>
+        public bool KillOutOfBounds;
 
         // 스폰 후 화면 미진입 유닛이 이 거리 이상 벗어나면 즉시 사망 처리
         // — 대형 넉백으로 타겟 탐색 범위 밖에 영구 방치되는 버그 방지
@@ -656,9 +667,9 @@ namespace BattleGame.Units
                 transform.Position.x = math.clamp(x, Min.x, Max.x);
                 transform.Position.y = math.clamp(y, Min.y, Max.y);
             }
-            else
+            else if (KillOutOfBounds)
             {
-                // 미진입 상태에서 허용 범위 초과 시 즉시 사망 처리
+                // 미진입 상태에서 허용 범위 초과 시 즉시 사망 처리 (웨이브 중에만)
                 bool outX = x < Min.x - OutOfBoundsKillDist || x > Max.x + OutOfBoundsKillDist;
                 bool outY = y < Min.y - OutOfBoundsKillDist || y > Max.y + OutOfBoundsKillDist;
                 if (outX || outY)

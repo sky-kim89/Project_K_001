@@ -7,6 +7,7 @@ using UnityEngine;
 //
 //  기본 동작:
 //    - 선택지 수 3 (유물 R_AbilityChoicePlus 로 최대 +2)
+//    - 직업 전용(Job_*) 어빌리티는 배치한 장수 1명당 +10% 확률 (달인 해금 보조)
 //    - 등급 가중치: Normal 60% / Advanced 30% / Special 10%
 //      유물 R_AbilityAdvanced 로 Advanced+Special 가중치 추가 증가
 //    - 같은 AbilityId 는 1회 선택지에 중복 출현하지 않음
@@ -90,6 +91,9 @@ public static class AbilityPicker
             }
         }
 
+        // 배치된 부대 구성 — 등급 안에서 어느 어빌리티를 뽑을지 기울이는 데 쓴다
+        var jobCounts = CountDeployedJobs();
+
         var result  = new List<AbilityData>(pickCount);
         var usedIds = new HashSet<AbilityId>();
         int attempts = 0;
@@ -103,13 +107,80 @@ public static class AbilityPicker
         while (result.Count < pickCount && attempts < 200)
         {
             attempts++;
-            var data = PickOneWeighted(normal, advanced, special, wNormal, wAdvanced, wSpecial);
+            var data = PickOneWeighted(normal, advanced, special, wNormal, wAdvanced, wSpecial, jobCounts);
             if (data == null) break;
             if (!usedIds.Add(data.Id)) continue;
             result.Add(data);
         }
 
         return result.ToArray();
+    }
+
+    // ── 직업 친화 가중치 ──────────────────────────────────────
+    //
+    //  ⚠ 이 보너스는 '달인(Mastery) 해금을 돕는 장치' 다
+    //    달인은 그 직업 전용 어빌리티(Normal+Advanced)를 전부 만렙까지
+    //    모아야 열린다 — MasteryPrerequisites 참조.
+    //    균등 추첨이면 기사만 3명 끌고 다녀도 기사 전용이 뜰 확률이 그대로라
+    //    달인까지 가는 길이 순전히 운이었다. 배치한 직업 쪽으로 기울여 준다.
+    //
+    //  배치된 장수 1명당 +10%. 기사 3명이면 기사 어빌리티 가중치 ×1.3.
+    //
+    //  ⚠ 보정 대상은 Job_* 넷뿐이다
+    //    Range_Melee·Range_Ranged 는 달인 해금 조건이 아니다 — 아무리 모아도
+    //    달인이 열리지 않으므로 여기에 얹으면 정작 필요한 Job_* 이 밀린다.
+    //    All·Unit_General·Unit_Soldier 도 같은 이유로 보정 없음(×1.0).
+
+    const float AffinityPerGeneral = 0.10f;
+
+    /// <summary>배치된 장수의 직업별 인원수. 배치 정보가 없으면 빈 표(=보정 없음).</summary>
+    static Dictionary<UnitJob, int> CountDeployedJobs()
+    {
+        var counts = new Dictionary<UnitJob, int>();
+        var deploy = UserDataManager.Instance?.Get<DeploymentData>();
+        if (deploy == null) return counts;
+
+        foreach (string unitName in deploy.GetDeployedUnits())
+        {
+            var job = UnitJobRoller.GetJob(unitName);
+            counts.TryGetValue(job, out int c);
+            counts[job] = c + 1;
+        }
+        return counts;
+    }
+
+    static int Count(Dictionary<UnitJob, int> counts, UnitJob job)
+        => counts.TryGetValue(job, out int c) ? c : 0;
+
+    static float AffinityWeight(AbilityData data, Dictionary<UnitJob, int> counts)
+    {
+        int matched = data.Target switch
+        {
+            AbilityTarget.Job_Knight       => Count(counts, UnitJob.Knight),
+            AbilityTarget.Job_Archer       => Count(counts, UnitJob.Archer),
+            AbilityTarget.Job_Mage         => Count(counts, UnitJob.Mage),
+            AbilityTarget.Job_ShieldBearer => Count(counts, UnitJob.ShieldBearer),
+            _                              => 0,   // 근거리·원거리 포함 — 달인 조건이 아니다
+        };
+        return 1f + matched * AffinityPerGeneral;
+    }
+
+    /// <summary>풀 안에서 직업 친화 가중치로 하나 뽑는다.</summary>
+    static AbilityData PickFromPool(List<AbilityData> pool, Dictionary<UnitJob, int> counts)
+    {
+        if (pool.Count == 0) return null;
+
+        float total = 0f;
+        for (int i = 0; i < pool.Count; i++) total += AffinityWeight(pool[i], counts);
+
+        float roll = Random.value * total;
+        float acc  = 0f;
+        for (int i = 0; i < pool.Count; i++)
+        {
+            acc += AffinityWeight(pool[i], counts);
+            if (roll < acc) return pool[i];
+        }
+        return pool[pool.Count - 1];   // 부동소수 오차로 끝을 넘겼을 때
     }
 
     static bool IsMasteryUnlocked(AbilityId id, RunAbilityData runData, AbilityDatabase db)
@@ -128,7 +199,8 @@ public static class AbilityPicker
         List<AbilityData> normal,
         List<AbilityData> advanced,
         List<AbilityData> special,
-        float wNormal, float wAdvanced, float wSpecial)
+        float wNormal, float wAdvanced, float wSpecial,
+        Dictionary<UnitJob, int> jobCounts)
     {
         float totalWeight = 0f;
         if (normal.Count   > 0) totalWeight += wNormal;
@@ -143,15 +215,15 @@ public static class AbilityPicker
         if (normal.Count > 0)
         {
             acc += wNormal;
-            if (roll < acc) return normal[Random.Range(0, normal.Count)];
+            if (roll < acc) return PickFromPool(normal, jobCounts);
         }
         if (advanced.Count > 0)
         {
             acc += wAdvanced;
-            if (roll < acc) return advanced[Random.Range(0, advanced.Count)];
+            if (roll < acc) return PickFromPool(advanced, jobCounts);
         }
         if (special.Count > 0)
-            return special[Random.Range(0, special.Count)];
+            return PickFromPool(special, jobCounts);
 
         return null;
     }

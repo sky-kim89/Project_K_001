@@ -24,8 +24,11 @@ public class PopupManager : Singleton<PopupManager>
     [Header("팝업 프리팹 목록 (PopupBase.PopupType 으로 자동 분류)")]
     [SerializeField] PopupBase[] _prefabs;
 
-    [Header("팝업 루트 (없으면 자동 생성)")]
-    [SerializeField] Transform _popupRoot;
+    // 팝업 전용 캔버스 — 씬이 아니라 PopupManager 가 소유한다 (EnsurePopupRoot 참조)
+    Transform _popupRoot;
+
+    /// <summary>임시 캔버스를 만들 때만 쓰는 정렬 순서 (로비 0 · 인게임 10 보다 위).</summary>
+    const int PopupSortingOrder = 200;
 
     [Header("블로커 색상")]
     [SerializeField] Color _blockerColor = new Color(0f, 0f, 0f, 0.45f);
@@ -44,9 +47,35 @@ public class PopupManager : Singleton<PopupManager>
     protected override void Awake()
     {
         base.Awake();
-        foreach (var p in _prefabs)
-            if (p != null) _prefabMap[p.PopupType] = p;
+
+        // ⚠ 씬 두 개(Lobby·InGame)가 동시에 떠 있으면 PopupManager 도 둘이 된다
+        //   Singleton 이 나중 것을 지우는데, 씬마다 등록된 팝업 프리팹이 다르다.
+        //   그냥 사라지면 그쪽 씬의 팝업만 "등록된 프리팹이 없습니다" 로 죽는다.
+        //   지워지기 전에 자기 목록을 살아남는 쪽에 넘긴다.
+        if (Instance != this)
+        {
+            Instance.AdoptPrefabs(_prefabs);
+            return;
+        }
+
+        RegisterPrefabs(_prefabs);
         EnsurePopupRoot();
+    }
+
+    /// <summary>다른 씬의 PopupManager 가 넘겨준 프리팹을 흡수한다 (이미 있는 타입은 유지).</summary>
+    void AdoptPrefabs(PopupBase[] prefabs)
+    {
+        if (prefabs == null) return;
+        foreach (var p in prefabs)
+            if (p != null && !_prefabMap.ContainsKey(p.PopupType))
+                _prefabMap[p.PopupType] = p;
+    }
+
+    void RegisterPrefabs(PopupBase[] prefabs)
+    {
+        if (prefabs == null) return;
+        foreach (var p in prefabs)
+            if (p != null) _prefabMap[p.PopupType] = p;
     }
 
     // ── 공개 API — 열기 ──────────────────────────────────────
@@ -216,12 +245,56 @@ public class PopupManager : Singleton<PopupManager>
 
     // ── 내부 — 루트 보장 ─────────────────────────────────────
 
+    /// <summary>
+    /// 팝업이 붙을 자리를 확보한다.
+    ///
+    /// ■ 전용 캔버스는 이미 있다
+    ///   씬 구조가 DontDestroyOnLoad(루트) > CanvasPopup(Canvas) > PopupManager 다.
+    ///   PopupManager 는 그 캔버스 안에 들어 있고, 루트에 DontDestroyOnLoad 컴포넌트가
+    ///   붙어 있어 Singleton 이 부모를 떼지 않는다 — 씬을 바꿔도 캔버스째 살아남는다.
+    ///   그러니 새로 만들 것 없이 지금 자리를 그대로 쓰면 된다.
+    ///
+    /// ⚠ 씬 캔버스를 빌리지 않는다
+    ///   예전엔 화면에서 아무 캔버스나 찾아 썼다. 씬이 하나뿐일 때는 정답이었지만
+    ///   Lobby·InGame 이 함께 떠 있는 지금은 둘 중 하나를 임의로 잡게 되고,
+    ///   그 캔버스가 꺼지는 순간 팝업이 통째로 사라진다.
+    /// </summary>
     void EnsurePopupRoot()
     {
         if (_popupRoot != null) return;
-        var canvas = FindFirstObjectByType<Canvas>();
-        if (canvas != null) { _popupRoot = canvas.transform; return; }
-        _popupRoot = new GameObject("PopupRoot").transform;
-        Debug.LogWarning("[PopupManager] Canvas 를 찾지 못해 PopupRoot 를 임시 생성했습니다.");
+
+        // ① 전용 캔버스(CanvasPopup) 안에 들어 있는 정상 배치
+        if (GetComponentInParent<Canvas>() != null)
+        {
+            _popupRoot = transform;
+            return;
+        }
+
+        // ② 캔버스를 자식으로 들고 있는 배치
+        var child = GetComponentInChildren<Canvas>(includeInactive: true);
+        if (child != null)
+        {
+            _popupRoot = child.transform;
+            return;
+        }
+
+        // ③ 최후 수단 — 캔버스가 하나도 없는 배치에서만 직접 만든다.
+        //   씬 캔버스를 빌리는 것보다 낫다. 로비(0)·인게임(10)보다 위로 올린다.
+        var go = new GameObject("PopupCanvas",
+            typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+        go.transform.SetParent(transform, false);
+
+        var canvas = go.GetComponent<Canvas>();
+        canvas.renderMode   = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = PopupSortingOrder;
+
+        var scaler = go.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        scaler.screenMatchMode     = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+        scaler.matchWidthOrHeight  = 0.5f;
+
+        Debug.LogWarning("[PopupManager] 전용 캔버스를 찾지 못해 임시로 만들었습니다 — CanvasPopup 아래에 두세요.");
+        _popupRoot = go.transform;
     }
 }

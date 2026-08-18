@@ -8,10 +8,14 @@ using Unity.Collections;
 //  보스 전용 공격 시스템 (MeleeAttackJob 에서 제외됨).
 //
 //  ■ 기능
-//    1. 쿨다운 0 + 타겟 있음 → 타겟에 직접 피해
+//    1. 쿨다운 0 + 타겟 있음 → 타겟에 직접 피해 (평타 배율 ×3)
 //    2. AoeRadius * 보스 크기 비율 범위 내 적팀 유닛에 스플래시 피해
 //    3. 피격 유닛에게 넉백 적용
-//    4. 돌진 중(IsCharging)이면 ChargeDamageBonus 만큼 공격력 증가
+//
+//  ■ 평타 배율 (BasicAttackMultiplier)
+//    보스는 공격속도가 일반 적의 1/3 이라 그대로 두면 DPS 가 1/3 로 떨어진다.
+//    이 손실은 Attack 스텟이 아니라 여기서 되돌린다 — 스텟을 3배로 올리면
+//    Attack 을 계수로 쓰는 보스 스킬(슬램·돌진·사형선고) 피해까지 3배가 되기 때문이다.
 //
 //  ■ AoE 반경 스케일
 //    effectiveAoeRadius = boss.AoeRadius * (bossRadius / ReferenceRadius)
@@ -33,6 +37,8 @@ namespace BattleGame.Units
         const float ReferenceRadius = 0.5f;
         // 부채꼴 AoE 반각 (cos 값) — cos(60°) = 0.5 → 총 120° 부채꼴
         const float ConeCosHalfAngle = 0.5f;
+        // 평타 피해 배율 — 공격속도 1/3 을 상쇄해 DPS 를 유지한다 (스킬 피해에는 적용 안 됨)
+        const float BasicAttackMultiplier = 3f;
 
         struct BossAttackInfo
         {
@@ -131,7 +137,8 @@ namespace BattleGame.Units
 
                     // 돌진 중 공격력 보너스는 없앴다 — 돌진이 스킬(BossCharge)로
                     // 옮겨가면서 피해를 러너가 직접 계산한다. 여기서 또 얹으면 이중 적용이다.
-                    float baseAtk = stat.Final[StatType.Attack];
+                    // 평타만 ×3 — 스킬은 stat.Final[Attack] 을 그대로 계수로 쓴다
+                    float baseAtk = stat.Final[StatType.Attack] * BasicAttackMultiplier;
                     float damage = roll < stat.Final[StatType.CritChance]
                         ? baseAtk * stat.Final[StatType.CritDamage]
                         : baseAtk;

@@ -56,17 +56,27 @@ public class DeploymentData : ISaveSection
     // ── 변경 ─────────────────────────────────────────────────
 
     /// <summary>유닛을 지정 슬롯에 배치. 이미 배치된 슬롯에서 먼저 제거하고, 대상 슬롯의 기존 유닛은 배치 해제.</summary>
+    /// <summary>
+    /// 배치가 바뀔 때마다 발행된다.
+    /// ⚠ 출전 대기 화면이 이 신호로 다시 세워진다 — 없으면 방금 바꾼 편성과
+    ///   전장에 서 있는 장수가 어긋난다.
+    /// </summary>
+    public static event System.Action OnChanged;
+
     public void Deploy(string unitName, int slot)
     {
         if (slot < 0 || slot >= SlotCount || string.IsNullOrEmpty(unitName)) return;
         for (int i = 0; i < SlotCount; i++)
             if (_raw.Slots[i] == unitName) _raw.Slots[i] = "";
         _raw.Slots[slot] = unitName;
+        OnChanged?.Invoke();
     }
 
     public void UndeploySlot(int slot)
     {
-        if (slot >= 0 && slot < SlotCount) _raw.Slots[slot] = "";
+        if (slot < 0 || slot >= SlotCount) return;
+        _raw.Slots[slot] = "";
+        OnChanged?.Invoke();
     }
 
     public void Undeploy(string unitName)
@@ -74,6 +84,7 @@ public class DeploymentData : ISaveSection
         if (string.IsNullOrEmpty(unitName)) return;
         for (int i = 0; i < SlotCount; i++)
             if (_raw.Slots[i] == unitName) _raw.Slots[i] = "";
+        OnChanged?.Invoke();
     }
 
     // ── ISaveSection ─────────────────────────────────────────

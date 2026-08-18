@@ -63,8 +63,16 @@ public class StageSelectUI : MonoBehaviour
 
     void OnEnable()
     {
+        // ⚠ 버튼 연결이 먼저다
+        //   아래 대기 화면 준비에서 무슨 일이 생기든 '전투 시작' 은 눌려야 한다.
+        //   OnEnable 이 중간에 끊기면 버튼에 리스너가 하나도 안 붙는다.
         LobbyManager.OnStageChanged += OnStageChanged;
         BindButtons();
+
+        // 출전 화면 — 배치한 장수들이 전장에 서 있는 모습을 뒤로 깐다.
+        // 이미 서 있으면 다시 세우지 않는다 (LobbyManager 가 판단).
+        SceneDirector.Ensure().RequestArenaBackdrop(true);
+        LobbyManager.Instance?.EnterStandby();
         Refresh();
         StartCoroutine(AutoOpenStagePopupNextFrame());
     }
@@ -72,6 +80,7 @@ public class StageSelectUI : MonoBehaviour
     void OnDisable()
     {
         LobbyManager.OnStageChanged -= OnStageChanged;
+        SceneDirector.Instance?.RequestArenaBackdrop(false);
     }
 
     // ── 버튼 연결 ─────────────────────────────────────────────
@@ -96,8 +105,10 @@ public class StageSelectUI : MonoBehaviour
         _disassembleBtn?.onClick.AddListener(() =>
             PopupManager.Instance?.Open<DisassemblePopup>(PopupType.Disassemble));
 
+        // 출전 화면에는 이미 장수들이 서 있다 — 여기서는 '시작' 만 누른다.
+        // (대기 상태가 아직이면 LobbyManager 가 준비부터 이어서 처리한다)
         _battleStartBtn?.onClick.RemoveAllListeners();
-        _battleStartBtn?.onClick.AddListener(() => LobbyManager.Instance?.StartBattle());
+        _battleStartBtn?.onClick.AddListener(() => LobbyManager.Instance?.BeginBattleFromStandby());
     }
 
     // ── 상점·이벤트 자동 오픈 ─────────────────────────────────

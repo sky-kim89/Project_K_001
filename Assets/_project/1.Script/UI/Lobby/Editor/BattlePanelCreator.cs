@@ -45,7 +45,11 @@ public static class BattlePanelCreator
 
     static readonly Color BgDark      = new Color(0.07f, 0.07f, 0.13f, 1f);
     static readonly Color SlotBgEmpty = new Color(0.12f, 0.12f, 0.20f, 1f);
-    static readonly Color ActionBg    = new Color(0.05f, 0.05f, 0.10f, 1f);
+    // ⚠ ActionArea 는 투명하다 (a=0)
+    //   이 칸 뒤에는 출전 대기 중인 장수들이 실제로 서 있는 전장이 비친다.
+    //   불투명하게 칠하면 배치한 부대가 통째로 가려진다.
+    //   Image 자체는 남겨 둔다 — 빈 곳 클릭이 뒤로 새는 것을 막아 준다.
+    static readonly Color ActionBg    = new Color(0.05f, 0.05f, 0.10f, 0f);
     static readonly Color BattleBtnC     = new Color(0.11f, 0.72f, 0.58f, 1f);
     static readonly Color AbilityBtnC    = new Color(0.18f, 0.25f, 0.45f, 1f);
     static readonly Color DisassembleBtnC = new Color(0.30f, 0.16f, 0.08f, 1f);

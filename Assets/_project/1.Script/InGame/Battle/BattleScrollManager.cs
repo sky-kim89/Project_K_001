@@ -39,7 +39,8 @@ public class BattleScrollManager : Singleton<BattleScrollManager>
 
     void Start()
     {
-        _cam      = Camera.main;
+        // ⚠ Camera.main 을 쓰지 않는다 — 로비 카메라가 함께 떠 있으면 그쪽이 잡힌다
+        _cam      = ResolveCamera();
         _initCamX = _cam.transform.position.x;
         _bgWidth  = CalcBgWidth();
         ResetBackground(_initCamX);
@@ -47,23 +48,39 @@ public class BattleScrollManager : Singleton<BattleScrollManager>
 
     void OnEnable()
     {
-        BattleManager.OnAlliesReady += OnBattleStart;
-        BattleManager.OnVictory     += OnBattleEnd;
-        BattleManager.OnDefeat      += OnBattleEnd;
+        // ⚠ OnAlliesReady 가 아니라 OnWavesStarted 다
+        //   출전 대기 화면에서도 아군은 스폰된다. 그 신호로 추종을 켜면
+        //   대기 화면이 잡아 둔 카메라 위치를 이 스크립트가 곧바로 되돌린다
+        //   (카메라 X 가 저절로 0 으로 돌아가던 증상).
+        BattleManager.OnWavesStarted += OnBattleStart;
+        BattleManager.OnVictory      += OnBattleEnd;
+        BattleManager.OnDefeat       += OnBattleEnd;
     }
 
     void OnDisable()
     {
-        BattleManager.OnAlliesReady -= OnBattleStart;
-        BattleManager.OnVictory     -= OnBattleEnd;
-        BattleManager.OnDefeat      -= OnBattleEnd;
+        BattleManager.OnWavesStarted -= OnBattleStart;
+        BattleManager.OnVictory      -= OnBattleEnd;
+        BattleManager.OnDefeat       -= OnBattleEnd;
     }
 
     // ── 배틀 이벤트 ───────────────────────────────────────────
 
-    void OnBattleStart()
+    void OnBattleStart() => StartScroll();
+    void OnBattleEnd()   => StopScroll();
+
+    // ── 공개 제어 (실전·로비 데모 공용) ───────────────────────
+
+    /// <summary>
+    /// 선두 아군 추종을 시작한다. 카메라를 시작 위치로 되돌리고 배경도 다시 깐다.
+    ///
+    /// ⚠ 실전 진입뿐 아니라 로비 배경 데모도 이 문으로 들어온다
+    ///   데모가 BattleManager 이벤트를 흉내 내면 그쪽 상태 기계가 오염된다.
+    /// </summary>
+    public void StartScroll()
     {
-        _cam = Camera.main;
+        _cam = ResolveCamera();
+        if (_cam == null) return;
 
         Vector3 camPos = _cam.transform.position;
         camPos.x                = _initCamX;
@@ -76,14 +93,43 @@ public class BattleScrollManager : Singleton<BattleScrollManager>
         ResetBackground(_initCamX);
     }
 
-    void OnBattleEnd() => _active = false;
+    public void StopScroll() => _active = false;
+
+    /// <summary>
+    /// 배경을 시작 위치(_initCamX)로 되돌린다. BattlePanel 로 돌아올 때만 부른다.
+    ///
+    /// ⚠ 전투가 끝나도 배경은 전진한 자리에 남는다
+    ///   스크롤 중 BGSprite1/2 는 카메라를 따라 계속 오른쪽으로 옮겨진다.
+    ///   되돌리지 않으면 대기 화면 카메라가 텅 빈 허공을 잡는다.
+    ///
+    /// ⚠ 카메라 위치가 아니라 시작 위치에 맞춘다
+    ///   전투가 시작되면 StartScroll 이 배경을 _initCamX 에 다시 깐다.
+    ///   대기 때 다른 자리에 깔아 두면 그 순간 배경이 한 번 덜컹한다.
+    ///   같은 자리에 두면 전투 시작 때 아무것도 움직이지 않는다.
+    /// </summary>
+    public void ResetBackgroundToStart()
+    {
+        if (_bgWidth <= 0f) _bgWidth = CalcBgWidth();
+        ResetBackground(_initCamX);
+    }
+
+    /// <summary>
+    /// 스크롤이 쓸 카메라. 로비·인게임 카메라가 동시에 있을 수 있으므로
+    /// Camera.main 대신 SceneDirector 가 지목한 인게임 카메라를 쓴다.
+    /// </summary>
+    static Camera ResolveCamera()
+    {
+        var director = SceneDirector.Instance;
+        Camera cam = director != null ? director.InGameCam : null;
+        return cam != null ? cam : Camera.main;
+    }
 
     // ── 메인 루프 ─────────────────────────────────────────────
 
     void LateUpdate()
     {
         if (!_active) return;
-        if (_cam == null) _cam = Camera.main;
+        if (_cam == null) _cam = ResolveCamera();
         if (_cam == null) return;
 
         // ── 선두 아군 추종 ────────────────────────────────────

@@ -11,7 +11,8 @@ using UnityEngine.UI;
 //    1. OnEnable → 직업별 1명씩 4명의 후보 장수 생성
 //    2. ◀ / ▶ 화살표로 후보를 한 명씩 슬라이드
 //    3. 현재 페이지 = 자동 선택 (StartBtn 항상 활성)
-//    4. "게임 시작" → 선택 장수를 UnitData에 등록, BattlePanel 전환
+//    4. "게임 시작" → RunStarter.BeginRun() 후 곧바로 1스테이지 전투 시작
+//                     (BattlePanel 출전 화면은 거치지 않는다)
 //
 //  Inspector 연결 (MainPanelCreator 자동):
 //    _card       : GeneralCandidateCardUI (단일 카드)
@@ -51,6 +52,11 @@ public class MainPanelUI : MonoBehaviour
 
     void OnEnable()
     {
+        // 배경 데모 전투 — 정적인 화면을 피한다. 실전과는 완전히 분리돼 있다.
+        // 로비 배경(Background)과 이 패널의 BackgroundImage 를 내려야 전장이 비친다.
+        SceneDirector.Ensure().RequestArenaBackdrop(true);
+        LobbyDemoBattle.Ensure().Begin();
+
         _currentPage = 0;
 
         GenerateCandidates();
@@ -97,49 +103,21 @@ public class MainPanelUI : MonoBehaviour
         }
     }
 
+    void OnDisable()
+    {
+        // 패널을 떠나면 판을 닫는다 — 로비 어딘가에서 유닛이 계속 싸우고 있으면 안 된다.
+        LobbyDemoBattle.Instance?.End();
+        SceneDirector.Instance?.RequestArenaBackdrop(false);
+    }
+
     // ── 후보 생성 (직업별 1명) ────────────────────────────────
 
     void GenerateCandidates()
     {
+        // 후보를 굴리는 규칙은 RunStarter 가 갖는다 — 자동 시작 경로와 같은 장수가 나와야 한다.
         _candidates = new UnitEntry[4];
-
-        // 랜덤 폴백용 직업별 버킷 (프리셋 이름이 비어있는 슬롯에 사용)
-        var allNames   = UserDataManager.Instance.Get<UnitData>().GetAvailableNames();
-        var jobBuckets = new List<string>[4];
-        for (int i = 0; i < 4; i++) jobBuckets[i] = new List<string>();
-        foreach (string nm in allNames)
-            jobBuckets[(int)UnitJobRoller.GetJob(nm)].Add(nm);
-
-        var presets = GameplayConfig.Current.MainPanelCandidates;
         for (int i = 0; i < 4; i++)
-        {
-            string presetName = (presets != null && i < presets.Length) ? presets[i].Name : "";
-            if (!string.IsNullOrEmpty(presetName))
-            {
-                UnitGrade birth = UnitJobRoller.GetBirthGrade(presetName);
-                _candidates[i] = new UnitEntry
-                {
-                    UnitName     = presetName,
-                    Level        = 1,
-                    Exp          = 0,
-                    GradeUpCount = Mathf.Max(0, (int)UnitGrade.Epic - (int)birth),
-                };
-            }
-            else
-            {
-                string chosen = jobBuckets[i].Count > 0
-                    ? jobBuckets[i][Random.Range(0, jobBuckets[i].Count)]
-                    : allNames.Count > 0 ? allNames[Random.Range(0, allNames.Count)] : $"용사{i + 1}";
-                UnitGrade birth = UnitJobRoller.GetBirthGrade(chosen);
-                _candidates[i] = new UnitEntry
-                {
-                    UnitName     = chosen,
-                    Level        = 1,
-                    Exp          = 0,
-                    GradeUpCount = Mathf.Max(0, (int)UnitGrade.Epic - (int)birth),
-                };
-            }
-        }
+            _candidates[i] = RunStarter.RollCandidate((UnitJob)i);
     }
 
     // ── 화살표 내비게이션 ─────────────────────────────────────
@@ -250,45 +228,14 @@ public class MainPanelUI : MonoBehaviour
     {
         if (_candidates == null) return;
 
-        UnitEntry         selected   = _candidates[_currentPage];
-        UnitData          unitData   = UserDataManager.Instance.Get<UnitData>();
-        DeploymentData    deployData = UserDataManager.Instance.Get<DeploymentData>();
-        StageProgressData progress   = UserDataManager.Instance.Get<StageProgressData>();
-
-        if (!unitData.HasUnit(selected.UnitName))
-            unitData.AddUnit(new UnitEntry
-            {
-                UnitName     = selected.UnitName,
-                Level        = selected.Level,
-                Exp          = selected.Exp,
-                GradeUpCount = selected.GradeUpCount,
-            });
-
-        int emptySlot = 0;
-        for (int i = 0; i < 5; i++)
-        {
-            if (string.IsNullOrEmpty(deployData.GetUnitAt(i))) { emptySlot = i; break; }
-        }
-
-        deployData.Deploy(selected.UnitName, emptySlot);
-        progress.RunInProgress = true;
-        JobSynergyEvaluator.Recalculate();
-
-        // 직업 특성 배정
-        TraitType jobTrait = UnitJobRoller.GetJob(selected.UnitName) switch
-        {
-            UnitJob.Knight       => TraitType.KnightCommand,
-            UnitJob.Archer       => TraitType.ArcherPrecision,
-            UnitJob.Mage         => TraitType.MageArcane,
-            UnitJob.ShieldBearer => TraitType.ShieldFortress,
-            _                    => TraitType.None,
-        };
-        if (jobTrait != TraitType.None)
-            UserDataManager.Instance.Get<RunTraitData>().AddTrait(jobTrait);
+        // 등록·배치·특성·시너지·저장은 전부 RunStarter 안에 있다
+        RunStarter.BeginRun(_candidates[_currentPage]);
 
         PopupManager.Instance.Close(PopupType.HeroDetail);
-        UserDataManager.Instance.SaveAll();
 
-        GetComponentInParent<LobbyNavUI>().Switch(2); // BattlePanel
+        // ⚠ BattlePanel(출전 화면)을 거치지 않고 곧장 1스테이지로 들어간다
+        //   장수를 막 고른 참이라 그 화면에서 더 정할 것이 없다 —
+        //   한 번 더 누르게 하면 시작까지의 클릭만 늘어난다.
+        LobbyManager.Instance.StartBattle();
     }
 }

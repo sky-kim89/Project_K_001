@@ -41,7 +41,25 @@ public class InGameHUD : MonoBehaviour
     void Awake()
     {
         GeneralRuntimeBridge.OnSpawned += HandleGeneralSpawned;
+        BattleManager.OnBattlePrepared += ClearGeneralPanels;
         SetupFixedSlotLayout();
+    }
+
+    /// <summary>
+    /// 장수 카드를 전부 치운다. 새 전투를 준비할 때마다 호출된다.
+    ///
+    /// ⚠ 카드는 스폰 때 만들기만 하고 지우는 곳이 없었다
+    ///   예전엔 전투가 끝나면 InGame 씬이 내려가 카드도 함께 사라졌다.
+    ///   씬이 상주하는 지금은 카드가 계속 쌓인다 — 지난 판의 장수 카드가
+    ///   옛 스탯 그대로 남고(체력 0 짜리 유령 카드), 5칸이 차면 새 장수는
+    ///   아예 카드를 못 받아 "세팅이 안 된 것처럼" 보인다.
+    /// </summary>
+    void ClearGeneralPanels()
+    {
+        foreach (var panel in _panels)
+            if (panel != null) Destroy(panel.gameObject);
+
+        _panels.Clear();
     }
 
     // ── 카드 폭 고정 (항상 5칸 기준) ──────────────────────────
@@ -108,6 +126,7 @@ public class InGameHUD : MonoBehaviour
     void OnDestroy()
     {
         GeneralRuntimeBridge.OnSpawned -= HandleGeneralSpawned;
+        BattleManager.OnBattlePrepared -= ClearGeneralPanels;
     }
 
     // ── 이벤트 핸들러 ─────────────────────────────────────────

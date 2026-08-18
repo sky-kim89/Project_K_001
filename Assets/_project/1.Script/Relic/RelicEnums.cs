@@ -47,6 +47,7 @@ public enum RelicSystemEffect
     EnemyAttackReduction   = 8,  // 적 공격력 -N%
 
     GeneralSlotBonus       = 9,  // 장수 배치 슬롯 +N칸 (기본 1칸)
+    BattleSpeedUnlock      = 10, // 전투 배속 해금 +N단계 (기본 1× 만, Lv1=2×, Lv2=3×)
 }
 
 // ── 유물 ID ───────────────────────────────────────────────────
@@ -69,6 +70,7 @@ public enum RelicId
     R_EnemyHpDown          = 107,  // 시련의 세례      — 적 체력 -5%/레벨,         Lv4, Rare
     R_EnemyAtkDown         = 108,  // 공포의 각인      — 적 공격력 -4%/레벨,       Lv4, Rare
     R_GeneralSlotExpand    = 109,  // 출병 명령        — 장수 배치 슬롯 +1/레벨,   Lv2, Epic
+    R_BattleSpeed          = 110,  // 시간의 고삐      — 전투 배속 +1단계/레벨,    Lv2, Epic
 
     // ── 장수 스텟 유물 (2xx) ─────────────────────────────────
     // 전체 장수 (All)

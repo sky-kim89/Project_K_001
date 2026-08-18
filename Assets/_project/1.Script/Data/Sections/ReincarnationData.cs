@@ -17,8 +17,11 @@ using UnityEngine;
 //    5~9구간 +1pt/스테이지, 10~14 +2pt, 15~19 +3pt, 20~24 +4pt, 25+ +(stage-20)pt
 //    → 스테이지 30 최대: 95pt 누적
 //
-//  ■ 레벨업 비용 공식 (GameplayConfig.RelicLevelUpCostExponent 사용)
-//    기본 지수 2: (currentLevel+1)²  →  0→1: 1pt, 1→2: 4pt, 4→5: 25pt
+//  ■ 레벨업 비용 공식 (GameplayConfig 의 지수 + 희귀도 배율)
+//    (currentLevel+1)^지수 × 희귀도 배율 → 올림.
+//    기본 지수 2 · 일반 유물 기준: 0→1: 1pt, 1→2: 4pt, 4→5: 25pt
+//    희귀도 배율(일반 1.0 / 언커먼 1.6 / 희귀 2.5 / 영웅 4 / 전설 6)이 곱해져
+//    센 유물일수록 비싸다. 진입점은 RelicData.LevelUpCost(level) 하나다.
 // ============================================================
 
 [Serializable]
@@ -70,15 +73,20 @@ public class ReincarnationData : ISaveSection
 
     /// <summary>
     /// 현재 레벨 → 다음 레벨 강화 비용.
-    /// 공식: (currentLevel+1)^GameplayConfig.RelicLevelUpCostExponent (기본 지수 2).
-    /// 0→1: 1pt, 1→2: 4pt, 2→3: 9pt, 4→5: 25pt.
+    /// 공식: (currentLevel+1)^지수 × 희귀도 배율 × costWeight, 올림.
+    ///
+    /// ⚠ 이 오버로드를 직접 부르지 말고 RelicData.LevelUpCost(level) 을 쓸 것.
+    ///   희귀도·가중치를 빠뜨리면 유물이 다시 전부 같은 가격이 된다.
     /// </summary>
-    public static int LevelUpCost(int currentLevel)
+    public static int LevelUpCost(int currentLevel, RelicRarity rarity, float costWeight = 1f)
     {
-        float exp = GameplayConfig.Current != null
-            ? GameplayConfig.Current.RelicLevelUpCostExponent
-            : 2f;
-        return Mathf.Max(1, Mathf.RoundToInt(Mathf.Pow(currentLevel + 1, exp)));
+        var cfg = GameplayConfig.Current;
+        float exp = cfg != null ? cfg.RelicLevelUpCostExponent : 2f;
+        float mul = cfg != null ? cfg.GetRarityCostMultiplier(rarity) : 1f;
+
+        // 올림이다 — 반올림하면 2.5pt 짜리가 2pt 로 깎여 희귀도 간격이 뭉개진다.
+        return Mathf.Max(1, Mathf.CeilToInt(
+            Mathf.Pow(currentLevel + 1, exp) * mul * Mathf.Max(0.1f, costWeight)));
     }
 
     // ⚠ AcquireCost(희귀도별 첫 획득 비용) 는 삭제됐다.

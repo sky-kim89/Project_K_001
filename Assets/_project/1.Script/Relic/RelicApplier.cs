@@ -159,6 +159,18 @@ public static class RelicApplier
             5);
     }
 
+    /// <summary>
+    /// 전투 배속으로 쓸 수 있는 단계 수. 기본 1단계(1× 뿐) + 유물 레벨.
+    /// Lv1 → 2단계(1×·2×), Lv2 → 3단계(1×·2×·3×).
+    /// ⚠ 배속을 묻는 곳은 전부 여기를 거친다 — TopBarUI 가 직접 세면 유물이 무시된다.
+    /// </summary>
+    public static int GetBattleSpeedStepCount()
+    {
+        var udm = UserDataManager.Instance;
+        return 1 + GetSystemInt(RelicSystemEffect.BattleSpeedUnlock,
+                                udm?.Get<RelicInventoryData>(), RelicDatabase.Current);
+    }
+
     // ── 내부 ──────────────────────────────────────────────────
 
     static void ApplyStatLine(UnitStat stat, StatType type, float valuePerLevel, int level, bool isAbsolute)

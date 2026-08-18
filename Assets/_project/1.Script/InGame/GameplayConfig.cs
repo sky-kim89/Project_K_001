@@ -142,6 +142,22 @@ public class GameplayConfig : ScriptableObject
     [Tooltip("강화 비용 지수. 기본 2 → (현재레벨+1)^지수 pt.\n예) 지수 2: 0→1: 1pt, 1→2: 4pt, 4→5: 25pt")]
     public float RelicLevelUpCostExponent = 2f;
 
+    // ⚠ 지수만으로는 모든 유물이 같은 가격이 된다
+    //   +5% 스탯짜리와 '장수 배치 슬롯 +1' 이 똑같이 1pt 면 강화 순서를 고민할 이유가 없다.
+    //   효과의 세기는 이미 Rarity 에 적혀 있으므로 그 값을 그대로 가격 배율로 쓴다.
+    //   같은 희귀도 안에서 더 나눠야 하면 RelicData.CostWeight 로 개별 조정한다.
+    [Tooltip("희귀도별 강화 비용 배율 — 인덱스 = RelicRarity (일반·언커먼·희귀·영웅·전설)")]
+    public float[] RelicRarityCostMultipliers = { 1.0f, 1.6f, 2.5f, 4.0f, 6.0f };
+
+    /// <summary>희귀도 비용 배율. 배열이 짧거나 값이 비었으면 1배(예전 동작)로 본다.</summary>
+    public float GetRarityCostMultiplier(RelicRarity rarity)
+    {
+        int i = (int)rarity;
+        if (RelicRarityCostMultipliers == null || i < 0 || i >= RelicRarityCostMultipliers.Length)
+            return 1f;
+        return RelicRarityCostMultipliers[i] > 0f ? RelicRarityCostMultipliers[i] : 1f;
+    }
+
     // ──────────────────────────────────────────────────────────
     // ■ 디버그
     // ──────────────────────────────────────────────────────────
@@ -337,14 +353,16 @@ public class GameplayConfig : ScriptableObject
             CritChance  = 0.08f,
             CritDamage  = 1.60f,
         };
-        // ⚠ 보스는 '느리고 무겁게' — 공격속도 1/3, 공격력 3배 (DPS 는 그대로)
+        // ⚠ 보스는 '느리고 무겁게' — 공격속도 1/3, 평타 피해 3배 (DPS 는 그대로)
         //   초당 여러 번 깨작거리면 1,000마리 난전 속에서 보스가 안 보인다.
         //   한 대씩 크게 때려야 "보스한테 맞았다" 가 화면과 숫자로 읽힌다.
         //   AoE·넉백이 이 한 방에 얹히므로 체감 차이가 더 벌어진다.
+        //   단, ×3 은 여기 Attack 이 아니라 BossAttackSystem.BasicAttackMultiplier 가 갖는다.
+        //   스텟을 올리면 보스 스킬(슬램·돌진·사형선고) 피해까지 3배가 되기 때문이다.
         BossRange = new EnemyGradeStatRange
         {
             Hp          = new FloatRange(5000f, 14000f), // ×1.8 상향 (AoE 공격 보정)
-            Attack      = new FloatRange(660f,  1650f),  // ×3 — 한 방이 무겁다
+            Attack      = new FloatRange(220f,  550f),   // 스킬 계수의 기준값 — 평타 ×3 은 시스템이 얹는다
             Defense     = new FloatRange(0.25f, 0.50f),
             AttackRange = new FloatRange(2.5f,  4.5f),
             AttackSpeed = new FloatRange(0.133f, 0.30f), // ÷3 — 3~7.5초에 한 번

@@ -11,7 +11,7 @@ using UnityEngine;
 //    ⚠ "획득" 이라는 개념은 없다. 모든 유물은 처음부터 0레벨로 존재하며,
 //      0레벨 = 효과 없음, 1레벨부터 스텟이 붙는다. 전부 강화일 뿐이다.
 //      따라서 딕셔너리에 없는 ID = 0레벨 (GetLevel 이 0 을 반환).
-//    강화 비용: ReincarnationData.LevelUpCost(currentLevel) 참조.
+//    강화 비용: RelicData.LevelUpCost(currentLevel) 참조 (희귀도별로 가격이 다르다).
 //
 //  ■ 런 초기화 없음 — 영구 저장 (RunAbilityData 와 다름)
 // ============================================================
@@ -90,10 +90,17 @@ public class RelicInventoryData : ISaveSection
     {
         if (_owned.Count == 0) return 0;
 
+        // ⚠ 유물마다 가격이 다르다 — 희귀도 배율이 붙기 때문에
+        //   RelicData 를 거치지 않고 계산하면 환불액이 실제 지불액과 어긋난다.
+        var db = RelicDatabase.Current;
+
         int refund = 0;
         foreach (var kvp in _owned)
+        {
+            var data = db.Get(kvp.Key);
             for (int lv = 0; lv < kvp.Value; lv++)
-                refund += ReincarnationData.LevelUpCost(lv);
+                refund += data.LevelUpCost(lv);
+        }
 
         _owned.Clear();   // 비어 있음 = 전부 0레벨 (GetLevel 이 0 을 돌려준다)
         return refund;

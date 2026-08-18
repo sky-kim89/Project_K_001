@@ -210,7 +210,7 @@ public class RelicPanelUI : MonoBehaviour
         }
         else
         {
-            int  cost      = ReincarnationData.LevelUpCost(level);
+            int  cost      = data.LevelUpCost(level);
             bool canAfford = (_reincData?.ReincarnationPoints ?? 0) >= cost;
 
             // 비용은 강화 버튼 위에 겹쳐 있다 (카드 직계 자식 "CostText").

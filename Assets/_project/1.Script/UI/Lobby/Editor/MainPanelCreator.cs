@@ -53,7 +53,10 @@ public static class MainPanelCreator
     // ⚠ CardW 620 은 스탯 값이 두 줄로 접히지 않는 최소 폭이다 (440 에서 접혔다).
     //   MercenaryPopupCreator 도 이 카드를 그대로 쓴다 — 줄이면 양쪽이 같이 깨진다.
     public const float CardW = 620f;
-    const float CardTopY  =  46f;
+    // ⚠ 카드·조작 컬럼은 화면 '아래' 기준으로 붙인다
+    //   위 기준으로 매달아 두면 카드 높이(CardH)가 바뀔 때마다 아래 여백이 달라진다.
+    //   바닥에서 이만큼만 띄우면 카드가 커지든 작아지든 아래 간격은 그대로다.
+    const float CardBottomY = 28f;
     const int   Lp        =  16;    // 카드 내부 좌 여백 (GradeW 포함)
     const int   Rp        =  16;
 
@@ -167,7 +170,10 @@ public static class MainPanelCreator
         bgImg.transform.SetParent(root.transform, false);
         Stretch(bgImg.GetComponent<RectTransform>());
         var bgImgComp = bgImg.GetComponent<Image>();
-        bgImgComp.color         = Color.white;
+        // ⚠ 투명하게 둔다 — 이 뒤에서 배경 데모 전투가 돈다
+        //   흰색 불투명으로 깔면 전투가 한 픽셀도 보이지 않는다.
+        //   오브젝트와 컴포넌트는 남겨 둔다 (MainPanelUI._backgroundImage 참조 유지).
+        bgImgComp.color         = new Color(1f, 1f, 1f, 0f);
         bgImgComp.preserveAspect = false;
         bgImgComp.raycastTarget  = false;
 
@@ -191,10 +197,11 @@ public static class MainPanelCreator
         //   카드는 왼쪽, 조작(난이도·출정)은 오른쪽으로 완전히 갈랐다.
         var card = MakeImg("CardContainer", right, CardBg);
         {
+            // 좌하단 기준 — 바닥에서 CardBottomY 만큼 띄운다
             var rt = card.GetComponent<RectTransform>();
-            rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
-            rt.pivot     = new Vector2(0f, 1f);
-            rt.anchoredPosition = new Vector2(CardLeftX, -CardTopY);
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
+            rt.pivot     = new Vector2(0f, 0f);
+            rt.anchoredPosition = new Vector2(CardLeftX, CardBottomY);
             rt.sizeDelta = new Vector2(CardW, CardH);
         }
         var cardUI = card.AddComponent<GeneralCandidateCardUI>();
@@ -236,11 +243,12 @@ public static class MainPanelCreator
         {
             // 좌우 스트레치 — 카드 오른쪽 끝에서 ColGap 띄우고, 화면 우단에서 ColGap 남긴다.
             // 남는 폭을 그대로 쓰므로 세 간격이 항상 같아진다.
+            // 세로는 카드와 같은 줄에 맞춘다 — 바닥 기준, 높이 CardH.
             var rt = opCol.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(0f, 1f);
-            rt.anchorMax = new Vector2(1f, 1f);
-            rt.offsetMin = new Vector2(CardLeftX + CardW + ColGap, -(CardTopY + CardH));
-            rt.offsetMax = new Vector2(-ColGap, -CardTopY);
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(1f, 0f);
+            rt.offsetMin = new Vector2(CardLeftX + CardW + ColGap, CardBottomY);
+            rt.offsetMax = new Vector2(-ColGap, CardBottomY + CardH);
         }
 
         BuildDifficultyPanel(opCol);

@@ -33,7 +33,9 @@ public class BattleManager : Singleton<BattleManager>
 
     BattleContext  _context;
     BattleModeBase _mode;
-    bool           _wave1AlliesSpawned;  // StartBattleRoutine 에서 웨이브1 아군 선스폰 여부
+    bool           _prepared;            // PrepareRoutine 완료 여부 — 웨이브 개시 대기 조건
+    bool           _wavesStarted;        // 웨이브 루프 중복 개시 방지
+    bool           _wave1AlliesSpawned;  // PrepareRoutine 에서 웨이브1 아군 선스폰 여부
 
     // ── UI 이벤트 ─────────────────────────────────────────────
 
@@ -42,6 +44,21 @@ public class BattleManager : Singleton<BattleManager>
 
     /// <summary>웨이브 1 아군(장군) 스폰 완료. InGameManager 가 로딩 팝업 닫기에 사용.</summary>
     public static event System.Action OnAlliesReady;
+
+    /// <summary>
+    /// 웨이브가 실제로 시작될 때 발행.
+    /// ⚠ OnAlliesReady 와 구분해야 한다 — 출전 대기 화면에서도 아군은 서므로
+    ///   그 신호로 전투 연출(카메라 추종 등)을 켜면 대기 중에 카메라를 빼앗긴다.
+    /// </summary>
+    public static event System.Action OnWavesStarted;
+
+    /// <summary>
+    /// 새 전투 준비 직전에 발행 — 아군이 스폰되기 전이다.
+    /// ⚠ 씬이 상주하면서 필요해졌다
+    ///   예전엔 전투가 끝날 때마다 InGame 씬이 통째로 내려가 HUD 도 새로 만들어졌다.
+    ///   지금은 씬이 계속 살아 있으므로, 지난 전투의 흔적을 여기서 스스로 지워야 한다.
+    /// </summary>
+    public static event System.Action OnBattlePrepared;
 
     /// <summary>전체 웨이브 클리어(승리). InGameManager 가 결과 팝업 오픈에 사용.</summary>
     public static event System.Action OnVictory;
@@ -63,13 +80,36 @@ public class BattleManager : Singleton<BattleManager>
     /// <summary>아군이 전멸했는지 여부. ECS 시스템에서 프레임마다 읽는다.</summary>
     public bool IsAllyDefeated => _context?.IsAllyDefeated ?? false;
 
+    /// <summary>
+    /// 웨이브가 실제로 돌고 있는가 (적이 나오는 구간).
+    ///
+    /// ⚠ 출전 대기와 전투를 가르는 값이다
+    ///   대기 중에는 아군만 서 있고 카메라도 옆으로 밀려 있다. 전투용 규칙
+    ///   (화면 밖 사망 판정 등)을 그대로 적용하면 방금 세운 부대가 정리돼 버린다.
+    /// </summary>
+    public bool IsWaveRunning { get; private set; }
+
     /// <summary>적군이 전멸했는지 여부(웨이브 클리어). ECS 시스템에서 프레임마다 읽는다.</summary>
     public bool IsEnemyDefeated => _context?.IsEnemyClear ?? false;
 
     // ── Unity 생명주기 ─────────────────────────────────────────
 
-    /// <summary>배틀을 시작한다.</summary>
+    /// <summary>배틀을 시작한다 — 대기 준비와 웨이브 개시를 이어서 실행한다.</summary>
     public void StartBattle(BattleModeBase mode)
+    {
+        PrepareBattle(mode);
+        StartCoroutine(BeginWavesWhenReady());
+    }
+
+    /// <summary>
+    /// 아군만 세워 두는 '출전 대기' 상태까지 준비한다. 적은 나오지 않는다.
+    ///
+    /// ⚠ 여기서 멈출 수 있어야 출전 화면이 성립한다
+    ///   화면에 적이 없으면 UnitMovementSystem 이 아군을 Idle 로 세워 두므로
+    ///   (아군 + 타겟 없음 + 적 미등장 → 정지), 준비만 해 두고 기다려도
+    ///   장수들이 제자리에 서 있는 그림이 그대로 나온다.
+    /// </summary>
+    public void PrepareBattle(BattleModeBase mode)
     {
         // 이전 배틀 잔여 유닛이 있을 경우 정리
         if (_context != null)
@@ -82,12 +122,40 @@ public class BattleManager : Singleton<BattleManager>
         _mode.Initialize(_context, AllySpawner, EnemySpawner);
         BattleStatsTracker.Instance?.Reset();
 
-        StartCoroutine(StartBattleRoutine());
+        _prepared     = false;
+        _wavesStarted = false;
+
+        // 아군을 스폰하기 전에 알린다 — 듣는 쪽이 지난 전투 잔재를 지울 기회
+        OnBattlePrepared?.Invoke();
+
+        StartCoroutine(PrepareRoutine());
     }
 
-    // 웨이브1 아군을 즉시 스폰한 뒤 적군 프리웜 → 배틀 루틴 시작.
-    // 아군 패널이 게임 시작과 동시에 표시된다.
-    IEnumerator StartBattleRoutine()
+    /// <summary>대기 중이던 전투의 웨이브를 시작한다. PrepareBattle 이 끝난 뒤에 부를 것.</summary>
+    public void BeginWaves()
+    {
+        if (_context == null)
+        {
+            Debug.LogWarning("[BattleManager] 준비된 전투가 없습니다 — PrepareBattle 을 먼저 호출하세요.");
+            return;
+        }
+        StartCoroutine(BeginWavesWhenReady());
+    }
+
+    IEnumerator BeginWavesWhenReady()
+    {
+        // ⚠ 두 번 들어오면 웨이브가 두 겹으로 돈다
+        //   StartBattle(직접 진입)과 BeginWaves(대기 → 시작)가 같은 문을 쓰므로
+        //   여기서 한 번만 통과시킨다.
+        if (_wavesStarted) yield break;
+        _wavesStarted = true;
+
+        while (!_prepared) yield return null;
+        yield return StartCoroutine(WaveRoutine());
+    }
+
+    // 웨이브1 아군을 즉시 스폰해 '대기' 상태를 만든다. 적은 아직 없다.
+    IEnumerator PrepareRoutine()
     {
         // ── 지난 스테이지 외형 캐시 회수 ────────────────────────
         // 적 외형 키는 스테이지 번호(S{n}W{w}E)를 물고 있어 스테이지가 바뀌면 전부 갈린다.
@@ -109,11 +177,22 @@ public class BattleManager : Singleton<BattleManager>
         // 장군 스폰 완료 통보 → InGameManager 가 로딩 팝업을 닫는다
         OnAlliesReady?.Invoke();
 
-        // OnBattleStart 트리거 어빌리티 일괄 발동
-        FireBattleStartTriggers();
-
         // 특성 이펙트 프리웜 — 적군 프리웜과 같은 이유로 전투 시작 전에 채운다
         PrewarmTraitEffects(ally1 is { Count: > 0 } ? CountUnits(ally1) : 0);
+
+        _prepared = true;
+    }
+
+    // 적군 프리웜 → 웨이브 루프.
+    IEnumerator WaveRoutine()
+    {
+        IsWaveRunning = true;
+        OnWavesStarted?.Invoke();
+
+        // ⚠ 전투 시작 트리거는 '웨이브가 시작될 때' 터져야 한다
+        //   출전 대기 화면에서 미리 터뜨리면 버프 지속시간이 대기 중에 흘러
+        //   정작 첫 웨이브에서는 절반만 남는다.
+        FireBattleStartTriggers();
 
         // ── 웨이브 1 적군만 프리웜 (즉시 스폰을 위한 최소 준비) ──
         List<SpawnEntry> wave1Enemies = _mode.GetEnemySpawnEntries(1);
@@ -206,6 +285,7 @@ public class BattleManager : Singleton<BattleManager>
                 ApplyStageClearTraitStacks();
                 _mode.ApplyStageClearReward();
                 _context.State = BattleState.BattleVictory;
+                IsWaveRunning  = false;
                 LogBattleStats("승리");
                 _mode.OnBattleVictory();
                 OnVictory?.Invoke();
@@ -421,6 +501,7 @@ public class BattleManager : Singleton<BattleManager>
         if (_context.IsAllyDefeated)
         {
             _context.State = BattleState.BattleDefeat;
+            IsWaveRunning  = false;
             Debug.Log($"[BattleManager] 패배 — 웨이브 {_context.CurrentWave}/{_context.TotalWaves}" +
                       $"  아군 생존: {_context.AliveAllyCount}" +
                       $"  적군 잔존: {_context.AliveEnemyCount}");
@@ -468,6 +549,10 @@ public class BattleManager : Singleton<BattleManager>
     /// </summary>
     public void DespawnAllUnits()
     {
+        // 유닛을 다 치우는 시점 = 웨이브는 끝났다.
+        // 승리·패배·판 닫기 어느 경로로 왔든 여기를 지나므로 한 곳에서 내린다.
+        IsWaveRunning = false;
+
         StopAllCoroutines();
         _context = null;
         _mode    = null;

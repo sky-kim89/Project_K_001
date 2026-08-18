@@ -20,7 +20,7 @@ public enum AbilityId
     A10 = 110, // 전사의 돌격   — Melee       Attack +8%, MoveSpeed +6%
     A11 = 111, // 원거리 집중   — Ranged      AttackRange +8%, Attack +6%
     A12 = 112, // 장군의 위엄   — General     MaxHp +10%, Defense +6%
-    A13 = 113, // 병사의 투지   — Soldier     Attack +10%, MoveSpeed +6%
+    A13 = 113, // 병사의 투지   — Soldier     Attack +15%, MoveSpeed +9%   (병사 전용 ×1.5)
     A14 = 114, // 치명의 감각   — All         CritChance +6%
     A15 = 115, // 넓은 시야     — All         AttackRange +8%
 
@@ -36,7 +36,7 @@ public enum AbilityId
     B09 = 209, // 광전사의 기세 — Melee       Attack +15%, MoveSpeed +10%
     B10 = 210, // 정밀 사격     — Ranged      AttackRange +12%, Attack +12%
     B11 = 211, // 영웅의 기상   — General     MaxHp +18%, Defense +12%
-    B12 = 212, // 병사의 맹세   — Soldier     Attack +18%, MoveSpeed +12%
+    B12 = 212, // 병사의 맹세   — Soldier     Attack +27%, MoveSpeed +18%  (병사 전용 ×1.5)
 
     // ── 특수 (Special, 301~311) ─────────────────────────────
     // Special 등급은 트리거 기반 — AbilityData 서브클래스로 구현

@@ -25,6 +25,12 @@ MonoBehaviour:
   RelicAcquireCostEpic: 4
   RelicAcquireCostLegendary: 5
   RelicLevelUpCostExponent: 2
+  RelicRarityCostMultipliers:
+  - 1
+  - 1.6
+  - 2.5
+  - 4
+  - 6
   EnablePassiveLog: 1
   EnableActiveLog: 1
   EpicSlots: 3
@@ -104,8 +110,8 @@ MonoBehaviour:
       Min: 2000
       Max: 8000
     Attack:
-      Min: 450
-      Max: 1200
+      Min: 150
+      Max: 400
     Defense:
       Min: 0.25
       Max: 0.85

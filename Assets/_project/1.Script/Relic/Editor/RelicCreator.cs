@@ -9,7 +9,9 @@ using UnityEngine;
 //    1. Assets/Resources/Relics/ 에 RelicData SO 30종 생성
 //    2. Assets/Resources/RelicDatabase.asset 생성 후 전체 등록
 //
-//  비용 공식: ReincarnationData.LevelUpCost(currentLevel) = (N+1)²
+//  비용 공식: RelicData.LevelUpCost(현재레벨) = (N+1)² × 희귀도 배율
+//    희귀도 배율은 GameplayConfig.RelicRarityCostMultipliers 에 있다.
+//    같은 희귀도에서 더 나눠야 하면 RelicData.CostWeight 로 조정한다.
 //  이펙트 IsAbsoluteValue:
 //    - 대형 스탯 (MaxHp/Attack/Speed/Range) → false (기저값 대비 %)
 //    - 소형 스탯 (SoldierCount/CritChance/Defense/SkillCooldownReduce) → true (절대값 가산)
@@ -92,6 +94,10 @@ public static class RelicCreator
         // 장수 배치 슬롯
         MakeSys(RelicId.R_GeneralSlotExpand, "출병 명령", RelicRarity.Epic, 2,
             RelicSystemEffect.GeneralSlotBonus, 1f, true);  // Lv1=+1칸, Lv2=+2칸
+
+        // 전투 배속 해금 — 기본은 1× 뿐이다. 이 유물이 2×·3× 를 연다.
+        MakeSys(RelicId.R_BattleSpeed, "시간의 고삐", RelicRarity.Epic, 2,
+            RelicSystemEffect.BattleSpeedUnlock, 1f, true);  // Lv1=2×, Lv2=3×
     }
 
     // ── 장수 스탯 유물 (2xx) ─────────────────────────────────

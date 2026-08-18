@@ -279,15 +279,17 @@ public static class TraitCreator
         {
             type         = TraitType.CommonLateBloom,
             name         = "대기만성",
-            desc         = "느리게 여무는 그릇. 스테이지를 클리어할 때마다 공격력과 최대 체력이 5%씩 오른다.",
+            desc         = "느리게 여무는 그릇. 스테이지를 클리어할 때마다 공격력과 최대 체력이 1%씩 오른다.",
             job          = (UnitJob)255,
             fx           = System.Array.Empty<(StatType, float, bool)>(),
             stackTrigger = PassiveTrigger.StageClear,
             maxStacks    = 30,   // 게임 최대 스테이지 수와 동일 — 사실상 런 내내 성장
+            // ⚠ 스택당 5% 는 30스택에서 +150% 였다 — 특성 하나가 빌드를 통째로 이겼다.
+            //   1% 로 내려 만렙 +30% 로 맞춘다. 다른 성장형 특성과 같은 눈금이다.
             stackFx      = new[]
             {
-                (StatType.Attack, 0.05f, true),
-                (StatType.MaxHp,  0.05f, true),
+                (StatType.Attack, 0.01f, true),
+                (StatType.MaxHp,  0.01f, true),
             },
         },
 
