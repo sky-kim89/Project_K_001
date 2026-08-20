@@ -6,7 +6,9 @@ using UnityEngine;
 //  난이도 선택 상태 저장 섹션.
 //
 //  SelectedTier  : 지금 고른 등급. 런 시작 시점에 고정된다.
-//  ClearedTier   : 완주해 본 최고 등급. 이 값 +1 까지 선택할 수 있다.
+//  ClearedTier   : 해금 기준을 넘겨 본 최고 등급. 이 값 +1 까지 선택할 수 있다.
+//                  기록 시점은 InGameManager.TryUnlockNextDifficulty —
+//                  StageConfig.DifficultyUnlockStage(기본 20) 도달이다.
 //
 //  ⚠ 환생으로 초기화하지 않는다
 //    런 데이터가 아니라 계정 진행도다. 해금 기록이 날아가면

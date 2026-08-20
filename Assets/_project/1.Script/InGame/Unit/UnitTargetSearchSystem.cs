@@ -109,6 +109,17 @@ namespace BattleGame.Units
     public static class UnitGridConstants
     {
         public const float CellSize = 3f;
+
+        /// <summary>
+        /// 타겟 탐색 반경 = CellSize × FindNearestTargetJob.SearchRadius(3).
+        /// 곧 "유닛이 적을 볼 수 있는 거리" 다.
+        ///
+        /// ⚠ 돌진형 스킬의 이동 거리 상한으로도 쓴다
+        ///   HasTarget 은 침투 적(중앙선 뒤)일 때 최대 50유닛까지 유지된다.
+        ///   그 값을 그대로 도약 목적지로 쓰면 장수가 전장을 가로질러 날아가
+        ///   적 후방 한가운데에 홀로 떨어진다. 시야 거리로 잘라야 한다.
+        /// </summary>
+        public const float SightRange = CellSize * 3f;
     }
 
     // ──────────────────────────────────────────
@@ -177,9 +188,12 @@ namespace BattleGame.Units
             in  HealthComponent       health,
             ref AttackComponent       attack)
         {
-            // 사망이 확정된 유닛은 타겟을 놓는다 — 공격도 제자리 대기도 하지 않고
-            // 이동 분기("타겟 없음 → 전진")로 넘어가 맞을 때까지 걷기만 한다.
-            if (health.IsDoomed) { attack.HasTarget = false; return; }
+            // ⚠ 사망 확정(IsDoomed)이어도 타겟을 놓지 않는다
+            //   예전엔 여기서 HasTarget = false 로 놓았다. 그러면 UnitMovementSystem 의
+            //   "적팀 + 타겟 없음 → 전진" 분기로 떨어져, **화살이 아직 날아오는 중인데
+            //   멀쩡히 싸우던 놈이 갑자기 아군 쪽으로 달려나갔다.**
+            //   IsDoomed 는 오버킬을 막으려고 **남이 나를 조준하지 않게** 하는 표식이다
+            //   (그 역할은 위 그리드 등록 Job 이 이미 한다). 맞기 전까지는 평소대로 둔다.
 
             // 이미 유효한 타겟이 있으면 유지 — 단, 탐색 범위 초과 시 재탐색
             // (넉백·이동 스킬로 타겟이 멀리 날아간 경우 주변 적을 새로 탐색)

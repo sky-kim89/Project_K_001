@@ -72,7 +72,7 @@ public class CodexData : ISaveSection
     //  호출부가 짧아지도록 정적 진입점을 둔다.
     //  세이브가 아직 없는 시점(스플래시 등)에 불려도 조용히 무시된다.
 
-    static CodexData Current => UserDataManager.Instance?.Get<CodexData>();
+    public static CodexData Current => UserDataManager.Instance?.Get<CodexData>();
 
     public static void Record(AbilityId id) => Current?.RecordAbility(id);
     public static void Record(TraitType t)  => Current?.RecordTrait(t);

@@ -184,6 +184,9 @@ public static class DisassemblePopupCreator
         Center(EditorUIBuilder.XMark(body, "Mark", UIScale.FontMd, Color.white));
         SetObj(so, "_closeBtn", closeBtn);
 
+        // 도움말 — 닫기 버튼 왼쪽
+        EditorUIBuilder.InfoBtn(header, TutorialId.HelpDisassemble, 76f, -24f);
+
         // 보유 강화석 — 분해로 얻는 재화라 헤더에 상시 노출한다
         BuildStoneWidget(header);
     }
@@ -211,7 +214,8 @@ public static class DisassemblePopupCreator
         var rt = group.GetComponent<RectTransform>();
         rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
         rt.pivot     = new Vector2(1f, 0.5f);
-        rt.anchoredPosition = new Vector2(-(24f + 76f + 20f), 0f);
+        // 닫기 + 도움말 묶음 왼쪽
+        rt.anchoredPosition = new Vector2(-(EditorUIBuilder.HeaderRightBlock(76f, 24f) + 20f), 0f);
         rt.sizeDelta        = new Vector2(W, UIScale.RowMd);
 
         var icon = EditorUIBuilder.Img(group, "Icon", StoneColor);

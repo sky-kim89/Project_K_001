@@ -52,7 +52,10 @@ public static class AbilityUIHelper
         {
             StatType.Defense             => Percent(value),
             StatType.CritChance          => Percent(value),
-            StatType.CritDamage          => value >= 0f ? $"+{value:0.##}배" : $"{value:0.##}배",
+            // ⚠ 스탯 화면(StatDisplayHelper.FormatStat)과 단위가 같아야 한다
+            //   거긴 % 인데 여기만 "배" 로 두면, 어빌리티가 "+0.3배" 라고 말한 뒤
+            //   장수 스탯에는 "+30.0%" 로 붙어 같은 값인지 알 수 없다.
+            StatType.CritDamage          => Percent(value),
             StatType.SkillCooldownReduce => Percent(value),
             StatType.ExpGainBonus        => Percent(value),
             StatType.SoldierCount        => Count(value),

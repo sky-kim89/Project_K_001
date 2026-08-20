@@ -70,6 +70,18 @@ public class GeneralPanelUI : MonoBehaviour
     EntityManager          _em;
     Entity                 _entity;
     EntityQuery            _soldierQuery;
+
+    /// <summary>
+    /// 마지막으로 읽은 최대 체력.
+    ///
+    /// ⚠ 이 값은 캐시가 아니라 '직전 프레임의 사본' 이다
+    ///   최대 체력은 고정값이 아니다 — UnitStatusEffectSystem 이 매 프레임
+    ///   Final[MaxHp] 를 버프로 다시 계산하고, 늘어난 만큼 CurrentHp 까지 올린다
+    ///   (특성 K4 전우의 분노 = 병사 사망마다 +1%, 전투함성·장비·어빌리티 등).
+    ///   롤 시점의 Base 를 분모로 박아 두면 바가 100% 에 붙고 "1350/1200" 이 찍힌다.
+    ///   RefreshHp 가 매 프레임 갱신하고, 여기 남은 값은 엔티티가 사라진 뒤
+    ///   사망 표시에만 쓴다.
+    /// </summary>
     float                  _maxHp;
     int                    _maxSoldierCount;
     bool                   _initialized;
@@ -103,6 +115,14 @@ public class GeneralPanelUI : MonoBehaviour
         _entity      = link.Entity;
 
         // ── 초기 스탯값 ──────────────────────────────────────
+        //
+        //  ⚠ 최대 체력은 여기서 확정하지 않는다 — 첫 프레임까지의 씨앗일 뿐이다
+        //    버프로 계속 변하는 값이라 RefreshHp 가 매 프레임 다시 읽는다 (_maxHp 주석 참고).
+        //
+        //  ⚠ 병사 수는 반대로 여기서 확정한다
+        //    분모는 "실제로 스폰된 병사 수" 라야 한다. SpawnSoldiers 도 같은 롤 값
+        //    (Base[SoldierCount])으로 스폰하므로 둘이 일치한다. 전투 중 병사 수 버프는
+        //    이미 세워 둔 병사를 늘리지 않으니 분모도 따라 움직이면 안 된다.
         var stat         = bridge.GetRolledStat();
         _maxHp           = Mathf.Max(1f, stat.Get(StatType.MaxHp));
         _maxSoldierCount = Mathf.Max(1, Mathf.RoundToInt(stat.Get(StatType.SoldierCount)));
@@ -185,6 +205,10 @@ public class GeneralPanelUI : MonoBehaviour
     {
         if (!_em.HasComponent<HealthComponent>(_entity)) return;
 
+        // 분모부터 최신으로 맞춘다 — 버프가 최대 체력을 올린 프레임에 CurrentHp 도 함께 오른다.
+        // 낡은 분모를 쓰면 cur > _maxHp 가 되어 바가 꽉 찬 채로 굳는다.
+        _maxHp = CurrentMaxHp();
+
         float cur   = _em.GetComponentData<HealthComponent>(_entity).CurrentHp;
         float ratio = Mathf.Clamp01(cur / _maxHp);
 
@@ -195,6 +219,21 @@ public class GeneralPanelUI : MonoBehaviour
             _hpFill.color = HpColorFor(ratio);
         }
         if (_hpText != null) _hpText.text = $"{Mathf.CeilToInt(cur)}/{Mathf.RoundToInt(_maxHp)}";
+    }
+
+    /// <summary>
+    /// 지금 이 순간의 최대 체력 — 버프까지 반영된 값.
+    ///
+    /// ⚠ Base 가 아니라 Final 을 읽는다
+    ///   Base 는 성장·장비로 확정된 롤 값이고, 전투 중 버프는 Final 에만 얹힌다.
+    ///   전투 시스템이 전부 Final 로 판정하므로 HUD 도 같은 값을 봐야 한다.
+    ///
+    /// 스탯 컴포넌트가 없는 프레임(스폰 직후 등)에는 직전 값을 그대로 쓴다.
+    /// </summary>
+    float CurrentMaxHp()
+    {
+        if (!_em.HasComponent<StatComponent>(_entity)) return _maxHp;
+        return Mathf.Max(1f, _em.GetComponentData<StatComponent>(_entity).Final[StatType.MaxHp]);
     }
 
     /// <summary>50% 위는 초록→노랑, 아래는 노랑→빨강.</summary>

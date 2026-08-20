@@ -176,6 +176,9 @@ public static class MercenaryPopupCreator
         CenterMark(EditorUIBuilder.XMark(body, "Mark", UIScale.FontMd, Color.white));
         SetObj(so, "_closeBtn", closeBtn);
 
+        // 도움말 — 닫기 버튼 왼쪽
+        EditorUIBuilder.InfoBtn(header, TutorialId.HelpMercenary, 76f, -24f);
+
         // 보유 골드 — 닫기 버튼 왼쪽. 고용에 골드가 나가므로 잔액이 보여야 한다.
         // 로비 TopBar 와 같은 CurrencyWidget 이라 값이 자동으로 갱신된다.
         BuildGoldWidget(header);
@@ -192,7 +195,8 @@ public static class MercenaryPopupCreator
         var rt = group.GetComponent<RectTransform>();
         rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
         rt.pivot     = new Vector2(1f, 0.5f);
-        rt.anchoredPosition = new Vector2(-(24f + 76f + 20f), 0f);   // 닫기 버튼 왼쪽
+        // 닫기 + 도움말 묶음 왼쪽
+        rt.anchoredPosition = new Vector2(-(EditorUIBuilder.HeaderRightBlock(76f, 24f) + 20f), 0f);
         rt.sizeDelta        = new Vector2(W, UIScale.RowMd);
 
         var icon = EditorUIBuilder.Img(group, "Icon", CostGold);

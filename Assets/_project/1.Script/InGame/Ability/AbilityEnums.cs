@@ -20,7 +20,7 @@ public enum AbilityId
     A10 = 110, // 전사의 돌격   — Melee       Attack +8%, MoveSpeed +6%
     A11 = 111, // 원거리 집중   — Ranged      AttackRange +8%, Attack +6%
     A12 = 112, // 장군의 위엄   — General     MaxHp +10%, Defense +6%
-    A13 = 113, // 병사의 투지   — Soldier     Attack +15%, MoveSpeed +9%   (병사 전용 ×1.5)
+    A13 = 113, // 병사의 투지   — Soldier     Attack +10%, MoveSpeed +6%
     A14 = 114, // 치명의 감각   — All         CritChance +6%
     A15 = 115, // 넓은 시야     — All         AttackRange +8%
 

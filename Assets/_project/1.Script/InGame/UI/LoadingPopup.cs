@@ -19,6 +19,9 @@ public class LoadingPopup : PopupBase
 {
     public override bool BlockBackgroundClose => true;
 
+    // 로딩은 플레이어가 연 팝업이 아니다 — 여닫는 소리가 나면 조작음으로 오해된다.
+    protected override bool PlayOpenCloseSfx => false;
+
     [SerializeField] TextMeshProUGUI _titleText;
     [SerializeField] TextMeshProUGUI _statusText;
 

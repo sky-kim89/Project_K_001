@@ -57,7 +57,8 @@ public class GeneralCandidateCardUI : MonoBehaviour
         HeroStatResult result = HeroStatResolver.Resolve(entry);
         Color          gc     = GradeStyle.GetColor(entry.Grade);
 
-        if (_nameText      != null) _nameText.text      = entry.UnitName;
+        // 도감 미등록이면 이름 옆에 NEW — 이 카드는 장수 선택·용병 고용·상점이 함께 쓴다
+        if (_nameText      != null) _nameText.text      = CodexMark.ForGeneral(entry.UnitName);
         if (_jobChipText   != null) _jobChipText.text   = JobStyle.GetLabel(job);
         if (_gradeChipText != null)
         {

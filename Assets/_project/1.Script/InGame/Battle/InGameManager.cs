@@ -225,6 +225,38 @@ public class InGameManager : MonoBehaviour
         progress?.RecordClear(stage.Mode, stage.StageNumber);
         progress?.AdvanceRunStage();
         UserDataManager.Instance?.Get<RunShopData>()?.NewStage();
+
+        TryUnlockNextDifficulty(stage);
+    }
+
+    /// <summary>
+    /// 일정 스테이지를 넘기면 지금 등급을 "해 봤다" 로 기록해 다음 난이도를 연다.
+    ///
+    /// ⚠ 예전엔 아무도 이 기록을 남기지 않았다
+    ///   DifficultyData.RecordClear 를 부르는 곳이 치트 에디터뿐이라, 정상 플레이로는
+    ///   난이도가 영원히 '출정' 하나에 묶여 있었다. 해금 UI 는 멀쩡히 돌아가고 있어서
+    ///   조건을 못 채운 것처럼 보였을 뿐이다.
+    ///
+    /// ⚠ 30스테이지 완주를 조건으로 두면 안 된다
+    ///   후반 블록은 환생 보너스 없이 클리어 불가로 설계돼 있는데, 환생 포인트 배율은
+    ///   높은 난이도에서 나온다. 완주를 요구하면 서로가 서로의 전제가 되어 아무도
+    ///   첫 해금을 못 한다. 그래서 '완주' 가 아니라 '충분히 갔다'(기본 20)로 끊는다.
+    /// </summary>
+    static void TryUnlockNextDifficulty(StageData stage)
+    {
+        if (stage.Mode != BattleMode.Normal) return;
+
+        int unlockStage = StageConfig.Current != null
+            ? StageConfig.Current.DifficultyUnlockStage : 20;
+        if (stage.StageNumber < unlockStage) return;
+
+        var diff = UserDataManager.Instance?.Get<DifficultyData>();
+        if (diff == null) return;
+
+        int before = diff.ClearedTierIndex;
+        diff.RecordClear(diff.SelectedTier);
+        if (diff.ClearedTierIndex != before)
+            Debug.Log($"[InGameManager] 난이도 해금 — {diff.SelectedTier} 등급 {unlockStage}스테이지 도달");
     }
 
     /// <summary>전투 패배 → 통계 스냅샷 후 유닛 디스폰, 환생 팝업 오픈.</summary>

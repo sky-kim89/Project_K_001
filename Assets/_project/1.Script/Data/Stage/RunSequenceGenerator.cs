@@ -5,7 +5,7 @@ using System;
 //  런(30스테이지)의 스테이지 타입 시퀀스를 생성.
 //
 //  고정 규칙:
-//    - 1스테이지(index 0)  → 항상 일반
+//    - 1~2스테이지(index 0,1) → 항상 일반
 //    - 5의 배수 스테이지    → 엘리트 = 허들 (index 4, 9, 14, 19, 24, 29)
 //    - 허들 바로 앞 스테이지 → 상점    (index 3, 8, 13, 18, 23, 28)
 //  간격 배치:
@@ -14,10 +14,16 @@ using System;
 //  결과 배치 (30칸 기준):
 //    일반 8 · 상점 6 · 엘리트 6 · 이벤트 10
 //
-//  ⚠ 1스테이지를 일반으로 고정하는 이유
-//    런 시작(= 신규 시작·패배 후 환생) 직후 로비에 들어서자마자
-//    상점·이벤트 팝업이 자동으로 뜨면 무슨 상황인지 알 수 없다.
-//    첫 스테이지는 전투로 시작해 바로 진입할 수 있어야 한다.
+//  ⚠ 1~2스테이지를 일반으로 고정하는 이유
+//    ① 런 시작(= 신규 시작·패배 후 환생) 직후 로비에 들어서자마자
+//      상점·이벤트 팝업이 자동으로 뜨면 무슨 상황인지 알 수 없다.
+//      첫 스테이지는 전투로 시작해 바로 진입할 수 있어야 한다.
+//    ② 2스테이지는 로비 튜토리얼이 도는 칸이다.
+//      첫 승리 직후 BattleResult → Lobby → HeroStat 튜토리얼이 이어지는데,
+//      로비에 닿는 순간 이벤트·상점 팝업이 먼저 떠 버리면 튜토리얼이
+//      그 팝업 뒤에 가려 출전 화면을 가리키게 된다.
+//      (예전엔 2스테이지가 91% 확률로 이벤트였다 — FillRemaining 이
+//       남은 이벤트를 앞쪽부터 채우는데 그 시작이 index 1 이었다.)
 //
 //  ⚠ 상점을 허들 직전에 고정하는 이유
 //    허들(5의 배수)은 스텟 배율이 뛰는 관문이다. 그 앞에서 반드시 한 번
@@ -40,6 +46,13 @@ public static class RunSequenceGenerator
     /// <summary>허들(엘리트) 스테이지 주기. StageConfig.IsHurdle 과 반드시 같아야 한다.</summary>
     public const int HurdleInterval = 5;
 
+    /// <summary>
+    /// 앞에서 이만큼은 무조건 일반 전투다 (index 0 부터 셈).
+    /// 상점·이벤트·엘리트 어느 것도 여기 못 들어온다.
+    /// 튜토리얼이 도는 구간이라 자동 팝업이 끼면 안 된다 — 파일 상단 주석 참고.
+    /// </summary>
+    public const int ReservedNormalStages = 2;
+
     const int EventCount  = 10;
     const int EventGapMin = 2;   // 이벤트 사이 최소 스테이지 간격
     const int EventGapMax = 4;   // 이벤트 사이 최대 스테이지 간격
@@ -58,7 +71,7 @@ public static class RunSequenceGenerator
             seq[i] = RunStageType.Elite;
 
             int shop = i - 1;
-            if (shop > 0) seq[shop] = RunStageType.Shop;   // index 0 은 항상 일반
+            if (shop >= ReservedNormalStages) seq[shop] = RunStageType.Shop;
         }
 
         PlaceEvents(seq, rng, EventCount);
@@ -72,14 +85,17 @@ public static class RunSequenceGenerator
     public static bool IsValid(RunStageType[] seq)
     {
         if (seq == null || seq.Length == 0) return false;
-        if (seq[0] != RunStageType.Normal) return false;
+
+        // 앞의 고정 일반 구간 — 여기에 이벤트·상점이 들어간 옛 세이브를 걸러 낸다.
+        for (int i = 0; i < ReservedNormalStages && i < seq.Length; i++)
+            if (seq[i] != RunStageType.Normal) return false;
 
         for (int i = HurdleInterval - 1; i < seq.Length; i += HurdleInterval)
         {
             if (seq[i] != RunStageType.Elite) return false;
 
             int shop = i - 1;
-            if (shop > 0 && seq[shop] != RunStageType.Shop) return false;
+            if (shop >= ReservedNormalStages && seq[shop] != RunStageType.Shop) return false;
         }
         return true;
     }
@@ -91,7 +107,7 @@ public static class RunSequenceGenerator
     // 남은 칸이 빠듯해지면 간격을 좁혀 개수를 맞춘다 — 안 그러면 후반 이벤트가 잘려 나간다.
     static void PlaceEvents(RunStageType[] seq, Random rng, int count)
     {
-        int cursor = 0;   // index 0 은 항상 일반이므로 여기서 간격만큼 건너뛰며 시작한다
+        int cursor = 0;   // 고정 일반 구간에서 간격만큼 건너뛰며 시작한다
 
         for (int placed = 0; placed < count; placed++)
         {
@@ -100,6 +116,11 @@ public static class RunSequenceGenerator
             if (maxGap > EventGapMax) maxGap = EventGapMax;
 
             cursor += rng.Next(EventGapMin, maxGap + 1);
+
+            // ⚠ 고정 일반 구간은 넘어서 시작한다
+            //   지금은 간격 최솟값이 구간 길이와 같아 저절로 지켜지지만,
+            //   둘 중 하나만 바꿔도 조용히 깨진다. 규칙을 값에 기대지 않는다.
+            if (cursor < ReservedNormalStages) cursor = ReservedNormalStages;
 
             // 상점·엘리트 칸은 건너뛴다
             while (cursor < seq.Length && seq[cursor] != RunStageType.Normal) cursor++;
@@ -116,9 +137,12 @@ public static class RunSequenceGenerator
         }
     }
 
+    // ⚠ 고정 일반 구간 뒤부터 채운다
+    //   여기서 index 1 부터 채우는 바람에 2스테이지가 91% 확률로 이벤트가 됐다.
+    //   앞쪽부터 메우는 성격상 이 시작점이 곧 "가장 자주 이벤트가 되는 칸" 이다.
     static void FillRemaining(RunStageType[] seq, int remaining)
     {
-        for (int i = 1; i < seq.Length && remaining > 0; i++)
+        for (int i = ReservedNormalStages; i < seq.Length && remaining > 0; i++)
         {
             if (seq[i] != RunStageType.Normal) continue;
             seq[i] = RunStageType.Event;

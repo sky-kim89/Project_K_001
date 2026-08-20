@@ -51,6 +51,7 @@ public enum PopupType
     RunShop         = 14,  // 런 중간 상점 (장비·특성·장수 구매)
     Event           = 15,  // 이벤트 팝업
     Codex           = 16,  // 도감 (장비·어빌리티·특성·장수 수집 현황)
+    Relic           = 17,  // 유물 강화 (예전엔 로비 탭이었다 — RelicPopup)
 }
 
 // ── 런 스테이지 타입 ──────────────────────────────────────────
@@ -74,7 +75,10 @@ public enum TraitType
     ShieldFortress   = 4,   // 방패병: 강철 요새
     KnightSoldierRage   = 5,   // 기사: 전우의 분노 (병사 사망마다 체력 +1%)
     KnightHeroReturn    = 6,   // 기사: 영웅의 귀환 (사망 시 1HP + 병사 즉시 소환)
-    ArcherRetreatFire   = 7,   // 궁수: 퇴각 사격 (반사정 접근 시 후퇴하며 사격)
+    // 7 = ArcherRetreatFire(퇴각 사격) — 폐기. 궁수 기본 행동으로 내렸다
+    //     (ArcherRetreatFireTag / GeneralRuntimeBridge). 고를 이유가 없는 선택지였고,
+    //     안 고르면 궁수가 근접 유닛처럼 굴어 정체성이 흔들렸다.
+    // ⚠ 번호 7 을 재사용하지 말 것 — 옛 세이브에 남아 있어 다른 특성으로 되살아난다.
     ArcherRainFire      = 8,   // 궁수: 폭우 사격 (주변 적 2명 추가 타격 70%)
     ShieldCounterBlow   = 9,   // 방패병: 반격의 달인 (흡수 피해 반사)
     ShieldRageBuild     = 10,  // 방패병: 분노 축적 (스테이지 클리어마다 공격력 +3%, 최대 +30%)

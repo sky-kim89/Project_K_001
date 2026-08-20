@@ -157,12 +157,12 @@ Assets/_project/
 ```
 Tools/Project K/
 ├─ 씬 이동/          Splash·Lobby·InGame 로드 (Ctrl+Shift+Alt+1/2/3)
-├─ 씬 셋업/          Splash 씬 구성 · InGame 씬 구성 · Lobby 씬 패치
+├─ 씬 셋업/          Splash 씬 구성 · InGame 씬 구성 · Lobby 씬 패치 · 난이도 배경 연결
 ├─ 프리팹 생성/      ▶ 전체 생성
-│   ├─ 로비/         TopBar · MainPanel · BattlePanel · HeroPanel · RelicPanel
+│   ├─ 로비/         TopBar · MainPanel · BattlePanel · HeroPanel
 │   ├─ 팝업/         ▶ 팝업 전체 · BattleResult · Pause · Loading · AbilitySelect
 │   │                AbilityList · EquipCompare · Disassemble · HeroDetail
-│   │                RunShop · Reincarnation · Mercenary · Event
+│   │                RunShop · Reincarnation · Mercenary · Event · Codex · Relic
 │   ├─ 인게임/       GeneralPanel · RewardCard
 │   └─ 이펙트/       Effect 프리팹 (22종)
 ├─ 데이터 생성/      ▶ 전체 생성 · 액티브/패시브 스킬 · 특성 · 어빌리티 · 유물

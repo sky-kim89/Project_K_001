@@ -275,10 +275,29 @@ public static class EffectKeyLinker
             targetKey: "FX_Grave_Impact",
             delay:     2.5f);
 
+        // ㉛ BossCharge — 돌진 (보스 패턴)
+        //    Base = 웅크림(발밑 링), Caster = 돌진 잔상(0.1초마다), Target = 관통 착지
+        //    ⚠ 잔상은 경로 내내 반복 스폰된다 — 딜레이가 길면 풀에 그대로 쌓인다
+        Link("Active_BossCharge",
+            baseKey:   "FX_BossCharge_Windup",
+            casterKey: "FX_BossCharge_Trail",
+            targetKey: "FX_BossCharge_Impact",
+            delay:     1.2f);
+
+        // ㉜ BossSlam — 분쇄 강타 (보스 패턴)
+        //    Base = 예고 장판(Runner 가 WindupTime+SlamTime+0.3 로 직접 유지),
+        //    Caster = 착탄, Target = 대상별 피격
+        //    Base·Caster 는 Runner 가 SlamRadius/3 배로 키워 띄운다
+        Link("Active_BossSlam",
+            baseKey:   "FX_BossSlam_Warning",
+            casterKey: "FX_BossSlam_Impact",
+            targetKey: "FX_BossSlam_Hit",
+            delay:     1.6f);
+
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
-        Debug.Log("[EffectKeyLinker] ✓ 30개 액티브 스킬 이펙트 키 연동 완료.");
+        Debug.Log("[EffectKeyLinker] ✓ 32개 액티브 스킬 이펙트 키 연동 완료 (보스 패턴 2종 포함).");
     }
 
     // ── 내부 헬퍼 ───────────────────────────────────────────────────────

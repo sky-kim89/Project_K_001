@@ -29,6 +29,18 @@ public class UnitStat
     public const string BaseKey    = "base";
     public const string SettledKey = "settled";
 
+    /// <summary>
+    /// 장수 전용 보너스 레이어 — 병사 환산에서 빠지는 자리.
+    ///
+    /// ⚠ '어디서 왔나' 가 아니라 '누구를 올리나' 로 가른다
+    ///   패시브·특성·도감·장비의 평범한 "공격력 증가" 는 부대 전체를 올리는
+    ///   옵션이므로 병사에게도 간다. 반대로 명시적으로 장수를 지목한 옵션
+    ///   (AbilityTarget.Unit_General)만 이 레이어에 담아 병사에서 뺀다.
+    ///   출처로 가르면 "패시브로 얻은 공격력 증가" 가 병사에게 안 가서
+    ///   같은 문구의 옵션이 출처에 따라 다르게 동작한다.
+    /// </summary>
+    public const string GeneralOnlyKey = "general_only";
+
     // ── 데이터 ────────────────────────────────────────────────
     // key(레이어) → (StatType → 해당 레이어 내 합산값)
     readonly Dictionary<string, Dictionary<StatType, float>> _layers      = new();
@@ -135,6 +147,27 @@ public class UnitStat
                 settled.Set(kv.Key, kv.Value, SettledKey);
 
         return settled;
+    }
+
+    /// <summary>
+    /// 특정 레이어만 뺀 깊은 복사. 병사 환산의 원본을 만들 때 쓴다.
+    /// (장수 전용 보너스를 빼고 나머지는 그대로 물려주는 용도)
+    /// </summary>
+    public UnitStat CloneWithout(string excludeKey)
+    {
+        excludeKey = NormalizeKey(excludeKey);
+
+        var clone = new UnitStat();
+        foreach (var kv in _combineModes)
+            clone.SetCombineMode(kv.Key, kv.Value);
+
+        foreach (var layerKv in _layers)
+        {
+            if (layerKv.Key == excludeKey) continue;
+            foreach (var statKv in layerKv.Value)
+                clone.Set(statKv.Key, statKv.Value, layerKv.Key);
+        }
+        return clone;
     }
 
     /// <summary>깊은 복사 — 독립적인 UnitStat 인스턴스 생성</summary>

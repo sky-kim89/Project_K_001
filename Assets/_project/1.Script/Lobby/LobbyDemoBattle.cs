@@ -20,7 +20,7 @@ using BattleGame.Units;
 //  ■ 그림의 목표
 //    아군 한 파티가 끊임없이 밀려오는 적을 잡으면서 오른쪽으로 전진한다.
 //    · 적은 항상 8기가 화면에 있도록 채운다 (죽는 즉시 보충)
-//    · 아군은 죽지 않는다 — 매 틱 체력을 가득 채운다
+//    · 아군은 장군·병사 모두 죽지 않는다 — InvulnerableTag 로 사망 자체를 막는다
 //    · 전진·배경 루프는 BattleScrollManager 가 이미 하던 일을 그대로 쓴다
 //
 //  ■ 아군이 왜 저절로 전진하나
@@ -40,7 +40,7 @@ public class LobbyDemoBattle : MonoBehaviour
     [Tooltip("적 보충 주기 (초). 너무 짧으면 스폰이 뭉쳐 들어온다.")]
     [SerializeField] float _refillInterval = 1.2f;
 
-    [Tooltip("아군 체력 보충 주기 (초). 죽지 않게 유지하는 용도.")]
+    [Tooltip("아군 불사 처리 주기 (초). 새로 나온 병사에 태그를 달고 체력을 채운다.")]
     [SerializeField] float _immortalInterval = 0.2f;
 
     [Tooltip("데모 적 레벨 — 아군을 위협할 필요가 없으므로 낮게 둔다.")]
@@ -106,6 +106,7 @@ public class LobbyDemoBattle : MonoBehaviour
         _running = false;
         StopAllCoroutines();
 
+        ClearImmortality();
         BattleScrollManager.Instance?.StopScroll();
 
         // ⚠ 판은 여기서 닫지 않는다
@@ -215,22 +216,32 @@ public class LobbyDemoBattle : MonoBehaviour
 
     // ── 아군 불사 ────────────────────────────────────────────
 
+    //  ⚠ 체력만 채우는 방식으로는 병사가 죽는다
+    //    죽음은 UnitHitSystem 이 피해를 넣는 그 자리에서 확정된다. 장군은 체력 통이
+    //    커서 0.2초를 버텼지만, 병사는 한 방에 통이 비어 다음 보충이 오기 전에 죽었다.
+    //    → 사망 자체를 막는 InvulnerableTag 를 달고, 체력 보충은 '보기 좋으라고' 만 남긴다.
+    //
     //  ⚠ 적 공격력을 0 으로 만드는 쪽은 채택하지 않았다
     //    적은 계속 새로 스폰되므로 매번 붙잡아 0 을 박아야 하고,
     //    독·자폭처럼 공격력을 거치지 않는 피해는 그래도 들어온다.
-    //    아군 체력을 채우는 쪽이 피해의 출처와 무관하게 확실하다.
     IEnumerator ImmortalLoop()
     {
         var wait = new WaitForSeconds(_immortalInterval);
 
         while (_running)
         {
-            RefillAllyHealth();
+            MakeAlliesImmortal();
             yield return wait;
         }
     }
 
-    void RefillAllyHealth()
+    /// <summary>
+    /// 살아 있는 아군 전원(장군·병사·소환물)에 불사 태그를 달고 체력을 채운다.
+    ///
+    /// 병사는 장군을 따라 나중에 나오기도 하고 스킬로 새로 소환되기도 하므로
+    /// 한 번 달고 끝낼 수 없다 — 매 틱 새로 들어온 아군을 훑는다.
+    /// </summary>
+    void MakeAlliesImmortal()
     {
         var world = World.DefaultGameObjectInjectionWorld;
         if (world == null || !world.IsCreated) return;
@@ -239,9 +250,15 @@ public class LobbyDemoBattle : MonoBehaviour
         var em = world.EntityManager;
         using var entities = _unitQuery.ToEntityArray(Allocator.Temp);
 
+        // ⚠ 태그 부착은 구조 변경이라 청크를 흔든다 — 먼저 다 모아 두고 한 번에 붙인다.
+        //   루프 도중에 붙이면 지금 돌고 있는 배열의 컴포넌트 접근이 어긋난다.
+        var newcomers = new NativeList<Entity>(entities.Length, Allocator.Temp);
+
         foreach (var e in entities)
         {
             if (em.GetComponentData<UnitIdentityComponent>(e).Team != TeamType.Ally) continue;
+
+            if (!em.HasComponent<InvulnerableTag>(e)) newcomers.Add(e);
 
             var stat   = em.GetComponentData<StatComponent>(e);
             var health = em.GetComponentData<HealthComponent>(e);
@@ -252,6 +269,29 @@ public class LobbyDemoBattle : MonoBehaviour
             health.CurrentHp = max;
             em.SetComponentData(e, health);
         }
+
+        if (newcomers.Length > 0)
+            em.AddComponent<InvulnerableTag>(newcomers.AsArray());
+
+        newcomers.Dispose();
+    }
+
+    /// <summary>
+    /// 데모가 끝나면 태그를 전부 걷는다.
+    ///
+    /// ⚠ 실전에 새어 나가면 아무도 안 죽는 전투가 된다
+    ///   데모 더미는 판을 닫을 때 사라지지만, 판을 닫는 주체는 여기가 아니라
+    ///   LobbyFlow.Returning 이다. 그 사이에 실전이 시작될 여지를 남기지 않는다.
+    /// </summary>
+    void ClearImmortality()
+    {
+        var world = World.DefaultGameObjectInjectionWorld;
+        if (world == null || !world.IsCreated) return;
+
+        var em    = world.EntityManager;
+        var query = em.CreateEntityQuery(ComponentType.ReadOnly<InvulnerableTag>());
+        em.RemoveComponent<InvulnerableTag>(query);
+        query.Dispose();
     }
 
     // ── 조회 ─────────────────────────────────────────────────

@@ -188,6 +188,9 @@ public static class EquipComparePopupCreator
         var closeBtn = EditorUIBuilder.RaisedBtn(header, "CloseBtn", CloseBtnC, out var body);
         AnchorRight(closeBtn.gameObject, -16f, 64f, 64f);
         Center(EditorUIBuilder.XMark(body, "Mark", UIScale.FontSm, Color.white));
+
+        // 도움말 — 닫기 버튼 왼쪽 (여기 닫기는 64px 라 그 값을 그대로 넘긴다)
+        EditorUIBuilder.InfoBtn(header, TutorialId.HelpEquipment, 64f, -16f);
         SetObj(so, "_closeBtn", closeBtn);
     }
 

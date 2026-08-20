@@ -149,7 +149,7 @@ public class LobbyManager : Singleton<LobbyManager>
     /// 표시할 패널을 결정한다.
     ///   - 설치 후 첫 실행       → 패널 없이 자동으로 전투 진입 (AutoStartFirstRun)
     ///   - RunInProgress = true  → BattlePanel (index 2, 이어하기)
-    ///   - RunInProgress = false → MainPanel   (index 5, 장수 선택)
+    ///   - RunInProgress = false → MainPanel   (index 4, 장수 선택)
     /// LobbyNavUI.Start()가 같은 프레임에 Switch(_defaultTab)을 호출하므로
     /// 한 프레임 뒤에 실행해 덮어씌워지지 않도록 한다.
     /// </summary>
@@ -174,7 +174,8 @@ public class LobbyManager : Singleton<LobbyManager>
 
         var navUI    = FindObjectOfType<LobbyNavUI>();
         bool runActive = UserDataManager.Instance?.Get<StageProgressData>()?.RunInProgress ?? false;
-        navUI?.Switch(runActive ? 2 : 5);
+        // 유물 탭이 빠지면서 MainPanel 이 5 → 4 로 앞당겨졌다 (LobbyScenePatcher 참조)
+        navUI?.Switch(runActive ? 2 : 4);
 
         // ⚠ 이미 켜져 있던 패널은 OnEnable 이 다시 돌지 않는다
         //   LobbyNavUI 는 기본 탭(BattlePanel)을 첫 프레임에 이미 켠다.
@@ -213,11 +214,22 @@ public class LobbyManager : Singleton<LobbyManager>
     // ── 최초 실행 자동 진입 ───────────────────────────────────
     //
     //  설치 직후 첫 화면은 "무엇을 고를지" 가 아니라 "이 게임이 뭔지" 여야 한다.
-    //  기사를 자동으로 골라 1스테이지까지 밀어 넣고, 조작은 튜토리얼이 가르친다.
-    //  기사인 이유 — 병사를 가장 많이 끌고 나와 화면이 제일 잘 채워진다.
+    //  장수 하나를 자동으로 골라 1스테이지까지 밀어 넣고, 조작은 튜토리얼이 가르친다.
+    //
+    //  ⚠ 직업이 아니라 이름을 박는다
+    //    예전엔 RollCandidate(UnitJob.Knight) 로 "기사 아무나" 를 뽑았다.
+    //    그러면 첫 판의 장수가 매번 달라져 튜토리얼 문구·연출을 그 사람에게
+    //    맞출 수가 없다. 직업은 이름 해시가 정하므로(UnitJobRoller) 이름을
+    //    고정하면 직업·스탯·스킬까지 전부 같은 사람이 나온다.
     //
     //  ⚠ 세이브가 이미 있으면 절대 타지 않는 경로다
     //    ConsumeFirstLaunch() 가 한 번만 true 를 주고, 아래 조건이 한 번 더 거른다.
+
+    /// <summary>
+    /// 최초 실행에서 자동으로 주는 장수. UnitData 의 이름 풀에 있는 이름이어야 한다.
+    /// 직업은 이 이름이 정한다 — 바꾸면 첫 판의 직업도 같이 바뀐다.
+    /// </summary>
+    const string FirstRunHeroName = "아르투어";
 
     bool CanAutoStartFirstRun()
     {
@@ -241,9 +253,22 @@ public class LobbyManager : Singleton<LobbyManager>
         // 로비가 한 장면도 노출되지 않도록 로딩 팝업으로 덮은 뒤 전환한다
         PopupManager.Instance?.Open(PopupType.Loading);
 
-        RunStarter.BeginRun(RunStarter.RollCandidate(UnitJob.Knight));
+        // ⚠ Boot 를 여기서 푼다 — 안 풀면 첫 실행이 무한 로딩으로 멈춘다
+        //   Boot 를 Idle 로 바꾸는 곳은 SelectInitialPanel() 한 곳뿐인데,
+        //   자동 진입 경로는 그 함수를 건너뛴다(위 yield break).
+        //   그래서 아래 StartBattle → BeginBattleFromStandby 가 Boot 를 만나
+        //   "전투 시작 무시" 경고만 남기고 아무 일도 하지 않았다.
+        //   Preparing 에 못 들어가니 PrepareRoutine 이 열어 둔 로딩 팝업을
+        //   닫아 줄 사람이 없어 그대로 화면이 덮인 채 멈춘다.
+        //
+        //   Boot 의 뜻은 "첫 패널이 아직 안 정해졌다" 다. 자동 진입은 패널을
+        //   쓰지 않기로 이미 정한 것이므로 여기가 Boot 를 벗어날 자리가 맞다.
+        //   화면은 방금 연 로딩 팝업이 덮고 있어 로비가 드러나지 않는다.
+        if (_flow == LobbyFlow.Boot) SetFlow(LobbyFlow.Idle);
 
-        Debug.Log("[LobbyManager] 최초 실행 — 기사 자동 선택 후 1스테이지로 바로 진입");
+        RunStarter.BeginRun(RunStarter.CandidateNamed(FirstRunHeroName));
+
+        Debug.Log($"[LobbyManager] 최초 실행 — {FirstRunHeroName} 자동 선택 후 1스테이지로 바로 진입");
         StartBattle(withIntro: false);
     }
 
@@ -384,6 +409,14 @@ public class LobbyManager : Singleton<LobbyManager>
     {
         var director = SceneDirector.Instance;
 
+        // 배경음이 바뀌는 지점은 "로비 ↔ 전투" 하나뿐이다.
+        // 흐름이 그 경계를 이미 알고 있으니 여기 한 줄로 끝낸다 —
+        // 화면마다 PlayBgm 을 뿌리면 로비 안에서 곡이 계속 처음부터 다시 돈다.
+        // (Boot 은 아직 아무것도 안 정해진 상태라 건드리지 않는다)
+        if (flow != LobbyFlow.Boot)
+            AudioManager.Instance?.PlayBgm(
+                flow is LobbyFlow.Intro or LobbyFlow.Battle ? BgmKey.InGame : BgmKey.Lobby);
+
         Debug.Log($"[LobbyFlow] OnEnterFlow({flow})");
         switch (flow)
         {
@@ -523,16 +556,23 @@ public class LobbyManager : Singleton<LobbyManager>
 
         // 로딩 팝업 프리팹은 InGame 씬의 PopupManager 가 들고 있다 — 상주 먼저.
         yield return director.EnsureInGameResident();
-        PopupManager.Instance?.Open(PopupType.Loading);
 
-        BattleArena.Ensure().Open(ArenaKind.Real);
+        // ⚠ 판이 이미 열려 있으면 로딩 팝업을 띄우지 않는다
+        //   Open() 은 새로 연 경우에만 true 다. 장비 교체·등급업·용병 고용처럼
+        //   HeroDetailPopup 에서 무언가를 바꾸면 DeploymentData.OnChanged →
+        //   InvalidateStandby → 여기로 돌아오는데, 그때는 전장이 그대로 서 있어
+        //   덮을 것이 없다. 그런데도 로딩을 띄우면 팝업을 닫을 때마다
+        //   "로딩 → 사라짐" 이 번쩍여 마치 렉이 걸린 것처럼 보인다.
+        //   빈 벌판이 드러나는 경우(첫 진입·데모 정리 직후)에만 덮는다.
+        bool cover = BattleArena.Ensure().Open(ArenaKind.Real);
+        if (cover) PopupManager.Instance?.Open(PopupType.Loading);
 
         ResolveStageIntoSession();
         director.InGame?.PrepareStandby();
 
         yield return StartCoroutine(WaitForAlliesStanding());
 
-        PopupManager.Instance?.Close(PopupType.Loading);
+        if (cover) PopupManager.Instance?.Close(PopupType.Loading);
 
         SetFlow(LobbyFlow.Standby);
     }

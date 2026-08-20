@@ -271,13 +271,34 @@ public static class ActiveSkillIdExtensions
     };
 
     /// <summary>
+    /// 돌진형 — 시전자가 타겟까지 **이동해서** 때리는 스킬.
+    ///
+    /// ⚠ 사거리 판정을 통째로 건너뛴다
+    ///   달려가서 때리는 것이 목적인데 "사거리 안에 들어와야 발동" 이면
+    ///   이미 붙어 있을 때만 나간다 — 돌진할 거리가 남아 있지 않다.
+    ///   실제로 도약 강타·관통 돌진은 평타 사거리(0.7~1.2)를 그대로 썼고,
+    ///   1초 쿨짜리 관통 돌진이 제자리에서 헛돌았다.
+    ///
+    ///   대신 "적이 시야에 보이면" 을 조건으로 삼는다. AttackComponent.HasTarget
+    ///   자체가 이미 그 뜻이다 — UnitTargetSearchSystem 이 그리드 탐색 반경
+    ///   (CellSize × SearchRadius) 안에서 찾은 적일 때만 켜진다.
+    ///   그래서 별도의 시야 수치를 새로 두지 않는다.
+    /// </summary>
+    public static bool IsDash(this ActiveSkillId id) => id switch
+    {
+        ActiveSkillId.LeapStrike   => true,   // 도약 강타 — 전방 도약
+        ActiveSkillId.PiercingDash => true,   // 관통 돌진 — 1초 쿨 평타형
+        ActiveSkillId.BossCharge   => true,   // 돌진      — 몸통박치기
+        _                          => false,
+    };
+
+    /// <summary>
     /// 발동에 필요한 최소 사거리 배율. 1 이면 평소 공격 사거리 그대로.
-    /// 돌진처럼 '멀리서 달려드는' 패턴은 사거리 밖에서 시작해야 의미가 있다.
+    /// ⚠ 돌진형은 여기 넣지 말 것 — IsDash() 가 사거리 판정 자체를 건너뛴다.
     /// </summary>
     public static float RangeScale(this ActiveSkillId id) => id switch
     {
-        ActiveSkillId.BossCharge => 6f,   // 사거리 6배 밖까지 — 멀리서 달려든다
-        ActiveSkillId.BossSlam   => 1.5f, // 근접 직전
-        _                        => 1f,
+        ActiveSkillId.BossSlam => 1.5f,   // 근접 직전 — 제자리 강타라 붙어야 한다
+        _                      => 1f,
     };
 }

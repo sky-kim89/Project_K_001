@@ -13,18 +13,27 @@ using UnityEngine.UI;
 //    - 없으면 Assets/_project/2.Prefabs/UI/Lobby/ 에서 프리팹 인스턴스 생성
 //    - NavBar 버튼 이름·라벨을 인덱스 순서로 강제 정리
 //    - LobbyNavUI 에 버튼·패널 연결
+//    - 유물 탭 잔재(RelicPanel 인스턴스·NavBtn_유물) 제거
 //
-//  탭 순서: [0]상점 [1]영웅 [2]전투 [3]유물 [4]프로필
+//  탭 순서: [0]상점 [1]영웅 [2]전투 [3]프로필
+//
+//  ⚠ 유물은 더 이상 탭이 아니다 (RelicPopup)
+//    탭은 서로를 끈다 — 유물을 보고 돌아오면 MainPanel 이 다시 OnEnable 을 타
+//    고르던 장수가 새로 추첨됐다. PopupManager 가 위에 띄우는 팝업으로 옮겼다.
 // ============================================================
 
 public static class LobbyScenePatcher
 {
     const string PrefabBase = "Assets/_project/2.Prefabs/UI/Lobby/";
 
-    // MainPanel은 index 5 — NavBar 버튼 없이 코드로만 전환 (RunInProgress 기반)
-    static readonly string[] PanelNames = { "ShopPanel", "HeroPanel", "BattlePanel", "RelicPanel", "ProfilePanel", "MainPanel" };
-    static readonly string[] BtnNames   = { "NavBtn_상점", "NavBtn_영웅", "NavBtn_전투", "NavBtn_유물", "NavBtn_프로필" };
-    static readonly string[] BtnLabels  = { "상점",        "영웅",        "전투",        "유물",        "프로필" };
+    // MainPanel은 index 4 — NavBar 버튼 없이 코드로만 전환 (RunInProgress 기반)
+    static readonly string[] PanelNames = { "ShopPanel", "HeroPanel", "BattlePanel", "ProfilePanel", "MainPanel" };
+    static readonly string[] BtnNames   = { "NavBtn_상점", "NavBtn_영웅", "NavBtn_전투", "NavBtn_프로필" };
+    static readonly string[] BtnLabels  = { "상점",        "영웅",        "전투",        "프로필" };
+
+    // 팝업으로 옮겨간 옛 탭 — 씬에 남아 있으면 지운다
+    static readonly string[] RetiredPanels = { "RelicPanel", "RelicPopup" };
+    static readonly string[] RetiredBtns   = { "NavBtn_유물" };
 
     [MenuItem(ProjectKMenu.Setup + "Lobby 씬 패치", priority = ProjectKMenu.SetupPrio + 2)]
     static void Patch()
@@ -36,7 +45,10 @@ public static class LobbyScenePatcher
             return;
         }
 
-        // 패널 5개 — 씬에 있으면 그대로, 없으면 프리팹 인스턴스
+        // 팝업으로 옮겨간 옛 탭 제거 — 인덱스가 밀리기 전에 먼저 치운다
+        RemoveRetired(canvas);
+
+        // 패널 — 씬에 있으면 그대로, 없으면 프리팹 인스턴스
         var panels = new GameObject[PanelNames.Length];
         for (int i = 0; i < PanelNames.Length; i++)
             panels[i] = EnsureChild(canvas, PanelNames[i]);
@@ -50,6 +62,37 @@ public static class LobbyScenePatcher
         EditorUtility.SetDirty(canvas);
         EditorSceneManager.MarkSceneDirty(canvas.scene);
         Debug.Log("[LobbyScenePatcher] 완료. Ctrl+S 로 씬을 저장하세요.");
+    }
+
+    // ── 옛 탭 제거 ────────────────────────────────────────────
+
+    /// <summary>
+    /// 팝업으로 옮겨간 화면의 씬 잔재를 지운다.
+    ///
+    /// ⚠ FixNavBar 보다 먼저 돌아야 한다
+    ///   NavBar 버튼은 이름이 아니라 **자식 순서**로 이름을 다시 붙인다.
+    ///   유물 버튼을 남겨 둔 채 이름만 밀면 프로필 버튼에 유물 아이콘이 박힌다.
+    /// </summary>
+    static void RemoveRetired(GameObject canvas)
+    {
+        foreach (string name in RetiredPanels)
+        {
+            var t = canvas.transform.Find(name);
+            if (t == null) continue;
+            Object.DestroyImmediate(t.gameObject);
+            Debug.Log($"[LobbyScenePatcher] 옛 탭 제거: {name} (팝업으로 이동)");
+        }
+
+        var navBar = canvas.transform.Find("NavBar");
+        if (navBar == null) return;
+
+        foreach (string name in RetiredBtns)
+        {
+            var t = navBar.Find(name);
+            if (t == null) continue;
+            Object.DestroyImmediate(t.gameObject);
+            Debug.Log($"[LobbyScenePatcher] 옛 탭 버튼 제거: {name}");
+        }
     }
 
     // ── 패널 확인/생성 ────────────────────────────────────────

@@ -351,13 +351,15 @@ namespace BattleGame.Projectiles
     [UpdateAfter(typeof(ProjectileDestroySystem))]
     public partial struct ProjectileIncomingDamageSystem : ISystem
     {
-        ComponentLookup<HealthComponent> _healthLookup;
-        ComponentLookup<StatComponent>   _statLookup;
+        ComponentLookup<HealthComponent>  _healthLookup;
+        ComponentLookup<StatComponent>    _statLookup;
+        ComponentLookup<InvulnerableTag>  _invulnerableLookup;
 
         public void OnCreate(ref SystemState state)
         {
-            _healthLookup = state.GetComponentLookup<HealthComponent>();
-            _statLookup   = state.GetComponentLookup<StatComponent>(isReadOnly: true);
+            _healthLookup       = state.GetComponentLookup<HealthComponent>();
+            _statLookup         = state.GetComponentLookup<StatComponent>(isReadOnly: true);
+            _invulnerableLookup = state.GetComponentLookup<InvulnerableTag>(isReadOnly: true);
         }
 
         public void OnUpdate(ref SystemState state)
@@ -367,6 +369,7 @@ namespace BattleGame.Projectiles
 
             _healthLookup.Update(ref state);
             _statLookup.Update(ref state);
+            _invulnerableLookup.Update(ref state);
 
             // ① 초기화 — 병렬 가능 (각 엔티티가 자기 것만 건드린다)
             state.Dependency = new ClearIncomingDamageJob().ScheduleParallel(state.Dependency);
@@ -376,6 +379,7 @@ namespace BattleGame.Projectiles
             {
                 HealthLookup        = _healthLookup,
                 StatLookup          = _statLookup,
+                InvulnerableLookup  = _invulnerableLookup,
                 DefenseSoftCap      = cfg.DefenseMax,
                 DefenseOverflowRate = cfg.DefenseOverflowRate,
                 DefenseEffectiveCap = cfg.DefenseEffectiveCap,
@@ -399,6 +403,7 @@ namespace BattleGame.Projectiles
         [NativeDisableContainerSafetyRestriction]
         public ComponentLookup<HealthComponent>            HealthLookup;
         [ReadOnly] public ComponentLookup<StatComponent>   StatLookup;
+        [ReadOnly] public ComponentLookup<InvulnerableTag> InvulnerableLookup;
         public float DefenseSoftCap;
         public float DefenseOverflowRate;
         public float DefenseEffectiveCap;
@@ -409,6 +414,10 @@ namespace BattleGame.Projectiles
             if (target == Entity.Null)                return;  // MoveJob 이 무효화한 발사체
             if (!HealthLookup.HasComponent(target))   return;
             if (!StatLookup.HasComponent(target))     return;
+
+            // 불사 유닛은 예약을 잡지 않는다 — 실효 체력이 0 이하가 되면 IsDoomed 가 서고,
+            // 그러면 UnitAttackSystem 이 '이미 죽은 놈' 으로 보고 공격을 멈춘다.
+            if (InvulnerableLookup.HasComponent(target)) return;
 
             var health = HealthLookup[target];
             if (health.CurrentHp <= 0f) return;

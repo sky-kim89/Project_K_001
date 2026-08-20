@@ -1,4 +1,4 @@
-﻿using Unity.Entities;
+using Unity.Entities;
 using Unity.Transforms;
 using Unity.Mathematics;
 using Unity.Burst;
@@ -142,7 +142,11 @@ namespace BattleGame.Units
             if (!attack.HasTarget || attack.AttackCooldown > 0f) return;
             if (unitState.Current == UnitState.Hit)      return;
             if (unitState.Current == UnitState.Charging) return;  // KnightChargeJob 이 이동 담당
-            if (health.IsDoomed) return;                          // 사망 확정 — 이동만 한다
+            // ⚠ 자기 IsDoomed 로는 멈추지 않는다
+            //   예약 피해는 "곧 죽을 예정" 일 뿐 아직 맞지도 않았다. 여기서 공격을 끊으면
+            //   화살이 날아오는 동안 가만히 서 있다가 죽는다 — 화면에서는 멀쩡한 유닛이
+            //   갑자기 굳는 것으로 보인다. IsDoomed 는 **남이 나를 조준하지 않게 하는**
+            //   표식이지 내 행동을 멈추는 표식이 아니다 (아래 타겟 쪽 검사만 유지).
             if (!TransformLookup.HasComponent(attack.TargetEntity)) return;
             if (!HealthLookup.HasComponent(attack.TargetEntity))    return;
 
@@ -256,7 +260,7 @@ namespace BattleGame.Units
         {
             if (!attack.HasTarget || attack.AttackCooldown > 0f) return;
             if (unitState.Current == UnitState.Hit) return;  // 속박/스턴 중 공격 불가
-            if (health.IsDoomed) return;                     // 사망 확정 — 이동만 한다
+            // 자기 IsDoomed 로는 멈추지 않는다 — MeleeAttackJob 의 같은 자리 주석 참고
             if (!TransformLookup.HasComponent(attack.TargetEntity)) return;
             if (!HealthLookup.HasComponent(attack.TargetEntity))    return;
 

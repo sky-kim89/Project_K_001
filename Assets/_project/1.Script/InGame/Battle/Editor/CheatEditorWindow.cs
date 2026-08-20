@@ -16,7 +16,7 @@ public class CheatEditorWindow : EditorWindow
 {
     // ── 탭 ──────────────────────────────────────────────────────
     int _tab;
-    static readonly string[] kTabs = { "어빌리티", "특성", "장비", "장수", "도감", "난이도" };
+    static readonly string[] kTabs = { "어빌리티", "특성", "장비", "장수", "도감", "난이도", "튜토리얼" };
 
     // ── 어빌리티 ─────────────────────────────────────────────────
     AbilityData[] _allAbilities;
@@ -72,7 +72,91 @@ public class CheatEditorWindow : EditorWindow
             case 3: DrawGeneralTab();  break;
             case 4: DrawCodexTab();    break;
             case 5: DrawDifficultyTab(); break;
+            case 6: DrawTutorialTab();   break;
         }
+    }
+
+    // ── 튜토리얼 탭 ───────────────────────────────────────────────
+    //
+    //  ⚠ 튜토리얼은 정상 플레이로 두 번 볼 수 없다
+    //    첫 판에 한 번 뜨고 완료로 기록되면 끝이다. 연출을 고칠 때마다
+    //    세이브를 지우는 것 말고 방법이 없으면 아무도 안 고친다.
+
+    Vector2 _tutorialScroll;
+
+    void DrawTutorialTab()
+    {
+        var data = UserDataManager.Instance?.Get<TutorialData>();
+        if (data == null)
+        {
+            EditorGUILayout.HelpBox("TutorialData 를 불러올 수 없습니다.", MessageType.Warning);
+            return;
+        }
+
+        var mgr = TutorialManager.Instance;
+
+        EditorGUILayout.LabelField("현재 상태", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField("  재생 중", mgr != null && mgr.IsPlaying
+            ? $"{mgr.Current.Id}  ({mgr.Current.CurrentStep}/{mgr.Current.StepCount})"
+            : "없음");
+        EditorGUILayout.LabelField("  끊긴 튜토리얼", data.InProgress == TutorialId.None
+            ? "없음"
+            : $"{data.InProgress}  (스텝 {data.InProgressStep})");
+
+        EditorGUILayout.Space(8);
+        using (new EditorGUILayout.HorizontalScope())
+        {
+            if (GUILayout.Button("전체 초기화 (다시 보기)", GUILayout.Height(32)))
+            {
+                data.ResetAll();
+                UserDataManager.Instance.RequestSave();
+                Debug.Log("[Cheat] 튜토리얼 기록 초기화 — 조건이 맞으면 처음부터 다시 뜹니다");
+            }
+            if (GUILayout.Button("전부 봤음 처리", GUILayout.Height(32)))
+            {
+                data.CompleteAllForced();
+                UserDataManager.Instance.RequestSave();
+                Debug.Log("[Cheat] 강제 진행 튜토리얼 전부 완료 처리");
+            }
+        }
+
+        if (mgr != null && mgr.IsPlaying && GUILayout.Button("지금 것 건너뛰기", GUILayout.Height(26)))
+            mgr.Skip();
+
+        EditorGUILayout.Space(10);
+        EditorGUILayout.LabelField("개별", EditorStyles.boldLabel);
+
+        _tutorialScroll = EditorGUILayout.BeginScrollView(_tutorialScroll);
+        foreach (TutorialId id in System.Enum.GetValues(typeof(TutorialId)))
+        {
+            if (id == TutorialId.None) continue;
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                bool done = data.IsCompleted(id);
+                EditorGUILayout.LabelField($"{(done ? "[본것]" : "[미시청]")} {id}",
+                                           GUILayout.Width(220f));
+                EditorGUILayout.LabelField(id.IsForced() ? "강제" : "도움말",
+                                           EditorStyles.miniLabel, GUILayout.Width(50f));
+
+                bool has = mgr != null && mgr.Has(id);
+                using (new EditorGUI.DisabledScope(!done))
+                {
+                    if (GUILayout.Button("초기화", GUILayout.Width(60f)))
+                    {
+                        data.ResetOne(id);
+                        UserDataManager.Instance.RequestSave();
+                    }
+                }
+                using (new EditorGUI.DisabledScope(!has || (mgr != null && mgr.IsPlaying)))
+                {
+                    if (GUILayout.Button("재생", GUILayout.Width(60f)))
+                        mgr.Replay(id);
+                }
+                if (!has) EditorGUILayout.LabelField("시나리오 없음", EditorStyles.miniLabel);
+            }
+        }
+        EditorGUILayout.EndScrollView();
     }
 
     // ── 난이도 탭 ─────────────────────────────────────────────────

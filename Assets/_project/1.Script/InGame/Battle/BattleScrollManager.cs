@@ -11,8 +11,24 @@ using UnityEngine;
 //    - EnemySpawner / ScreenClampSystem 은 Camera.main 을 직접 참조하므로
 //      이 스크립트가 카메라만 이동하면 나머지는 자동으로 따라감
 //
+//  ■ 배경은 난이도로 갈린다 (Easy→BG1 … Inferno→BG5)
+//    난이도는 런 시작 시점에 고정되므로 배경도 판 단위로만 바뀐다.
+//    바꿔 끼우는 지점은 ResetBackground 하나다 — Start·StartScroll·
+//    ResetBackgroundToStart 가 전부 그리로 모이므로 실전·로비 데모·출전 대기가
+//    저절로 같은 배경을 쓴다.
+//
+//  ⚠ 스프라이트를 갈면 _bgWidth 를 반드시 다시 잰다
+//    무한 루프가 이 폭 하나로 돈다. 예전 폭을 그대로 두면 두 장 사이가
+//    벌어지거나 겹쳐서 이음매가 화면에 그대로 보인다.
+//
+//  ⚠ 원본 픽셀 크기가 장마다 다르다 — 세로를 맞춰 스케일을 역산한다
+//    BG2 만 2143×734 이고 나머지는 3548×1216 이다 (가로세로비는 같다).
+//    씬에 박아 둔 scale 2 를 그대로 쓰면 BG2 는 화면 위아래가 비어 버린다.
+//    _bgWorldHeight 에 맞춰 균등 스케일을 계산한다.
+//
 //  씬 설정:
 //    Inspector 에서 _bg1 = BGSprite1, _bg2 = BGSprite2 연결
+//    _bgByTier 에 BG1~BG5 를 DifficultyTier 순서대로 꽂는다 (비우면 씬 그대로)
 //    두 스프라이트는 초기에 나란히 배치되어야 함 (합산 폭 >= 화면 폭 × 2)
 // ============================================================
 
@@ -22,18 +38,27 @@ public class BattleScrollManager : Singleton<BattleScrollManager>
     [SerializeField] Transform _bg1;
     [SerializeField] Transform _bg2;
 
+    [Header("난이도별 배경")]
+    [Tooltip("DifficultyTier 순서 — 출정·보통·어려움·지옥·불지옥. 비워 두면 씬에 깔린 스프라이트를 그대로 쓴다.")]
+    [SerializeField] Sprite[] _bgByTier = new Sprite[5];
+
+    [Tooltip("배경이 채울 세로 높이(월드 단위). 0 이면 씬에 깔린 BG 를 재서 그 높이를 쓴다.")]
+    [SerializeField] float _bgWorldHeight = 0f;
+
     [Header("카메라 스크롤")]
     [Tooltip("선두 유닛을 화면 중앙 기준으로 얼마나 왼쪽에 고정할지 (0 = 중앙, 양수 = 중앙보다 왼쪽)")]
     [SerializeField] float _leadOffset = 0f;
     [Tooltip("카메라 추종 스무딩 시간 (초). 값이 클수록 느리게 따라감")]
     [SerializeField] float _smoothTime = 0.4f;
 
-    Camera _cam;
-    float  _bgWidth;
-    float  _initCamX;
-    float  _targetCamX;
-    float  _camVelX;
-    bool   _active;
+    Camera         _cam;
+    SpriteRenderer _sr1;
+    SpriteRenderer _sr2;
+    float          _bgWidth;
+    float          _initCamX;
+    float          _targetCamX;
+    float          _camVelX;
+    bool           _active;
 
     // ── Unity 생명주기 ────────────────────────────────────────
 
@@ -42,8 +67,7 @@ public class BattleScrollManager : Singleton<BattleScrollManager>
         // ⚠ Camera.main 을 쓰지 않는다 — 로비 카메라가 함께 떠 있으면 그쪽이 잡힌다
         _cam      = ResolveCamera();
         _initCamX = _cam.transform.position.x;
-        _bgWidth  = CalcBgWidth();
-        ResetBackground(_initCamX);
+        ResetBackground(_initCamX);   // 난이도 배경 적용 + 폭 측정까지 여기서 한다
     }
 
     void OnEnable()
@@ -55,6 +79,9 @@ public class BattleScrollManager : Singleton<BattleScrollManager>
         BattleManager.OnWavesStarted += OnBattleStart;
         BattleManager.OnVictory      += OnBattleEnd;
         BattleManager.OnDefeat       += OnBattleEnd;
+
+        // 로비에서 난이도를 고르는 즉시 대기 화면 배경도 바뀐다 — 무엇을 고르는지 눈에 보여야 한다.
+        DifficultyData.OnChanged += OnDifficultyChanged;
     }
 
     void OnDisable()
@@ -62,12 +89,27 @@ public class BattleScrollManager : Singleton<BattleScrollManager>
         BattleManager.OnWavesStarted -= OnBattleStart;
         BattleManager.OnVictory      -= OnBattleEnd;
         BattleManager.OnDefeat       -= OnBattleEnd;
+        DifficultyData.OnChanged     -= OnDifficultyChanged;
     }
 
     // ── 배틀 이벤트 ───────────────────────────────────────────
 
     void OnBattleStart() => StartScroll();
     void OnBattleEnd()   => StopScroll();
+
+    /// <summary>
+    /// 난이도 선택이 바뀌었다 — 대기 화면 배경을 갈아 끼운다.
+    ///
+    /// ⚠ 스크롤 중이면 손대지 않는다
+    ///   폭이 다른 배경으로 갈면 두 장을 다시 깔아야 하는데, 전진 중에 그러면
+    ///   화면이 한 번 튄다. 난이도는 런 도중 못 바꾸므로(RunInProgress 잠금)
+    ///   실제로는 대기 화면에서만 들어온다 — 그 전제를 코드로도 지킨다.
+    /// </summary>
+    void OnDifficultyChanged()
+    {
+        if (_active) return;
+        ResetBackgroundToStart();
+    }
 
     // ── 공개 제어 (실전·로비 데모 공용) ───────────────────────
 
@@ -107,11 +149,7 @@ public class BattleScrollManager : Singleton<BattleScrollManager>
     ///   대기 때 다른 자리에 깔아 두면 그 순간 배경이 한 번 덜컹한다.
     ///   같은 자리에 두면 전투 시작 때 아무것도 움직이지 않는다.
     /// </summary>
-    public void ResetBackgroundToStart()
-    {
-        if (_bgWidth <= 0f) _bgWidth = CalcBgWidth();
-        ResetBackground(_initCamX);
-    }
+    public void ResetBackgroundToStart() => ResetBackground(_initCamX);
 
     /// <summary>
     /// 스크롤이 쓸 카메라. 로비·인게임 카메라가 동시에 있을 수 있으므로
@@ -154,9 +192,74 @@ public class BattleScrollManager : Singleton<BattleScrollManager>
 
     void ResetBackground(float camCenterX)
     {
+        ApplyDifficultyBackground();
         if (_bgWidth <= 0f) return;
         SetBgX(_bg1, camCenterX);
         SetBgX(_bg2, camCenterX + _bgWidth);
+    }
+
+    // ── 난이도별 배경 ─────────────────────────────────────────
+
+    /// <summary>
+    /// 지금 난이도에 맞는 배경을 두 장에 깔고 폭을 다시 잰다.
+    ///
+    /// 배경을 갈아 끼우는 유일한 지점이다 — ResetBackground 만 이걸 부르고,
+    /// Start·StartScroll·ResetBackgroundToStart 가 전부 ResetBackground 를 거친다.
+    /// </summary>
+    void ApplyDifficultyBackground()
+    {
+        CacheRenderers();
+        if (_sr1 == null) return;
+
+        // ⚠ 높이는 배경을 갈기 '전에' 재 둔다
+        //   갈고 나서 재면 새 배경의 높이를 기준으로 삼아, 갈 때마다 크기가 눌어붙는다.
+        if (_bgWorldHeight <= 0f) _bgWorldHeight = _sr1.bounds.size.y;
+
+        Sprite bg = BackgroundForCurrentTier();
+        if (bg != null && _sr1.sprite != bg)
+        {
+            Fit(_sr1, bg);
+            Fit(_sr2, bg);
+        }
+
+        // 스프라이트마다 원본 크기가 다르다 — 폭은 항상 지금 깔린 것에서 다시 잰다.
+        _bgWidth = CalcBgWidth();
+    }
+
+    /// <summary>선택된 난이도의 배경. 배열이 비었거나 칸이 비면 null (= 씬에 깔린 것을 유지).</summary>
+    Sprite BackgroundForCurrentTier()
+    {
+        if (_bgByTier == null || _bgByTier.Length == 0) return null;
+
+        // DifficultyConfig 가 캐시하는 값을 쓴다 — 현재 난이도의 정본 창구가 하나여야 한다.
+        int idx = (int)DifficultyConfig.CurrentTier().Tier;
+        return _bgByTier[Mathf.Clamp(idx, 0, _bgByTier.Length - 1)];
+    }
+
+    /// <summary>
+    /// 배경 한 장을 갈아 끼우고 세로를 화면 높이에 맞춘다.
+    ///
+    /// ⚠ 씬에 박힌 scale 을 그대로 쓰면 안 된다
+    ///   BG2 만 2143×734 이고 나머지는 3548×1216 이다. 같은 scale 2 를 먹이면
+    ///   BG2 는 세로가 60% 밖에 안 돼 위아래가 텅 빈다.
+    ///   가로세로비는 모두 같으므로 세로만 맞추면 가로도 저절로 맞는다.
+    /// </summary>
+    void Fit(SpriteRenderer sr, Sprite bg)
+    {
+        if (sr == null) return;
+        sr.sprite = bg;
+
+        float h = bg.bounds.size.y;      // 스케일이 안 섞인 원본 세로 (월드 단위)
+        if (h <= 0f) return;
+
+        float s = _bgWorldHeight / h;
+        sr.transform.localScale = new Vector3(s, s, 1f);
+    }
+
+    void CacheRenderers()
+    {
+        if (_sr1 == null && _bg1 != null) _bg1.TryGetComponent(out _sr1);
+        if (_sr2 == null && _bg2 != null) _bg2.TryGetComponent(out _sr2);
     }
 
     void LoopBackground()
@@ -184,8 +287,8 @@ public class BattleScrollManager : Singleton<BattleScrollManager>
 
     float CalcBgWidth()
     {
-        if (_bg1 != null && _bg1.TryGetComponent<SpriteRenderer>(out var sr))
-            return sr.bounds.size.x;
+        CacheRenderers();
+        if (_sr1 != null) return _sr1.bounds.size.x;
 
         Debug.LogWarning("[BattleScrollManager] _bg1에 SpriteRenderer가 없습니다. bgWidth = 20f 기본값 사용.");
         return 20f;

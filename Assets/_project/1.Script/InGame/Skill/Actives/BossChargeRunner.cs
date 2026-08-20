@@ -65,7 +65,15 @@ public class BossChargeRunner : MonoBehaviour
         Vector3 dir    = target - start;
         dir.z = 0f;
         if (dir.sqrMagnitude < 0.0001f) dir = Vector3.left;
-        dir.Normalize();
+
+        // 돌진 거리 상한 — 시야 밖까지 달려가지 않는다.
+        // ⚠ 락 시간이 14유닛 이동을 가정하고 계산된다 (ActiveBossCharge.Execute)
+        //   더 멀리 달리면 도착하기 전에 락이 풀려 이동 잡이 궤적을 끌어당긴다.
+        //   사거리 판정이 빠진 지금은 침투 적 때문에 목표가 50유닛까지 벌어질 수 있다.
+        float dist = dir.magnitude;
+        dir /= dist;
+        if (dist > UnitGridConstants.SightRange)
+            target = start + dir * UnitGridConstants.SightRange;
 
         Vector3 destination = target + dir * d.OvershootDistance;
 

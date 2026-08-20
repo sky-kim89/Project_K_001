@@ -4,10 +4,14 @@ using UnityEngine;
 using UnityEngine.UI;
 
 // ============================================================
-//  RelicPanelCreator.cs
-//  Tools > Project K > 프리팹 생성 > 로비 > RelicPanel
+//  RelicPopupCreator.cs
+//  Tools > Project K > 프리팹 생성 > 팝업 > Relic
 //
-//  저장: Assets/_project/2.Prefabs/UI/Lobby/RelicPanel.prefab
+//  저장: Assets/_project/2.Prefabs/UI/RelicPopup.prefab
+//
+//  ⚠ 로비 탭이 아니라 팝업이다
+//    탭이면 아래 화면이 꺼진다 — MainPanel 이 다시 OnEnable 을 타면서
+//    고르던 장수가 새로 추첨됐다. 전체 화면을 덮되 아래는 살려 둔다.
 //
 //  ■ 왜 다시 짰나
 //    · 카드 260×280 에 4열이라 설명이 3~4줄로 접혀 읽히지 않았다.
@@ -19,19 +23,19 @@ using UnityEngine.UI;
 //      같은 게임 화면처럼 안 보였다.
 //
 //  ■ 새 레이아웃 (팝업 계열과 통일)
-//    Header  H=136   ◆ 유 물 | 유물     [환생 포인트]        [뒤로]
+//    Header  H=136   ◆ 유 물 | 유물     [환생 포인트]        [닫기]
 //    Body            카드 그리드 5열 (스크롤)
 //    Footer  H=84    유물 초기화 (우측)
 //
 //  ⚠ 카드·버튼의 자식 이름을 바꾸지 말 것
-//    RelicPanelUI 가 이름으로 찾는다:
+//    RelicPopup 이 이름으로 찾는다:
 //      "RarityBorder" / "IconBg/IconImage" / "IconBg/LevelBadge"
 //      "NameText" / "DescText" / "CostText" / "UpgradeBtn"
 // ============================================================
 
-public static class RelicPanelCreator
+public static class RelicPopupCreator
 {
-    const string SavePath  = "Assets/_project/2.Prefabs/UI/Lobby/RelicPanel.prefab";
+    const string SavePath  = "Assets/_project/2.Prefabs/UI/RelicPopup.prefab";
     const string ReincIcon = "Assets/_project/3.Textures/Icons/Items/item_reincarnation_point.png";
 
     // ── 치수 ─────────────────────────────────────────────────
@@ -72,8 +76,8 @@ public static class RelicPanelCreator
     //  진입점
     // ══════════════════════════════════════════════════════════
 
-    [MenuItem(ProjectKMenu.Lobby + "RelicPanel", priority = ProjectKMenu.PrefabPrio + 15)]
-    public static void CreateStandalone()
+    [MenuItem(ProjectKMenu.Popup + "Relic", priority = ProjectKMenu.PrefabPrio + 44)]
+    public static void Create()
     {
         var canvas = new GameObject("_TempCanvas", typeof(RectTransform));
         canvas.GetComponent<RectTransform>().sizeDelta = new Vector2(UIScale.RefWidth, UIScale.RefHeight);
@@ -84,25 +88,30 @@ public static class RelicPanelCreator
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log($"[RelicPanelCreator] 저장: {SavePath}");
+        Debug.Log($"[RelicPopupCreator] 저장: {SavePath}" +
+                  "\nPopupManager 인스펙터의 'Load Popup Prefabs From Folder' 로 등록할 것.");
     }
 
     // ══════════════════════════════════════════════════════════
     //  빌더
     // ══════════════════════════════════════════════════════════
 
-    public static GameObject Build(GameObject parent)
+    static GameObject Build(GameObject parent)
     {
-        var panel = Go("RelicPanel", parent);
+        var panel = Go("RelicPopup", parent);
         var rt = panel.GetComponent<RectTransform>();
         rt.anchorMin = Vector2.zero;
         rt.anchorMax = Vector2.one;
         rt.offsetMin = Vector2.zero;
         rt.offsetMax = Vector2.zero;
-        panel.AddComponent<Image>().color = PanelBg;
 
-        var ui = panel.AddComponent<RelicPanelUI>();
+        // 전체 화면을 불투명하게 덮는다 — 아래 MainPanel 은 켜진 채로 남는다.
+        panel.AddComponent<Image>().color = PanelBg;
+        panel.AddComponent<CanvasGroup>();   // PopupBase 가 페이드에 쓴다
+
+        var ui = panel.AddComponent<RelicPopup>();
         var so = new SerializedObject(ui);
+        EditorUIBuilder.SetEnum(so, "_popupType", (int)PopupType.Relic, "RelicPopupCreator");
 
         BuildHeader(panel, so);
         BuildGrid(panel, so);
@@ -148,27 +157,36 @@ public static class RelicPanelCreator
         accent.AddComponent<Image>().color = AccentTeal;
         EditorUIBuilder.AnchorTop(accent.GetComponent<RectTransform>(), HeaderH, 3f);
 
-        // 뒤로가기 — 우측 끝
-        var backBtn = EditorUIBuilder.RaisedBtn(header, "BackBtn", BackBtnC, out var backBody);
-        var bRt = backBtn.GetComponent<RectTransform>();
+        // 닫기 — 우측 끝
+        var closeBtn = EditorUIBuilder.RaisedBtn(header, "CloseBtn", BackBtnC, out var closeBody);
+        var bRt = closeBtn.GetComponent<RectTransform>();
         bRt.anchorMin = bRt.anchorMax = new Vector2(1f, 0.5f);
         bRt.pivot     = new Vector2(1f, 0.5f);
         bRt.anchoredPosition = new Vector2(-SidePad, 0f);
         bRt.sizeDelta        = new Vector2(180f, UIScale.BtnFor(UIScale.FontMd));
 
-        var backLbl = TMP(backBody, "Label", "뒤로", UIScale.FontMd, FontStyles.Bold);
-        backLbl.color         = Color.white;
-        backLbl.alignment     = TextAlignmentOptions.Center;
-        backLbl.raycastTarget = false;
-        EditorUIBuilder.Stretch(backLbl.gameObject);
-        SetObj(so, "_backBtn", backBtn);
+        var closeLbl = TMP(closeBody, "Label", "닫기", UIScale.FontMd, FontStyles.Bold);
+        closeLbl.color         = Color.white;
+        closeLbl.alignment     = TextAlignmentOptions.Center;
+        closeLbl.raycastTarget = false;
+        EditorUIBuilder.Stretch(closeLbl.gameObject);
+        SetObj(so, "_closeBtn", closeBtn);
+
+        // 도움말 — '닫기' 왼쪽.
+        // ⚠ 닫기 버튼은 정사각형이 아니다 (180 × BtnFor)
+        //   비켜 놓을 거리는 180 으로, i 버튼 자체 크기는 높이에 맞춰 정사각으로 잡는다.
+        float backH = UIScale.BtnFor(UIScale.FontMd);
+        EditorUIBuilder.InfoBtn(header, TutorialId.HelpRelic,
+                                closeSize: 180f, closeRight: -SidePad, size: backH);
 
         // 환생 포인트 — 유물을 사는 재화라 항상 보여야 한다
         var ptGroup = Go("PointGroup", header);
         var pgRt = ptGroup.GetComponent<RectTransform>();
         pgRt.anchorMin = pgRt.anchorMax = new Vector2(1f, 0.5f);
         pgRt.pivot     = new Vector2(1f, 0.5f);
-        pgRt.anchoredPosition = new Vector2(-(SidePad + 180f + 24f), 0f);
+        // 뒤로(180) + 도움말 묶음 왼쪽
+        pgRt.anchoredPosition = new Vector2(
+            -(EditorUIBuilder.HeaderRightBlock(180f, SidePad, infoSize: backH) + 24f), 0f);
         pgRt.sizeDelta        = new Vector2(260f, UIScale.RowMd);
 
         var ptIcon = EditorUIBuilder.Img(ptGroup, "PointIcon", PointColor);
@@ -258,7 +276,7 @@ public static class RelicPanelCreator
 
     /// <summary>
     /// 유물 카드 템플릿 (비활성).
-    /// 자식 이름은 RelicPanelUI 가 찾으므로 고정이다.
+    /// 자식 이름은 RelicPopup 가 찾으므로 고정이다.
     /// </summary>
     static GameObject BuildCardTemplate(GameObject parent)
     {
@@ -316,7 +334,7 @@ public static class RelicPanelCreator
         // ── 레벨 뱃지 — 아이콘 "바로 아래", 겹치지 않게 ──────
         //  ⚠ 예전엔 아이콘 위에 겹쳐 올려서 그림을 가리고 카드 밖으로 삐져나왔다.
         //    아이콘과 같은 폭으로 아래에 붙여 아이콘 열을 하나로 만든다.
-        //    (RelicPanelUI 가 "IconBg/LevelBadge" 로 찾으므로 부모는 IconBg 유지)
+        //    (RelicPopup 가 "IconBg/LevelBadge" 로 찾으므로 부모는 IconBg 유지)
         var badge = Go("LevelBadge", iconBg);
         badge.AddComponent<Image>().color = new Color(0.08f, 0.09f, 0.14f, 0.95f);
         var bgRt = badge.GetComponent<RectTransform>();
@@ -386,7 +404,7 @@ public static class RelicPanelCreator
         //  ⚠ 반드시 UpgradeBtn *다음에* 만든다.
         //    예전엔 아이콘 아래에 놓였는데 DescBg 가 나중에 그려지면서
         //    통째로 가려 비용이 화면에 아예 안 보였다.
-        //    RelicPanelUI 는 card 의 직계 자식에서 "CostText" 를 찾으므로
+        //    RelicPopup 는 card 의 직계 자식에서 "CostText" 를 찾으므로
         //    버튼 안에 넣지 못한다 — 버튼 위에 겹쳐 올린다.
         var costTmp = TMP(card, "CostText", "1 pt", UIScale.FontSm, FontStyles.Bold);
         costTmp.color            = PointColor;
@@ -412,7 +430,7 @@ public static class RelicPanelCreator
         //   대부분의 시간 동안 "스테이지 5 이상 시 활성화" 라는 **누를 수 없는 버튼**이
         //   하단 200px 을 차지했다. 환생은 패배 시 결과 흐름에서 처리되므로
         //   여기 상시 버튼으로 둘 이유가 없다. 그 높이는 카드 영역이 가져갔다.
-        //   (RelicPanelUI 는 _reincarnateBtn 이 null 이어도 안전하게 동작한다)
+        //   (RelicPopup 는 _reincarnateBtn 이 null 이어도 안전하게 동작한다)
 
         var footer = Go("FooterBar", panel);
         var fRt = footer.GetComponent<RectTransform>();
@@ -459,5 +477,5 @@ public static class RelicPanelCreator
         => EditorUIBuilder.TMP(parent, name, text, size, style);
 
     static void SetObj(SerializedObject so, string field, Object obj)
-        => EditorUIBuilder.SetObj(so, field, obj, "RelicPanelCreator");
+        => EditorUIBuilder.SetObj(so, field, obj, "RelicPopupCreator");
 }

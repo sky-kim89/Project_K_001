@@ -39,6 +39,18 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
     UnitJob   _job;
     UnitEntry _unitEntry;   // AddComponents() 에서 GeneralTriggerSetComponent 빌드용
 
+    /// <summary>
+    /// 병사 환산의 원본 — 기본 롤 + 장비까지만 담긴다.
+    /// 장수의 최종 스탯(_stat)과 일부러 다르다. Initialize 참고.
+    /// </summary>
+    UnitStat _soldierSourceStat;
+
+    /// <summary>
+    /// 성장만으로 얻은 스탯 스냅샷 (등급·레벨 롤). Initialize 맨 앞에서 뜬다.
+    /// 전투에서는 BaseRollStatComponent 로 넘어가 '외부 증가분' 의 기준이 된다.
+    /// </summary>
+    StatBlock _baseRoll;
+
     // ── 패시브 스킬 슬롯 ─────────────────────────────────────
     PassiveSkillType _passive0;
     PassiveSkillType _passive1;
@@ -64,6 +76,11 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
                     ? HeroStatResolver.RollBase(unitEntry)
                     : GeneralStatRoller.Roll(unitName, _level, _grade);
 
+        // ⚠ 여기서 떠야 한다 — 아래 한 줄이라도 지나면 '성장만' 이 아니게 된다
+        //   패시브·장비·어빌리티·유물·특성·도감이 붙기 전의 순수 성장치다.
+        //   "외부 컨텐츠로 오른 증가분" 을 세는 패시브(속전속결)가 이 값을 뺀다.
+        _baseRoll = StatBlock.FromUnitStat(_stat);
+
         // ── 패시브 스킬 결정 ──────────────────────────────────
         (_passive0, _passive1, _passive2) = PassiveSkillRoller.Roll(_unitName);
         _activePassiveCount               = PassiveSkillRoller.GetActiveSlotCount(_grade);
@@ -85,6 +102,7 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         var equipDb = EquipmentDatabase.Current;
         if (equipDb != null && unitEntry != null)
             EquipmentApplier.ApplyAll(_stat, unitEntry, equipDb);
+
 
         // ── 어빌리티 스탯 적용 (장군 대상 All/Job/Range/Unit_General) ──
         var abilityDb    = AbilityDatabase.Current;
@@ -113,6 +131,25 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         // UI(EffectiveDefensePct)와 전투(StatComponent.Final)가 같은 값을 사용하도록
         // 모든 스탯 계산이 끝난 뒤 원시 방어율을 소프트캡 공식으로 덮어씀
         ApplyDefenseSoftCap(_stat);
+
+        // ── 병사 환산의 원본 ─────────────────────────────────
+        //
+        //  장수의 최종 스탯에서 **장수 전용 레이어만** 걷어낸 사본이다.
+        //
+        //  ⚠ 소스가 아니라 타겟으로 가른다
+        //    패시브·특성·도감·장비의 평범한 "공격력 증가" 는 부대 전체를 올리는
+        //    옵션이므로 병사에게도 간다 — 그대로 남겨 둔다.
+        //    명시적으로 장수를 지목한 옵션(AbilityTarget.Unit_General)만 빠진다.
+        //    출처로 가르면 같은 문구의 옵션이 어디서 왔느냐에 따라 다르게 동작한다.
+        //
+        //  ⚠ 비율 보너스는 환산과 순서를 바꿔도 결과가 같다
+        //    (base × 1.1) × ratio == (base × ratio) × 1.1 이므로, 공통 % 옵션을
+        //    장수 스탯에 넣어 두고 환산해도 병사에게 액면가 그대로 +10% 가 간다.
+        //    그래서 공통 옵션을 병사에게 또 적용하지 않는다 — 하면 이중 적용이다.
+        //
+        //  ⚠ 모든 적용이 끝난 뒤에 뜬다
+        //    앞에서 뜨면 뒤에 붙는 특성·도감이 병사에게 반영되지 않는다.
+        _soldierSourceStat = _stat.CloneWithout(UnitStat.GeneralOnlyKey);
 
         // 외형 적용 (ECS Entity 생성과 독립적으로 실행)
         GetComponent<UnitAppearanceBridge>()?.ApplyAlly(unitName, _job, _grade);
@@ -155,6 +192,15 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
             em.AddBuffer<ProjectileLaunchRequest>(entity);
         }
 
+        // 퇴각 사격은 궁수의 기본 행동이다 — 붙어 오는 적에게서 물러나며 쏜다.
+        // (예전 TraitType.ArcherRetreatFire 특성이 하던 일)
+        if (_job == UnitJob.Archer)
+            em.AddComponent<ArcherRetreatFireTag>(entity);
+
+
+        // ── 성장분 기준선 ────────────────────────────────────
+        //   외부 컨텐츠로 얼마나 올랐는지를 세려면 '올리기 전' 값이 있어야 한다.
+        em.AddComponentData(entity, new BaseRollStatComponent { Roll = _baseRoll });
 
         // ── 패시브 슬롯 컴포넌트 ─────────────────────────────
         em.AddComponentData(entity, new GeneralPassiveSetComponent
@@ -277,8 +323,6 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
             // 행동 기반 특성 (스택 없음, 고유 핸들러)
             if (traitData.HasTrait(TraitType.KnightHeroReturn))
                 em.AddComponentData(entity, new TraitHeroReturnComponent());
-            if (traitData.HasTrait(TraitType.ArcherRetreatFire))
-                em.AddComponent<TraitRetreatFireTag>(entity);
             if (traitData.HasTrait(TraitType.ArcherRainFire))
             {
                 em.AddComponent<TraitRainFireTag>(entity);
@@ -329,6 +373,14 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
     /// <summary>풀 재사용 시 스킬 / 조건 상태 초기화 + 장군별 컴포넌트 갱신.</summary>
     protected override void OnEntityReset(EntityManager em, Entity entity)
     {
+        // ⚠ 성장분 기준선은 재사용 때도 새로 써야 한다
+        //   AddComponents 는 엔티티를 처음 만들 때만 돈다. 풀에서 꺼낸 엔티티에
+        //   그대로 두면 **이전 장수의 롤** 이 기준이 되어 증가분이 엉뚱하게 잡힌다.
+        if (em.HasComponent<BaseRollStatComponent>(entity))
+            em.SetComponentData(entity, new BaseRollStatComponent { Roll = _baseRoll });
+        else
+            em.AddComponentData(entity, new BaseRollStatComponent { Roll = _baseRoll });
+
         // ── 버퍼 초기화 ──────────────────────────────────────────
         if (em.HasBuffer<ProjectileLaunchRequest>(entity))
             em.GetBuffer<ProjectileLaunchRequest>(entity).Clear();
@@ -383,6 +435,16 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
             if (em.HasComponent<RangedTag>(entity))
                 em.RemoveComponent<RangedTag>(entity);
         }
+
+        // ── 퇴각 사격 갱신 (궁수 기본 행동) ──────────────────────
+        // ⚠ 붙이는 것만큼 떼는 것도 중요하다
+        //   엔티티는 풀에서 재사용되므로 궁수가 쓰던 자리를 법사가 물려받는다.
+        //   떼지 않으면 그 법사가 적이 붙을 때마다 뒷걸음질친다.
+        bool retreats = _job == UnitJob.Archer;
+        if (retreats && !em.HasComponent<ArcherRetreatFireTag>(entity))
+            em.AddComponent<ArcherRetreatFireTag>(entity);
+        else if (!retreats && em.HasComponent<ArcherRetreatFireTag>(entity))
+            em.RemoveComponent<ArcherRetreatFireTag>(entity);
 
         if (em.HasComponent<TauntTag>(entity)) em.RemoveComponent<TauntTag>(entity);
 
@@ -582,34 +644,28 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
 
             if (soldierGO.TryGetComponent<SoldierRuntimeBridge>(out var soldier))
             {
-                soldier.Initialize(_soldierPoolKey, _stat, statScaleRatio, link.Entity, _job, _unitName, _grade);
+                // ⚠ 장수의 최종 스탯(_stat)이 아니라 병사 전용 원본을 넘긴다
+                //   장수만 강해지는 성장(패시브·특성·도감·장수 전용 옵션)이
+                //   환산을 타고 병사에게 흘러들지 않게 하는 지점이다.
+                soldier.Initialize(_soldierPoolKey, _soldierSourceStat, statScaleRatio,
+                                   link.Entity, _job, _unitName, _grade);
 
-                // 병사에게 패시브 스텟 즉시 적용
-                var db = PassiveSkillDatabase.Current;
-                if (db != null && soldierGO.TryGetComponent<EntityLink>(out var soldierLink)
+                // 병사에게 오는 보너스는 한 곳에서 한 번에 적용한다.
+                // ⚠ 출처별로 따로 부르면 안 된다 — 각자 Base 를 읽으며 고쳐서
+                //   적용 순서가 결과를 바꾼다 (SoldierStatApplier 주석 참고).
+                if (soldierGO.TryGetComponent<EntityLink>(out var soldierLink)
                     && soldierLink.Entity != Entity.Null)
                 {
                     var world = Unity.Entities.World.DefaultGameObjectInjectionWorld;
                     if (world != null)
-                    {
-                        PassiveSkillApplier.ApplyToSoldierEntity(
+                        SoldierStatApplier.Apply(
                             soldierLink.Entity, world.EntityManager,
-                            GetActivePassives(), db);
-
-                        // 어빌리티 병사 스텟 적용 (Unit_Soldier 대상)
-                        var aDb  = AbilityDatabase.Current;
-                        var abls = UserDataManager.Instance?.Get<RunAbilityData>()?.HeldAbilities;
-                        if (aDb != null && abls != null)
-                            AbilityApplier.ApplyToSoldierEntity(
-                                soldierLink.Entity, world.EntityManager, abls, aDb);
-
-                        // 유물 병사 스텟 적용 (Unit_Soldier 대상, 영구)
-                        var rDb  = RelicDatabase.Current;
-                        var rInv = UserDataManager.Instance?.Get<RelicInventoryData>();
-                        if (rDb != null && rInv != null)
-                            RelicApplier.ApplyToSoldierEntity(
-                                soldierLink.Entity, world.EntityManager, rInv, rDb);
-                    }
+                            GetActivePassives(),        PassiveSkillDatabase.Current,
+                            UserDataManager.Instance?.Get<RunAbilityData>()?.HeldAbilities,
+                            AbilityDatabase.Current,
+                            UserDataManager.Instance?.Get<RelicInventoryData>(),
+                            RelicDatabase.Current,
+                            _job);
                 }
             }
         }

@@ -54,7 +54,14 @@ public class BossSlamRunner : MonoBehaviour
         if (_held != null) _held.SyncPosition = false;
 
         // ── ① 예고 — 발밑에 장판, 몸은 살짝 웅크렸다 편다 ──────
-        SkillEffectHelper.Spawn(d.BaseEffectKey, ground, d.WindupTime + d.SlamTime + 0.3f);
+        //  ⚠ 반경을 곱해서 띄운다
+        //    예고 장판은 "어디까지 맞는가" 를 말하는 그림이다. 프리팹 기본 크기로
+        //    띄우면 반경 3 짜리로 보이는데 실제로는 7 까지 때린다 —
+        //    피했다고 생각한 자리에서 맞으면 그건 예고가 아니다.
+        //    (프리팹 기준 반경 3 — RareSkillEffectGenerator 의 스케일 연동 규칙)
+        float fxScale = d.SlamRadius / 3f;
+        SkillEffectHelper.Spawn(d.BaseEffectKey, ground, d.WindupTime + d.SlamTime + 0.3f,
+                                default, fxScale);
 
         float e = 0f;
         while (e < d.WindupTime)
@@ -81,7 +88,9 @@ public class BossSlamRunner : MonoBehaviour
         t.position = ground;
 
         // ── ③ 착탄 ─────────────────────────────────────────────
-        SkillEffectHelper.Spawn(d.CasterEffectKey, ground, d.EffectDespawnDelay);
+        // 착탄도 같은 배율 — 예고와 크기가 다르면 "예고보다 더 넓게 터졌다" 로 읽힌다
+        SkillEffectHelper.Spawn(d.CasterEffectKey, ground, d.EffectDespawnDelay,
+                                default, fxScale);
         CameraShaker.Impulse(0.6f, ground);
 
         Explode(em, ctx, ground, d);

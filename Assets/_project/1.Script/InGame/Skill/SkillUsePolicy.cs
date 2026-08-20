@@ -11,6 +11,10 @@ using Unity.Transforms;
 //    ② 공격 스킬(= ActiveSkillId.IsSupport() 가 false)은
 //       그 타겟이 **시전자의 공격 사거리 안** 에 들어와 있어야 한다.
 //       버프·치유·소환은 ② 를 건너뛴다.
+//    ③ 돌진형(ActiveSkillId.IsDash())도 ② 를 건너뛴다.
+//       달려가서 때리는 것이 목적인데 사거리 안에서만 나가면 돌진할 거리가
+//       남아 있지 않다. ① 의 HasTarget 이 이미 "적이 시야에 있다" 를 뜻하므로
+//       (UnitTargetSearchSystem 의 그리드 탐색 반경) 그것으로 충분하다.
 //
 //    사거리 판정은 UnitAttackSystem 의 평타 판정과 같은 식이다
 //    (StatComponent.Final[AttackRange] 기준 거리 제곱 비교).
@@ -36,13 +40,17 @@ namespace BattleGame.Units
                                   in ComponentLookup<LocalTransform> transformLookup)
         {
             if (!attack.HasTarget) return false;
-            if (((ActiveSkillId)skillId).IsSupport()) return true;
+
+            var id = (ActiveSkillId)skillId;
+            if (id.IsSupport()) return true;
+
+            // 돌진형은 여기서 끝 — HasTarget 이 곧 "적이 시야에 있다" 다.
+            if (id.IsDash()) return true;
 
             if (!transformLookup.TryGetComponent(attack.TargetEntity, out LocalTransform targetT))
                 return false;
 
-            // 돌진처럼 멀리서 달려드는 패턴은 사거리를 늘려 잡는다.
-            float range = stat.Final[StatType.AttackRange] * ((ActiveSkillId)skillId).RangeScale();
+            float range = stat.Final[StatType.AttackRange] * id.RangeScale();
             return InRange(casterPos, targetT.Position, range);
         }
 
@@ -60,15 +68,17 @@ namespace BattleGame.Units
             var attack = em.GetComponentData<AttackComponent>(general);
             if (!attack.HasTarget) return false;
 
-            int skillId = em.GetComponentData<GeneralActiveSkillComponent>(general).SkillId;
-            if (((ActiveSkillId)skillId).IsSupport()) return true;
+            var id = (ActiveSkillId)em.GetComponentData<GeneralActiveSkillComponent>(general).SkillId;
+            if (id.IsSupport()) return true;
+            if (id.IsDash())    return true;   // 달려가서 때리는 스킬 — 사거리를 보지 않는다
 
             if (!em.Exists(attack.TargetEntity))                            return false;
             if (!em.HasComponent<LocalTransform>(attack.TargetEntity))      return false;
 
             float3 casterPos = em.GetComponentData<LocalTransform>(general).Position;
             float3 targetPos = em.GetComponentData<LocalTransform>(attack.TargetEntity).Position;
-            float  range     = em.GetComponentData<StatComponent>(general).Final[StatType.AttackRange];
+            float  range     = em.GetComponentData<StatComponent>(general).Final[StatType.AttackRange]
+                               * id.RangeScale();
 
             return InRange(casterPos, targetPos, range);
         }

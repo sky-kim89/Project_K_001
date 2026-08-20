@@ -116,6 +116,82 @@ public static class EditorUIBuilder
     public const float BtnLift = 6f;   // 그림자 노출 폭 = 떠 있는 정도
 
     /// <summary>입체 버튼 루트를 만들고 내용 컨테이너(body)를 돌려준다.</summary>
+    /// <summary>
+    /// 팝업 헤더의 'i' 도움말 버튼. 닫기 버튼 **왼쪽**에 놓는다.
+    ///
+    ///   EditorUIBuilder.InfoBtn(header, TutorialId.HelpRelic);
+    ///
+    /// ⚠ 닫기 버튼과 같은 크기·같은 세로 위치로 맞춘다
+    ///   나란히 놓이는 두 버튼의 크기가 다르면 헤더가 삐뚤어 보인다.
+    ///   closeSize·closeRight 는 그 팝업의 닫기 버튼에 준 값을 그대로 넘긴다.
+    ///
+    /// ⚠ 'i' 는 폰트에 있는 글자다 (UI 규칙 2)
+    ///   ⓘ·ℹ 같은 기호는 LiberationSans SDF 에 없어 두부(□)로 나온다.
+    ///   그냥 소문자 i 를 굵게 쓴다.
+    /// </summary>
+    /// <param name="closeSize">닫기 버튼의 폭. 그만큼 왼쪽으로 비켜 놓는다.</param>
+    /// <param name="size">i 버튼 자체의 크기. 0 이면 closeSize 를 따라간다.</param>
+    /// <param name="anchorY">세로 기준. 0.5 = 부모 중앙(헤더 기본), 1 = 부모 위쪽.</param>
+    /// <param name="y">anchorY 기준에서의 세로 오프셋.</param>
+    public static Button InfoBtn(GameObject header, TutorialId tutorialId,
+                                 float closeSize = 76f, float closeRight = -24f,
+                                 float gap = 12f, float size = 0f,
+                                 float anchorY = 0.5f, float y = 0f)
+    {
+        // ⚠ 크기와 '비켜 놓을 거리' 는 다른 값이다
+        //   닫기 버튼이 없는 팝업(EventPopup)은 closeSize 를 0 으로 넘긴다.
+        //   그때 크기까지 0 이 되면 눌리지 않는 점 하나가 남는다.
+        if (size <= 0f) size = closeSize > 0f ? closeSize : 76f;
+
+        var face = new Color(0.20f, 0.34f, 0.54f, 1f);   // 닫기(붉은)와 구분되는 파랑
+        var btn  = RaisedBtn(header, "InfoBtn", face, out var body);
+
+        // 닫기 버튼 왼쪽으로 (닫기 폭 + 간격)만큼 더 밀어 놓는다
+        AnchorRightIn(btn.gameObject, closeRight - closeSize - gap, size, size, anchorY, y);
+
+        var label = TMP(body, "Mark", "i", UIScale.FontMd, FontStyles.Bold);
+        label.alignment     = TextAlignmentOptions.Center;
+        label.color         = Color.white;
+        label.raycastTarget = false;
+        Stretch(label.gameObject);
+
+        var info = btn.gameObject.AddComponent<TutorialInfoButton>();
+        info.SetTutorial(tutorialId);
+
+        return btn;
+    }
+
+    /// <summary>
+    /// 헤더 오른쪽 끝에서 [도움말][닫기] 묶음이 차지하는 폭.
+    ///
+    /// ⚠ 헤더에 다른 위젯을 놓을 때는 반드시 이만큼 비켜선다
+    ///   재화 표시·개수 배지·새로고침 버튼은 "닫기 버튼 왼쪽" 을 자기 자리로 잡고
+    ///   있었다. i 버튼이 뒤늦게 같은 자리에 들어가면서 일곱 군데가 겹쳤다.
+    ///   눈으로는 버튼이 글자 위에 얹힌 것으로 보이고, 그 위젯은 눌리지도 않는다.
+    ///
+    /// ⚠ 인자 규칙은 InfoBtn 과 같아야 한다
+    ///   양쪽이 각자 계산하면 한쪽만 고쳤을 때 조용히 다시 겹친다.
+    ///   closeSize 가 0(닫기 없는 팝업)이면 InfoBtn 과 똑같이 76 으로 본다.
+    /// </summary>
+    /// <param name="closePad">닫기 버튼이 오른쪽 끝에서 띄운 거리 (양수).</param>
+    public static float HeaderRightBlock(float closeSize = 76f, float closePad = 24f,
+                                         float gap = 12f, float infoSize = 0f)
+    {
+        if (infoSize <= 0f) infoSize = closeSize > 0f ? closeSize : 76f;
+        return closePad + closeSize + gap + infoSize;
+    }
+
+    /// <summary>오른쪽 정렬 배치 — InfoBtn 이 쓰는 최소 앵커 헬퍼.</summary>
+    static void AnchorRightIn(GameObject go, float right, float width, float height,
+                              float anchorY = 0.5f, float y = 0f)
+    {
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = new Vector2(1f, anchorY);
+        rt.pivot     = new Vector2(1f, anchorY);
+        rt.anchoredPosition = new Vector2(right, y);
+        rt.sizeDelta        = new Vector2(width, height);
+    }
+
     public static Button RaisedBtn(GameObject parent, string name, Color face,
                                    out GameObject body, float lift = BtnLift)
         => RaisedBtnOn(Go(name, parent), face, out body, lift);

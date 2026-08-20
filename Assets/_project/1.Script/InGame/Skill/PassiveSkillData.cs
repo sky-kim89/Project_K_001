@@ -98,6 +98,27 @@ public class PassiveSkillData : ScriptableObject
     /// </summary>
     public virtual void OnTrigger(PassiveTriggerContext context) { }
 
+    /// <summary>
+    /// 로비 스탯 화면용 — 전투 시작 시 붙을 값을 미리 계산해 신고한다.
+    ///
+    /// ■ 왜 필요한가
+    ///   OnBattleStart 패시브는 전투가 시작돼야 계산되므로 로비 스탯에 전혀 안 뜬다.
+    ///   "방패의 날: 방어율 10%당 공격력 +4%" 를 달고 방어구를 껴도 공격력 숫자가
+    ///   꿈쩍 안 하니 안 먹는 것으로 보였다. 미리 계산해 같은 값을 보여 준다.
+    ///
+    /// ■ 계약
+    ///   current  : 지금까지 합산된 최종 스탯을 돌려준다 (앞 슬롯의 예상치까지 반영).
+    ///   baseRoll : 성장(등급·레벨 롤)만의 값. '외부로 오른 증가분' 을 세는 쪽이 쓴다
+    ///              (전투의 BaseRollStatComponent 와 같은 기준선).
+    ///   outDeltas: 스탯별 **증가량(절대값)** 을 더해 넣는다.
+    ///
+    /// ⚠ OnTrigger 와 같은 식이어야 한다
+    ///   한쪽만 고치면 로비에서 본 숫자와 전투가 갈린다. 공식을 바꿀 때는 반드시 둘 다.
+    /// </summary>
+    public virtual void CollectPreviewStats(Func<StatType, float> current,
+                                            Func<StatType, float> baseRoll,
+                                            Dictionary<StatType, float> outDeltas) { }
+
     // ─────────────────────────────────────────────────────────
     // ■ 단일 스텟 수정자 항목
     // ─────────────────────────────────────────────────────────

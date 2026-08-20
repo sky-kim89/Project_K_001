@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -47,7 +47,8 @@ public class MercCandidateCardUI : MonoBehaviour
 
         if (_gradeBorder != null) _gradeBorder.color = gc;
         if (_gradeText   != null) { _gradeText.text  = GradeStyle.GetLabelWithQuality(entry.Grade, entry.UnitName); _gradeText.color = gc; }
-        if (_nameText    != null) _nameText.text    = entry.UnitName;
+        // 도감 미등록이면 이름 옆에 NEW — 고용을 정하는 순간에 보여야 한다
+        if (_nameText    != null) _nameText.text    = CodexMark.ForGeneral(entry.UnitName);
         if (_jobText     != null) _jobText.text     = JobStyle.GetLabel(job);
         if (_hpText      != null) _hpText.text      = $"체력 {result.Total(StatType.MaxHp):N0}";
         if (_atkText     != null) _atkText.text     = $"공격 {result.Total(StatType.Attack):N0}";

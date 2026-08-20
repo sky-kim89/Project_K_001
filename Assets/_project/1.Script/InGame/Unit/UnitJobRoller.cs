@@ -197,17 +197,17 @@ public static class UnitJobRoller
     {
         UnitJob.Archer => new JobStatRange
         {
-            Hp = new FloatRange(300f, 700f), Attack = new FloatRange(50f, 130f),
-            Defense = new FloatRange(0.03f, 0.10f), AttackRange = new FloatRange(5.0f, 9.0f),
+            Hp = new FloatRange(450f, 1050f), Attack = new FloatRange(50f, 130f),
+            Defense = new FloatRange(0.03f, 0.10f), AttackRange = new FloatRange(5.5f, 9.9f),
             AttackSpeed = new FloatRange(0.8f, 1.8f), MoveSpeed = new FloatRange(2.0f, 2.5f),
             SoldierCount = new FloatRange(5f, 20f), CommandPower = new FloatRange(1f, 30f),
             CritChance = 0.15f, CritDamage = 1.80f,
         },
         UnitJob.Mage => new JobStatRange
         {
-            Hp = new FloatRange(250f, 600f), Attack = new FloatRange(120f, 350f),
+            Hp = new FloatRange(375f, 900f), Attack = new FloatRange(120f, 350f),
             Defense = new FloatRange(0.02f, 0.08f), AttackRange = new FloatRange(4.0f, 7.0f),
-            AttackSpeed = new FloatRange(0.3f, 0.7f), MoveSpeed = new FloatRange(1.5f, 2.0f),
+            AttackSpeed = new FloatRange(0.27f, 0.63f), MoveSpeed = new FloatRange(1.5f, 2.0f),
             SoldierCount = new FloatRange(5f, 20f), CommandPower = new FloatRange(1f, 30f),
             CritChance = 0.10f, CritDamage = 2.00f,
         },
@@ -221,7 +221,7 @@ public static class UnitJobRoller
         },
         _ => new JobStatRange
         {
-            Hp = new FloatRange(700f, 1500f), Attack = new FloatRange(60f, 150f),
+            Hp = new FloatRange(840f, 1800f), Attack = new FloatRange(60f, 150f),
             Defense = new FloatRange(0.08f, 0.22f), AttackRange = new FloatRange(0.8f, 1.2f),
             AttackSpeed = new FloatRange(0.8f, 1.8f), MoveSpeed = new FloatRange(2.5f, 3.0f),
             SoldierCount = new FloatRange(5f, 20f), CommandPower = new FloatRange(1f, 30f),

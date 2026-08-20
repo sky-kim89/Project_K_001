@@ -272,7 +272,10 @@ public static class RunShopPopupCreator
         float x = -24f;
 
         var closeBtn = BuildCloseBtn(header, x);
-        x -= HeadBtnH + 16f;
+
+        // ⚠ BuildCloseBtn 은 도움말 버튼도 함께 만든다
+        //   닫기 폭만 빼면 새로고침 버튼이 도움말 위에 얹힌다.
+        x = -(EditorUIBuilder.HeaderRightBlock(HeadBtnH, 24f) + 16f);
 
         var (refreshBtn, refreshCostTmp) = BuildRefreshBtn(header, x);
         x -= RefreshW + 16f;
@@ -375,6 +378,10 @@ public static class RunShopPopupCreator
         // ✕ 글리프는 폰트에 없다 (□ 로 렌더됨) → 도형으로 그린다
         var mark = EditorUIBuilder.XMark(body, "Mark", UIScale.FontMd, Color.white);
         Center(mark);
+
+        // 도움말 — 닫기 버튼 왼쪽
+        EditorUIBuilder.InfoBtn(header, TutorialId.HelpShop, HeadBtnH, rightX);
+
         return btn;
     }
 

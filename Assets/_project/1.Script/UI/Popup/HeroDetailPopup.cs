@@ -69,6 +69,8 @@ public class HeroDetailPopup : PopupBase
     [SerializeField] TextMeshProUGUI _spdText;
     [SerializeField] TextMeshProUGUI _atkSpdText;
     [SerializeField] TextMeshProUGUI _rangeText;
+    [SerializeField] TextMeshProUGUI _critChanceText;
+    [SerializeField] TextMeshProUGUI _critDmgText;
     [SerializeField] TextMeshProUGUI _soldierCountText;
     [SerializeField] TextMeshProUGUI _cmdPwrText;
     [SerializeField] TextMeshProUGUI _cooldownText;
@@ -198,7 +200,7 @@ public class HeroDetailPopup : PopupBase
         _gradeBadge.color  = gc;
         _gradeText.text    = GradeStyle.GetLabelWithQuality(_entry.Grade, _entry.UnitName);
         _gradeText.color   = Color.white;
-        _nameText.text     = _entry.UnitName;
+        _nameText.text     = CodexMark.ForGeneral(_entry.UnitName);
         if (_nameShadowText != null) _nameShadowText.text = _entry.UnitName;
         _levelText.text    = $"Lv.{_entry.Level}";
         _jobText.text      = JobStyle.GetLabel(job);
@@ -318,6 +320,10 @@ public class HeroDetailPopup : PopupBase
 
         _entry = unitData.GetUnit(_entry.UnitName);
         RefreshUI();
+
+        // 칸 전체를 기준으로 준다 — 강화 버튼이 그 안에 있으니 터지는 자리는 손가락이 되고,
+        // 펀치는 칸 전체에 걸려 3칸 중 어디가 올랐는지 한눈에 보인다
+        UIJuice.EquipEnhance(_equipSlots[slot].transform as RectTransform, enhance + 1);
     }
 
     // ── 성장 (레벨업 · 용병) ──────────────────────────────────
@@ -334,6 +340,10 @@ public class HeroDetailPopup : PopupBase
 
         _entry = unitData.GetUnit(_entry.UnitName);
         RefreshUI();
+
+        // ⚠ RefreshUI 뒤에 터뜨린다 — 숫자가 새 값으로 바뀐 뒤라야 "오르면서 터진다" 로 읽힌다
+        // 기준은 누른 버튼이다 — 실제로는 그 안의 손가락 자리에서 터진다 (UIJuiceLayer.ResolveOrigin)
+        UIJuice.LevelUp(_levelUpBtn.transform as RectTransform, _entry.Level);
     }
 
     void OnSoldierUpClick()
@@ -348,6 +358,8 @@ public class HeroDetailPopup : PopupBase
 
         _entry = unitData.GetUnit(_entry.UnitName);
         RefreshUI();
+
+        UIJuice.SoldierUp(_soldierUpBtn.transform as RectTransform);
     }
 
     // 비용 공식은 GameplayConfig 가 소유한다 — 여기서 따로 계산하지 말 것
@@ -373,6 +385,9 @@ public class HeroDetailPopup : PopupBase
 
         _entry = unitData.GetUnit(_entry.UnitName);
         RefreshUI();
+
+        // 이 게임에서 가장 비싼 성장 — 유일하게 화면이 한 번 번쩍인다
+        UIJuice.GradeUp(_gradeUpBtn.transform as RectTransform, GradeStyle.GetLabel(_entry.Grade));
     }
 
     /// <summary>배치 장수를 해고한다 — 마지막 1명은 해고할 수 없다(전투 불가).</summary>
@@ -452,15 +467,19 @@ public class HeroDetailPopup : PopupBase
     {
         var defs = new (TextMeshProUGUI tmp, StatType type)[]
         {
+            // 순서는 화면에 놓인 행 순서와 맞춘다 (HeroDetailPopupCreator.BuildStatColumn).
+            // 동작상 필수는 아니지만, 어긋나면 나중에 행을 옮길 때 대조가 안 된다.
             (_hpText,           StatType.MaxHp),
             (_atkText,          StatType.Attack),
             (_defText,          StatType.Defense),
+            (_soldierCountText, StatType.SoldierCount),
             (_spdText,          StatType.MoveSpeed),
             (_atkSpdText,       StatType.AttackSpeed),
             (_rangeText,        StatType.AttackRange),
-            (_soldierCountText, StatType.SoldierCount),
             (_cmdPwrText,       StatType.CommandPower),
             (_cooldownText,     StatType.SkillCooldownReduce),
+            (_critChanceText,   StatType.CritChance),
+            (_critDmgText,      StatType.CritDamage),
         };
 
         _statRowEntries = new StatRowEntry[defs.Length];
@@ -549,12 +568,35 @@ public class HeroDetailPopup : PopupBase
         float k          = SoldierScale(row.Type);
         float baseVal    = _statResult.Base.Get(row.Type)   * k;
         float equipVal   = _statResult.GetEquip(row.Type)   * k;
-        float passiveVal = _statResult.GetPassive(row.Type) * k;
         float abilityVal = _statResult.GetAbility(row.Type) * k;
         float relicVal   = _statResult.GetRelic(row.Type)   * k;
         float traitVal   = _statResult.GetTrait(row.Type)   * k;
         float codexVal   = _statResult.GetCodex(row.Type)   * k;
-        float total      = baseVal + equipVal + passiveVal + abilityVal + relicVal + traitVal + codexVal;
+
+        // ── 패시브 칸은 탭마다 출처가 다르다 ──────────────────
+        //  장수 : Target.General 몫
+        //  용병 : Target.Soldier 몫 (장수 몫은 장수 전용이라 병사에게 안 간다)
+        //
+        //  ⚠ 예전엔 장수 몫에 배율만 곱해 보여 줬다
+        //    "강한 장군, 약한 병사"(장군 +30% / 병사 -20%)의 용병 탭에 +30% 가
+        //    환산돼 뜨고 정작 -20% 는 어디에도 없었다 — 부호가 반대로 보였다.
+        //
+        //  ⚠ 비율은 '환산된 병사 스탯' 에 곱한다
+        //    전투(SoldierStatApplier)가 환산 직후 Base 스냅샷에 곱하므로 같은 기준이어야 한다.
+        //    절대값(Flat)은 환산 없이 그대로 더한다 — 이것도 전투와 같다.
+        float passiveVal;
+        if (_showSoldier)
+        {
+            float inherited = baseVal + equipVal + abilityVal + relicVal + traitVal + codexVal;
+            passiveVal = inherited * _statResult.GetSoldierPassiveRatio(row.Type)
+                       + _statResult.GetSoldierPassiveFlat(row.Type);
+        }
+        else
+        {
+            passiveVal = _statResult.GetPassive(row.Type);
+        }
+
+        float total = baseVal + equipVal + passiveVal + abilityVal + relicVal + traitVal + codexVal;
 
         bool hasBonus = equipVal != 0f || passiveVal != 0f || abilityVal != 0f
                      || relicVal != 0f || traitVal   != 0f || codexVal   != 0f;

@@ -6,9 +6,13 @@ using UnityEngine;
 //  StageGenerator 가 이 값을 읽어 WaveData 목록을 생성한다.
 //
 //  ■ 난이도 설계
-//    스테이지를 5개 단위 블록으로 나누어 지수 성장 적용.
-//    BlockStatMultipliers[N] = N번 블록(스테이지 N*5+1 ~ N*5+5)의 스텟 배율.
+//    BlockStatMultipliers[N] = 스테이지 N*5+1 의 스텟 배율 앵커.
+//    앵커 사이는 스테이지 단위로 기하 보간한다 (약 1.24배/스테이지).
 //    5의 배수 스테이지(5, 10, 15…)는 허들로 추가 강화.
+//
+//    ⚠ 스텟 배율은 스테이지가 올라가면 절대 떨어지지 않아야 한다
+//      허들 배율이 스테이지당 성장(1.24)보다 크면 허들 바로 다음 스테이지가
+//      더 쉬워진다. 허들은 배율이 아니라 물량·웨이브로 벌리는 쪽이 안전하다.
 //
 //  생성: 우클릭 > Create > Project K > Stage Config
 // ============================================================
@@ -30,8 +34,10 @@ public class StageConfig : ScriptableObject
     [Header("잠금 해제 조건")]
     [Tooltip("엘리트 탭 해제에 필요한 일반 스테이지 클리어 수")]
     public int EliteUnlockStage    = 5;
-    [Tooltip("환생 가능 최소 일반 스테이지 클리어 수")]
-    public int ReincarnateMinStage = 5;
+    [Tooltip("환생 가능 최소 일반 스테이지 클리어 수. 이 스테이지부터 환생 포인트가 쌓인다.")]
+    public int ReincarnateMinStage = 2;
+    [Tooltip("이 일반 스테이지를 클리어하면 다음 난이도 등급이 해금된다.")]
+    public int DifficultyUnlockStage = 20;
 
     [Header("에너지 비용")]
     public int EnergyCostNormal = 5;
@@ -54,19 +60,25 @@ public class StageConfig : ScriptableObject
     // ■ 지수 성장 난이도 설정
     // ──────────────────────────────────────────────────────────
 
-    [Header("블록별 스텟 배율 — 5스테이지 단위, 인덱스 0=스테이지1~5")]
-    [Tooltip("블록당 약 2.5배 지수 성장. 환생·유물 시스템을 고려한 후반부 100배 스케일.")]
-    public float[] BlockStatMultipliers = { 1.0f, 2.5f, 6.5f, 16f, 40f, 100f };
+    [Header("스텟 배율 앵커 — 5스테이지 간격 (인덱스 0=스테이지1, 1=스테이지6, …)")]
+    [Tooltip("앵커 사이는 스테이지 단위로 기하 보간된다 (GetBlockMultiplier 참고). " +
+             "마지막 값은 26~30 구간을 이어 갈 꼬리 앵커라 그 자체로는 등장하지 않는다.")]
+    public float[] BlockStatMultipliers = { 1.0f, 2.5f, 6.5f, 16f, 40f, 100f, 160f };
 
-    [Header("초반 난이도 완화 — 스테이지 1~4 한정")]
-    [Tooltip("스테이지 1의 적 스텟 배율. 0.3 = 블록 배율 대비 -70%. 5스테이지부터는 블록 배율 그대로.")]
+    [Header("초반 난이도 완화")]
+    [Tooltip("스테이지 1의 적 스텟 배율. EarlyGameEndStage 까지 1.0 으로 선형 복귀한다.")]
     [Range(0.1f, 1f)]
-    public float EarlyGameStatStart = 0.3f;
+    public float EarlyGameStatStart = 0.55f;
+
+    [Tooltip("완화가 끝나는 스테이지. 이 스테이지부터는 배율이 그대로 적용된다.")]
+    public int EarlyGameEndStage = 8;
 
     [Header("허들 스테이지 (5의 배수) 추가 배율")]
-    [Tooltip("5·10·15… 스테이지는 블록 배율에 이 값을 추가로 곱한다. 1.5 = 블록 배율의 50% 추가.")]
+    [Tooltip("5·10·15… 스테이지는 앵커 배율에 이 값을 추가로 곱한다. " +
+             "⚠ 스테이지당 기본 성장(약 1.24배)보다 크게 잡으면 허들 다음 스테이지가 " +
+             "오히려 쉬워진다 — 1.25 이하로 유지할 것.")]
     [Range(1f, 3f)]
-    public float HurdleStatMultiplier = 1.5f;
+    public float HurdleStatMultiplier = 1.2f;
 
     [Tooltip("허들 스테이지 웨이브당 추가 일반 적 수")]
     public int HurdleExtraEnemies = 8;
@@ -116,12 +128,34 @@ public class StageConfig : ScriptableObject
 
     // ── 헬퍼 ─────────────────────────────────────────────────
 
-    /// <summary>스테이지 번호(1~)로 블록 스텟 배율을 반환한다.</summary>
+    /// <summary>
+    /// 스테이지 번호(1~)의 스텟 배율. 앵커 사이를 기하 보간한다.
+    ///
+    /// ⚠ 예전엔 블록 안에서 값이 고정이었다 (계단형)
+    ///   스테이지 1~5 가 전부 ×1.0 이라 다섯 판 내리 같은 세기의 적이 나왔고,
+    ///   그 사이 플레이어는 레벨·장비·어빌리티로 계속 강해져 초반이 통째로 허무해졌다.
+    ///   그러다 6스테이지에서 갑자기 2.5배가 튀어나와 벽처럼 느껴졌다.
+    ///   지금은 앵커(5스테이지 간격)만 남기고 그 사이를 스테이지마다 약 1.24배씩
+    ///   기하 보간한다 — 같은 지점을 지나면서 계단이 사라진다.
+    ///
+    /// ⚠ 마지막 앵커는 꼬리다
+    ///   26~30 구간도 보간하려면 그 너머의 값이 하나 더 필요하다.
+    ///   배열 끝 값은 그 용도이며 실제 스테이지에 그대로 적용되지는 않는다.
+    /// </summary>
     public float GetBlockMultiplier(int stageNumber)
     {
         if (BlockStatMultipliers == null || BlockStatMultipliers.Length == 0) return 1f;
-        int idx = Mathf.Clamp((stageNumber - 1) / 5, 0, BlockStatMultipliers.Length - 1);
-        return BlockStatMultipliers[idx];
+
+        int block = Mathf.Max(0, (stageNumber - 1) / 5);
+        if (block >= BlockStatMultipliers.Length - 1)
+            return BlockStatMultipliers[BlockStatMultipliers.Length - 1];
+
+        float from = BlockStatMultipliers[block];
+        float to   = BlockStatMultipliers[block + 1];
+        if (from <= 0f || to <= 0f) return Mathf.Max(from, 0.01f);
+
+        float t = ((stageNumber - 1) % 5) / 5f;
+        return from * Mathf.Pow(to / from, t);
     }
 
     /// <summary>허들 스테이지(5의 배수) 여부를 반환한다.</summary>

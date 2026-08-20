@@ -1,4 +1,4 @@
-﻿using Unity.Entities;
+using Unity.Entities;
 using UnityEngine;
 using BattleGame.Units;
 
@@ -62,4 +62,24 @@ public class PassiveGoldenPower : PassiveSkillData
             em.SetComponentData(ctx.GeneralEntity, health);
         }
     }
+
+    public override void CollectPreviewStats(System.Func<StatType, float> current,
+                                             System.Func<StatType, float> baseRoll,
+                                             System.Collections.Generic.Dictionary<StatType, float> outDeltas)
+    {
+        var itemData = UserDataManager.Instance?.Get<ItemData>();
+        if (itemData == null || GoldPerBonus <= 0) return;
+
+        int steps = itemData.Get(eItem.Gold) / GoldPerBonus;
+        if (steps <= 0) return;
+
+        float atkDelta = current(StatType.Attack) * AttackPercent * steps;
+        float hpDelta  = current(StatType.MaxHp)  * HpPercent     * steps;
+
+        if (atkDelta != 0f)
+            outDeltas[StatType.Attack] = outDeltas.TryGetValue(StatType.Attack, out var a) ? a + atkDelta : atkDelta;
+        if (hpDelta != 0f)
+            outDeltas[StatType.MaxHp]  = outDeltas.TryGetValue(StatType.MaxHp,  out var h) ? h + hpDelta  : hpDelta;
+    }
+
 }

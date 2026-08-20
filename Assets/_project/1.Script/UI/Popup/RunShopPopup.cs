@@ -48,7 +48,7 @@ public class RunShopPopup : PopupBase
     const int TraitSlots      = RunShopData.TraitSlots;     // 2
     // ── 가격 정책 ────────────────────────────────────────────
     //  특성은 이 게임에서 가장 비싼 물건이다.
-    //  런 내내 유지되고 스택까지 쌓이는데 400 골드면(한 스테이지 보상의 절반)
+    //  런 내내 유지되고 스택까지 쌓이는데 값이 싸면(한 스테이지 보상의 절반 수준)
     //  보이는 족족 전부 사게 된다 — 고를 이유가 없으면 상점이 자판기가 된다.
     //
     //  ⚠ 스테이지가 아니라 **보유 개수**에 비례한다
@@ -57,7 +57,7 @@ public class RunShopPopup : PopupBase
     //    보유 비례면 "몇 개째냐" 가 값을 정한다. 특성을 쌓을수록 다음 하나가 무거워져
     //    소수 정예로 갈지 넓게 모을지 고르게 된다.
     const int TraitCostBase     = 500;
-    const int TraitCostPerOwned = 500;
+    const int TraitCostPerOwned = 400;   // 보유 1개당 인상폭
 
     const int RefreshBaseCost = 100;
     const int SeedPrime       = 7919;   // 새로고침별 시드 오프셋용 소수
@@ -265,8 +265,22 @@ public class RunShopPopup : PopupBase
         UserDataManager.Instance.Get<RunTraitData>().AddTrait(data.TraitType);
         UserDataManager.Instance.Get<RunShopData>().SetPurchasedTrait(slotIdx, data.TraitType);
         UserDataManager.Instance.RequestSave();
+
+        // ⚠ 특성 값은 보유 개수에 비례한다 — 하나 사면 옆 칸도 그만큼 올라야 한다
+        //   예전엔 여기서 RefreshHeader() 만 불렀다. 가격표는 슬롯을 세울 때
+        //   찍힌 값 그대로 남고, 클릭 시 넘어가는 cost 는 람다 안에서 TraitCost() 를
+        //   다시 계산했다 — 표시가 500 인 칸을 누르면 1,000 이 빠져나갔다.
+        RefreshTraitCosts();
         RefreshHeader();
         return true;
+    }
+
+    /// <summary>안 팔린 특성 칸의 가격표를 현재 시세로 다시 찍는다.</summary>
+    void RefreshTraitCosts()
+    {
+        int cost = TraitCost();
+        for (int i = 0; i < TraitSlots; i++)
+            _goodsSlots[EquipSlots + i].SetCost(cost);
     }
 
     bool OnHireGeneral(UnitEntry entry, int cost, int slotIdx)
@@ -309,7 +323,11 @@ public class RunShopPopup : PopupBase
 
     /// <summary>
     /// 특성 가격 — 이미 보유한 특성 개수에 비례한다.
-    /// 1개 보유 시 1,000 / 3개 2,000 / 6개 3,500 …
+    /// 0개 500 / 1개 900 / 2개 1,300 / 3개 1,700 / 6개 2,900 …
+    ///
+    /// ⚠ 값이 도중에 바뀌므로 표시도 같이 갱신해야 한다
+    ///   한 칸을 사면 옆 칸 값이 즉시 오른다 — OnBuyTrait 이 RefreshTraitCosts()
+    ///   를 부르는 이유다. 안 부르면 가격표와 실제 차감액이 어긋난다.
     ///
     /// ⚠ 시너지 특성(1000~)은 세지 않는다
     ///   배치 구성에 따라 자동으로 붙었다 떨어지는 파생값이라,

@@ -144,14 +144,7 @@ public static class TraitCreator
                 (StatType.AttackSpeed,  0.15f, false),
             },
         },
-        new Def
-        {
-            type = TraitType.ArcherRetreatFire,
-            name = "퇴각 사격",
-            desc = "적이 사거리 절반 이내로 접근하면 자동으로 후퇴하며 사격을 멈추지 않는다.",
-            job  = UnitJob.Archer,
-            fx   = System.Array.Empty<(StatType, float, bool)>(),
-        },
+        // 퇴각 사격은 특성에서 뺐다 — 궁수 기본 행동이다 (ArcherRetreatFireTag).
         new Def
         {
             type = TraitType.ArcherRainFire,
@@ -622,7 +615,6 @@ public static class TraitCreator
         (TraitType.KnightHeroReturn, "Assets/_project/3.Textures/Icons/Traits/trait_knight_hero_return.png"),
         (TraitType.KnightMartyr,     "Assets/_project/3.Textures/Icons/Traits/trait_knight_martyr.png"),
         (TraitType.ArcherPrecision,  "Assets/_project/3.Textures/Icons/Traits/trait_archer_precision.png"),
-        (TraitType.ArcherRetreatFire,"Assets/_project/3.Textures/Icons/Traits/trait_archer_retreat_fire.png"),
         (TraitType.ArcherRainFire,   "Assets/_project/3.Textures/Icons/Traits/trait_archer_rain_fire.png"),
         (TraitType.MageArcane,       "Assets/_project/3.Textures/Icons/Traits/trait_mage_arcane.png"),
         (TraitType.MageAttackCdr,    "Assets/_project/3.Textures/Icons/Traits/trait_mage_attack_cdr.png"),

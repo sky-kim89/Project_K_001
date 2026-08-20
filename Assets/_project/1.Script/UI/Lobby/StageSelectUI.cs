@@ -94,16 +94,20 @@ public class StageSelectUI : MonoBehaviour
         // 상점 재입장 — 이벤트를 거치지 않고 바로 연다.
         // 이미 "행상인의 좌판" 을 통해 한 번 연 상태이므로 맥락은 이미 전달됐다.
         _shopBtn?.onClick.RemoveAllListeners();
+        // 용병·장비를 사고 나오면 편성과 스탯이 달라진다 → 대기 부대도 다시 세운다
         _shopBtn?.onClick.AddListener(() =>
-            PopupManager.Instance?.Open<RunShopPopup>(PopupType.RunShop)?.SetOnClose(Refresh));
+            PopupManager.Instance?.Open<RunShopPopup>(PopupType.RunShop)?.SetOnClose(RefreshAndRestand));
 
+        // 유물도 팝업이다 — 탭으로 나갔다 오면 이 패널이 꺼졌다 켜지면서
+        // 대기 부대가 통째로 다시 세워진다. 강화한 유물은 스탯에 붙으므로 다시 세운다.
         _relicBtn?.onClick.RemoveAllListeners();
         _relicBtn?.onClick.AddListener(() =>
-            GetComponentInParent<LobbyNavUI>()?.Switch(3));
+            PopupManager.Instance?.Open<RelicPopup>(PopupType.Relic)?.SetOnClose(RefreshAndRestand));
 
         _disassembleBtn?.onClick.RemoveAllListeners();
+        // 장비를 분해하면 장착 슬롯이 비므로 스탯이 내려간다 → 다시 세운다
         _disassembleBtn?.onClick.AddListener(() =>
-            PopupManager.Instance?.Open<DisassemblePopup>(PopupType.Disassemble));
+            PopupManager.Instance?.Open<DisassemblePopup>(PopupType.Disassemble)?.SetOnClose(RefreshAndRestand));
 
         // 출전 화면에는 이미 장수들이 서 있다 — 여기서는 '시작' 만 누른다.
         // (대기 상태가 아직이면 LobbyManager 가 준비부터 이어서 처리한다)
@@ -208,10 +212,23 @@ public class StageSelectUI : MonoBehaviour
 
     // ── 팝업 열기 ─────────────────────────────────────────────
 
+    /// <summary>
+    /// 팝업이 닫힌 뒤 UI 갱신 + 전장의 대기 부대 재소환.
+    ///
+    /// ⚠ UI 만 갱신하면 카드 숫자와 전장에 선 장수가 어긋난다
+    ///   강화·등급업·장비 교체·해고·용병 구매·이벤트 보상은 전부 스탯이나 편성을 바꾼다.
+    ///   대기 부대는 팝업을 열기 전 스탯으로 서 있으므로 다시 세워야 한다.
+    /// </summary>
+    void RefreshAndRestand()
+    {
+        Refresh();
+        LobbyManager.Instance?.InvalidateStandby();
+    }
+
     void OpenHeroDetail(UnitEntry entry, int slot)
     {
         var popup = PopupManager.Instance.Open<HeroDetailPopup>(PopupType.HeroDetail);
-        popup.SetOnClose(Refresh);
+        popup.SetOnClose(RefreshAndRestand);   // 강화·등급업·장비·해고
         popup.Setup(entry);
     }
 
@@ -225,7 +242,7 @@ public class StageSelectUI : MonoBehaviour
         }
 
         var popup = PopupManager.Instance.Open<EventPopup>(PopupType.Event);
-        popup.SetOnClose(Refresh);   // 이벤트 보상이 특성·슬롯을 바꾸므로 닫히면 갱신
+        popup.SetOnClose(RefreshAndRestand);   // 이벤트 보상이 특성·슬롯·스탯을 바꾼다
         popup.Setup(evt)
              .SetupAbilityResources(
                  AbilityDatabase.Current,

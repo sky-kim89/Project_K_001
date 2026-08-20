@@ -1,5 +1,6 @@
 using BattleGame.Units;
 using Unity.Entities;
+using Unity.Transforms;
 using UnityEngine;
 
 // ============================================================
@@ -32,7 +33,15 @@ using UnityEngine;
 //    DefaultExecutionOrder(10) 으로 EntityLink(0) 보다 늦게 실행해 안전성 확보.
 //
 //  ■ 스프라이트 방향
-//    MovementComponent.Velocity.x 기반 transform.localScale.x 반전.
+//    ① 움직이는 중  → MovementComponent.Velocity.x
+//    ② 멈춰 있으면  → 타겟 방향 (transform.localScale.x 반전)
+//
+//    ⚠ ② 가 없으면 등을 보인 채로 때린다
+//      Velocity 만 보면 "마지막으로 걸어간 방향" 에 얼어붙는다. 멈춰서 싸우는
+//      동안에는 Velocity 가 0 이라 그 값이 갱신되지 않기 때문이다.
+//      보스 돌진(ActiveBossCharge)이 타겟을 8유닛 지나쳐 착지하면 적은 등 뒤에
+//      있는데, 그 자리가 이미 사거리 안이라 추격을 하지 않아 방향이 영영 안 바뀐다.
+//      넉백에 밀려 적을 지나친 경우도 똑같다.
 // ============================================================
 
 [DefaultExecutionOrder(10)]  // EntityLink(0) 이후 실행 보장
@@ -69,6 +78,12 @@ public class UnitAnimationSync : MonoBehaviour
 
     // EntityLink 와 공유하는 CompleteAllTrackedJobs 프레임 캐시
     static int _lastCompletedFrame = -1;
+
+    /// <summary>이 값을 넘는 x 속도라야 '움직이는 중' 으로 본다.</summary>
+    const float MoveEpsilon = 0.01f;
+
+    /// <summary>타겟과 x 가 이만큼은 벌어져야 방향을 바꾼다 (근접전 떨림 방지).</summary>
+    const float FaceDeadzone = 0.35f;
 
     static readonly string[] BoolParams =
     {
@@ -180,12 +195,35 @@ public class UnitAnimationSync : MonoBehaviour
             _prevState = current;
         }
 
-        // ── 이동 방향 기반 스프라이트 반전 ───────────────────
+        // ── 스프라이트 반전 — 이동 방향, 멈췄으면 타겟 방향 ──
+        float vx = 0f;
         if (em.HasComponent<MovementComponent>(_link.Entity))
+            vx = em.GetComponentData<MovementComponent>(_link.Entity).Velocity.x;
+
+        if (Mathf.Abs(vx) > MoveEpsilon)
         {
-            float vx = em.GetComponentData<MovementComponent>(_link.Entity).Velocity.x;
-            if (Mathf.Abs(vx) > 0.01f)
-                _lastFacingX = vx;
+            _lastFacingX = vx;
+        }
+        else if (em.HasComponent<AttackComponent>(_link.Entity)
+              && !em.HasComponent<SkillCastLock>(_link.Entity))
+        {
+            // 제자리에서 싸우는 동안은 타겟이 방향을 정한다 (파일 상단 주석 참고)
+            //
+            // ⚠ 시전 중(SkillCastLock)에는 끼어들지 않는다
+            //   돌진 연출은 이동 잡이 아니라 BossChargeRunner 가 transform 을 직접 몬다.
+            //   그동안 Velocity 는 0 으로 굳어 있으므로 여기가 열려 있으면,
+            //   타겟을 지나치는 순간 부호가 뒤집혀 **달리던 도중에 몸이 홱 돈다**.
+            //   방향을 바로잡는 것은 잠금이 풀린 뒤(착지·경직 후)로 충분하다.
+            var attack = em.GetComponentData<AttackComponent>(_link.Entity);
+            if (attack.HasTarget)
+            {
+                float dx = TargetX(em, attack) - transform.position.x;
+
+                // ⚠ 데드존 없이 부호만 보면 안 된다
+                //   서로 겹쳐 붙은 근접전에서는 dx 가 0 근처를 오가므로
+                //   매 프레임 좌우가 뒤집혀 스프라이트가 떤다.
+                if (Mathf.Abs(dx) > FaceDeadzone) _lastFacingX = dx;
+            }
         }
 
         float absX    = Mathf.Abs(transform.localScale.x);
@@ -195,6 +233,23 @@ public class UnitAnimationSync : MonoBehaviour
             Vector3 s = transform.localScale;
             transform.localScale = new Vector3(targetX, s.y, s.z);
         }
+    }
+
+    /// <summary>
+    /// 타겟의 현재 x. 살아 있으면 실제 위치를, 아니면 마지막 캐시를 쓴다.
+    ///
+    /// ⚠ AttackComponent.TargetPosition 만 믿으면 안 된다
+    ///   그 값을 매 공격마다 갱신하는 것은 UnitAttackSystem 뿐이다.
+    ///   보스는 BossAttackSystem 이 따로 처리하는데 거기서는 지역 변수로만 쓰므로,
+    ///   보스의 캐시는 **타겟을 처음 잡은 순간의 좌표**에서 멈춰 있다.
+    ///   하필 방향이 틀어지는 것도 보스(돌진)라 캐시로는 이 버그를 못 고친다.
+    /// </summary>
+    static float TargetX(EntityManager em, in AttackComponent attack)
+    {
+        if (em.Exists(attack.TargetEntity) && em.HasComponent<LocalTransform>(attack.TargetEntity))
+            return em.GetComponentData<LocalTransform>(attack.TargetEntity).Position.x;
+
+        return attack.TargetPosition.x;
     }
 
     // ── 공개 API (UnitDeathDespawnSystem 에서 호출) ───────────

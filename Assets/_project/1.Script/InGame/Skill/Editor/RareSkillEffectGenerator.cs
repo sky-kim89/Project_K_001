@@ -36,6 +36,14 @@ using UnityEngine;
 //    FX_Sentence_Mark    — 사형 낙인 (루프)
 //    FX_Sentence_Execute — 처형 순간
 //    FX_Death_Skull      — 처형된 자리에서 떠오르는 해골
+//
+//  ■ 보스 패턴 (핏빛 고정 — 아군 스킬의 직업색과 섞이면 안 된다)
+//    FX_BossCharge_Windup — 돌진 웅크림 (발밑 링이 조여든다, 바닥)
+//    FX_BossCharge_Trail  — 돌진 잔상 (0.1초마다 뿌려지므로 가볍게)
+//    FX_BossCharge_Impact — 관통 착지
+//    FX_BossSlam_Warning  — 강타 예고 (루프, 반경 연동, 바닥)
+//    FX_BossSlam_Impact   — 강타 착탄 (반경 연동)
+//    FX_BossSlam_Hit      — 강타 피격 (대상마다 1개)
 // ============================================================
 
 public static class RareSkillEffectGenerator
@@ -80,6 +88,13 @@ public static class RareSkillEffectGenerator
         { "FX_Blood_Burst",      new[] { "MAT_FX_Blade_Add",     "MAT_FX_Spark_Add",   "MAT_FX_Soft_Add"                        } },
         { "FX_Dash_Slash",       new[] { "MAT_FX_Beam_Add",      "MAT_FX_Spark_Add"                                             } },
         { "FX_Death_Skull",      new[] { "MAT_FX_Skull_Add",     "MAT_FX_Halo_Add",    "MAT_FX_Wisp_Add"                        } },
+        // 보스 패턴 — 돌진 / 분쇄 강타 (자식 생성 순서대로 매칭)
+        { "FX_BossCharge_Windup",new[] { "MAT_FX_Ring_Add",      "MAT_FX_Spark_Add",   "MAT_FX_Smoke_Alpha"                     } },
+        { "FX_BossCharge_Trail", new[] { "MAT_FX_Streak_Add",    "MAT_FX_Smoke_Alpha"                                           } },
+        { "FX_BossCharge_Impact",new[] { "MAT_FX_Halo_Add",      "MAT_FX_Shard_Add",   "MAT_FX_Smoke_Alpha", "MAT_FX_Soft_Add"  } },
+        { "FX_BossSlam_Warning", new[] { "MAT_FX_Ring_Add",      "MAT_FX_Spark_Add"                                             } },
+        { "FX_BossSlam_Impact",  new[] { "MAT_FX_Halo_Add",      "MAT_FX_Shard_Add",   "MAT_FX_Smoke_Alpha", "MAT_FX_Ring_Add"  } },
+        { "FX_BossSlam_Hit",     new[] { "MAT_FX_Spark_Add",     "MAT_FX_Soft_Add"                                              } },
     };
 
     // ⚠ 방향이 곧 연출인 이펙트는 여기에 등록한다
@@ -104,9 +119,14 @@ public static class RareSkillEffectGenerator
         // 불멸의 방벽 — 방벽 본체와 내부 광채가 곧 범위 표시다.
         // 표면 결정(Facets)은 그 위를 도는 장식이라 앞에 남긴다.
         { "FX_Bulwark_Dome", new[] { "", "InnerGlow" } },
+        // 분쇄 강타 예고 — 통째로 바닥이다. "어디까지 맞는가" 를 읽는 그림이라
+        // 보스 몸이 이걸 덮으면 피할 자리를 못 본다.
+        { "FX_BossSlam_Warning", new[] { "", "Converge" } },
+        // 돌진 웅크림 — 발밑 링만 바닥으로, 불티·먼지는 앞에 남긴다
+        { "FX_BossCharge_Windup", new[] { "" } },
     };
 
-    [MenuItem(ProjectKMenu.Fx + "희귀 스킬 이펙트 (21종)", priority = ProjectKMenu.PrefabPrio + 52)]
+    [MenuItem(ProjectKMenu.Fx + "희귀·보스 스킬 이펙트 (27종)", priority = ProjectKMenu.PrefabPrio + 52)]
     public static void GenerateAll()
     {
         Directory.CreateDirectory(Path.Combine(Application.dataPath, "_project/2.Prefabs/Effect"));
@@ -135,9 +155,17 @@ public static class RareSkillEffectGenerator
         n += Save("FX_Dash_Slash",       BuildDashSlash());
         n += Save("FX_Death_Skull",      BuildDeathSkull());
 
+        // 보스 패턴
+        n += Save("FX_BossCharge_Windup", BuildBossChargeWindup());
+        n += Save("FX_BossCharge_Trail",  BuildBossChargeTrail());
+        n += Save("FX_BossCharge_Impact", BuildBossChargeImpact());
+        n += Save("FX_BossSlam_Warning",  BuildBossSlamWarning());
+        n += Save("FX_BossSlam_Impact",   BuildBossSlamImpact());
+        n += Save("FX_BossSlam_Hit",      BuildBossSlamHit());
+
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log($"[RareSkillEffectGenerator] ✓ 희귀 스킬 이펙트 {n}종 생성 → {kSavePath}\n" +
+        Debug.Log($"[RareSkillEffectGenerator] ✓ 희귀·보스 스킬 이펙트 {n}종 생성 → {kSavePath}\n" +
                   "PoolController 의 Effect 풀 프리팹 목록을 다시 불러와야 스폰된다.");
     }
 
@@ -2125,6 +2153,507 @@ public static class RareSkillEffectGenerator
             col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
                 new[] { (0f, Color.white), (1f, (Color)C(130, 100, 220)) },
                 new[] { (0f, 0f), (0.2f, 1f), (1f, 0f) }));
+        }
+
+        return go;
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  보스 패턴 — 돌진 / 분쇄 강타
+    // ══════════════════════════════════════════════════════════
+    //
+    //  ■ 색은 핏빛으로 고정한다
+    //    아군 스킬은 직업색(청/녹/금)을 쓴다. 보스 패턴이 같은 색을 쓰면
+    //    난전에서 "지금 나한테 오는 것" 과 "내가 쓴 것" 이 구분되지 않는다.
+    //
+    //  ■ 예고(Warning)는 반드시 바닥에 깐다
+    //    "어디까지 맞는가" 를 읽는 정보라 캐릭터를 덮으면 안 된다 (kGroundLayers).
+    //
+    //  ■ 반경 연동
+    //    분쇄 강타는 프리팹 기준 반경 3 으로 그리고 Runner 가 SlamRadius/3 를 곱한다.
+    //    기본 반경이 7 이라 그대로 두면 표시가 실제 범위의 절반도 안 된다.
+
+    // 돌진 ① 웅크림 — 발밑으로 힘이 모이고 흙이 빨려 들어온다
+    static GameObject BuildBossChargeWindup()
+    {
+        var go = NewGO();
+
+        // Root — 발밑 링이 조여든다 (곧 튀어나간다는 신호)
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.45f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(0f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(3.4f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 120, 70, 210));
+            m.maxParticles = 4;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 2) });
+            var shOff = ps.shape; shOff.enabled = false;
+
+            // 커지는 게 아니라 **조여든다** — 모으는 동작이라 안쪽으로 수축해야 읽힌다
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(1.3f, 0.7f, 0.75f, 0.5f));
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, (Color)C(255, 190, 120)), (1f, (Color)C(190, 40, 30)) },
+                new[] { (0f, 0f), (0.25f, 0.95f), (1f, 0f) }));
+        }
+
+        // 사방에서 빨려 들어오는 불티 (startSpeed 음수 = 중심으로 수렴)
+        {
+            var c = Child(go, "Gather");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.3f, 0.45f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(-6f, -3.5f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(0.2f, 0.5f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 210, 150), C(220, 70, 40));
+            m.simulationSpace = ParticleSystemSimulationSpace.World;
+            m.maxParticles = 40;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 24) });
+
+            var sh = ps.shape;
+            sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle;
+            sh.radius = 2.8f; sh.radiusThickness = 0f;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, (Color)C(200, 50, 30)) },
+                new[] { (0f, 0f), (0.3f, 1f), (1f, 0.85f) }));
+        }
+
+        // 뒷발에 밟혀 튀는 흙먼지
+        {
+            var c = Child(go, "Dust");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.5f, 0.85f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(1f, 2.4f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(0.7f, 1.5f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(150, 125, 105, 170));
+            m.simulationSpace = ParticleSystemSimulationSpace.World;
+            m.maxParticles = 24;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 12) });
+
+            var sh = ps.shape;
+            sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 1f;
+
+            SetVelocity(ps, ParticleSystemSimulationSpace.World, y: new Vector2(0.3f, 1.1f));
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, (Color)C(170, 145, 120)), (1f, (Color)C(90, 75, 60)) },
+                new[] { (0f, 0f), (0.2f, 0.6f), (1f, 0f) }));
+        }
+
+        return go;
+    }
+
+    // 돌진 ② 잔상 — 0.1초마다 경로에 뿌려진다
+    //  ⚠ 가볍게 만들어야 한다
+    //    긴 돌진이면 한 번에 20개 넘게 깔린다. 층을 늘리면 그 수만큼 곱해진다.
+    static GameObject BuildBossChargeTrail()
+    {
+        var go = NewGO();
+
+        // Root — 지나간 자리에 남는 붉은 잔상
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.3f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.3f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(0f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(1.9f, 2.6f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 110, 60, 160));
+            m.simulationSpace = ParticleSystemSimulationSpace.World;
+            m.maxParticles = 4;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 1) });
+            var shOff = ps.shape; shOff.enabled = false;
+
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(1f, 0.5f, 0.8f, 0.45f));
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, (Color)C(255, 180, 120)), (1f, (Color)C(180, 30, 25)) },
+                new[] { (0f, 0.8f), (1f, 0f) }));
+        }
+
+        // 발밑에서 뒤로 튀는 흙
+        {
+            var c = Child(go, "Kick");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.3f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.35f, 0.6f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(1.5f, 3f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(0.5f, 1.1f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(150, 128, 108, 150));
+            m.simulationSpace = ParticleSystemSimulationSpace.World;
+            m.maxParticles = 10;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 5) });
+
+            var sh = ps.shape;
+            sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 0.6f;
+
+            SetVelocity(ps, ParticleSystemSimulationSpace.World, y: new Vector2(0.4f, 1.3f));
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, (Color)C(165, 140, 115)), (1f, (Color)C(85, 70, 58)) },
+                new[] { (0f, 0.55f), (1f, 0f) }));
+        }
+
+        return go;
+    }
+
+    // 돌진 ③ 관통 착지 — 몸통으로 들이받은 자리
+    static GameObject BuildBossChargeImpact()
+    {
+        var go = NewGO();
+
+        // Root — 충격파 고리
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.4f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(0f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(1.6f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 210, 170));
+            m.maxParticles = 4;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 2) });
+            var shOff = ps.shape; shOff.enabled = false;
+
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.4f, 0.45f, 3.4f, 4.6f));
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, (Color)C(210, 60, 40)) },
+                new[] { (0f, 1f), (0.5f, 0.6f), (1f, 0f) }));
+        }
+
+        // 사방으로 튀는 파편
+        {
+            var c = Child(go, "Shards");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.35f, 0.7f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(6f, 13f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(0.25f, 0.6f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 200, 150), C(200, 60, 40));
+            m.simulationSpace = ParticleSystemSimulationSpace.World;
+            m.maxParticles = 40;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 26) });
+
+            var sh = ps.shape;
+            sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle;
+            sh.radius = 0.3f; sh.radiusThickness = 1f;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, (Color)C(170, 40, 30)) },
+                new[] { (0f, 1f), (0.6f, 0.8f), (1f, 0f) }));
+        }
+
+        // 뭉게 먼지
+        {
+            var c = Child(go, "Dust");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.5f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.6f, 1f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(2f, 5f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(1.2f, 2.4f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(150, 128, 110, 180));
+            m.simulationSpace = ParticleSystemSimulationSpace.World;
+            m.maxParticles = 24;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 14) });
+
+            var sh = ps.shape;
+            sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 0.9f;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, (Color)C(175, 150, 125)), (1f, (Color)C(80, 68, 58)) },
+                new[] { (0f, 0f), (0.15f, 0.7f), (1f, 0f) }));
+        }
+
+        // 순간 섬광
+        {
+            var c = Child(go, "Flash");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.3f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.16f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(0f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(3.2f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 235, 200));
+            m.maxParticles = 2;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 1) });
+            var shOff = ps.shape; shOff.enabled = false;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, (Color)C(255, 150, 90)) },
+                new[] { (0f, 1f), (1f, 0f) }));
+        }
+
+        return go;
+    }
+
+    // 분쇄 강타 ① 예고 — 발밑에 그려지는 위험 범위 (바닥 정렬)
+    //  기준 반경 3 — Runner 가 SlamRadius/3 를 곱한다.
+    static GameObject BuildBossSlamWarning()
+    {
+        var go = NewGO();
+
+        // Root — 붉은 위험 원. 도약하는 내내 떠 있어야 하므로 loop.
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.55f; m.loop = true;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.55f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(0f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(6f);   // 지름 = 반경 3 × 2
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 70, 55, 200));
+            m.maxParticles = 4;
+
+            var em = ps.emission; em.rateOverTime = 2f;
+            var shOff = ps.shape; shOff.enabled = false;
+
+            // 맥박 — 같은 크기로 가만히 있으면 "예고" 가 아니라 장식으로 보인다
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.92f, 0.5f, 1f, 0.92f));
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, (Color)C(255, 140, 110)), (1f, (Color)C(200, 30, 25)) },
+                new[] { (0f, 0f), (0.3f, 0.9f), (0.7f, 0.9f), (1f, 0f) }));
+        }
+
+        // 안쪽으로 떨어져 모이는 불티 — "여기로 내려온다" 를 방향으로 말해 준다
+        {
+            var c = Child(go, "Converge");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.55f; m.loop = true;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.4f, 0.6f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(-5f, -3f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(0.2f, 0.45f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 190, 140), C(225, 60, 45));
+            m.simulationSpace = ParticleSystemSimulationSpace.Local;
+            m.maxParticles = 60;
+
+            var em = ps.emission; em.rateOverTime = 34f;
+
+            var sh = ps.shape;
+            sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle;
+            sh.radius = 3f; sh.radiusThickness = 0f;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, (Color)C(200, 45, 35)) },
+                new[] { (0f, 0f), (0.25f, 0.9f), (1f, 0.7f) }));
+        }
+
+        return go;
+    }
+
+    // 분쇄 강타 ② 착탄 — 땅이 꺼진다
+    //  기준 반경 3 — Runner 가 SlamRadius/3 를 곱한다.
+    static GameObject BuildBossSlamImpact()
+    {
+        var go = NewGO();
+
+        // Root — 바깥으로 터져 나가는 충격파 고리
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.7f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.55f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(0f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(1.5f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 225, 190));
+            m.maxParticles = 4;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            // 두 번 터뜨려 파문이 겹치게 한다 — 한 겹이면 반경 7 이 얇아 보인다
+            em.SetBursts(new[]
+            {
+                new ParticleSystem.Burst(0f,    1),
+                new ParticleSystem.Burst(0.09f, 1),
+            });
+            var shOff = ps.shape; shOff.enabled = false;
+
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.3f, 0.4f, 3.2f, 4.2f));
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, (Color)C(205, 55, 40)) },
+                new[] { (0f, 1f), (0.5f, 0.55f), (1f, 0f) }));
+        }
+
+        // 위로 솟구치는 돌덩이 — 넉백이 '띄우는' 스킬이라 파편도 위로 간다
+        {
+            var c = Child(go, "Debris");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.7f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.6f, 1.1f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(5f, 11f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(0.3f, 0.8f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(190, 165, 140), C(120, 100, 85));
+            m.simulationSpace = ParticleSystemSimulationSpace.World;
+            m.gravityModifier = 1.6f;   // 솟았다가 도로 떨어져야 무게가 실린다
+            m.maxParticles = 50;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 30) });
+
+            var sh = ps.shape;
+            sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle;
+            sh.radius = 2.2f; sh.radiusThickness = 1f;
+
+            SetVelocity(ps, ParticleSystemSimulationSpace.World, y: new Vector2(3f, 7f));
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, (Color)C(200, 175, 150)), (1f, (Color)C(95, 80, 68)) },
+                new[] { (0f, 1f), (0.7f, 0.9f), (1f, 0f) }));
+        }
+
+        // 바닥을 기어 퍼지는 흙먼지
+        {
+            var c = Child(go, "Dust");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.7f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.8f, 1.3f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(4f, 9f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(1.6f, 3.2f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(155, 133, 112, 190));
+            m.simulationSpace = ParticleSystemSimulationSpace.World;
+            m.maxParticles = 40;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 22) });
+
+            var sh = ps.shape;
+            sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle;
+            sh.radius = 1.2f; sh.radiusThickness = 1f;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, (Color)C(180, 155, 130)), (1f, (Color)C(78, 66, 56)) },
+                new[] { (0f, 0f), (0.12f, 0.75f), (1f, 0f) }));
+        }
+
+        // 갈라진 땅에서 새어 나오는 붉은 빛
+        {
+            var c = Child(go, "Crack");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.7f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.5f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(0f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(5.2f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 90, 60, 220));
+            m.maxParticles = 2;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 1) });
+            var shOff = ps.shape; shOff.enabled = false;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, (Color)C(255, 170, 120)), (1f, (Color)C(150, 20, 15)) },
+                new[] { (0f, 0.95f), (0.4f, 0.7f), (1f, 0f) }));
+        }
+
+        return go;
+    }
+
+    // 분쇄 강타 ③ 피격 — 맞은 유닛마다 하나씩. 가볍게.
+    static GameObject BuildBossSlamHit()
+    {
+        var go = NewGO();
+
+        // Root — 위로 튀어 오르는 타격 불티 (넉백 방향과 같이 위)
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.4f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.25f, 0.45f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(3f, 7f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(0.18f, 0.4f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 205, 160), C(215, 60, 45));
+            m.simulationSpace = ParticleSystemSimulationSpace.World;
+            m.maxParticles = 16;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 10) });
+
+            var sh = ps.shape;
+            sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle;
+            sh.radius = 0.25f; sh.radiusThickness = 1f;
+
+            SetVelocity(ps, ParticleSystemSimulationSpace.World, y: new Vector2(2f, 4.5f));
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, (Color)C(180, 40, 30)) },
+                new[] { (0f, 1f), (1f, 0f) }));
+        }
+
+        // 짧은 타격 섬광
+        {
+            var c = Child(go, "Flash");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.3f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.14f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(0f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(1.4f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 225, 190));
+            m.maxParticles = 2;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 1) });
+            var shOff = ps.shape; shOff.enabled = false;
+
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.6f, 0.4f, 1.3f, 1.5f));
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, (Color)C(255, 120, 80)) },
+                new[] { (0f, 1f), (1f, 0f) }));
         }
 
         return go;

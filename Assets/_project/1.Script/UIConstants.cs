@@ -142,7 +142,11 @@ public static class StatDisplayHelper
             StatType.AttackRange  => $"{sign}{value:F1}",
             StatType.SoldierCount => $"{sign}{Mathf.RoundToInt(value)}명",
             StatType.CritChance   => $"{sign}{value * 100f:F1}%",
-            StatType.CritDamage   => isFinal ? $"×{value:F2}" : $"{sign}{value:F2}×",
+            // 치명피해는 배수(1.8)로 저장되지만 화면에는 % 로 뿌린다 — 180.0%.
+            // ⚠ 증감분(isFinal=false)도 같은 규칙이다
+            //   장비 +0.5 는 "+50.0%" 로 읽혀야 최종값 180% 와 자릿수가 맞는다.
+            //   예전처럼 "×1.80 / +0.50×" 로 섞으면 분해 문자열에서 단위가 두 개가 된다.
+            StatType.CritDamage   => $"{sign}{value * 100f:F1}%",
             StatType.SkillCooldownReduce => isFinal
                 ? FormatCDRFinal(value)
                 : $"{sign}{value * 100f:F1}%",
@@ -203,5 +207,50 @@ public static class StatDisplayHelper
         }
 
         return sb.ToString();
+    }
+}
+
+// ============================================================
+//  CodexMark
+//  도감에 아직 없는 항목을 이름 옆에 표시한다.
+//
+//  ■ 왜 이름에 붙이나 — 프리팹을 안 건드리는 자리이기 때문
+//    상점·용병 카드·장수 상세는 각자 다른 Creator 가 만든다. 뱃지 오브젝트를
+//    새로 넣으려면 프리팹 셋을 다 다시 만들고 필드를 세 곳에 연결해야 한다.
+//    이름 TMP 에 리치 텍스트로 얹으면 세 화면이 같은 규칙을 공짜로 얻는다.
+//
+//  ■ 왜 표시해야 하나
+//    도감은 1종당 공격력·체력 +0.5% 다 (CodexData.BonusPerEntry).
+//    처음 보는 장수를 뽑는 것 자체가 영구 성장이라, 그 사실이 고용·구매를
+//    결정하는 순간에 보여야 한다. 도감 화면까지 들어가서 대조할 수는 없다.
+//
+//  ⚠ 글리프를 쓰지 않는다 (UI 규칙 2)
+//    ★ ✔ 같은 기호는 기본 폰트에 없어 □ 로 뜬다. ASCII "NEW" 로 쓴다.
+// ============================================================
+
+public static class CodexMark
+{
+    const string Color = "#FFD24A";   // 재화·강조에 쓰는 금색 계열
+    const string Label = "NEW";
+
+    /// <summary>도감에 없는 장수면 이름 뒤에 표를 붙여 돌려준다. 이미 있으면 이름 그대로.</summary>
+    public static string ForGeneral(string unitName)
+    {
+        if (string.IsNullOrEmpty(unitName)) return unitName;
+
+        var codex = CodexData.Current;
+        // 세이브가 아직 없으면(부팅 직후) 표를 붙이지 않는다 —
+        // 있는 장수를 없다고 말하는 쪽이 없다고 말 안 하는 쪽보다 나쁘다.
+        if (codex == null || codex.HasGeneral(unitName)) return unitName;
+
+        return $"{unitName} <color={Color}><size=70%>{Label}</size></color>";
+    }
+
+    /// <summary>도감 미등록 여부만 필요할 때.</summary>
+    public static bool IsNewGeneral(string unitName)
+    {
+        if (string.IsNullOrEmpty(unitName)) return false;
+        var codex = CodexData.Current;
+        return codex != null && !codex.HasGeneral(unitName);
     }
 }

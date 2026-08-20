@@ -7,6 +7,16 @@ using BattleGame.Units;
 //  DebugAttackSpeedLogger.cs
 //  장군 설정 공격속도 vs 실제 공격속도 비교 로그 시스템.
 //  5초마다 각 장군의 스탯·실제 공격 횟수를 콘솔에 출력한다.
+//
+//  ⚠ 웨이브가 도는 동안에만 잰다
+//    로비 BattlePanel 의 '출전 대기' 는 아군만 세워 두고 적을 한 마리도 놓지 않는다.
+//    때릴 대상이 없으니 공격이 0회인 게 정상인데, 그걸 모르는 이 로거가
+//    "실제 0.00회/초 ← ★ 불일치" 를 5초마다 찍어 콘솔을 덮었다.
+//    진짜 불일치가 났을 때 그 줄이 묻혀 버리므로 게이트가 없으면 로거가 무의미하다.
+//
+//    ⚠ 카운터도 같이 멈춰야 한다
+//      게이트를 출력에만 걸면 대기 중 0회가 계속 쌓였다가 전투 시작 직후
+//      첫 창에 섞여 들어가 또 가짜 불일치가 뜬다.
 // ============================================================
 
 #if UNITY_EDITOR || ENABLE_ATK_SPD_LOG
@@ -22,6 +32,14 @@ public partial class DebugAttackSpeedLogger : SystemBase
 
     protected override void OnUpdate()
     {
+        // 웨이브가 안 도는 동안(출전 대기·로비 데모·결과창)은 재지도, 찍지도 않는다.
+        if (BattleManager.Instance == null || !BattleManager.Instance.IsWaveRunning)
+        {
+            if (_attackCounts.Count > 0) _attackCounts.Clear();
+            _timer = 0f;
+            return;
+        }
+
         _timer += SystemAPI.Time.DeltaTime;
 
         // 공격 횟수 카운트

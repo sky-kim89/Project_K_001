@@ -12,7 +12,7 @@ using BattleGame.Units;
 //    IsAbsoluteValue=false → base × valuePerLevel × level 을 가산
 //    IsAbsoluteValue=true  → valuePerLevel × level 을 직접 가산
 //
-//  ■ 병사 ECS 스텟 적용 (ApplyToSoldierEntity)
+//  ■ 병사 적용은 여기 없다 (SoldierStatApplier 가 모아서 처리)
 //    Unit_Soldier 대상 유물을 병사 ECS StatComponent.Base 에 반영.
 //    GeneralRuntimeBridge.SpawnSoldiers() 에서 PassiveSkillApplier 직후 호출.
 //
@@ -42,56 +42,15 @@ public static class RelicApplier
             if (data.Target == AbilityTarget.Unit_Soldier) continue;
             if (!AbilityApplier.MatchesGeneralTarget(data.Target, job)) continue;
 
-            ApplyStatLine(stat, data.Stat1, data.Value1PerLevel, level, data.IsAbsoluteValue);
+            // ⚠ 장수 전용은 별도 레이어에 담는다 — 병사 환산에서 빠져야 한다
+            //   (UnitStat.GeneralOnlyKey 주석 참고. 공통 옵션은 기본 레이어로 간다)
+            string layer = data.Target == AbilityTarget.Unit_General
+                           ? UnitStat.GeneralOnlyKey : "relic";
+
+            ApplyStatLine(stat, data.Stat1, data.Value1PerLevel, level, data.IsAbsoluteValue, layer);
             if (data.HasStat2)
-                ApplyStatLine(stat, data.Stat2, data.Value2PerLevel, level, data.IsAbsoluteValue);
+                ApplyStatLine(stat, data.Stat2, data.Value2PerLevel, level, data.IsAbsoluteValue, layer);
         }
-    }
-
-    // ── 병사 ECS 스텟 적용 ─────────────────────────────────────
-
-    public static void ApplyToSoldierEntity(
-        Entity entity, EntityManager em,
-        RelicInventoryData inventory, RelicDatabase db)
-    {
-        if (inventory == null || db == null) return;
-        if (entity == Entity.Null || !em.Exists(entity)) return;
-        if (!em.HasComponent<StatComponent>(entity)) return;
-
-        // 비율 보너스와 절대값 보너스를 분리해 누적
-        var ratios    = new Dictionary<StatType, float>();
-        var absolutes = new Dictionary<StatType, float>();
-
-        foreach (var (id, level) in inventory.OwnedRelics)
-        {
-            if (level <= 0) continue;
-            var data = db.Get(id);
-            if (data == null || data.EffectType != RelicEffectType.Stat) continue;
-            if (data.Target != AbilityTarget.Unit_Soldier) continue;
-
-            Accumulate(data.IsAbsoluteValue ? absolutes : ratios,
-                data.Stat1, data.Value1PerLevel * level);
-            if (data.HasStat2)
-                Accumulate(data.IsAbsoluteValue ? absolutes : ratios,
-                    data.Stat2, data.Value2PerLevel * level);
-        }
-
-        if (ratios.Count == 0 && absolutes.Count == 0) return;
-
-        var sc = em.GetComponentData<StatComponent>(entity);
-
-        foreach (var kvp in ratios)
-            sc.Base[kvp.Key] += sc.Base[kvp.Key] * kvp.Value;
-
-        foreach (var kvp in absolutes)
-            sc.Base[kvp.Key] += kvp.Value;
-
-        sc.Final = sc.Base;
-        em.SetComponentData(entity, sc);
-
-        if (ratios.ContainsKey(StatType.MaxHp) || absolutes.ContainsKey(StatType.MaxHp))
-            em.SetComponentData(entity, new HealthComponent
-                { CurrentHp = sc.Base[StatType.MaxHp] });
     }
 
     // ── 적 약화 적용 ───────────────────────────────────────────
@@ -129,7 +88,16 @@ public static class RelicApplier
             var data = db.Get(id);
             if (data == null || data.EffectType != RelicEffectType.System) continue;
             if (data.SystemEffect != effect) continue;
-            total += data.SystemValuePerLevel * level;
+
+            // ⚠ 저장된 레벨을 그대로 믿지 않는다
+            //   밸런스로 MaxLevel 을 내리면(출병 명령 Lv2 → Lv1) 이미 Lv2 로 저장된
+            //   세이브가 그대로 두 배 효과를 낸다. 상한을 여기서 다시 건다.
+            //   (Common 은 무한 강화라 상한이 없다 — RelicPopup 의 isInfinite 와 같은 규칙)
+            int capped = data.Rarity == RelicRarity.Common
+                ? level
+                : Mathf.Min(level, data.MaxLevel);
+
+            total += data.SystemValuePerLevel * capped;
         }
         return total;
     }
@@ -140,11 +108,14 @@ public static class RelicApplier
     public static int GetSystemInt(RelicSystemEffect effect, RelicInventoryData inventory, RelicDatabase db)
         => Mathf.RoundToInt(GetSystemValue(effect, inventory, db));
 
+    /// <summary>기본으로 열려 있는 장수 배치 슬롯 수.</summary>
+    public const int BaseGeneralSlots = 2;
+
     /// <summary>
-    /// 현재 활성 장수 배치 슬롯 수. 기본 1칸 + 유물 보너스.
+    /// 현재 활성 장수 배치 슬롯 수. 기본 2칸 + 유물 보너스(출병 명령 Lv1 = +1칸).
     /// </summary>
     public static int GetActiveGeneralSlots(RelicInventoryData inventory, RelicDatabase db)
-        => 1 + GetSystemInt(RelicSystemEffect.GeneralSlotBonus, inventory, db);
+        => BaseGeneralSlots + GetSystemInt(RelicSystemEffect.GeneralSlotBonus, inventory, db);
 
     /// <summary>
     /// 유물 + 특성 보너스를 합산한 최종 장수 슬롯 수 (최대 5).
@@ -173,12 +144,13 @@ public static class RelicApplier
 
     // ── 내부 ──────────────────────────────────────────────────
 
-    static void ApplyStatLine(UnitStat stat, StatType type, float valuePerLevel, int level, bool isAbsolute)
+    static void ApplyStatLine(UnitStat stat, StatType type, float valuePerLevel, int level,
+                              bool isAbsolute, string layer = "relic")
     {
         float delta = isAbsolute
             ? valuePerLevel * level
             : stat.Get(type) * valuePerLevel * level;
-        stat.Add(type, delta, "relic");
+        stat.Add(type, delta, layer);
     }
 
     static void Accumulate(Dictionary<StatType, float> dict, StatType type, float value)

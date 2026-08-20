@@ -1,4 +1,4 @@
-﻿using Unity.Entities;
+using Unity.Entities;
 using UnityEngine;
 using BattleGame.Units;
 
@@ -40,4 +40,22 @@ public class PassiveShieldEdge : PassiveSkillData
         stat.Final[StatType.Attack] += atkBonus;
         em.SetComponentData(ctx.GeneralEntity, stat);
     }
+
+    public override void CollectPreviewStats(System.Func<StatType, float> current,
+                                             System.Func<StatType, float> baseRoll,
+                                             System.Collections.Generic.Dictionary<StatType, float> outDeltas)
+    {
+        // ⚠ 소프트캡을 먹인 방어율로 센다
+        //   전투는 StatComponent.Final 을 읽는데, 그 값은 스폰 직전
+        //   GeneralRuntimeBridge.ApplyDefenseSoftCap 을 거친 뒤다.
+        //   원시 방어율로 세면 로비 쪽 단계 수가 더 많이 나온다.
+        float defense = StatDisplayHelper.EffectiveDefensePct(current(StatType.Defense)) * 0.01f;
+        int   steps   = Mathf.FloorToInt(defense / DefenseStep);
+        if (steps <= 0) return;
+
+        float atkBonus = current(StatType.Attack) * AttackPerStep * steps;
+        if (atkBonus == 0f) return;
+        outDeltas[StatType.Attack] = outDeltas.TryGetValue(StatType.Attack, out var v) ? v + atkBonus : atkBonus;
+    }
+
 }

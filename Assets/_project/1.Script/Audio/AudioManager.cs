@@ -3,11 +3,21 @@ using UnityEngine;
 
 // ============================================================
 //  AudioManager.cs
-//  효과음 전체를 관리하는 Singleton.
+//  효과음 + 배경음 전체를 관리하는 Singleton.
 //
 //  사용법:
 //    AudioManager.Instance?.Play(SfxKey.UI_Click);
 //    AudioManager.Instance?.Play(SfxKey.ATK_Knight, 0.5f);   // 볼륨 절반
+//    AudioManager.Instance?.PlayBgm(BgmKey.Lobby);           // 같은 곡이면 무시
+//
+//  ■ 배경음은 소스가 따로 하나다
+//    효과음은 풀에서 빌려 쓰지만(Rent) 배경음은 전용 AudioSource 를 loop 로 돌린다.
+//    풀에 섞으면 다음 Rent 가 재생 중인 배경음을 덮어쓴다.
+//
+//  ■ 켜기/끄기는 저장 설정이 정한다 (BattleSettingsData)
+//    PausePopup 의 효과음·배경음 토글이 그 값을 쓴다. 여기서는 매 프레임
+//    그 값을 배경음 소스에 반영하고(LateUpdate), 효과음은 Play 입구에서 막는다.
+//    → 어디서 토글하든 따로 알려 줄 필요가 없다.
 //
 //  ■ 클립은 Inspector 배열로 들고 있다 (Resources 안 씀)
 //    PopupManager 가 프리팹 배열을 PopupType 으로 자동 분류하는 것과 같은 방식이다.
@@ -39,9 +49,20 @@ public class AudioManager : Singleton<AudioManager>
     [Header("효과음 클립 (파일명 = SfxKey 값으로 자동 분류)")]
     [SerializeField] AudioClip[] _clips;
 
+    [Header("배경음 클립 (파일명 = BgmKey 값으로 자동 분류)")]
+    [SerializeField] AudioClip[] _bgmClips;
+
     [Header("전체 볼륨")]
     [Range(0f, 1f)]
     [SerializeField] float _masterVolume = 1f;
+
+    [Header("배경음 볼륨")]
+    //  ⚠ 효과음과 같은 크기로 틀면 안 된다
+    //    BGM 원본이 효과음보다 훨씬 크게 녹음돼 있어 그대로 재생하면
+    //    전투음이 통째로 묻힌다. 실제로 들어 보고 0.2 까지 내렸다 —
+    //    배경음은 '있는 줄 모르게' 깔려야 타격음·스킬음이 앞으로 나온다.
+    [Range(0f, 1f)]
+    [SerializeField] float _bgmVolume = 0.2f;
 
     // ── 예산 정의 ────────────────────────────────────────────
     //  PerSecond  : 1초에 이만큼까지만 재생
@@ -87,6 +108,12 @@ public class AudioManager : Singleton<AudioManager>
 
     readonly HashSet<SfxKey> _warned = new();   // 없는 키 경고는 한 번만
 
+    // ⚠ _sources(효과음 풀)에 넣지 않는다 — Rent 가 빌려 가 배경음을 덮어쓴다
+    readonly Dictionary<BgmKey, AudioClip> _bgmMap = new();
+    AudioSource _bgmSource;
+    BgmKey      _currentBgm = BgmKey.None;
+    readonly HashSet<BgmKey> _bgmWarned = new();
+
     // ── Unity 생명주기 ────────────────────────────────────────
 
     protected override void Awake()
@@ -102,6 +129,22 @@ public class AudioManager : Singleton<AudioManager>
                 Debug.LogWarning($"[AudioManager] '{clip.name}' 은 SfxKey 에 없는 이름입니다. " +
                                  "파일명과 SfxKey 값이 같아야 분류됩니다.");
         }
+
+        foreach (var clip in _bgmClips)
+        {
+            if (clip == null) continue;
+            if (System.Enum.TryParse(clip.name, out BgmKey key) && key != BgmKey.None)
+                _bgmMap[key] = clip;
+            else
+                Debug.LogWarning($"[AudioManager] '{clip.name}' 은 BgmKey 에 없는 이름입니다. " +
+                                 "파일명과 BgmKey 값이 같아야 분류됩니다.");
+        }
+
+        _bgmSource = gameObject.AddComponent<AudioSource>();
+        _bgmSource.playOnAwake  = false;
+        _bgmSource.loop         = true;
+        _bgmSource.spatialBlend = 0f;
+        _bgmSource.volume       = _bgmVolume * _masterVolume;
     }
 
     // 재생이 끝난 만큼 예산을 돌려준다.
@@ -110,6 +153,14 @@ public class AudioManager : Singleton<AudioManager>
     //   AudioSource 는 클립이 끝나면 알아서 멈춘다.
     void LateUpdate()
     {
+        // 배경음 설정 반영 — 토글한 쪽이 따로 알려 주지 않아도 여기서 맞춰진다.
+        // (음소거는 Stop 이 아니라 mute 다 — 다시 켜면 끊긴 자리에서 이어진다)
+        if (_bgmSource != null)
+        {
+            _bgmSource.mute   = !BattleSettingsData.BgmEnabled;
+            _bgmSource.volume = _bgmVolume * _masterVolume;
+        }
+
         float now = Time.unscaledTime;
         for (int i = _busy.Count - 1; i >= 0; i--)
         {
@@ -128,6 +179,7 @@ public class AudioManager : Singleton<AudioManager>
     public void Play(SfxKey key, float volumeScale)
     {
         if (key == SfxKey.None) return;
+        if (!BattleSettingsData.SfxEnabled) return;   // PausePopup 의 효과음 토글
 
         if (!_clipMap.TryGetValue(key, out var clip))
         {
@@ -153,6 +205,41 @@ public class AudioManager : Singleton<AudioManager>
     }
 
     public void SetMasterVolume(float v) => _masterVolume = Mathf.Clamp01(v);
+
+    // ── 공개 API — 배경음 ────────────────────────────────────
+
+    /// <summary>지금 흐르고 있는 곡. 같은 곡을 다시 요청하면 아무 일도 하지 않는다.</summary>
+    public BgmKey CurrentBgm => _currentBgm;
+
+    /// <summary>
+    /// 배경음을 바꾼다. 이미 같은 곡이 흐르고 있으면 그대로 둔다 —
+    /// 로비 안에서 화면을 옮길 때마다 곡이 처음부터 다시 시작하면 안 된다.
+    /// </summary>
+    public void PlayBgm(BgmKey key)
+    {
+        if (key == BgmKey.None) { StopBgm(); return; }
+        if (_bgmSource == null) return;
+        if (_currentBgm == key && _bgmSource.isPlaying) return;
+
+        if (!_bgmMap.TryGetValue(key, out var clip))
+        {
+            if (_bgmWarned.Add(key))
+                Debug.LogError($"[AudioManager] BgmKey.{key} 에 연결된 클립이 없습니다. " +
+                               "AudioManager Inspector 의 [Load Audio Clips From Folder] 를 누르세요.");
+            return;
+        }
+
+        _currentBgm       = key;
+        _bgmSource.clip   = clip;
+        _bgmSource.volume = _bgmVolume * _masterVolume;
+        _bgmSource.Play();
+    }
+
+    public void StopBgm()
+    {
+        _currentBgm = BgmKey.None;
+        _bgmSource?.Stop();
+    }
 
     // ── 내부 — 예산 ──────────────────────────────────────────
 

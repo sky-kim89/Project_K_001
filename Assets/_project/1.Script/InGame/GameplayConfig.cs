@@ -375,7 +375,7 @@ public class GameplayConfig : ScriptableObject
         // 평균 DPS(크리 포함): Knight ~170, Archer ~158, Mage ~155, ShieldBearer ~90(탱킹 보정)
         KnightRange = new JobStatRange
         {
-            Hp           = new FloatRange(800f,   1600f),
+            Hp           = new FloatRange(960f,   1920f),  // +20% 상향
             Attack       = new FloatRange(90f,    200f),   // ↑ 근접 고위험 고딜 정체성
             Defense      = new FloatRange(0.06f,  0.15f),   // ↓ 하향 — 방패병과 격차 확보 (기사는 체력·공격으로 버틴다)
             AttackRange  = new FloatRange(0.8f,   1.2f),
@@ -388,10 +388,11 @@ public class GameplayConfig : ScriptableObject
         };
         ArcherRange = new JobStatRange
         {
-            Hp           = new FloatRange(350f,   750f),   // +10% 상향
-            Attack       = new FloatRange(60f,    140f),   // +8% 상향
+            Hp           = new FloatRange(525f,   1125f),  // +50% 상향 — 넉백으로 버는 시간을 살리려면
+                                                           //   한 번 붙였을 때 한두 대는 버텨야 한다
+            Attack       = new FloatRange(60f,    140f),   // 평타 위주 정체성 — 하향분 원복
             Defense      = new FloatRange(0.03f,  0.10f),
-            AttackRange  = new FloatRange(5.0f,   9.0f),
+            AttackRange  = new FloatRange(5.5f,   9.9f),   // +10% 상향 — 화력을 뺀 만큼 거리로 돌려준다
             AttackSpeed  = new FloatRange(0.9f,   1.9f),   // 소폭 상향
             MoveSpeed    = new FloatRange(2.0f,   2.5f),
             SoldierCount = new FloatRange(1f,     2f),
@@ -401,11 +402,11 @@ public class GameplayConfig : ScriptableObject
         };
         MageRange = new JobStatRange
         {
-            Hp           = new FloatRange(270f,   620f),   // +4% 상향
-            Attack       = new FloatRange(130f,   370f),   // +6% 상향
+            Hp           = new FloatRange(405f,   930f),   // +50% 상향
+            Attack       = new FloatRange(130f,   370f),   // 유지 — 한 방이 굵은 것이 법사의 정체성
             Defense      = new FloatRange(0.02f,  0.08f),
             AttackRange  = new FloatRange(4.0f,   7.0f),
-            AttackSpeed  = new FloatRange(0.35f,  0.75f),
+            AttackSpeed  = new FloatRange(0.315f, 0.675f), // -10% 하향 — DPS 는 공속으로만 깎는다
             MoveSpeed    = new FloatRange(1.5f,   2.0f),
             SoldierCount = new FloatRange(1f,     2f),
             CommandPower = new FloatRange(1f,     30f),

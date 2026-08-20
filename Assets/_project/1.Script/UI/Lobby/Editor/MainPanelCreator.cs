@@ -1068,6 +1068,19 @@ public static class MainPanelCreator
         var head = MakeTMP(panel, "Head", "난 이 도", UIScale.FontSm, FontStyles.Bold);
         head.color = Muted; head.alignment = TextAlignmentOptions.MidlineLeft; head.raycastTarget = false;
         NoWrap(head);
+
+        // 도움말 — '난 이 도' 라벨 줄 오른쪽 끝.
+        //
+        // ⚠ 이 패널엔 닫기도 뒤로도 없다 (로비에 상시 붙어 있는 칸)
+        //   비켜 놓을 대상이 없으므로 closeSize·gap 을 0 으로 두고 크기만 준다.
+        //
+        // ⚠ 세로 중앙에 두면 안 된다
+        //   InfoBtn 은 기본이 부모 중앙 정렬인데, 이 패널은 세로로 길어서
+        //   가운데에 놓으면 난이도 칸 한복판에 떠 버린다.
+        //   라벨과 같은 줄에 오도록 위쪽 기준으로 내린다.
+        EditorUIBuilder.InfoBtn(panel, TutorialId.HelpDifficulty,
+                                closeSize: 0f, closeRight: -14f, gap: 0f, size: 44f,
+                                anchorY: 1f, y: -14f);
         PlaceTop(head.rectTransform, Pad, y, UIScale.RowSm);
         y += UIScale.RowSm + 6f;
 

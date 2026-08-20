@@ -37,10 +37,27 @@ public static class RunStarter
             ? presetName
             : RollNameForJob(job);
 
-        UnitGrade birth = UnitJobRoller.GetBirthGrade(chosen);
+        return CandidateNamed(chosen);
+    }
+
+    /// <summary>
+    /// 이름을 지정해 시작 후보를 만든다 (최초 실행 고정 장수용).
+    ///
+    /// ⚠ 직업은 여기서 못 정한다 — 이름이 정한다
+    ///   UnitJobRoller 가 이름 해시로 직업을 뽑으므로, 이름을 박으면 직업도
+    ///   같이 박힌다. "이 장수를 주고 싶다" 와 "이 직업을 주고 싶다" 는 함께
+    ///   만족시킬 수 없다. 직업이 우선이면 RollCandidate(job) 쪽을 쓸 것.
+    ///
+    /// ⚠ 이름 풀(UnitData.GetAvailableNames)에 있는 이름이어야 한다
+    ///   풀 밖 이름을 넣어도 스탯·직업은 해시로 나오지만, 상점·용병 목록과
+    ///   다른 세계의 장수가 되어 도감·시너지 표시가 어긋난다.
+    /// </summary>
+    public static UnitEntry CandidateNamed(string unitName)
+    {
+        UnitGrade birth = UnitJobRoller.GetBirthGrade(unitName);
         return new UnitEntry
         {
-            UnitName     = chosen,
+            UnitName     = unitName,
             Level        = 1,
             Exp          = 0,
             GradeUpCount = Mathf.Max(0, (int)UnitGrade.Epic - (int)birth),

@@ -33,4 +33,14 @@ public class PassiveFocusedFire : PassiveSkillData
         stat.Final[StatType.CritChance] += critBonus;
         em.SetComponentData(ctx.GeneralEntity, stat);
     }
+
+    public override void CollectPreviewStats(System.Func<StatType, float> current,
+                                             System.Func<StatType, float> baseRoll,
+                                             System.Collections.Generic.Dictionary<StatType, float> outDeltas)
+    {
+        float critBonus = current(StatType.AttackSpeed) * CritPerAtkSpd;
+        if (critBonus <= 0f) return;
+        outDeltas[StatType.CritChance] = outDeltas.TryGetValue(StatType.CritChance, out var v) ? v + critBonus : critBonus;
+    }
+
 }

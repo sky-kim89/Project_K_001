@@ -111,8 +111,17 @@ public class RunTraitData : ISaveSection
         if (string.IsNullOrEmpty(json)) return;
         var dto = JsonUtility.FromJson<RunTraitDataJson>(json);
         if (dto?.entries == null) return;
+
+        // ⚠ enum 에서 사라진 번호는 버린다
+        //   퇴각 사격(7)처럼 폐기된 특성이 세이브에 남아 있으면, 그대로 실으면서
+        //   상점 가격(TraitCost 는 보유 개수로 값을 매긴다)을 올리고 특성 스트립에
+        //   빈 칸으로 서 있게 된다. 어디에도 정의가 없으니 효과는 하나도 없다.
         foreach (var e in dto.entries)
-            _data[(TraitType)e.traitType] = e.stackCount;
+        {
+            var t = (TraitType)e.traitType;
+            if (!Enum.IsDefined(typeof(TraitType), t)) continue;
+            _data[t] = e.stackCount;
+        }
         OnTraitsChanged?.Invoke();
     }
 

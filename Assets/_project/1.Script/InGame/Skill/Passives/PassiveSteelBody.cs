@@ -1,4 +1,4 @@
-﻿using Unity.Entities;
+using Unity.Entities;
 using BattleGame.Units;
 
 // ============================================================
@@ -32,4 +32,14 @@ public class PassiveSteelBody : PassiveSkillData
         stat.Final[StatType.Attack] += atkBonus;
         em.SetComponentData(ctx.GeneralEntity, stat);
     }
+
+    public override void CollectPreviewStats(System.Func<StatType, float> current,
+                                             System.Func<StatType, float> baseRoll,
+                                             System.Collections.Generic.Dictionary<StatType, float> outDeltas)
+    {
+        float atkBonus = current(StatType.MaxHp) * HpToAttackRatio;
+        if (atkBonus <= 0f) return;
+        outDeltas[StatType.Attack] = outDeltas.TryGetValue(StatType.Attack, out var v) ? v + atkBonus : atkBonus;
+    }
+
 }

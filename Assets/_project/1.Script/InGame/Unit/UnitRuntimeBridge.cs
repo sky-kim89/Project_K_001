@@ -71,6 +71,14 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
     /// </summary>
     protected void SpawnEntity()
     {
+        // 앞뒤(그리는 순서)는 발 위치 Y 로 정한다 — 여기가 모든 유닛이 지나는 유일한 길목이다.
+        // ⚠ 외형 조립(ApplyAlly/ApplyEnemy)이 끝난 뒤라야 한다
+        //   CharacterBuilder 가 SpriteRenderer 를 갈아 끼우므로 그 전에 훑으면
+        //   이미 사라진 렌더러 목록을 들고 있게 된다.
+        if (!TryGetComponent<UnitDepthSorter>(out var depth))
+            depth = gameObject.AddComponent<UnitDepthSorter>();
+        depth.Rescan();
+
         if (!TryGetComponent<EntityLink>(out var link))
         {
             Debug.LogWarning($"[{GetType().Name}:{_unitName}] EntityLink 없음. 프리팹에 추가하세요.");

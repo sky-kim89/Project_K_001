@@ -73,7 +73,8 @@ public class RunShopGeneralSlot : MonoBehaviour
             var cfg    = GameplayConfig.Current;
             var gc     = GradeStyle.GetColor(entry.Grade);
 
-            if (_nameText  != null) _nameText.text  = entry.UnitName;
+            // 도감 미등록이면 이름 옆에 NEW — 구매를 정하는 순간에 보여야 한다
+            if (_nameText  != null) _nameText.text  = CodexMark.ForGeneral(entry.UnitName);
             if (_jobText   != null) _jobText.text   = JobStyle.GetLabel(job);
             if (_gradeText != null) { _gradeText.text = GradeStyle.GetLabelWithQuality(entry.Grade, entry.UnitName); _gradeText.color = gc; }
 

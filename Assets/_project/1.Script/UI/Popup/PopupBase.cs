@@ -58,6 +58,13 @@ public abstract class PopupBase : MonoBehaviour
     /// <summary>true 이면 백그라운드(블로커) 클릭으로 닫히지 않는다.</summary>
     public virtual bool BlockBackgroundClose => false;
 
+    /// <summary>
+    /// false 면 열기·닫기 효과음을 내지 않는다.
+    /// 로딩 팝업처럼 플레이어가 연 것이 아닌 팝업은 조용히 떠야 한다 —
+    /// 화면 전환마다 "팝!" 소리가 나면 그게 곧 조작음으로 오해된다.
+    /// </summary>
+    protected virtual bool PlayOpenCloseSfx => true;
+
     /// <summary>열기 애니메이션이 완료됐는지 여부. CloseRoutine 이 이 값을 기다린다.</summary>
     bool _openComplete;
 
@@ -106,7 +113,7 @@ public abstract class PopupBase : MonoBehaviour
         ApplyAnimProgress(_openAnimation, 0f);
         gameObject.SetActive(true);
 
-        AudioManager.Instance?.Play(SfxKey.UI_Popup_Open);
+        if (PlayOpenCloseSfx) AudioManager.Instance?.Play(SfxKey.UI_Popup_Open);
 
         OnBeforeOpen();
         StartCoroutine(OpenRoutine());
@@ -156,7 +163,7 @@ public abstract class PopupBase : MonoBehaviour
         IsOpen = false;
         _canvasGroup.blocksRaycasts = false;
 
-        AudioManager.Instance?.Play(SfxKey.UI_Popup_Close);
+        if (PlayOpenCloseSfx) AudioManager.Instance?.Play(SfxKey.UI_Popup_Close);
 
         yield return StartCoroutine(PlayAnim(_closeAnimation, opening: false, _closeDuration));
 

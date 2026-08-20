@@ -46,7 +46,7 @@ public enum RelicSystemEffect
     EnemyMaxHpReduction    = 7,  // 적 최대 체력 -N%
     EnemyAttackReduction   = 8,  // 적 공격력 -N%
 
-    GeneralSlotBonus       = 9,  // 장수 배치 슬롯 +N칸 (기본 1칸)
+    GeneralSlotBonus       = 9,  // 장수 배치 슬롯 +N칸 (기본은 RelicApplier.BaseGeneralSlots)
     BattleSpeedUnlock      = 10, // 전투 배속 해금 +N단계 (기본 1× 만, Lv1=2×, Lv2=3×)
 }
 
@@ -69,7 +69,7 @@ public enum RelicId
     // 적 약화
     R_EnemyHpDown          = 107,  // 시련의 세례      — 적 체력 -5%/레벨,         Lv4, Rare
     R_EnemyAtkDown         = 108,  // 공포의 각인      — 적 공격력 -4%/레벨,       Lv4, Rare
-    R_GeneralSlotExpand    = 109,  // 출병 명령        — 장수 배치 슬롯 +1/레벨,   Lv2, Epic
+    R_GeneralSlotExpand    = 109,  // 출병 명령        — 장수 배치 슬롯 +1칸,      Lv1, Epic
     R_BattleSpeed          = 110,  // 시간의 고삐      — 전투 배속 +1단계/레벨,    Lv2, Epic
 
     // ── 장수 스텟 유물 (2xx) ─────────────────────────────────
@@ -90,6 +90,25 @@ public enum RelicId
     R_ShieldFortress       = 214,  // 방벽의 군주      — Shield 방어율 +10%, 체력 +8%/레벨,Lv3, Epic
 
     // ── 병사 스텟 유물 (3xx) ─────────────────────────────────
+    //  Target = Unit_Soldier — 병사에게만 붙는다. 장수는 그대로다.
     R_SoldierAtk           = 301,  // 병사의 혼        — Soldier 공격력 +5%/레벨,     Lv5, Common
     R_SoldierHp            = 302,  // 병사의 생명력    — Soldier 최대 체력 +5%/레벨,  Lv5, Common
+
+    // ── 장수 전용 유물 (4xx) ─────────────────────────────────
+    //  Target = Unit_General — 장수에게만 붙고 병사 환산을 타지 않는다.
+    //
+    //  ⚠ 2xx 의 R_General* 과 이름이 겹치지 않게 OnlyXxx 를 붙였다
+    //    2xx 는 이름만 'General' 이지 실제 Target 은 All 이다 — 장수와 병사를
+    //    함께 올린다. 여기 4xx 만이 진짜 '장수 전용' 이다.
+    //    둘을 같은 이름으로 두면 어느 쪽이 병사에게 가는지 코드에서 구분이 안 된다.
+    //
+    //  ⚠ 공통(All) 유물과 역할이 다르다
+    //    All 은 부대 전체를 조금씩 올린다. 이쪽은 장수 한 명에게 몰아준다.
+    //    병사에게 안 가는 대신 배율을 크게 잡아야 고를 이유가 생긴다 —
+    //    2xx 공통 유물(+4~5%/레벨)보다 높게 둔 이유다.
+    R_OnlyGeneralAtk       = 401,  // 장군의 검        — General 공격력 +9%/레벨,       Lv5, Uncommon
+    R_OnlyGeneralHp        = 402,  // 장군의 투구      — General 최대 체력 +9%/레벨,    Lv5, Uncommon
+    R_OnlyGeneralDef       = 403,  // 장군의 흉갑      — General 방어율 +3%p/레벨,      Lv3, Rare (절대값)
+    R_OnlyGeneralCrit      = 404,  // 장군의 안목      — General 치명확률 +4%p/레벨,    Lv3, Rare (절대값)
+    R_OnlyGeneralMight     = 405,  // 영웅의 증표      — General 공격력·체력 +12%/레벨, Lv3, Epic
 }

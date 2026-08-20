@@ -44,6 +44,7 @@ namespace BattleGame.Units
         ComponentLookup<EliteComponent>       _eliteLookup;
         ComponentLookup<MirrorArmorComponent> _mirrorArmorLookup;
         ComponentLookup<KnockbackImmuneTag>   _knockbackImmuneLookup;
+        ComponentLookup<InvulnerableTag>      _invulnerableLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -52,6 +53,7 @@ namespace BattleGame.Units
             _eliteLookup           = state.GetComponentLookup<EliteComponent>(isReadOnly: true);
             _mirrorArmorLookup     = state.GetComponentLookup<MirrorArmorComponent>(isReadOnly: true);
             _knockbackImmuneLookup = state.GetComponentLookup<KnockbackImmuneTag>(isReadOnly: true);
+            _invulnerableLookup    = state.GetComponentLookup<InvulnerableTag>(isReadOnly: true);
         }
 
         // [BurstCompile]
@@ -61,6 +63,7 @@ namespace BattleGame.Units
             _eliteLookup.Update(ref state);
             _mirrorArmorLookup.Update(ref state);
             _knockbackImmuneLookup.Update(ref state);
+            _invulnerableLookup.Update(ref state);
 
             var cfg = GameplayConfig.Current;
             if (cfg == null) return;
@@ -79,6 +82,7 @@ namespace BattleGame.Units
                 EliteLookup           = _eliteLookup,
                 MirrorArmorLookup     = _mirrorArmorLookup,
                 KnockbackImmuneLookup = _knockbackImmuneLookup,
+                InvulnerableLookup    = _invulnerableLookup,
                 DefenseSoftCap        = softCap,
                 DefenseOverflowRate   = overflowRate,
                 DefenseEffectiveCap   = effectiveCap,
@@ -99,6 +103,7 @@ namespace BattleGame.Units
         [ReadOnly] public ComponentLookup<EliteComponent>       EliteLookup;
         [ReadOnly] public ComponentLookup<MirrorArmorComponent> MirrorArmorLookup;
         [ReadOnly] public ComponentLookup<KnockbackImmuneTag>   KnockbackImmuneLookup;
+        [ReadOnly] public ComponentLookup<InvulnerableTag>      InvulnerableLookup;
         public float DefenseSoftCap;
         public float DefenseOverflowRate;
         public float DefenseEffectiveCap;
@@ -200,7 +205,14 @@ namespace BattleGame.Units
             if (hasSkillKnockback)
                 maxStun = math.max(maxStun, 0.3f);
 
-            health.CurrentHp -= totalDamage;
+            // ── 무적 ──
+            //  피격 연출(플래시·넉백·경직)과 반사·피해 기록은 그대로 두고 체력만 지킨다.
+            //  ⚠ 반드시 여기서 막는다 — 죽음은 이 자리에서 확정되므로
+            //    밖에서 체력을 주기적으로 채우는 방식은 한 틱 안에 통이 비는
+            //    병사를 못 살린다 (로비 데모에서 장군만 살아남던 이유).
+            if (!InvulnerableLookup.HasComponent(entity))
+                health.CurrentHp -= totalDamage;
+
             hitBuffer.Clear();
 
             hitReaction.NeedsFlash = true;

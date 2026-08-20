@@ -6,17 +6,24 @@ using UnityEngine;
 //  StageGenerator.cs
 //  StageConfig 의 커브를 바탕으로 StageData 목록을 절차적으로 생성.
 //
-//  ■ 난이도 곡선 (기본 설정 기준)
-//    Stage  1: ×1.0    | 웨이브 2 | 적 ~9/wave   → ~18마리
-//    Stage  5: ×1.5 허들| 웨이브 5 | 적 ~30/wave  → ~150마리
-//    Stage 10: ×3.75 허들| 웨이브 6 | 적 ~45/wave → ~270마리
-//    Stage 15: ×9.75 허들| 웨이브 7 | 적 ~61/wave → ~427마리
-//    Stage 20: ×24  허들| 웨이브 8 | 적 ~77/wave  → ~616마리
-//    Stage 25: ×60  허들| 웨이브 9 | 적 ~92/wave  → ~828마리
-//    Stage 30: ×150 허들| 웨이브10 | 적 ~108/wave → ~1080마리
+//  ■ 난이도 곡선 (기본 설정 기준 — 레벨 배율 제외한 statMult)
+//    스테이지마다 약 1.24배씩 오르고, 5의 배수에서 허들이 한 번 더 곱해진다.
+//    Stage  1: ×0.55   | 웨이브 2 | 적 ~9/wave   → ~18마리
+//    Stage  5: ×2.02 허들| 웨이브 5 | 적 ~30/wave  → ~150마리
+//    Stage 10: ×6.45 허들| 웨이브 6 | 적 ~45/wave → ~270마리
+//    Stage 15: ×16.0 허들| 웨이브 7 | 적 ~61/wave → ~427마리
+//    Stage 20: ×40.0 허들| 웨이브 8 | 적 ~77/wave  → ~616마리
+//    Stage 25: ×100  허들| 웨이브 9 | 적 ~92/wave  → ~828마리
+//    Stage 30: ×175  허들| 웨이브10 | 적 ~108/wave → ~1080마리
 //
 //  ■ 환생·유물 시스템 고려
 //    후반 블록(26~30) 100× 기준 — 환생 보너스가 없으면 클리어 불가 설계
+//
+//  ⚠ 예전 곡선은 초·중반이 통째로 헐거웠다
+//    블록 안에서 배율이 고정(계단형)인데다 초반 완화가 20스테이지까지 걸려 있어,
+//    스테이지 1~9 의 실효 배율이 0.3~2.3 에 머물렀다. 그 사이 플레이어는
+//    레벨·장비·어빌리티·유물로 계속 강해지므로 적이 일방적으로 밀렸다.
+//    지금은 앵커 사이를 기하 보간하고 완화를 8스테이지에서 끝낸다.
 // ============================================================
 
 public static class StageGenerator
@@ -51,10 +58,18 @@ public static class StageGenerator
         // 스텟 배율 계산
         float blockMult  = config.GetBlockMultiplier(stageNumber);
         float hurdleMult = isHurdle ? config.HurdleStatMultiplier : 1f;
-        // 스테이지 1→20: EarlyGameStatStart(0.3) → 1.0 선형 완화, 21부터 완화 없음
-        float earlyMult  = stageNumber <= 20
-            ? Mathf.Lerp(config.EarlyGameStatStart, 1f, (stageNumber - 1) / 19f)
+
+        // 초반 완화 — 스테이지 1 에서 EarlyGameStatStart, EarlyGameEndStage 에서 1.0.
+        // ⚠ 완화 구간을 길게 끌면 안 된다
+        //   예전엔 20스테이지까지 걸려 있어서, 앵커 배율이 오르는 만큼을 완화가
+        //   계속 깎아먹었다. 그 사이 플레이어는 레벨·장비·어빌리티·유물로 계속
+        //   강해지므로 중반까지 적이 일방적으로 밀렸다.
+        //   완화는 "조작을 익히는 몇 판" 만 덮으면 된다.
+        int   earlyEnd   = Mathf.Max(2, config.EarlyGameEndStage);
+        float earlyMult  = stageNumber < earlyEnd
+            ? Mathf.Lerp(config.EarlyGameStatStart, 1f, (stageNumber - 1) / (float)(earlyEnd - 1))
             : 1f;
+
         float statMult   = blockMult * hurdleMult * earlyMult;
 
         var rng   = new System.Random(HashSeed(mode, stageNumber));

@@ -161,7 +161,8 @@ public static class CodexPopupCreator
             var rt = bonus.rectTransform;
             rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
             rt.pivot     = new Vector2(1f, 0.5f);
-            rt.anchoredPosition = new Vector2(-(Pad + 130f), 0f);
+            // 닫기(88) + 도움말 묶음 왼쪽
+            rt.anchoredPosition = new Vector2(-(EditorUIBuilder.HeaderRightBlock(88f, Pad) + 20f), 0f);
             rt.sizeDelta        = new Vector2(560f, UIScale.RowMd);
         }
 
@@ -174,6 +175,9 @@ public static class CodexPopupCreator
             rt.anchoredPosition = new Vector2(-Pad, 4f);
             rt.sizeDelta        = new Vector2(88f, 78f);
         }
+        // 도움말 — 닫기 버튼 왼쪽 (닫기가 88×78 이라 그 폭을 넘긴다)
+        EditorUIBuilder.InfoBtn(header, TutorialId.HelpCodex, 88f, -Pad);
+
         var x = EditorUIBuilder.XMark(closeBody, "X", 34f, Color.white);
         {
             var rt = x.GetComponent<RectTransform>();

@@ -29,21 +29,16 @@ public static class ProjectKBatch
         TopBarCreator.Create();
         MainPanelCreator.Run();
         BattlePanelCreator.CreateStandalone();
-        RelicPanelCreator.CreateStandalone();
 
         // ── 인게임 ────────────────────────────────────────────
         UISetupTool.MenuCreateGeneralPanel();
         UISetupTool.MenuCreateRewardCard();
 
         // ── 팝업 ──────────────────────────────────────────────
-        PopupPrefabCreator.CreateAll();          // BattleResult · Pause · Loading · Ability×2 · ExpRow
-        EquipComparePopupCreator.Create();
-        DisassemblePopupCreator.Create();
-        HeroDetailPopupCreator.Create();
-        RunShopPopupCreator.Create();
-        ReincarnationPopupCreator.Create();
-        MercenaryPopupCreator.Create();
-        EventPopupCreator.Create();
+        // 팝업은 전부 PopupPrefabCreator.CreateAll 하나가 책임진다.
+        // 여기에 개별 Creator 를 또 나열하면 둘 중 한쪽만 갱신돼 목록이 어긋난다
+        // (실제로 CodexPopupCreator 가 이 목록에서 빠져 있었다).
+        PopupPrefabCreator.CreateAll();
 
         // ── 이펙트 ────────────────────────────────────────────
         EffectPrefabGenerator.GenerateAll();

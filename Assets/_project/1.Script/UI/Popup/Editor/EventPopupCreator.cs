@@ -122,6 +122,10 @@ public static class EventPopupCreator
         header.AddComponent<Image>().color = HeaderBg;
         AnchorTopH(header, 0f, HeaderH);
 
+        // 도움말 — 이 팝업엔 닫기 버튼이 없다 (선택지로만 닫힌다).
+        // 그래서 닫기 자리를 비켜 줄 필요 없이 오른쪽 끝에 그대로 붙인다.
+        EditorUIBuilder.InfoBtn(header, TutorialId.HelpEvent, 0f, -24f, gap: 0f);
+
         // "이벤트" 태그 — ★ 는 폰트에 없으므로 마름모 도형으로 대체
         var tagRoot = MakeGo("EventTag", header);
         var tagRt = tagRoot.GetComponent<RectTransform>();

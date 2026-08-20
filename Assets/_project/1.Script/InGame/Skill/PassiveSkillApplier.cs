@@ -11,8 +11,11 @@ using BattleGame.Units;
 //    ApplyTarget.General / Soldier 항목을 스폰 시 한 번 반영한다.
 //
 //  ■ 처리 대상
-//    ApplyTarget.General → UnitStat.Add("passive") 로 제너럴 스텟 변경
-//    ApplyTarget.Soldier → StatComponent.Base 직접 수정
+//    ApplyTarget.General → UnitStat.Add(GeneralOnlyKey) 로 제너럴 스텟 변경
+//                          (장수 전용 층 — 병사 환산에서 걷힌다)
+//    ApplyTarget.Soldier → 여기서 하지 않는다. SoldierStatApplier 가 패시브·어빌리티·
+//                          유물을 한 번에 모아 적용한다 (출처별로 나눠 부르면
+//                          각자 Base 를 읽으며 고쳐 적용 순서가 결과를 바꾼다).
 //    ApplyTarget.Runtime → 런타임 이벤트 콜백에서 처리 (여기서는 건너뜀)
 //
 //  ■ 특수 케이스
@@ -77,64 +80,21 @@ public static class PassiveSkillApplier
                 sbPassive.AppendLine($"  {mod.Stat,-14} {currentValue:F1} → {currentValue + delta:F1}  ({(mod.IsPercent ? $"{mod.Delta * 100f:+0.#;-0.#}% × {soldierMult}" : $"{delta:+0.#;-0.#}")})");
 #endif
 
-                stat.Add(mod.Stat, delta, "passive");
+                // ⚠ 반드시 GeneralOnlyKey 레이어다 — 예전엔 "passive" 였다
+                //   병사 환산의 원본은 _stat.CloneWithout(GeneralOnlyKey) 다.
+                //   "passive" 로 넣으면 이 층이 걷히지 않아 **장수 전용 보너스가
+                //   병사에게 그대로 흘러갔다**.
+                //   "강한 장군, 약한 병사"(장군 +30% / 병사 -20%)가 병사에게
+                //   1.30 × 0.80 = 1.04 로 들어가 오히려 세지는 게 그 증상이었다.
+                //   Target.General 은 말 그대로 장수만 가리킨다 — 부대 전체를
+                //   올리고 싶은 패시브는 Soldier 항목을 따로 적는다 (광전사의 맹약 참고).
+                stat.Add(mod.Stat, delta, UnitStat.GeneralOnlyKey);
             }
 
 #if UNITY_EDITOR
             UnityEngine.Debug.Log(sbPassive.ToString());
 #endif
         }
-    }
-
-    // ── 병사 ECS Entity 적용 ─────────────────────────────────
-
-    /// <summary>
-    /// 활성 패시브 목록을 병사 ECS StatComponent.Base 에 즉시 적용한다.
-    /// soldier.Initialize() → SpawnEntity() 이후 시점에 실행해야 한다.
-    /// </summary>
-    public static void ApplyToSoldierEntity(
-        Entity soldierEntity,
-        EntityManager em,
-        PassiveSkillType[] activePassives,
-        PassiveSkillDatabase db)
-    {
-        if (activePassives == null || db == null) return;
-        if (soldierEntity == Entity.Null || !em.Exists(soldierEntity)) return;
-        if (!em.HasComponent<StatComponent>(soldierEntity)) return;
-
-        var  stat     = em.GetComponentData<StatComponent>(soldierEntity);
-        bool modified = false;
-
-        foreach (var passiveType in activePassives)
-        {
-            var data = db.Get(passiveType);
-            if (data == null) continue;
-            if (data.TriggerType != PassiveTrigger.None) continue;   // 트리거 패시브 스폰 시 적용 금지
-
-            foreach (var mod in data.StatModifiers)
-            {
-                if (mod.Target != ApplyTarget.Soldier) continue;
-
-                float delta = mod.IsPercent
-                    ? stat.Base[mod.Stat] * mod.Delta
-                    : mod.Delta;
-
-                stat.Base[mod.Stat] += delta;
-                modified = true;
-            }
-        }
-
-        if (!modified) return;
-
-        // Final 도 동기화 (UnitStatusEffectSystem 이 다음 프레임에 재계산)
-        stat.Final = stat.Base;
-        em.SetComponentData(soldierEntity, stat);
-
-        // MaxHp 가 변경되었을 수 있으므로 체력 리셋
-        em.SetComponentData(soldierEntity, new HealthComponent
-        {
-            CurrentHp = stat.Base[StatType.MaxHp],
-        });
     }
 
     // ── 제너럴 크기 배율 ─────────────────────────────────────

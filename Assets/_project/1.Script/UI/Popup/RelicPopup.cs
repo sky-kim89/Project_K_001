@@ -1,13 +1,20 @@
+using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 // ============================================================
-//  RelicPanelUI.cs
-//  로비 유물 탭 — 카드 그리드(7열) + 스테이지 기반 환생 시스템.
+//  RelicPopup.cs
+//  유물 강화 화면 — 카드 그리드 + 스테이지 기반 환생 시스템.
 //
 //  정렬: 스탯 유물 → 재화 유물 → 어빌리티 유물
+//
+//  ⚠ 예전엔 로비 탭(RelicPanel, index 3)이었다 — 팝업으로 옮겼다
+//    탭은 서로를 끈다. 유물을 보고 돌아오면 MainPanel 이 꺼졌다 켜지면서
+//    OnEnable 이 다시 돌아 **고르던 장수가 새로 추첨**됐다.
+//    유물은 잠깐 들렀다 나오는 화면이라 아래 화면을 유지해야 한다.
+//    → PopupManager.Instance.Open<RelicPopup>(PopupType.Relic)
 //
 //  Inspector 연결:
 //    _pointText       : 환생 포인트 숫자 TMP (헤더 아이콘 옆)
@@ -17,7 +24,7 @@ using UnityEngine.UI;
 //    _reincLabel      : 버튼 우측 텍스트 TMP ("{pts}pt 획득")
 // ============================================================
 
-public class RelicPanelUI : MonoBehaviour
+public class RelicPopup : PopupBase
 {
     [Header("헤더")]
     [SerializeField] TextMeshProUGUI _pointText;
@@ -31,8 +38,8 @@ public class RelicPanelUI : MonoBehaviour
     [SerializeField] TextMeshProUGUI _reincLabel;
     [SerializeField] Button          _resetBtn;
 
-    [Header("뒤로가기")]
-    [SerializeField] Button _backBtn;
+    [Header("닫기")]
+    [SerializeField] Button _closeBtn;
 
     // ── 캐시 ──────────────────────────────────────────────────
     RelicInventoryData _inventory;
@@ -42,7 +49,10 @@ public class RelicPanelUI : MonoBehaviour
 
     // ── 생명주기 ──────────────────────────────────────────────
 
-    void OnEnable()
+    // ⚠ 여는 시점마다 다시 묶는다 (Awake 가 아니라)
+    //   PopupManager 는 닫힌 팝업을 풀에 넣어 재사용한다 — Awake 는 한 번뿐이다.
+    //   반대로 유물 보유·포인트는 열 때마다 달라지므로 여기서 다시 읽어야 한다.
+    protected override void OnBeforeOpen()
     {
         _inventory = UserDataManager.Instance?.Get<RelicInventoryData>();
         _reincData = UserDataManager.Instance?.Get<ReincarnationData>();
@@ -61,11 +71,10 @@ public class RelicPanelUI : MonoBehaviour
             _resetBtn.onClick.AddListener(OnRelicReset);
         }
 
-        if (_backBtn != null)
+        if (_closeBtn != null)
         {
-            _backBtn.onClick.RemoveAllListeners();
-            _backBtn.onClick.AddListener(() =>
-                GetComponentInParent<LobbyNavUI>().Switch(5)); // MainPanel(5)
+            _closeBtn.onClick.RemoveAllListeners();
+            _closeBtn.onClick.AddListener(() => Close());
         }
 
         Refresh();
@@ -78,6 +87,10 @@ public class RelicPanelUI : MonoBehaviour
         UpdatePointText();
         UpdateReincarnateBtn();
         RebuildGrid();
+
+        // 카드는 매번 새로 만들어진다 — PopupBase 가 연 직후 한 번 건 클릭음은
+        // 강화 한 번이면 통째로 사라진다. 갱신할 때마다 다시 건다(중복은 알아서 건너뛴다).
+        UIClickSfx.Bind(gameObject);
     }
 
     void UpdatePointText()
@@ -115,9 +128,21 @@ public class RelicPanelUI : MonoBehaviour
 
     // ── 카드 그리드 재구성 ────────────────────────────────────
 
+    /// <summary>
+    /// 유물별 카드 — 강화 연출을 걸 자리를 찾는 데 쓴다.
+    ///
+    /// ⚠ RebuildGrid 가 카드를 매번 새로 만든다
+    ///   강화 직전에 잡아 둔 카드는 Refresh 가 끝나는 순간 파괴돼 있다.
+    ///   그 참조에 연출을 걸면 펀치가 첫 프레임에 사라진다 — 새로 만들어진
+    ///   카드를 다시 찾아야 플레이어가 보는 그 카드가 튄다.
+    /// </summary>
+    readonly Dictionary<RelicId, RectTransform> _cardByRelic = new();
+
     void RebuildGrid()
     {
         if (_scrollContent == null || _cardTemplate == null) return;
+
+        _cardByRelic.Clear();
 
         for (int i = _scrollContent.childCount - 1; i >= 0; i--)
         {
@@ -137,6 +162,7 @@ public class RelicPanelUI : MonoBehaviour
             var card = Instantiate(_cardTemplate, _scrollContent);
             card.SetActive(true);
             SetupCard(card, data);
+            _cardByRelic[data.Id] = card.transform as RectTransform;
         }
     }
 
@@ -247,9 +273,21 @@ public class RelicPanelUI : MonoBehaviour
         if (_reincData == null || _inventory == null) return;
         if (!_reincData.TrySpendPoints(cost)) return;
 
+        // ⚠ 클릭 지점을 Refresh 전에 잡아 둔다
+        //   Refresh 가 카드를 전부 다시 만드는데, 새 카드는 GridLayoutGroup 이
+        //   프레임 끝에 정렬하기 전까지 템플릿 자리에 겹쳐 있다.
+        //   그 카드 위치로 터뜨리면 어느 유물을 올려도 늘 같은 자리에서 튄다.
+        Vector2 click = UIJuice.CapturePointer();
+
         _inventory.LevelUp(id, maxLevel);
         UserDataManager.Instance?.RequestSave();
         Refresh();
+
+        // ⚠ 카드는 Refresh 뒤에 다시 찾는다 — 그 전 카드는 이미 파괴됐다
+        //   자리는 click 이 책임지고, 카드는 펀치(어느 유물이 올랐는지)만 맡는다.
+        //   펀치는 스케일이라 레이아웃이 늦게 잡혀도 어긋나지 않는다.
+        if (_cardByRelic.TryGetValue(id, out var card))
+            UIJuice.RelicUp(card, _inventory.GetLevel(id), click);
     }
 
     // ── 즉시 환생 ─────────────────────────────────────────────

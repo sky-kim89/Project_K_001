@@ -77,9 +77,10 @@ public static class TopBarCreator
 
         BuildCurrencyWidget(bar, "GoldGroup", GoldColor, eItem.Gold, new Vector2(goldCx, 0), widgetW, widgetH);
 
-        // 설정 버튼 (우상단)
+        // 메뉴 버튼 (우상단) — 일시 정지 팝업(사운드 토글·환생)을 연다
         // ⚙ 글리프는 폰트에 없다 (□ 로 렌더됨) → 3줄 막대 아이콘으로 대체
         var settingsBtn = CreateButton(bar, "SettingsBtn", "", SettingsBtnColor, UIScale.FontMd);
+        settingsBtn.AddComponent<LobbyMenuButton>();
         {
             var face = settingsBtn.transform.Find("Body").gameObject;
             for (int i = -1; i <= 1; i++)

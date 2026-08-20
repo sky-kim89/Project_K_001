@@ -6,6 +6,7 @@
 //    - 인게임 전용 프리팹: GeneralPanel, RewardCard
 //    - 현재 씬의 Canvas > InGameHUD 계층
 //    - PopupManager 루트 오브젝트
+//    - BattleScrollManager 의 난이도별 배경 연결
 //
 //  팝업 프리팹은 만들지 않는다.
 //    BattleResult / Pause / Loading 은 PopupPrefabCreator 가 정본이며
@@ -28,6 +29,7 @@ public static class UISetupTool
 {
     const string PANEL_PREFAB       = "Assets/_project/2.Prefabs/UI/GeneralPanel.prefab";
     const string REWARD_CARD_PREFAB = "Assets/_project/2.Prefabs/UI/RewardCard.prefab";
+    const string BG_FOLDER          = "Assets/_project/3.Textures/BG";
 
 
     // ══════════════════════════════════════════════════════════
@@ -52,6 +54,9 @@ public static class UISetupTool
         // 4. PopupManager 루트 오브젝트 생성/업데이트
         CreateOrUpdatePopupManager(canvasGo);
 
+        // 5. 난이도별 배경 연결
+        LinkDifficultyBackgrounds();
+
         AssetDatabase.SaveAssets();
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
         Debug.Log("[UISetupTool] ✓ InGame UI 셋업 완료 — 씬을 저장하세요 (Ctrl+S)");
@@ -73,6 +78,74 @@ public static class UISetupTool
     {
         CreateRewardCardPrefab();
         AssetDatabase.SaveAssets();
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  난이도별 배경
+    // ══════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// 3.Textures/BG/BG1~BG5 를 BattleScrollManager._bgByTier 에 꽂는다.
+    /// DifficultyTier 순서(출정·보통·어려움·지옥·불지옥) = BG 번호 순서다.
+    ///
+    /// ■ 왜 손으로 끌어다 놓지 않나
+    ///   인스펙터로 꽂아 둔 참조는 **파일이 아니라 guid** 를 가리킨다.
+    ///   PNG 를 지웠다 다시 넣으면 Unity 가 새 guid 를 발급해 그 칸이 Missing 이
+    ///   되는데, 화면에는 직전 배경이 그대로 남아서 알아채기가 어렵다.
+    ///   (실제로 BG2 를 교체했을 때 보통 난이도 칸이 조용히 끊겼다.)
+    ///   여기서 경로로 다시 찾아 꽂으면 언제 교체하든 메뉴 한 번으로 복구된다.
+    ///
+    /// ■ 씬에 BGSprite 를 만들지는 않는다
+    ///   BGSprite1/2 는 위치·정렬 순서를 손으로 잡아 둔 오브젝트다.
+    ///   여기서 다시 만들면 그 구도가 매번 초기화된다. 끊기는 건 스프라이트
+    ///   참조뿐이므로 고치는 범위도 거기까지만 둔다.
+    /// </summary>
+    [MenuItem(ProjectKMenu.Setup + "난이도 배경 연결", priority = ProjectKMenu.SetupPrio + 3)]
+    public static void LinkDifficultyBackgrounds()
+    {
+        var scroll = Object.FindAnyObjectByType<BattleScrollManager>(FindObjectsInactive.Include);
+        if (scroll == null)
+        {
+            Debug.LogWarning("[UISetupTool] 씬에 BattleScrollManager 가 없습니다 — 난이도 배경 연결을 건너뜁니다.");
+            return;
+        }
+
+        int tierCount = System.Enum.GetValues(typeof(DifficultyTier)).Length;
+
+        var so  = new SerializedObject(scroll);
+        var arr = so.FindProperty("_bgByTier");
+        arr.arraySize = tierCount;
+
+        int linked = 0;
+        for (int i = 0; i < tierCount; i++)
+        {
+            Sprite sprite = LoadBackgroundSprite(i + 1);
+            arr.GetArrayElementAtIndex(i).objectReferenceValue = sprite;
+
+            if (sprite != null) linked++;
+            else Debug.LogWarning($"[UISetupTool] {BG_FOLDER}/BG{i + 1}.png 를 찾지 못했습니다 " +
+                                  $"— {(DifficultyTier)i} 칸이 빕니다 (그 난이도는 직전 배경을 그대로 씁니다).");
+        }
+
+        so.ApplyModifiedProperties();
+        EditorSceneManager.MarkSceneDirty(scroll.gameObject.scene);
+        Debug.Log($"[UISetupTool] ✓ 난이도 배경 {linked}/{tierCount} 연결 — 씬을 저장하세요 (Ctrl+S)");
+    }
+
+    /// <summary>
+    /// BG{n}.png 안의 스프라이트를 꺼낸다.
+    ///
+    /// ⚠ LoadAssetAtPath&lt;Sprite&gt; 로는 못 꺼낸다
+    ///   이 PNG 들은 spriteMode 가 Multiple 이라 메인 에셋이 Texture2D 고
+    ///   스프라이트는 서브 에셋으로 딸려 있다. 전부 훑어서 첫 스프라이트를 쓴다
+    ///   (한 장에 스프라이트 하나뿐이다).
+    /// </summary>
+    static Sprite LoadBackgroundSprite(int number)
+    {
+        string path = $"{BG_FOLDER}/BG{number}.png";
+        foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(path))
+            if (asset is Sprite sprite) return sprite;
+        return null;
     }
 
     // ══════════════════════════════════════════════════════════

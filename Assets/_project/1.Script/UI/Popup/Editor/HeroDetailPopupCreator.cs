@@ -75,10 +75,24 @@ public static class HeroDetailPopupCreator
 
     static readonly float InfoRowH = UIScale.RowMd;              // 53
     static readonly float BtnH     = UIScale.BtnFor(UIScale.FontMd);  // 72
-    // 9행 × 72 = 648 ≤ 목록 영역 664. FontMd 한 줄(53)보다 넉넉하다.
-    // ⚠ 토글 높이나 행 수를 바꾸면 이 값도 다시 계산할 것 — 넘치면 아래가 잘린다.
-    static readonly float StatRowH = 72f;
     static readonly float StatTabH = UIScale.BtnFor(UIScale.FontMd);  // 72 — 장수/용병 토글
+
+    // ── 스탯 목록 높이 배분 ───────────────────────────────────
+    //
+    //  ⚠ 행 높이를 손으로 적지 않는다
+    //    예전엔 StatRowH = 72f 고정에 "행 수를 바꾸면 다시 계산할 것" 이라는
+    //    주석만 있었다. 9행 × 72 = 648 로 목록 영역(664)을 거의 꽉 채워 두어
+    //    스탯을 하나만 더 넣어도 아래가 잘렸다.
+    //    이제 행 수만 고치면 높이가 따라온다.
+    //
+    //  ⚠ 최소치는 UIScale.RowMd(53) 다 — FontMd 한 줄 (UI 규칙 5)
+    //    이 아래로 내려가면 값 글자 아래가 잘린다. 행을 더 늘리려면
+    //    목록 영역 자체를 키우거나 폰트를 내려야 한다.
+    const  int   StatRowCount = 11;    // 체력·공격·방어율·용병 수·이속·공속
+                                       // ·사거리·지휘력·쿨타임·치명확률·치명피해
+    static readonly float StatListTop = 12f + DivH + 10f + StatTabH + 10f;   // 140
+    static readonly float StatListH   = BodyH - StatListTop - 10f;           // 664
+    static readonly float StatRowH    = Mathf.Floor(StatListH / StatRowCount);
     // 스킬 열 세로 배분 (BodyH 814 안에서)
     //   구분선 12..48 / 액티브 60..300 / 패시브 320..802
     //   패시브 3칸 + 간격 12×2 = 482  → 한 칸 152
@@ -231,6 +245,9 @@ public static class HeroDetailPopupCreator
         Center(EditorUIBuilder.XMark(body, "Mark", UIScale.FontMd, Color.white));
         SetObj(so, "_closeBtn", closeBtn);
 
+        // 도움말 — 닫기 버튼 왼쪽
+        EditorUIBuilder.InfoBtn(header, TutorialId.HelpHeroDetail, 76f, -24f);
+
         BuildCurrencyBar(header);
     }
 
@@ -241,8 +258,8 @@ public static class HeroDetailPopupCreator
 
     static void BuildCurrencyBar(GameObject header)
     {
-        // 닫기 버튼(우측 24 + 76)을 피해 그 왼쪽에 붙인다
-        const float CloseW = 24f + 76f + 16f;
+        // 닫기 + 도움말 묶음을 피해 그 왼쪽에 붙인다
+        float CloseW = EditorUIBuilder.HeaderRightBlock(76f, 24f) + 16f;
 
         var bar = Go("CurrencyBar", header);
         var rt = bar.GetComponent<RectTransform>();
@@ -688,7 +705,7 @@ public static class HeroDetailPopupCreator
         rt.anchorMin = new Vector2(0f, 0f);
         rt.anchorMax = new Vector2(1f, 1f);
         rt.offsetMin = new Vector2(10f, 10f);
-        rt.offsetMax = new Vector2(-10f, -(tabY + StatTabH + 10f));
+        rt.offsetMax = new Vector2(-10f, -StatListTop);
 
         // ⚠ 레이아웃 그룹을 쓰지 않는다.
         //   용병 탭에서 3줄이 빠지면 남은 줄이 재배치돼 "사거리가 어디 갔지" 가 된다.
@@ -698,15 +715,24 @@ public static class HeroDetailPopupCreator
         SetObj(so, "_hpText",     Tint(StatRow(list, "HP",   "체력",   rowIndex++), StatColors.Hp));
         SetObj(so, "_atkText",    Tint(StatRow(list, "ATK",  "공격",   rowIndex++), StatColors.Atk));
         SetObj(so, "_defText",    Tint(StatRow(list, "DEF",  "방어율", rowIndex++), StatColors.Def));
+
+        // 용병 수는 네 번째 — 장수를 고르는 기준이 되는 값이라 위쪽에 둔다.
+        // ⚠ 장수 전용 행이라 용병 탭에서는 이 자리가 빈다 (아래 _generalOnlyRows 참고)
+        var soldierCnt = Tint(StatRow(list, "SOLD", "용병 수",   rowIndex++), StatColors.Soldier);
+
         SetObj(so, "_spdText",         StatRow(list, "SPD",  "이동속도", rowIndex++));
         SetObj(so, "_atkSpdText",      StatRow(list, "ASPD", "공격속도", rowIndex++));
         SetObj(so, "_rangeText",       StatRow(list, "RNG",  "사거리",   rowIndex++));
 
-        // 아래 3줄은 장수에게만 의미가 있다 — 용병 탭에서는 감춘다
-        var soldierCnt = Tint(StatRow(list, "SOLD", "용병 수",     rowIndex++), StatColors.Soldier);
-        var cmdPwr     =      StatRow(list, "CMD",  "지휘력",      rowIndex++);
+        var cmdPwr   = StatRow(list, "CMD", "지휘력", rowIndex++);
         // 라벨은 짧게 — "스킬 쿨타임" 은 라벨 칸을 넘겨 값(3.3%) 위로 밀고 들어왔다
-        var cooldown   =      StatRow(list, "CD",   "쿨타임",      rowIndex++);
+        var cooldown = StatRow(list, "CD",  "쿨타임", rowIndex++);
+
+        // 치명타 2행 — 맨 아래. 용병 탭에서도 보인다.
+        //   치확은 환산율이 곱해지고 치피는 그대로다 (SoldierRuntimeBridge.IsUnscaled).
+        //   두 값이 한 화면에 붙어 있어야 그 차이가 읽힌다.
+        SetObj(so, "_critChanceText", StatRow(list, "CRIT",  "치명확률", rowIndex++));
+        SetObj(so, "_critDmgText",    StatRow(list, "CRITD", "치명피해", rowIndex++));
 
         SetObj(so, "_soldierCountText", soldierCnt);
         SetObj(so, "_cmdPwrText",       cmdPwr);

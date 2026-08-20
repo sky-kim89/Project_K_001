@@ -182,6 +182,8 @@ public class UserDataManager : PureSingleton<UserDataManager>
         RegisterSection(new CodexData());
         RegisterSection(new BattleSettingsData());
         RegisterSection(new DifficultyData());
+        // ⚠ Reincarnate() 의 초기화 목록에 넣지 말 것 — 환생마다 튜토리얼이 다시 뜬다.
+        RegisterSection(new TutorialData());
 
         LoadAll();
         AutoDeployFirstHeroIfNeeded();

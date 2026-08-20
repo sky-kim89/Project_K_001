@@ -16,7 +16,7 @@ using UnityEngine.UI;
 //
 //  Inspector 연결 (MainPanelCreator 자동):
 //    _card       : GeneralCandidateCardUI (단일 카드)
-//    _relicBtn   : 유물 관리 버튼 (RelicPanel tab 3 이동)
+//    _relicBtn   : 유물 관리 버튼 (RelicPopup 을 위에 띄운다 — 이 화면은 유지)
 //    _startBtn   : 게임 시작 버튼
 //    _prevBtn    : ◀ 이전 화살표
 //    _nextBtn    : ▶ 다음 화살표
@@ -78,8 +78,13 @@ public class MainPanelUI : MonoBehaviour
         if (_relicBtn != null)
         {
             _relicBtn.onClick.RemoveAllListeners();
+            // ⚠ 탭 전환(Switch)으로 열지 않는다
+            //   탭은 이 패널을 끈다 → OnEnable 이 다시 돌아 후보가 새로 추첨되고
+            //   고르던 장수가 사라진다. 팝업으로 덮어 이 화면을 그대로 살려 둔다.
+            //   닫히면 유물 강화가 반영된 스탯으로 카드만 다시 그린다.
             _relicBtn.onClick.AddListener(() =>
-                GetComponentInParent<LobbyNavUI>()?.Switch(3));
+                PopupManager.Instance.Open<RelicPopup>(PopupType.Relic)
+                            .SetOnClose(RefreshCard));
         }
 
         if (_codexBtn != null)

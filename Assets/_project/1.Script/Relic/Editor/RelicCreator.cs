@@ -32,6 +32,7 @@ public static class RelicCreator
         CreateGeneralStatRelics();
         CreateClassRelics();
         CreateSoldierRelics();
+        CreateGeneralOnlyRelics();
         RebuildDatabase();
 
         AssetDatabase.SaveAssets();
@@ -91,9 +92,12 @@ public static class RelicCreator
         MakeSys(RelicId.R_EnemyAtkDown, "공포의 각인", RelicRarity.Rare, 4,
             RelicSystemEffect.EnemyAttackReduction, 0.04f, false);
 
-        // 장수 배치 슬롯
-        MakeSys(RelicId.R_GeneralSlotExpand, "출병 명령", RelicRarity.Epic, 2,
-            RelicSystemEffect.GeneralSlotBonus, 1f, true);  // Lv1=+1칸, Lv2=+2칸
+        // 장수 배치 슬롯 — 기본 2칸(RelicApplier.BaseGeneralSlots)에서 한 칸만 더 연다.
+        // ⚠ 1레벨짜리다
+        //   슬롯 하나가 곧 장수 한 명이라 다른 유물과 무게가 다르다. 여러 단계로 열면
+        //   유물 하나로 부대가 통째로 두 배가 되어 나머지 강화가 의미를 잃는다.
+        MakeSys(RelicId.R_GeneralSlotExpand, "출병 명령", RelicRarity.Epic, 1,
+            RelicSystemEffect.GeneralSlotBonus, 1f, true);  // Lv1=+1칸 (최대)
 
         // 전투 배속 해금 — 기본은 1× 뿐이다. 이 유물이 2×·3× 를 연다.
         MakeSys(RelicId.R_BattleSpeed, "시간의 고삐", RelicRarity.Epic, 2,
@@ -164,6 +168,35 @@ public static class RelicCreator
             AbilityTarget.Unit_Soldier, StatType.Attack, 0.05f, false);
         MakeStat1(RelicId.R_SoldierHp,  "병사의 생명력", RelicRarity.Common, 5,
             AbilityTarget.Unit_Soldier, StatType.MaxHp,  0.05f, false);
+    }
+
+    // ── 장수 스탯 유물 (4xx) ─────────────────────────────────
+    //
+    //  Target = Unit_General — 장수에게만 붙고 병사 환산을 타지 않는다.
+    //
+    //  ⚠ 병사 유물보다 배율이 높다 (5% → 9%)
+    //    공통 유물은 장수와 병사 양쪽에 붙지만 이쪽은 한 명에게만 붙는다.
+    //    같은 수치로 두면 고를 이유가 전혀 없어 죽은 선택지가 된다.
+    //    "부대를 넓게 올릴까, 장수 하나에 몰까" 가 되어야 고민이 생긴다.
+
+    static void CreateGeneralOnlyRelics()
+    {
+        MakeStat1(RelicId.R_OnlyGeneralAtk,  "장군의 검",   RelicRarity.Uncommon, 5,
+            AbilityTarget.Unit_General, StatType.Attack, 0.09f, false);
+        MakeStat1(RelicId.R_OnlyGeneralHp,   "장군의 투구", RelicRarity.Uncommon, 5,
+            AbilityTarget.Unit_General, StatType.MaxHp,  0.09f, false);
+
+        // 방어율·치명확률은 0~1 비율이라 %가 아니라 %p 로 더한다 (IsAbsoluteValue)
+        MakeStat1(RelicId.R_OnlyGeneralDef,  "장군의 흉갑", RelicRarity.Rare, 3,
+            AbilityTarget.Unit_General, StatType.Defense,    0.03f, true);
+        MakeStat1(RelicId.R_OnlyGeneralCrit, "장군의 안목", RelicRarity.Rare, 3,
+            AbilityTarget.Unit_General, StatType.CritChance, 0.04f, true);
+
+        MakeStat2(RelicId.R_OnlyGeneralMight, "영웅의 증표", RelicRarity.Epic, 3,
+            AbilityTarget.Unit_General,
+            StatType.Attack, 0.12f,
+            StatType.MaxHp,  0.12f,
+            false);
     }
 
     // ── SO 생성 헬퍼 ─────────────────────────────────────────

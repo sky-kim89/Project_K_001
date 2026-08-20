@@ -102,6 +102,22 @@ public class RunShopGoodsSlot : MonoBehaviour
         _buyBtn.interactable = canAfford;
     }
 
+    /// <summary>
+    /// 진열은 그대로 두고 가격표만 갈아 끼운다.
+    ///
+    /// ⚠ 값이 변하는 상품은 이걸로만 고칠 것 — Setup*() 을 다시 부르면 안 된다
+    ///   특성처럼 "보유 개수에 따라 값이 오르는" 상품은 하나를 사면 옆 칸 값도
+    ///   같이 올라야 한다. 그런데 슬롯을 다시 세우면 추첨 풀에서 방금 산 특성이
+    ///   빠지면서 셔플 결과가 통째로 바뀌어, 아직 안 산 옆 칸의 특성이
+    ///   다른 것으로 갈린다 — 공짜 새로고침이 된다.
+    /// </summary>
+    public void SetCost(int cost)
+    {
+        if (_sold) return;
+        _cost          = cost;
+        _costText.text = $"{cost:N0}";
+    }
+
     // ── 내부 ─────────────────────────────────────────────────
 
     void Bind(RewardView view, string name, string kind, Color kindColor,

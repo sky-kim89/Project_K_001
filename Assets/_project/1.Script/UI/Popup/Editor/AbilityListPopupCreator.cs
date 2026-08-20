@@ -170,13 +170,16 @@ public static class AbilityListPopupCreator
         Center(EditorUIBuilder.XMark(body, "Mark", UIScale.FontMd, Color.white));
         SetObj(so, "_closeBtn", closeBtn);
 
+        // 도움말 — 닫기 버튼 왼쪽
+        EditorUIBuilder.InfoBtn(header, TutorialId.HelpAbility, 76f, -24f);
+
         // 보유 개수 — 이 팝업의 핵심 정보라 크게 박는다
         var countBg = Go("CountBg", header);
         countBg.AddComponent<Image>().color = BadgeBg;
         var cbRt = countBg.GetComponent<RectTransform>();
         cbRt.anchorMin = cbRt.anchorMax = new Vector2(1f, 0.5f);
         cbRt.pivot     = new Vector2(1f, 0.5f);
-        cbRt.anchoredPosition = new Vector2(-(24f + 76f + 20f), 0f);
+        cbRt.anchoredPosition = new Vector2(-(EditorUIBuilder.HeaderRightBlock(76f, 24f) + 20f), 0f);
         cbRt.sizeDelta        = new Vector2(240f, UIScale.BtnFor(UIScale.FontMd));
 
         var countTmp = TMP(countBg, "CountText", "0개 보유", UIScale.FontMd, FontStyles.Bold);

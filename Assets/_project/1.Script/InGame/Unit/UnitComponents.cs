@@ -157,6 +157,26 @@ namespace BattleGame.Units
         public void ResetFinalToBase() => Final = Base;  // StatBlock 은 값 타입이므로 struct copy
     }
 
+    /// <summary>
+    /// 성장만으로 얻은 스탯 — 등급·레벨 롤(GeneralStatRoller.Roll)까지다.
+    /// 장비·패시브·어빌리티·유물·특성·도감이 붙기 **전** 값.
+    ///
+    /// ■ 왜 따로 들고 있나 — "외부로 오른 증가분" 은 StatComponent 만으로 못 센다
+    ///   StatComponent.Base 는 이미 모든 출처가 합쳐진 값이고, Final - Base 는
+    ///   전투 중 버프뿐이다. 그래서 '속전속결' 처럼 성장분과 외부분을 갈라야 하는
+    ///   패시브가 전투 시작 시점에 기준을 잡을 방법이 없었다
+    ///   (Final - Base 로 읽어 늘 0 이 나왔다).
+    ///
+    ///   증가분 = StatComponent.Base[s] - Roll[s]
+    ///
+    /// ⚠ 장군에게만 붙인다
+    ///   병사는 장수 스탯을 환산해 받으므로 자기 롤이라는 것이 없다.
+    /// </summary>
+    public struct BaseRollStatComponent : IComponentData
+    {
+        public StatBlock Roll;
+    }
+
     // ──────────────────────────────────────────
     // 이동 관련 컴포넌트 (VelocityComponent 흡수)
     // ──────────────────────────────────────────
@@ -391,6 +411,22 @@ namespace BattleGame.Units
     public struct DeadTag : IComponentData { }
 
     /// <summary>
+    /// 무적 유닛 — 피격 연출(플래시·넉백·경직)은 그대로 받되 체력이 깎이지 않는다.
+    ///
+    /// ■ 왜 태그인가
+    ///   로비 데모는 예전에 0.2초마다 아군 체력을 가득 채우는 방식으로 버텼다.
+    ///   장군은 체력 통이 커서 버텼지만 **병사는 그 0.2초 안에 한 방에 죽었다**.
+    ///   죽음은 UnitHitSystem 이 피해를 넣는 그 자리에서 확정되므로,
+    ///   밖에서 아무리 자주 채워도 타이밍 싸움을 이길 수 없다.
+    ///
+    /// ⚠ 예약 피해(IncomingDamage)도 함께 막아야 한다
+    ///   실효 체력이 0 이하면 IsDoomed 가 서고, UnitAttackSystem 은 그 유닛을
+    ///   '사망 확정' 으로 보고 공격을 멈춘다 — 안 죽는데 싸우지도 않게 된다.
+    ///   ProjectileIncomingDamageSystem 이 이 태그를 건너뛰는 이유다.
+    /// </summary>
+    public struct InvulnerableTag : IComponentData { }
+
+    /// <summary>
     /// 도발 태그 — 이 태그를 가진 유닛은 적의 우선 타겟이 된다.
     /// 철벽 방어 스킬 시전 시 EffectDuration 동안 부여된다.
     /// </summary>
@@ -561,10 +597,16 @@ namespace BattleGame.Units
     }
 
     /// <summary>
-    /// A7 퇴각 사격 — 적이 공격 사거리 절반 이내 접근 시 뒤로 후퇴하며 사격 유지.
+    /// 퇴각 사격 — 적이 공격 사거리 절반 이내로 붙으면 뒤로 물러나며 사격을 유지한다.
     /// MoveToDestinationJob 이 이 태그를 감지해 후퇴 이동을 적용한다.
+    ///
+    /// ⚠ 특성이 아니라 **궁수의 기본 행동**이다 (GeneralRuntimeBridge 가 붙인다)
+    ///   예전엔 TraitType.ArcherRetreatFire 특성이었다. 궁수의 정체성 자체가
+    ///   "거리를 유지하며 평타로 딜한다" 인데, 그 정체성을 고를 수 있는 옵션으로
+    ///   두니 안 고르면 궁수가 근접 유닛처럼 굴었다. 특성 슬롯 하나를 쓸 만한
+    ///   선택지도 아니어서 기본 행동으로 내렸다.
     /// </summary>
-    public struct TraitRetreatFireTag : IComponentData { }
+    public struct ArcherRetreatFireTag : IComponentData { }
 
     /// <summary>
     /// A4 폭우 사격 — 공격이 실제로 타겟에 닿았을 때(OnAttackLanded) 주변 적 2명 스플래시.

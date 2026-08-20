@@ -266,17 +266,28 @@ public static class EventIllustrationGenerator
                     C(0.06f, 0.08f, 0.13f, 0.95f));
         }
 
-        // 좌하단 모닥불 — 장면에 온도차를 준다
-        float fx = W * 0.16f, fy = 168f;
-        Glow(fx, fy, 96f, C(1f, 0.54f, 0.16f), 0.70f);
-        Disc(fx, fy, 7f, C(1f, 0.80f, 0.36f, 0.9f));
-
         Ridge(x => 162f, C(0.04f, 0.05f, 0.09f, 1f));
 
-        // 초점 — 방패 (우측 3분할)
+        // 좌하단 모닥불 — 장면에 온도차를 준다.
+        // ⚠ 반드시 지면(Ridge) 뒤에 그린다 — 예전엔 앞에 있어서 불이 통째로
+        //   흙에 덮였다. 유일한 난색 광원이 사라진 채 파란 장면만 남았다.
+        float fx = W * 0.16f, fy = 168f;
+        Glow(fx, fy, 104f, C(1f, 0.54f, 0.16f), 0.75f);
+        Capsule(fx - 15f, fy + 2f, fx + 14f, fy - 2f, 2.6f, C(0.22f, 0.15f, 0.10f));   // 장작
+        Capsule(fx - 13f, fy - 2f, fx + 16f, fy + 2f, 2.6f, C(0.18f, 0.12f, 0.08f));
+        Tri(fx, fy - 26f, fx - 10f, fy, fx + 10f, fy, C(1f, 0.62f, 0.22f, 0.92f));      // 불꽃
+        Tri(fx, fy - 16f, fx - 5.5f, fy, fx + 5.5f, fy, C(1f, 0.90f, 0.58f, 0.95f));
+        Disc(fx, fy, 6f, C(1f, 0.84f, 0.44f, 0.85f));
+        // 불빛이 닿는 땅
+        Ellipse(fx, fy + 8f, 62f, 11f, C(0.60f, 0.30f, 0.10f, 0.28f));
+
+        // 초점 — 방패 (우측 3분할). 땅에 세워 둔 것이므로 접지 그림자를 깐다.
         float sx = W * 0.62f, sy = 104f;
+        GroundShadow(sx, 166f, 62f, 12f, 0.55f);
         Glow(sx, sy, 104f, C(0.48f, 0.62f, 1f), 0.34f);
         Shield(sx, sy, 46f, 58f);
+        // 방패 오른쪽으로 모닥불의 난색 반사 — 두 광원이 만나야 입체가 산다
+        Capsule(sx + 42f, sy - 32f, sx + 42f, sy + 22f, 2.4f, C(1f, 0.62f, 0.28f, 0.22f));
 
         Motes(90, C(1f, 0.72f, 0.40f), 37, 0.45f);
         Vignette(0.60f);
@@ -299,7 +310,42 @@ public static class EventIllustrationGenerator
         Sky(C(0.05f, 0.04f, 0.11f), C(0.13f, 0.09f, 0.20f));
         Clouds(C(0.42f, 0.32f, 0.78f), 0.24f, 3.2f, 211);
 
-        float cx = W * 0.5f, cy = 84f;
+        float cx = W * 0.5f, cy = 104f;
+
+        // ── 방을 먼저 만든다 ────────────────────────────────
+        // ⚠ 책만 띄우면 832 폭이 통째로 빈다
+        //   좌우에 책장을 세우고 아래에 독서대를 놓아야 "서재" 가 된다.
+        //   책이 무언가에 얹혀 있어야 크기도 읽힌다.
+        const float DeskTop = 112f;   // 독서대 상판 — 책이 여기 얹힌다
+        for (int s = -1; s <= 1; s += 2)
+        for (int i = 0; i < 3; i++)
+        {
+            float bx = cx + s * (152f + i * 116f);
+            RoundRect(bx, 84f, 50f, 78f, 2f, C(0.068f, 0.056f, 0.112f));
+            for (int sh = 0; sh < 3; sh++)
+            {
+                float shelfY = 32f + sh * 46f;
+                Capsule(bx - 50f, shelfY, bx + 50f, shelfY, 3f, C(0.102f, 0.086f, 0.162f));
+
+                var brng = new System.Random((int)bx * 31 + sh * 7 + s);
+                for (int b = 0; b < 7; b++)   // 꽂힌 책 — 등만 보인다
+                {
+                    float bw = 4f + brng.Next(0, 4);
+                    float bh = 18f + brng.Next(0, 12);
+                    float v  = 0.5f + (float)brng.NextDouble() * 0.9f;
+                    RoundRect(bx - 44f + b * 13f, shelfY - bh * 0.5f - 2f, bw * 0.5f, bh * 0.5f, 1f,
+                              C(0.16f * v + 0.05f, 0.11f * v + 0.04f, 0.30f * v + 0.06f));
+                }
+            }
+        }
+        MistBand(112f, 48f, C(0.24f, 0.18f, 0.42f), 0.28f);   // 공기원근 — 책장을 뒤로 민다
+
+        // 독서대 — 상판을 사다리꼴로 눕혀 원근을 준다
+        Ridge(x => DeskTop + 34f, C(0.042f, 0.034f, 0.076f, 1f));
+        Tri(cx - 132f, DeskTop + 34f, cx + 132f, DeskTop + 34f, cx + 104f, DeskTop, C(0.112f, 0.092f, 0.174f));
+        Tri(cx - 132f, DeskTop + 34f, cx - 104f, DeskTop,       cx + 104f, DeskTop, C(0.112f, 0.092f, 0.174f));
+        Capsule(cx - 104f, DeskTop, cx + 104f, DeskTop, 2.4f, C(0.32f, 0.28f, 0.50f, 0.55f));
+        GroundShadow(cx, DeskTop + 4f, 106f, 14f, 0.60f);
 
         // 책 뒤 후광 — 시선을 가운데로 모은다
         Glow(cx, cy + 6f, 128f, C(0.72f, 0.56f, 1f), 0.46f);
@@ -323,11 +369,13 @@ public static class EventIllustrationGenerator
             Capsule(cx + 14f, y, cx + 66f, y, 1.1f, C(0.45f, 0.42f, 0.40f, 0.45f));
         }
 
-        // 페이지에서 떠오르는 전조 — 마름모 룬 셋
+        // 페이지에서 떠오르는 전조 — 마름모 룬 셋.
+        // ⚠ 책 위로 올린다 (screenY 가 작을수록 위)
+        //   예전엔 cy + 34 라 책 아래로 가라앉아 "떠오른다" 가 안 읽혔다.
         for (int i = 0; i < 3; i++)
         {
             float rx = cx + (i - 1) * 34f;
-            float ry = cy + 34f + Mathf.Abs(i - 1) * -8f;
+            float ry = cy - 46f + Mathf.Abs(i - 1) * 11f;
             float s  = 7f;
             Tri(rx, ry + s, rx - s, ry, rx + s, ry, C(0.86f, 0.72f, 1f, 0.92f));
             Tri(rx, ry - s, rx - s, ry, rx + s, ry, C(0.68f, 0.50f, 1f, 0.92f));
@@ -342,52 +390,128 @@ public static class EventIllustrationGenerator
     }
 
     // ══════════════════════════════════════════════════════════
-    //  ⑩ 창고 — 열린 문틈으로 드러난 상자 더미
+    //  ⑩ 창고 — 반쯤 열린 문으로 빛이 새어 드는 폐창고 내부
+    //
+    //  ⚠ 예전 판은 검은 화면에 갈색 네모 네 개였다
+    //    ① 유일한 광원인 문빛이 LightShaft(topY=200) 로 들어가 한 픽셀도
+    //       안 그려졌고, ② 벽은 1.4px 선 아홉 줄이라 배경에 묻혔으며,
+    //       ③ 바닥이 없어 상자가 허공에 떠 있었고, ④ 전부 화면 정중앙이라
+    //       832 폭의 좌우가 텅 비었다. 넷 다 여기서 고친다.
+    //
+    //  구성: 좌측 3분할에 열린 문(광원) — 우측 3분할에 상자 더미(초점).
+    //        빛이 문에서 상자 쪽으로 비스듬히 깔려 둘을 잇는다.
     // ══════════════════════════════════════════════════════════
 
     static void GenWarehouse()
     {
         Begin();
-        Sky(C(0.04f, 0.04f, 0.06f), C(0.10f, 0.09f, 0.11f));
 
-        float cx = W * 0.5f;
+        // 실내다 — 하늘이 아니라 어둠이 배경이다
+        Sky(C(0.030f, 0.028f, 0.034f), C(0.080f, 0.066f, 0.056f));
 
-        // 문틈으로 새는 빛 — 창고 안을 비추는 유일한 광원
-        LightShaft(cx + 22f, 200f, 26f, 150f, C(0.96f, 0.86f, 0.62f), 0.34f);
+        const float FloorY = 146f;
+        float doorX  = W * 0.19f;    // 반쯤 열린 문
+        float focusX = W * 0.63f;    // 상자 더미
 
-        // 뒷벽 판자
-        for (int i = 0; i < 9; i++)
+        // ── ① 뒷벽 · 천장 ────────────────────────────────────
+        PlankWall(0f, W, 6f, FloorY, C(0.150f, 0.120f, 0.094f), 907, 34f);
+
+        // 널 두 장이 떨어져 나가 그 너머의 어둠이 보인다 (폐허의 신호)
+        RoundRect(W * 0.86f, 74f, 13f, 44f, 1f, C(0.012f, 0.012f, 0.016f));
+        RoundRect(W * 0.40f, 52f, 12f, 26f, 1f, C(0.012f, 0.012f, 0.016f));
+
+        // 천장 들보 + 매달린 기둥
+        Capsule(0f, 22f, W, 28f, 9f, C(0.098f, 0.078f, 0.060f));
+        Capsule(0f, 18f, W, 24f, 1.6f, C(0.26f, 0.21f, 0.15f, 0.45f));
+        for (int i = 0; i < 6; i++)
         {
-            float x = 24f + i * 34f;
-            Capsule(x, 160f, x, 52f, 1.4f, C(0.16f, 0.14f, 0.13f, 0.85f));
+            float bx = 76f + i * 140f;
+            Capsule(bx, 27f, bx, 50f, 5f, C(0.088f, 0.070f, 0.054f));
         }
 
-        // 상자 더미 — 아래 큰 것부터 쌓는다
-        Crate(cx - 54f, 52f, 30f, C(0.42f, 0.30f, 0.19f));
-        Crate(cx + 8f,  52f, 26f, C(0.38f, 0.27f, 0.17f));
-        Crate(cx - 34f, 108f, 22f, C(0.46f, 0.33f, 0.21f));
-        Crate(cx + 52f, 52f, 20f, C(0.34f, 0.24f, 0.15f));
+        // ── ② 바닥 ──────────────────────────────────────────
+        PlankFloor(FloorY, W * 0.42f, C(0.115f, 0.092f, 0.070f), 811);
 
-        // 열린 상자에서 새는 빛 — "쓸만한 게 있다" 는 신호
-        Glow(cx - 34f, 132f, 46f, C(1f, 0.84f, 0.48f), 0.55f);
-        Coin(cx - 44f, 136f, 4.2f, 0.3f);
-        Coin(cx - 30f, 134f, 4.2f, -0.2f);
-        Coin(cx - 37f, 142f, 4.2f, 0.1f);
+        // ── ③ 문 — 반쯤 열려 바깥의 낮이 새어 든다 ───────────
+        float dTop = 40f, dBot = FloorY;
+        float dMid = (dTop + dBot) * 0.5f, dHalf = (dBot - dTop) * 0.5f;
 
-        Motes(120, C(0.86f, 0.78f, 0.62f), 307, 0.40f);
-        Vignette(0.72f);
-        BottomFade(C(0.02f, 0.02f, 0.03f), 140f, 1.7f);
-        Grain(0.026f, 271);
+        RoundRect(doorX, dMid, 54f, dHalf, 2f, C(0.010f, 0.010f, 0.014f));   // 문틀 안쪽 어둠
+        RoundRect(doorX + 16f, dMid, 30f, dHalf - 3f, 1f, C(0.99f, 0.93f, 0.76f, 0.95f)); // 바깥 빛면
+        Glow(doorX + 16f, dMid, 128f, C(1f, 0.88f, 0.60f), 0.60f);
+
+        // 젖혀진 문짝 — 사다리꼴로 그려야 열려 있는 각이 읽힌다
+        Tri(doorX - 54f, dTop,  doorX - 104f, dTop + 16f, doorX - 104f, dBot - 4f,
+            C(0.115f, 0.090f, 0.068f));
+        Tri(doorX - 54f, dTop,  doorX - 54f,  dBot,       doorX - 104f, dBot - 4f,
+            C(0.115f, 0.090f, 0.068f));
+        Capsule(doorX - 58f, dTop + 8f,  doorX - 100f, dTop + 22f, 2.4f, C(0.055f, 0.044f, 0.034f));
+        Capsule(doorX - 58f, dBot - 22f, doorX - 100f, dBot - 12f, 2.4f, C(0.055f, 0.044f, 0.034f));
+        Capsule(doorX - 56f, dTop + 2f,  doorX - 56f,  dBot,       2.0f, C(0.34f, 0.28f, 0.20f, 0.75f));
+        Disc(doorX - 66f, dMid + 6f, 3.2f, C(0.40f, 0.34f, 0.24f));           // 문고리
+        // 문틀 기둥
+        Capsule(doorX + 56f, dTop - 6f, doorX + 56f, dBot, 7f, C(0.135f, 0.108f, 0.082f));
+        Capsule(doorX - 56f, dTop - 6f, doorX + 56f, dTop - 6f, 8f, C(0.135f, 0.108f, 0.082f));
+
+        // ── ④ 문에서 쏟아지는 빛 — 장면을 잇는 대각선 ────────
+        LightBeam(doorX + 16f, dMid - 40f, focusX + 40f, 196f,
+                  34f, 96f, C(1f, 0.88f, 0.62f), 0.34f);
+        LightBeam(doorX + 16f, dMid + 20f, focusX - 30f, 200f,
+                  22f, 70f, C(1f, 0.90f, 0.68f), 0.22f);
+        // 빛이 바닥에 닿아 생기는 웅덩이
+        Ellipse(W * 0.40f, 176f, 168f, 26f, C(0.62f, 0.50f, 0.30f, 0.20f));
+
+        // ── ⑤ 상자 더미 — 우측 3분할, 아래부터 쌓는다 ────────
+        GroundShadow(focusX + 6f, FloorY + 12f, 118f, 22f, 0.72f);
+
+        Crate(focusX - 46f, FloorY + 6f, 34f, 46f, C(0.310f, 0.216f, 0.132f), 3);   // 아래 왼쪽
+        Crate(focusX + 34f, FloorY + 8f, 30f, 40f, C(0.276f, 0.192f, 0.118f), 7);   // 아래 오른쪽
+        Crate(focusX - 20f, FloorY - 40f, 26f, 34f, C(0.352f, 0.248f, 0.150f), 11); // 위
+        Crate(focusX + 96f, FloorY + 4f, 22f, 28f, C(0.248f, 0.172f, 0.106f), 17);  // 곁다리
+
+        // 뚜껑이 열린 상자 — "쓸만한 게 있다" 는 신호는 여기 하나로 몰아 준다
+        float oX = focusX - 20f, oTop = FloorY - 74f;
+        Tri(oX - 26f, oTop, oX + 4f, oTop - 16f, oX + 30f, oTop - 4f, C(0.190f, 0.132f, 0.080f));
+        Tri(oX - 26f, oTop, oX - 2f, oTop + 8f,  oX + 30f, oTop - 4f, C(0.190f, 0.132f, 0.080f));
+        Glow(oX, oTop + 2f, 74f, C(1f, 0.82f, 0.42f), 0.85f);
+        Coin(oX - 11f, oTop + 4f, 4.6f, 0.30f);
+        Coin(oX + 5f,  oTop + 2f, 4.6f, -0.15f);
+        Coin(oX - 3f,  oTop + 9f, 4.6f, 0.10f);
+
+        // ── ⑥ 곁 소품 — 좌우가 비지 않게 채운다 ──────────────
+        GroundShadow(W * 0.36f, FloorY + 16f, 46f, 12f, 0.55f);
+        Barrel(W * 0.36f, FloorY + 14f, 24f, 52f, C(0.240f, 0.170f, 0.108f));
+
+        GroundShadow(W * 0.455f, FloorY + 20f, 40f, 11f, 0.50f);
+        Sack(W * 0.452f, FloorY + 20f, 17f, C(0.300f, 0.262f, 0.180f));
+        Sack(W * 0.492f, FloorY + 24f, 13f, C(0.266f, 0.232f, 0.158f));
+
+        GroundShadow(W * 0.905f, FloorY + 14f, 44f, 12f, 0.55f);
+        Barrel(W * 0.905f, FloorY + 12f, 20f, 42f, C(0.210f, 0.150f, 0.096f));
+        // 옆으로 넘어간 통 — 전부 반듯이 세워 두면 '정리된 창고' 가 된다
+        Ellipse(W * 0.955f, FloorY + 26f, 26f, 15f, C(0.196f, 0.140f, 0.090f));
+        RingAA(W * 0.955f, FloorY + 26f, 15f, 1.4f, C(0.10f, 0.09f, 0.08f, 0.8f));
+
+        // 벽에 기대 둔 판자 · 갈고리
+        Capsule(W * 0.775f, FloorY + 12f, W * 0.745f, 62f, 5f, C(0.155f, 0.122f, 0.090f));
+        Capsule(W * 0.795f, FloorY + 12f, W * 0.772f, 76f, 4f, C(0.132f, 0.104f, 0.076f));
+
+        // ── ⑦ 방치의 흔적 ───────────────────────────────────
+        Cobweb(6f, 30f, 62f, 0.10f, 1.42f, C(0.62f, 0.60f, 0.56f, 0.16f));
+        Cobweb(W - 6f, 26f, 54f, 1.72f, 3.04f, C(0.62f, 0.60f, 0.56f, 0.14f));
+        // 들보에 걸린 밧줄
+        Capsule(W * 0.70f, 28f, W * 0.706f, 66f, 1.6f, C(0.28f, 0.24f, 0.17f, 0.85f));
+        Capsule(W * 0.706f, 66f, W * 0.694f, 88f, 1.6f, C(0.24f, 0.20f, 0.14f, 0.80f));
+
+        // ── ⑧ 공기 ─────────────────────────────────────────
+        BeamDust(doorX + 16f, dMid - 40f, focusX + 40f, 196f, 34f, 96f,
+                 C(1f, 0.92f, 0.74f), 190, 307);
+        Motes(70, C(0.80f, 0.74f, 0.62f), 313, 0.26f);
+
+        Vignette(0.66f);
+        BottomFade(C(0.020f, 0.016f, 0.014f), 150f, 1.7f);
+        Grain(0.024f, 271);
         Save("evt_warehouse");
-    }
-
-    // 나무 상자 하나 — 판자 두 줄 + 대각선 보강대
-    static void Crate(float cx, float baseY, float half, Color wood)
-    {
-        var dark = C(wood.r * 0.6f, wood.g * 0.6f, wood.b * 0.6f);
-        RoundRect(cx, baseY + half, half, half, 2f, wood);
-        Capsule(cx - half, baseY + half, cx + half, baseY + half, 1.6f, dark);
-        Capsule(cx - half, baseY + half * 1.6f, cx + half, baseY + half * 0.4f, 1.4f, dark);
     }
 
     // ══════════════════════════════════════════════════════════
@@ -406,11 +530,31 @@ public static class EventIllustrationGenerator
 
         float cx = W * 0.5f;
 
+        // 좌우로 이어지는 무기 무덤 — 832 폭을 쓰지 않으면 가운데만 그림이 된다.
+        // 뒤로 갈수록 흙색에 가깝게 죽여 공기원근을 만든다.
+        var frng = new System.Random(577);
+        for (int i = 0; i < 16; i++)
+        {
+            float x = 24f + i * 52f + frng.Next(-14, 15);
+            if (Mathf.Abs(x - cx) < 96f) continue;          // 초점 주변은 비워 둔다
+            float far = Mathf.Clamp01(Mathf.Abs(x - cx) / (W * 0.5f));
+            float k   = 0.9f - far * 0.42f;
+            float ln  = 30f + frng.Next(0, 26);
+            float tilt = (frng.Next(0, 2) == 0 ? -1f : 1f) * (6f + frng.Next(0, 14));
+            Capsule(x, 66f, x + tilt, 66f - ln, 2.2f,
+                    C(0.20f * k, 0.19f * k, 0.20f * k, 0.95f));
+            Tri(x + tilt, 66f - ln - 7f, x + tilt - 3f, 66f - ln, x + tilt + 3f, 66f - ln,
+                C(0.20f * k, 0.19f * k, 0.20f * k, 0.95f));
+            if (i % 3 == 0)   // 흙에 처박힌 방패
+                ShieldSilhouette(x + 16f, 60f, 13f, 15f, C(0.17f * k, 0.16f * k, 0.18f * k));
+        }
+
         // 부러진 창·검이 땅에 꽂혀 있다 — 배경 밀도
         Sword(cx - 118f, 66f, 14f,  C(0.34f, 0.34f, 0.38f), C(0.20f, 0.14f, 0.10f));
         Sword(cx + 126f, 62f, -22f, C(0.30f, 0.30f, 0.34f), C(0.18f, 0.13f, 0.09f));
 
         // 반쯤 묻힌 갑옷 — 실루엣만 보이게 흙 위로 살짝 올린다
+        GroundShadow(cx - 8f, 104f, 66f, 14f, 0.55f);
         ShieldSilhouette(cx - 8f, 84f, 40f, 46f, C(0.26f, 0.25f, 0.27f));
         RingAA(cx - 8f, 92f, 16f, 1.6f, C(0.42f, 0.40f, 0.42f, 0.6f));
         // 녹슨 자국
@@ -442,7 +586,23 @@ public static class EventIllustrationGenerator
 
         float fx = W * 0.5f + 46f, fy = 62f;
 
+        // ── 야영지 — 인물 하나만 두면 좌우가 텅 빈다 ─────────
+        // 천막 두 채와 다른 모닥불로 "진영" 을 만들고, 뒤로 갈수록 어둡게 죽인다.
+        for (int s = -1; s <= 1; s += 2)
+        {
+            float tx = W * 0.5f + s * 296f;
+            Tri(tx, fy - 34f, tx - 54f, fy + 6f, tx + 54f, fy + 6f, C(0.072f, 0.066f, 0.086f));
+            Capsule(tx, fy - 36f, tx, fy + 6f, 1.8f, C(0.11f, 0.10f, 0.13f));
+            Capsule(tx - 54f, fy + 6f, tx - 66f, fy + 6f, 1.4f, C(0.09f, 0.085f, 0.11f));
+            Capsule(tx + 54f, fy + 6f, tx + 66f, fy + 6f, 1.4f, C(0.09f, 0.085f, 0.11f));
+        }
+        // 먼 모닥불 — 작고 흐리게. 깊이감은 크기 차이가 만든다.
+        float ffx = W * 0.16f;
+        Glow(ffx, fy + 4f, 40f, C(1f, 0.58f, 0.22f), 0.32f);
+        Disc(ffx, fy + 4f, 2.6f, C(1f, 0.78f, 0.38f, 0.7f));
+
         // 모닥불
+        GroundShadow(fx - 60f, fy + 56f, 76f, 13f, 0.50f);
         Glow(fx, fy + 10f, 96f, C(1f, 0.62f, 0.24f), 0.70f);
         Tri(fx, fy + 30f, fx - 12f, fy, fx + 12f, fy, C(1f, 0.70f, 0.28f));
         Tri(fx, fy + 20f, fx - 7f,  fy, fx + 7f,  fy, C(1f, 0.90f, 0.60f));
@@ -795,6 +955,259 @@ public static class EventIllustrationGenerator
     }
 
     // ══════════════════════════════════════════════════════════
+    //  입체 소품 — "장면" 을 만드는 최소 단위
+    //
+    //  ⚠ 정면 사각형은 아무리 색을 잘 골라도 상자로 안 보인다
+    //    예전 창고 삽화가 허술했던 이유가 이것이다. 앞면만 칠한 정사각형
+    //    네 개는 갈색 네모 네 개로 읽힌다. 윗면·옆면을 얹어 면이 세 개
+    //    보여야 부피가 생기고, 바닥 그림자가 붙어야 떠 있지 않게 된다.
+    // ══════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// 3/4 시점 상자. (cx, baseY) = 앞면 바닥 중앙, 깊이는 우상단으로 뻗는다.
+    /// 광원은 항상 왼쪽 위 — 윗면이 가장 밝고 옆면이 가장 어둡다.
+    /// </summary>
+    static void Box3D(float cx, float baseY, float hw, float h, float depth, Color face)
+    {
+        float topY = baseY - h;
+        float dx   = depth * 0.74f, dy = -depth * 0.50f;
+
+        Color side = Opaque(face, 0.55f);
+        Color top  = Opaque(face, 1.30f);
+
+        // 옆면 → 윗면 → 앞면 순서. 뒤에 있는 면부터 칠해야 경계가 안 새어 나온다.
+        Tri(cx + hw, baseY, cx + hw, topY, cx + hw + dx, topY + dy, side);
+        Tri(cx + hw, baseY, cx + hw + dx, baseY + dy, cx + hw + dx, topY + dy, side);
+        Tri(cx - hw, topY, cx + hw, topY, cx + hw + dx, topY + dy, top);
+        Tri(cx - hw, topY, cx - hw + dx, topY + dy, cx + hw + dx, topY + dy, top);
+        RoundRect(cx, topY + h * 0.5f, hw, h * 0.5f, 1.5f, face);
+    }
+
+    /// <summary>나무 상자 — 3/4 상자에 판자 이음새·쇠띠·대각 보강대를 얹는다.</summary>
+    static void Crate(float cx, float baseY, float hw, float h, Color wood, int seed)
+    {
+        Box3D(cx, baseY, hw, h, hw * 0.62f, wood);
+
+        Color dark = Opaque(wood, 0.46f);
+        Color lite = Opaque(wood, 1.55f);
+        float topY = baseY - h;
+
+        for (int i = 1; i <= 2; i++)                         // 앞면 판자 이음새
+        {
+            float y = topY + h * i / 3f;
+            Capsule(cx - hw + 1f, y, cx + hw - 1f, y, 1.2f, dark);
+        }
+        Capsule(cx - hw + 3f, baseY - 3f, cx + hw - 3f, topY + 3f, 2.2f, dark);   // 대각 보강대
+        Capsule(cx - hw, topY, cx - hw, baseY, 2.4f, dark);                       // 좌우 쇠띠
+        Capsule(cx + hw, topY, cx + hw, baseY, 2.4f, dark);
+        Capsule(cx - hw + 1.8f, topY + 2f, cx - hw + 1.8f, baseY - 2f, 1.4f, lite); // 좌측 림라이트
+        Capsule(cx - hw + 1f, topY, cx + hw - 1f, topY, 1.3f, lite);               // 윗 모서리
+
+        var rng = new System.Random(seed);                    // 못 머리
+        int spanX = Mathf.Max(1, (int)(hw * 2f) - 8);
+        int spanY = Mathf.Max(1, (int)h - 8);
+        for (int i = 0; i < 5; i++)
+            Disc(cx - hw + 4f + rng.Next(0, spanX), topY + 4f + rng.Next(0, spanY), 1.0f, lite);
+    }
+
+    /// <summary>나무통 — 가운데가 불룩하고 쇠테 두 줄이 둘린다.</summary>
+    static void Barrel(float cx, float baseY, float hw, float h, Color wood)
+    {
+        Color dark = Opaque(wood, 0.44f);
+        Color hoop = C(0.26f, 0.24f, 0.22f);
+        float topY = baseY - h, midY = (topY + baseY) * 0.5f;
+
+        RoundRect(cx, midY, hw * 0.84f, h * 0.5f, 3f, wood);
+        Ellipse(cx, midY, hw, h * 0.44f, wood);                   // 배부른 실루엣
+        Ellipse(cx, topY + 2f, hw * 0.80f, hw * 0.26f, Opaque(wood, 1.28f));   // 뚜껑
+        RingAA(cx, topY + 2f, hw * 0.80f, 1.1f, dark);
+
+        for (int i = -2; i <= 2; i++)                              // 세로 판자
+            Capsule(cx + i * hw * 0.33f, topY + 5f, cx + i * hw * 0.33f, baseY - 3f, 0.9f, dark);
+        Capsule(cx - hw * 0.90f, topY + h * 0.28f, cx + hw * 0.90f, topY + h * 0.28f, 2.6f, hoop);
+        Capsule(cx - hw * 0.90f, topY + h * 0.76f, cx + hw * 0.90f, topY + h * 0.76f, 2.6f, hoop);
+        Capsule(cx - hw * 0.72f, topY + 8f, cx - hw * 0.86f, baseY - 8f, 1.6f,
+                Opaque(wood, 1.5f));                               // 좌측 림라이트
+    }
+
+    /// <summary>곡물 자루 — 목을 끈으로 묶은 형태.</summary>
+    static void Sack(float cx, float baseY, float r, Color cloth)
+    {
+        Color dark = Opaque(cloth, 0.52f);
+        Ellipse(cx, baseY - r * 0.86f, r, r * 0.94f, cloth);
+        Ellipse(cx, baseY - r * 0.24f, r * 1.04f, r * 0.44f, cloth);            // 눌린 바닥
+        Capsule(cx, baseY - r * 1.62f, cx, baseY - r * 1.94f, r * 0.44f, Opaque(cloth, 0.88f));
+        Capsule(cx - r * 0.36f, baseY - r * 1.70f, cx + r * 0.36f, baseY - r * 1.70f, 1.8f, dark);
+        Capsule(cx - r * 0.50f, baseY - r * 1.20f, cx - r * 0.22f, baseY - r * 0.40f, 1.2f, dark);
+        Capsule(cx + r * 0.44f, baseY - r * 1.28f, cx + r * 0.20f, baseY - r * 0.40f, 1.1f, dark);
+        Ellipse(cx - r * 0.34f, baseY - r * 1.10f, r * 0.26f, r * 0.34f, Opaque(cloth, 1.30f));
+    }
+
+    /// <summary>
+    /// 판자벽 — 세로 널을 이어 붙이고 틈·나뭇결·못을 넣는다.
+    ///
+    /// ⚠ 얇은 선 몇 개로는 벽이 되지 않는다
+    ///   예전 창고 배경은 1.4px 캡슐 아홉 줄이 전부라 검은 화면에 그대로 묻혔다.
+    ///   널을 실제로 칠하고 그 사이를 어둡게 파야 면으로 읽힌다.
+    /// </summary>
+    static void PlankWall(float x0, float x1, float topY, float botY,
+                          Color wood, int seed, float boardW = 32f)
+    {
+        var rng = new System.Random(seed);
+        Color gap = Opaque(wood, 0.30f);
+
+        for (float x = x0; x < x1; x += boardW)
+        {
+            float w = Mathf.Min(boardW, x1 - x);
+            if (w < 2f) break;
+
+            float v = 0.80f + (float)rng.NextDouble() * 0.42f;
+            Color c = Opaque(wood, v);
+            RoundRect(x + w * 0.5f, (topY + botY) * 0.5f,
+                      w * 0.5f - 1f, (botY - topY) * 0.5f, 1f, c);
+            Capsule(x + w, topY, x + w, botY, 2.2f, gap);
+
+            for (int g = 0; g < 3; g++)   // 나뭇결
+            {
+                float gy = topY + (float)rng.NextDouble() * (botY - topY);
+                Capsule(x + 2f, gy, x + w - 2f, gy + rng.Next(-2, 3), 0.8f,
+                        new Color(c.r * 0.66f, c.g * 0.66f, c.b * 0.66f, 0.6f));
+            }
+            Color nail = new Color(c.r * 1.7f, c.g * 1.7f, c.b * 1.7f, 0.75f);
+            Disc(x + w * 0.5f, topY + 6f, 1.0f, nail);
+            Disc(x + w * 0.5f, botY - 6f, 1.0f, nail);
+        }
+    }
+
+    /// <summary>
+    /// 원근 바닥. topY 아래를 널빤지로 채우고 이음선을 소실점으로 모은다.
+    /// ⚠ 소품보다 먼저 그릴 것 — 나중에 그리면 위에 덮인다.
+    /// </summary>
+    static void PlankFloor(float topY, float vanishX, Color wood, int seed)
+    {
+        Ridge(x => topY, wood);
+
+        var rng = new System.Random(seed);
+        Color seam = Opaque(wood, 0.52f);
+
+        for (int i = -10; i <= 10; i++)   // 세로 이음선 — 위로 갈수록 모인다
+            Capsule(vanishX + i * 9f, topY, vanishX + i * 96f, H + 4f, 1.4f, seam);
+
+        for (int i = 1; i <= 5; i++)      // 가로 이음선 — 아래로 갈수록 간격이 벌어진다
+        {
+            float t = i / 5f;
+            float y = Mathf.Lerp(topY, H + 6f, t * t);
+            Capsule(0f, y, W, y, 1.2f, Opaque(wood, 0.62f));
+        }
+        for (int i = 0; i < 26; i++)      // 얼룩 — 균일한 면은 CG 처럼 보인다
+        {
+            float x = rng.Next(0, W), y = topY + rng.Next(2, Mathf.Max(3, H - (int)topY));
+            Ellipse(x, y, 10f + rng.Next(0, 26), 3f + rng.Next(0, 6),
+                    new Color(wood.r * 0.7f, wood.g * 0.7f, wood.b * 0.7f, 0.22f));
+        }
+    }
+
+    /// <summary>
+    /// 바닥 접지 그림자 — 곱연산으로 어둡게 한다.
+    /// 소품이 "떠 있지 않게" 만드는 가장 싼 방법이며, 없으면 스티커처럼 보인다.
+    /// </summary>
+    static void GroundShadow(float cx, float cy, float rx, float ry, float strength)
+    {
+        int x0 = Mathf.Max(0, (int)(cx - rx)), x1 = Mathf.Min(W, (int)(cx + rx) + 1);
+        int y0 = Mathf.Max(0, (int)(cy - ry)), y1 = Mathf.Min(H, (int)(cy + ry) + 1);
+        for (int sy = y0; sy < y1; sy++)
+        for (int x  = x0; x  < x1; x++)
+        {
+            float dx = (x + 0.5f - cx) / rx, dy = (sy + 0.5f - cy) / ry;
+            float d  = Mathf.Sqrt(dx * dx + dy * dy);
+            if (d >= 1f) continue;
+            MulPx(x, sy, 1f - (1f - Mathf.Pow(d, 1.6f)) * strength);
+        }
+    }
+
+    /// <summary>
+    /// 비스듬한 빛줄기. (ax,ay) 에서 (bx,by) 로 퍼지며 흐려진다.
+    ///
+    /// ⚠ LightShaft 는 수직 전용이고 topY 가 화면 밖이면 한 픽셀도 안 그린다
+    ///   창고 삽화의 "문틈으로 새는 빛" 이 topY=200(=H) 으로 들어가 있어
+    ///   루프가 한 번도 돌지 않았다. 장면의 유일한 광원이 통째로 빠진 채였다.
+    ///   문·창문에서 들어오는 빛은 애초에 기울어져 있으니 이쪽을 쓴다.
+    /// </summary>
+    static void LightBeam(float ax, float ay, float bx, float by,
+                          float hwA, float hwB, Color c, float strength)
+    {
+        float dx = bx - ax, dy = by - ay;
+        float len2 = dx * dx + dy * dy;
+        if (len2 < 0.001f) return;
+        float len = Mathf.Sqrt(len2);
+
+        float pad = Mathf.Max(hwA, hwB) + 2f;
+        int x0 = Mathf.Max(0, (int)(Mathf.Min(ax, bx) - pad));
+        int x1 = Mathf.Min(W, (int)(Mathf.Max(ax, bx) + pad) + 1);
+        int y0 = Mathf.Max(0, (int)(Mathf.Min(ay, by) - pad));
+        int y1 = Mathf.Min(H, (int)(Mathf.Max(ay, by) + pad) + 1);
+
+        for (int sy = y0; sy < y1; sy++)
+        for (int x  = x0; x  < x1; x++)
+        {
+            float px = x + 0.5f - ax, py = sy + 0.5f - ay;
+            float t  = (px * dx + py * dy) / len2;
+            if (t < 0f || t > 1f) continue;
+
+            float hw = Mathf.Lerp(hwA, hwB, t);
+            float d  = Mathf.Abs(px * dy - py * dx) / len;
+            float e  = 1f - d / hw;
+            if (e <= 0f) continue;
+
+            AddPx(x, sy, c, e * e * (1f - t) * (1f - t) * strength);
+        }
+    }
+
+    /// <summary>빛줄기 속 먼지 — 빛에 걸린 티끌이 보여야 공기가 있는 공간이 된다.</summary>
+    static void BeamDust(float ax, float ay, float bx, float by,
+                         float hwA, float hwB, Color c, int count, int seed)
+    {
+        float dx = bx - ax, dy = by - ay;
+        float len = Mathf.Sqrt(dx * dx + dy * dy);
+        if (len < 0.001f) return;
+        float nx = -dy / len, ny = dx / len;
+
+        var rng = new System.Random(seed);
+        for (int i = 0; i < count; i++)
+        {
+            float t = (float)rng.NextDouble();
+            float o = (float)rng.NextDouble() * 2f - 1f;
+            float hw = Mathf.Lerp(hwA, hwB, t) * 0.92f;
+            float a  = (0.25f + (float)rng.NextDouble() * 0.75f)
+                       * (1f - t * 0.55f) * (1f - Mathf.Abs(o) * 0.7f);
+            Disc(ax + dx * t + nx * o * hw, ay + dy * t + ny * o * hw,
+                 0.6f + (float)rng.NextDouble() * 1.1f, new Color(c.r, c.g, c.b, a));
+        }
+    }
+
+    /// <summary>거미줄 — a0~a1 부채꼴. 구석에 걸어 두면 "방치됨" 이 한 번에 읽힌다.</summary>
+    static void Cobweb(float cx, float cy, float r, float a0, float a1, Color c)
+    {
+        const int Spokes = 5;
+        for (int i = 0; i <= Spokes; i++)
+        {
+            float a = Mathf.Lerp(a0, a1, i / (float)Spokes);
+            Capsule(cx, cy, cx + Mathf.Cos(a) * r, cy + Mathf.Sin(a) * r, 0.8f, c);
+        }
+        for (int ring = 1; ring <= 3; ring++)
+        {
+            float rr = r * ring / 3.3f;
+            for (int i = 0; i < Spokes; i++)
+            {
+                float s = Mathf.Lerp(a0, a1, i / (float)Spokes);
+                float e = Mathf.Lerp(a0, a1, (i + 1) / (float)Spokes);
+                Capsule(cx + Mathf.Cos(s) * rr, cy + Mathf.Sin(s) * rr,
+                        cx + Mathf.Cos(e) * rr, cy + Mathf.Sin(e) * rr, 0.7f, c);
+            }
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════
     //  배경 · 분위기
     // ══════════════════════════════════════════════════════════
 
@@ -1094,6 +1507,13 @@ public static class EventIllustrationGenerator
 
     static Color C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
 
+    /// <summary>
+    /// 밝기만 k 배 하고 알파는 1 로 고정한다.
+    /// ⚠ Color * float 를 쓰지 말 것 — 알파까지 곱해져서 어둡게 만들려던 면이
+    ///   반투명해지고 뒤 배경이 비쳐 나온다 (상자 옆면이 벽에 먹히는 원인).
+    /// </summary>
+    static Color Opaque(Color c, float k) => new Color(c.r * k, c.g * k, c.b * k, 1f);
+
     static float Cross(float ax, float ay, float bx, float by, float px, float py)
         => (bx - ax) * (py - ay) - (by - ay) * (px - ax);
 
@@ -1110,6 +1530,15 @@ public static class EventIllustrationGenerator
         _px[i] = new Color(d.r + (c.r - d.r) * a,
                            d.g + (c.g - d.g) * a,
                            d.b + (c.b - d.b) * a, 1f);
+    }
+
+    // 곱연산 — 그림자용. 알파 블렌딩으로 검정을 덮으면 색이 죽는다.
+    static void MulPx(int x, int sy, float k)
+    {
+        if ((uint)x >= W || (uint)sy >= H) return;
+        int i = (H - 1 - sy) * W + x;
+        Color d = _px[i];
+        _px[i] = new Color(d.r * k, d.g * k, d.b * k, 1f);
     }
 
     static void AddPx(int x, int sy, Color c, float k)

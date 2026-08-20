@@ -1,4 +1,4 @@
-﻿using UnityEditor;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -30,33 +30,71 @@ public static class PopupPrefabCreator
     static readonly Color BrHint         = new Color(0.82f,  0.74f,  0.44f,  1f);
     static readonly Color BrConfirm      = new Color(0.16f,  0.58f,  0.36f,  1f);
 
+    /// <summary>
+    /// 팝업 프리팹 전체 생성.
+    ///
+    /// ⚠ "이 파일이 만드는 것" 이 아니라 "팝업 메뉴에 있는 것 전부" 다
+    ///   예전엔 이 파일이 직접 만드는 6개(ExpRow·BattleResult·Pause·Loading·
+    ///   Ability×2)만 돌렸다. 그런데 메뉴에는 HeroDetail·EquipCompare·Disassemble
+    ///   같은 팝업이 바로 아래 나란히 붙어 있어서, "▶ 팝업 전체" 를 누르면
+    ///   그것들도 만들어진 줄 알게 된다. 실제로는 손도 안 대므로 Creator 를
+    ///   고쳐도 프리팹은 옛날 것 그대로 남는다 — i 버튼이 안 생긴 원인이었다.
+    ///   메뉴 이름이 "전체" 면 전체를 만들어야 한다.
+    ///
+    /// ⚠ Creator 를 추가하면 여기에도 한 줄 넣을 것
+    ///   ProjectKBatch 는 이 메서드만 부른다. 여기 빠지면 전체 생성에서도 빠진다.
+    /// </summary>
     [MenuItem(ProjectKMenu.Popup + "▶ 팝업 전체", priority = ProjectKMenu.PrefabPrio + 20)]
     public static void CreateAll()
     {
+        // 이 파일이 직접 만드는 것 — BattleResult 가 ExpRow/RewardCard 를 참조하므로 순서 유지
         CreateExpRowPrefab();
         CreateBattleResultPopup();
         CreatePausePopup();
         CreateLoadingPopup();
         AbilitySelectPopupCreator.Create();
         AbilityListPopupCreator.Create();
+
+        // 나머지 팝업 — 각자 정본 Creator 가 따로 있다
+        EquipComparePopupCreator.Create();
+        DisassemblePopupCreator.Create();
+        HeroDetailPopupCreator.Create();
+        RunShopPopupCreator.Create();
+        ReincarnationPopupCreator.Create();
+        MercenaryPopupCreator.Create();
+        EventPopupCreator.Create();
+        CodexPopupCreator.Run();
+        RelicPopupCreator.Create();
+
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("[PopupPrefabCreator] 팝업 프리팹 생성 완료");
+        Debug.Log("[PopupPrefabCreator] ✓ 팝업 프리팹 전체 생성 완료 (15종)");
     }
 
     // ── ExpRow 프리팹 ─────────────────────────────────────────
-    // 새 레이아웃 (H=96):
-    //   LEFT  : [Portrait] [이름  ▲UP!] / [Lv.x  Exp N]
-    //   RIGHT : [StatBar ████░░] [Total] / [Legend...] [DPS]
-
+    //
+    //  레이아웃 (H=100) — 세 개의 열이 겹치지 않게 x 를 못 박는다
+    //    [초상화] │ [이름          ] │ [■■■░░ 막대   ] │ [   22.9K]
+    //     6..78   │ [Lv.11  Exp 1040] │ [■장군 ■병사 ■스킬] │ [DPS 513]
+    //             90 ............ 400  416 ......... W-186   우측 170
+    //
+    //  ⚠ 열 경계는 반드시 아래 상수로만 잡는다
+    //    예전엔 ExpText(178~328)가 범례·막대 시작선(310)을 18px 파고들어
+    //    "Exp 1040" 위에 "■ 장군 ■ 병사" 가 겹쳐 찍혔다. 레벨업 프레임에는
+    //    UP! 까지 끼어 세 글자가 한 자리에서 뭉갰다.
+    //    가운데 열은 stretch 라 폭이 변해도, 좌우 열은 **고정 픽셀**이다 —
+    //    팝업을 넓혀도 이 겹침은 안 풀린다. 여기서 벌려야 한다.
     static void CreateExpRowPrefab()
     {
         const float rowH      = 100f;
         const float portSz    = 72f;
-        const float nameX     = 84f;    // portrait 우측 끝 + 6 gap
-        const float leftEnd   = 310f;   // 좌측 섹션 끝 (portrait + name + levelup)
-        const float rightSize = 140f;   // 우측 총량 영역 (TotalText 120 + 20 margin)
-        float stretchX = (leftEnd - rightSize) / 2f;  // = 85
+        const float nameX     = 90f;    // portrait 우측 끝(78) + 12 gap
+        const float lvW       = 118f;   // "Lv.11" / "UP!" 이 들어가는 폭
+        const float expX      = nameX + lvW + 10f;   // 218
+        const float expW      = 172f;                // "Exp 1040" — 네 자리까지
+        const float leftEnd   = 400f;   // 막대·범례가 시작하는 x (Exp 끝 390 보다 뒤)
+        const float rightSize = 186f;   // 우측 총량 영역 ("DPS 4,154" + 여백)
+        float stretchX = (leftEnd - rightSize) / 2f;
 
         var root    = new GameObject("ExpRow", typeof(RectTransform));
         var rowComp = root.AddComponent<ExpRowUI>();
@@ -94,8 +132,9 @@ public static class PopupPrefabCreator
         var nameRt = nameText.rectTransform;
         nameRt.anchorMin = new Vector2(0f, 0.5f); nameRt.anchorMax = new Vector2(0f, 0.5f);
         nameRt.pivot = new Vector2(0f, 0.5f);
-        nameRt.anchoredPosition = new Vector2(nameX, 22f);
-        nameRt.sizeDelta = new Vector2(210f, 46f);
+        nameRt.anchoredPosition = new Vector2(nameX, 24f);
+        // 아랫줄(Lv + Exp) 과 같은 폭을 쓴다 — 이름이 길어도 막대까지 침범하지 않는다
+        nameRt.sizeDelta = new Vector2(leftEnd - nameX - 12f, 46f);
 
         // ── 레벨업 뱃지 (LevelText 동일 위치, 기본 비활성) ──────
         // 레벨업 시 LevelText를 대체하여 먼저 표시, 1초 후 LevelText로 교체
@@ -107,8 +146,8 @@ public static class PopupPrefabCreator
         var lvupRt = lvupText.rectTransform;
         lvupRt.anchorMin = new Vector2(0f, 0.5f); lvupRt.anchorMax = new Vector2(0f, 0.5f);
         lvupRt.pivot = new Vector2(0f, 0.5f);
-        lvupRt.anchoredPosition = new Vector2(nameX, -22f);  // LevelText와 동일 위치
-        lvupRt.sizeDelta = new Vector2(90f, 36f);
+        lvupRt.anchoredPosition = new Vector2(nameX, -22f);  // LevelText와 동일 위치(교대 표시)
+        lvupRt.sizeDelta = new Vector2(lvW, 36f);
         lvupText.gameObject.SetActive(false);
 
         // ── 레벨 (좌하) ──────────────────────────────────────────
@@ -121,7 +160,7 @@ public static class PopupPrefabCreator
         levelRt.anchorMin = new Vector2(0f, 0.5f); levelRt.anchorMax = new Vector2(0f, 0.5f);
         levelRt.pivot = new Vector2(0f, 0.5f);
         levelRt.anchoredPosition = new Vector2(nameX, -22f);
-        levelRt.sizeDelta = new Vector2(90f, 36f);
+        levelRt.sizeDelta = new Vector2(lvW, 36f);
 
         // ── Exp (레벨 오른쪽) ─────────────────────────────────────
         var expText = AddTMP(root, "ExpText", "Exp 0", UIScale.FontSm, FontStyles.Normal);
@@ -130,8 +169,11 @@ public static class PopupPrefabCreator
         var expRt = expText.rectTransform;
         expRt.anchorMin = new Vector2(0f, 0.5f); expRt.anchorMax = new Vector2(0f, 0.5f);
         expRt.pivot = new Vector2(0f, 0.5f);
-        expRt.anchoredPosition = new Vector2(nameX + 90f + 4f, -22f);  // 178
-        expRt.sizeDelta = new Vector2(150f, 34f);
+        expRt.anchoredPosition = new Vector2(expX, -22f);
+        expRt.sizeDelta = new Vector2(expW, 34f);
+        // ⚠ 넘치면 줄이고, 절대 옆 칸을 침범하지 않는다
+        expText.textWrappingMode = TextWrappingModes.NoWrap;
+        expText.overflowMode     = TextOverflowModes.Ellipsis;
 
         // ── StatBar (우측 stretch, H=22) ──────────────────────────
         var barGo = new GameObject("StatBar", typeof(RectTransform), typeof(Image));
@@ -184,8 +226,8 @@ public static class PopupPrefabCreator
         var totalRt = totalText.rectTransform;
         totalRt.anchorMin = new Vector2(1f, 0.5f); totalRt.anchorMax = new Vector2(1f, 0.5f);
         totalRt.pivot = new Vector2(1f, 0.5f);
-        totalRt.anchoredPosition = new Vector2(-10f, 22f);
-        totalRt.sizeDelta = new Vector2(120f, 34f);
+        totalRt.anchoredPosition = new Vector2(-14f, 24f);
+        totalRt.sizeDelta = new Vector2(rightSize - 24f, 34f);
 
         // ── DPS 텍스트 (우측 하단, 딜탭만 표시) ──────────────────
         var dpsText = AddTMP(root, "DPSText", "", UIScale.FontSm - 2f, FontStyles.Normal);
@@ -195,8 +237,8 @@ public static class PopupPrefabCreator
         var dpsRt = dpsText.rectTransform;
         dpsRt.anchorMin = new Vector2(1f, 0.5f); dpsRt.anchorMax = new Vector2(1f, 0.5f);
         dpsRt.pivot = new Vector2(1f, 0.5f);
-        dpsRt.anchoredPosition = new Vector2(-10f, -22f);
-        dpsRt.sizeDelta = new Vector2(120f, 30f);
+        dpsRt.anchoredPosition = new Vector2(-14f, -22f);
+        dpsRt.sizeDelta = new Vector2(rightSize - 24f, 30f);
         dpsText.gameObject.SetActive(false);
 
         // ── 필드 연결 ─────────────────────────────────────────────
@@ -233,16 +275,21 @@ public static class PopupPrefabCreator
     //    · 강조선 → 섹션 라벨(좌우 라인) → 내용 카드
     //    · 탭·확인 버튼은 음각 입체 버튼 (UI 규칙 1)
     //
-    //  레이아웃 (W=1000, H=1000 / 위에서 아래로)
+    //  레이아웃 (W=1240, H=1000 / 위에서 아래로)
     //    Header        Y=  0  H=136   승패 배지 + 타이틀
     //    AccentLine    Y=136  H=  3   승패 색 (런타임 교체)
-    //    RewardLabel   Y=158  H= 40   "획득 보상"
-    //    RewardBox     Y=204  H=176   카드 가로 스크롤
-    //    HintText      Y=384  H= 34
-    //    StatLabel     Y=424  H= 40   "전투 기록"
-    //    TabBar        Y=470  H= 92   딜 / 탱 / 힐
-    //    ExpBox        Y=574  → 확인 버튼 위까지 (242px, 세로 스크롤)
-    //    ConfirmButton 하단 28
+    //    RewardLabel   Y=150  H= 40   "획득 보상"
+    //    RewardBox     Y=194  H=168   카드 가로 스크롤
+    //    HintText      Y=366  H= 43
+    //    StatLabel     Y=412  H= 43   "전투 기록"
+    //    TabBar        Y=456  H= 84   딜 / 탱 / 힐
+    //    ExpBox        Y=546  → 확인 버튼 위까지 (314px = 3행)
+    //    ConfirmButton 360×100, 하단 22
+    //
+    //  ⚠ 폭은 ExpRow 가 정한다
+    //    행 좌우 열(초상화+이름 400 / 총량 186)이 고정이라 가운데 막대가
+    //    쓸 폭이 곧 남는 값이다. 1240 이면 막대가 574 — 세그먼트 3개가 읽힌다.
+    //    더 늘리면 막대만 길어지고 양쪽 열은 그대로라 화면이 비어 보인다.
 
     [MenuItem(ProjectKMenu.Popup + "BattleResult", priority = ProjectKMenu.PrefabPrio + 31)]
     public static void CreateBattleResultPopup()
@@ -251,21 +298,35 @@ public static class PopupPrefabCreator
         if (AssetDatabase.LoadAssetAtPath<GameObject>($"{SavePath}/ExpRow.prefab") == null)
             CreateExpRowPrefab();
 
-        const float PW      = 1000f;
+        // ⚠ 팝업 캔버스는 1920×1080 (CanvasPopup) 이다 — 인게임 캔버스가 아니다
+        //   1000 폭은 화면의 절반뿐이라 좌우가 휑했다. 좌우 140 여백만 남기고 채운다.
+        //   세로는 PopupMaxH 를 넘기지 않는다 (UI 규칙 6) — 대신 아래 버튼을 줄여
+        //   전투 기록 목록이 쓸 높이를 돌려준다.
+        const float PW      = 1240f;
         const float PH      = UIScale.PopupMaxH;
         const float SidePad = 40f;
         const float ContentW = PW - SidePad * 2f;
 
+        // 확인 버튼 — 예전엔 520×132 로 하단을 통째로 먹어 목록이 3행에서 잘렸다.
+        // 누르는 데 문제 없는 최소 크기로 줄이고 그 차이를 목록에 준다.
+        const float ConfirmW      = 360f;
+        const float ConfirmH      = UIScale.BtnSm;
+        const float ConfirmBottom = 22f;
+
+        // 위 섹션을 조금씩 죄어 전투 기록이 3행을 온전히 담게 한다.
+        // ⚠ 반쯤 잘린 행이 남으면 "삐져나왔다" 로 보인다 — 행 높이(100)+간격(6)의
+        //   배수로 떨어지게 ExpY 를 맞춘다: 1000 - 542 - 140 = 318 ≥ 3행(312).
         const float HeaderH   = 136f;
         const float AccentH   = 3f;
-        const float RewardY   = 158f;
-        const float RewardBoxY = 204f;
-        const float RewardBoxH = 176f;
-        const float HintY     = 384f;
-        const float StatY     = 424f;
-        const float TabY      = 470f;
-        const float TabH      = 92f;
-        const float ExpY      = 574f;
+        const float RewardY   = 150f;
+        const float RewardBoxY = 194f;
+        const float RewardBoxH = 168f;
+        const float HintY     = 366f;
+        const float HintH     = 43f;    // UIScale.RowSm — FontSm 한 줄 (UI 규칙 5)
+        const float StatY     = 412f;
+        const float TabY      = 456f;
+        const float TabH      = 84f;
+        const float ExpY      = 546f;
 
         var root  = CreateRoot<BattleResultPopup>("BattleResultPopup", PW, PH);
         var popup = root.GetComponent<BattleResultPopup>();
@@ -316,7 +377,7 @@ public static class PopupPrefabCreator
         AnchorTopBand(accentLine, HeaderH, AccentH);
 
         // ── "획득 보상" 섹션 ─────────────────────────────────
-        BuildSectionLabel(panel, "획득 보상", RewardY, ContentW);
+        BuildSectionLabel(panel, "획득 보상", RewardY, ContentW, SidePad);
 
         // 보상 카드 가로 스크롤 (카드가 많아도 잘리지 않게)
         var rewardBox = MakeGo("RewardBox", panel);
@@ -336,9 +397,13 @@ public static class PopupPrefabCreator
 
         var rewardArea = MakeGo("RewardArea", rewardVp);
         var rewardRt = rewardArea.GetComponent<RectTransform>();
-        rewardRt.anchorMin        = new Vector2(0f, 0f);
-        rewardRt.anchorMax        = new Vector2(0f, 1f);
-        rewardRt.pivot            = new Vector2(0f, 0.5f);
+        // ⚠ 가로 중앙 기준으로 매단다 (예전엔 왼쪽 고정)
+        //   박스가 넓어지면서 카드 5장이 왼쪽 구석에 몰려 붙었다.
+        //   중앙 앵커 + ContentSizeFitter 조합이면 카드가 적을 때는 가운데,
+        //   많아서 넘칠 때는 그대로 가로 스크롤이 된다.
+        rewardRt.anchorMin        = new Vector2(0.5f, 0f);
+        rewardRt.anchorMax        = new Vector2(0.5f, 1f);
+        rewardRt.pivot            = new Vector2(0.5f, 0.5f);
         rewardRt.anchoredPosition = Vector2.zero;
         rewardRt.sizeDelta        = Vector2.zero;
 
@@ -363,14 +428,16 @@ public static class PopupPrefabCreator
         hintText.color         = BrHint;
         hintText.alignment     = TextAlignmentOptions.Center;
         hintText.raycastTarget = false;
-        AnchorTopBand(hintText.gameObject, HintY, 34f, SidePad);
+        AnchorTopBand(hintText.gameObject, HintY, HintH, SidePad);
         hintText.gameObject.SetActive(false);
 
         // ── "전투 기록" 섹션 ─────────────────────────────────
-        BuildSectionLabel(panel, "전투 기록", StatY, ContentW);
+        BuildSectionLabel(panel, "전투 기록", StatY, ContentW, SidePad);
 
         var tabBar = MakeGo("TabBar", panel);
-        AnchorTopBand(tabBar, TabY, TabH, SidePad);
+        // 탭 3개를 패널 폭 전체로 늘리면 한 칸이 500 을 넘어 글자만 덩그러니 남는다.
+        // 가운데 900 폭으로 묶는다.
+        AnchorTopBand(tabBar, TabY, TabH, (PW - 900f) * 0.5f);
 
         var tabHlg = tabBar.AddComponent<HorizontalLayoutGroup>();
         tabHlg.spacing                = 10f;
@@ -426,7 +493,7 @@ public static class PopupPrefabCreator
             var rt = expBox.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0f, 0f);
             rt.anchorMax = new Vector2(1f, 1f);
-            rt.offsetMin = new Vector2(SidePad, UIScale.BtnMd + 52f);
+            rt.offsetMin = new Vector2(SidePad, ConfirmBottom + ConfirmH + 18f);
             rt.offsetMax = new Vector2(-SidePad, -ExpY);
         }
         var expScroll = expBox.AddComponent<ScrollRect>();
@@ -467,15 +534,15 @@ public static class PopupPrefabCreator
 
         // 확인 버튼 (하단 고정)
         var confirmBtn = EditorUIBuilder
-            .RaisedTextBtn(panel, "ConfirmButton", "확  인", UIScale.FontLg, BrConfirm)
+            .RaisedTextBtn(panel, "ConfirmButton", "확  인", UIScale.FontMd, BrConfirm)
             .gameObject;
         {
             var rt = confirmBtn.GetComponent<RectTransform>();
             rt.anchorMin        = new Vector2(0.5f, 0f);
             rt.anchorMax        = new Vector2(0.5f, 0f);
             rt.pivot            = new Vector2(0.5f, 0f);
-            rt.anchoredPosition = new Vector2(0f, 28f);
-            rt.sizeDelta        = new Vector2(520f, UIScale.BtnMd);
+            rt.anchoredPosition = new Vector2(0f, ConfirmBottom);
+            rt.sizeDelta        = new Vector2(ConfirmW, ConfirmH);
         }
 
         // ── 직렬화 필드 연결 ─────────────────────────────────
@@ -511,8 +578,17 @@ public static class PopupPrefabCreator
     }
 
     // 섹션 라벨 — 가운데 글자 + 좌우 라인 (EventPopup 의 "선 택" 과 같은 형태)
-    static void BuildSectionLabel(GameObject panel, string text, float yFromTop, float contentW)
-        => EditorUIBuilder.SectionLabel(panel, text, yFromTop, contentW, (1000f - contentW) * 0.5f);
+    /// <summary>
+    /// 섹션 라벨 (가운데 글자 + 좌우 라인).
+    ///
+    /// ⚠ 여백은 반드시 sidePad 를 그대로 받는다
+    ///   예전엔 `(1000 - contentW) * 0.5` 로 패널 폭 1000 을 상수로 박아 뒀다.
+    ///   팝업을 넓히자 이 값이 **음수**가 되어 구분선이 패널 밖으로 뻗어 나갔다.
+    ///   폭을 바꿀 때마다 조용히 깨지는 종류의 계산이라 인자로 받는다.
+    /// </summary>
+    static void BuildSectionLabel(GameObject panel, string text, float yFromTop,
+                                  float contentW, float sidePad)
+        => EditorUIBuilder.SectionLabel(panel, text, yFromTop, contentW, sidePad);
 
     // 상단에서 yFromTop 만큼 내려온 높이 h 의 가로 밴드
     static void AnchorTopBand(GameObject go, float yFromTop, float h, float sidePad = 0f)
@@ -546,8 +622,22 @@ public static class PopupPrefabCreator
         const float HeaderH = 136f;
         const float SidePad =  48f;
         const float BtnGap  =  24f;
-        float btnH   = UIScale.BtnFor(UIScale.FontMd) + 20f;   // 92 — 인게임은 손가락으로 누른다
-        float popupH = HeaderH + 3f + 40f + btnH * 2 + BtnGap + 48f;
+        const float Outset  =   6f;   // 테두리가 패널 밖으로 드러나는 두께 (PausePopup 과 동일)
+
+        float btnH = UIScale.BtnFor(UIScale.FontMd) + 20f;   // 92 — 인게임은 손가락으로 누른다
+        // 사운드 토글은 설명 줄이 없다 — 두 줄짜리 선택지보다 낮게 잡아 목록을 압축한다.
+        float togH = UIScale.BtnFor(UIScale.FontMd);
+
+        // 행 순서: 계속하기 → 효과음 → 배경음악 → 즉시 환생하기
+        //   되돌릴 수 없는 항목을 맨 아래에 둔다. 마침 로비에서 접는 행도 이것이라
+        //   접었을 때 목록 중간에 구멍이 나지 않는다.
+        float yResume = HeaderH + 43f;
+        float ySfx    = yResume + btnH + BtnGap;
+        float yBgm    = ySfx    + togH + BtnGap;
+        float yReinc  = yBgm    + togH + BtnGap;
+
+        float surrenderRowH = BtnGap + btnH;                  // 로비에서 접는 높이
+        float popupH        = yReinc + btnH + 48f;
 
         // 루트는 전체화면 오버레이 — 뒤 전투 화면을 어둡게 깐다
         var root = new GameObject("PausePopup", typeof(RectTransform), typeof(CanvasGroup), typeof(Image));
@@ -559,7 +649,7 @@ public static class PopupPrefabCreator
         var border = new GameObject("Border", typeof(RectTransform), typeof(Image));
         border.transform.SetParent(root.transform, false);
         border.GetComponent<Image>().color = new Color(0.26f, 0.44f, 0.72f, 1f);
-        SetRect(border.GetComponent<RectTransform>(), Vector2.zero, new Vector2(PW + 6f, popupH + 6f));
+        SetRect(border.GetComponent<RectTransform>(), Vector2.zero, new Vector2(PW + Outset, popupH + Outset));
 
         var panel = new GameObject("Panel", typeof(RectTransform), typeof(Image));
         panel.transform.SetParent(root.transform, false);
@@ -602,25 +692,93 @@ public static class PopupPrefabCreator
         accent.GetComponent<Image>().color = new Color(0.40f, 0.72f, 1.00f, 1f);
         EditorUIBuilder.AnchorTop(accent.GetComponent<RectTransform>(), HeaderH, 3f);
 
-        // ── 버튼 2개 (계속하기 / 즉시 환생하기) ───────────────
+        // ── 선택지 ────────────────────────────────────────────
         //  "즉시 환생하기" 는 되돌릴 수 없다 — 붉은 계열로 구분한다.
         var resumeBtn = MakePauseChoice(panel, "ResumeButton", "계 속 하 기",
                                         "전투로 돌아간다",
                                         new Color(0.13f, 0.52f, 0.38f, 1f),
-                                        HeaderH + 43f, btnH, SidePad);
+                                        yResume, btnH, SidePad);
+
+        var sfxBtn = MakeSoundToggle(panel, "SfxButton", "효 과 음",
+                                     ySfx, togH, SidePad,
+                                     out var sfxPill, out var sfxState);
+
+        var bgmBtn = MakeSoundToggle(panel, "BgmButton", "배 경 음 악",
+                                     yBgm, togH, SidePad,
+                                     out var bgmPill, out var bgmState);
 
         var reincBtn  = MakePauseChoice(panel, "ReincarnateButton", "즉시 환생하기",
                                         "이번 런을 포기하고 환생한다",
                                         new Color(0.50f, 0.16f, 0.18f, 1f),
-                                        HeaderH + 43f + btnH + BtnGap, btnH, SidePad);
+                                        yReinc, btnH, SidePad);
 
         var so = new SerializedObject(popup);
         SetEnum(so, "_popupType",          (int)PopupType.Pause);
         SetObj (so, "_resumeButton",       resumeBtn);
         SetObj (so, "_reincarnateButton",  reincBtn);
+        SetObj (so, "_sfxButton",          sfxBtn);
+        SetObj (so, "_sfxPill",            sfxPill);
+        SetObj (so, "_sfxState",           sfxState);
+        SetObj (so, "_bgmButton",          bgmBtn);
+        SetObj (so, "_bgmPill",            bgmPill);
+        SetObj (so, "_bgmState",           bgmState);
+        SetObj (so, "_panelRect",          panel.GetComponent<RectTransform>());
+        SetObj (so, "_borderRect",         border.GetComponent<RectTransform>());
+        so.FindProperty("_panelFullH").floatValue    = popupH;
+        so.FindProperty("_surrenderRowH").floatValue = surrenderRowH;
         so.ApplyModifiedProperties();
 
         Save(root, "PausePopup");
+    }
+
+    /// <summary>
+    /// [라벨] ────── [상태 알약] 한 줄짜리 사운드 토글 버튼.
+    ///
+    /// ⚠ 상태를 버튼 본체 색으로 나타내지 않는다
+    ///   Body 는 Button.targetGraphic 이라 눌림 색이 그 색에 곱해진다 (UI 규칙 1).
+    ///   런타임에 Body 를 물들이면 TintFor 로 역산해 둔 눌림 색이 어긋나므로,
+    ///   상태는 그 위에 얹은 알약(Image + TMP)이 맡는다.
+    /// </summary>
+    static Button MakeSoundToggle(GameObject panel, string name, string label,
+                                  float yFromTop, float h, float sidePad,
+                                  out Image pill, out TextMeshProUGUI state)
+    {
+        var btn = EditorUIBuilder.RaisedBtn(panel, name, new Color(0.19f, 0.24f, 0.38f, 1f), out var body);
+        var rt = btn.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0f, 1f);
+        rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot     = new Vector2(0.5f, 1f);
+        rt.anchoredPosition = new Vector2(0f, -yFromTop);
+        rt.sizeDelta        = new Vector2(-sidePad * 2f, h);
+
+        const float PillW = 170f;
+
+        var lbl = AddTMP(body, "Label", label, UIScale.FontMd, FontStyles.Bold);
+        lbl.color            = Color.white;
+        lbl.alignment        = TextAlignmentOptions.MidlineLeft;
+        lbl.raycastTarget    = false;
+        lbl.textWrappingMode = TextWrappingModes.NoWrap;
+        var lRt = lbl.rectTransform;
+        lRt.anchorMin = Vector2.zero; lRt.anchorMax = Vector2.one;
+        lRt.offsetMin = new Vector2(28f, 0f);
+        lRt.offsetMax = new Vector2(-(PillW + 40f), 0f);
+
+        // 알약 — 우측. 높이는 UIScale.RowSm (글자가 잘리지 않는 최소 한 줄, UI 규칙 5)
+        pill = EditorUIBuilder.Img(body, "StatePill", new Color(0.16f, 0.50f, 0.34f, 1f));
+        var pRt = pill.rectTransform;
+        pRt.anchorMin = pRt.anchorMax = new Vector2(1f, 0.5f);
+        pRt.pivot     = new Vector2(1f, 0.5f);
+        pRt.anchoredPosition = new Vector2(-28f, 0f);
+        pRt.sizeDelta        = new Vector2(PillW, UIScale.RowSm);
+
+        state = AddTMP(pill.gameObject, "State", "켜짐", UIScale.FontSm, FontStyles.Bold);
+        state.color            = Color.white;
+        state.alignment        = TextAlignmentOptions.Center;
+        state.raycastTarget    = false;
+        state.textWrappingMode = TextWrappingModes.NoWrap;
+        StretchRT(state.gameObject);
+
+        return btn;
     }
 
     static void MakePauseTitle(GameObject header, string name, Color color, float dy)

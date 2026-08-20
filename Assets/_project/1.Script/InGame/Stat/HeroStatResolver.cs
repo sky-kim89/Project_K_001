@@ -22,6 +22,22 @@ public class HeroStatResult
     public Dictionary<StatType, float> TraitBonuses    = new();
     public Dictionary<StatType, float> CodexBonuses    = new();
 
+    /// <summary>
+    /// 병사 전용 패시브(ApplyTarget.Soldier). **장수 탭에서는 쓰지 않는다.**
+    ///
+    /// ⚠ PassiveBonuses 와 섞으면 안 된다
+    ///   PassiveBonuses 는 Target.General — 장수만 받는 몫이라 병사 환산에서 빠진다
+    ///   (PassiveSkillApplier 가 UnitStat.GeneralOnlyKey 층에 넣는다).
+    ///   그 자리를 대신 채우는 것이 이 두 개다.
+    ///   Ratios 는 환산된 병사 스탯에 곱하고, Flats 는 그대로 더한다
+    ///   — SoldierStatApplier 와 같은 규칙이라야 로비 표시와 전투가 맞는다.
+    /// </summary>
+    public Dictionary<StatType, float> SoldierPassiveRatios = new();
+    public Dictionary<StatType, float> SoldierPassiveFlats  = new();
+
+    public float GetSoldierPassiveRatio(StatType s) => SoldierPassiveRatios.TryGetValue(s, out var v) ? v : 0f;
+    public float GetSoldierPassiveFlat(StatType s)  => SoldierPassiveFlats.TryGetValue(s,  out var v) ? v : 0f;
+
     public float Total(StatType stat)
     {
         float b = Base?.Get(stat) ?? 0f;
@@ -102,6 +118,18 @@ public static class HeroStatResolver
                 if (pd == null || pd.TriggerType != PassiveTrigger.None) continue;
                 foreach (var e in pd.StatModifiers)
                 {
+                    // 병사 전용 — 장수 스탯에는 한 푼도 안 들어간다. 용병 탭이 따로 쓴다.
+                    // ⚠ 예전엔 그냥 건너뛰었다
+                    //   그래서 "강한 장군, 약한 병사"(장군 +30% / 병사 -20%)의 용병 탭에
+                    //   장수의 +30% 만 환산돼 보이고 병사의 -20% 는 어디에도 없었다.
+                    if (e.Target == PassiveSkillApplier.ApplyTarget.Soldier)
+                    {
+                        var bucket = e.IsPercent ? result.SoldierPassiveRatios
+                                                 : result.SoldierPassiveFlats;
+                        bucket[e.Stat] = bucket.TryGetValue(e.Stat, out var sc) ? sc + e.Delta : e.Delta;
+                        continue;
+                    }
+
                     if (e.Target != PassiveSkillApplier.ApplyTarget.General) continue;
                     float delta = e.IsPercent ? stat.Get(e.Stat) * e.Delta : e.Delta;
                     result.PassiveBonuses[e.Stat] =
@@ -296,7 +324,61 @@ public static class HeroStatResolver
         //  ⚠ 전투(CodexApplier.ApplyToGeneralStat)와 순서·대상이 같아야 한다.
         CodexApplier.Accumulate(result);
 
+        // 8. 전투 시작 시 붙을 패시브 예상치
+        ApplyBattleStartPreview(entry, result);
+
         return result;
+    }
+
+    /// <summary>
+    /// OnBattleStart 패시브(방패의 날·강철 체력·집중 사격·황금의 힘)가 전투 시작
+    /// 순간에 더할 값을 미리 계산해 패시브 칸에 합친다.
+    ///
+    /// ⚠ 반드시 맨 마지막이다
+    ///   이 패시브들은 전투 시작 시점의 **완성된** 스탯을 읽는다
+    ///   (방어율·최대체력·공격속도). 앞에서 계산하면 장비·특성·도감이 빠진 값으로 센다.
+    ///
+    /// ⚠ 슬롯 순서대로 앞의 결과를 물려준다
+    ///   전투에서는 Slot0 → Slot1 → Slot2 로 돌면서 각자 그때의 StatComponent 를 읽는다.
+    ///   강철 체력이 공격력을 올린 뒤에 방패의 날이 돌면 그 올라간 공격력이 기준이 된다.
+    ///   여기서도 같은 순서로 누적해야 숫자가 맞는다.
+    ///
+    /// ⚠ 패시브 칸에 합친다 — 별도 칸을 만들지 않는다
+    ///   플레이어에게는 그냥 '패시브가 준 공격력' 이고, 분해 표시(BuildBreakdown)의
+    ///   칸 수를 늘리면 좁은 줄에 숫자가 하나 더 끼어 읽기만 나빠진다.
+    /// </summary>
+    static void ApplyBattleStartPreview(UnitEntry entry, HeroStatResult result)
+    {
+        var db = PassiveSkillDatabase.Current;
+        if (db == null) return;
+
+        var (p0, p1, p2) = PassiveSkillRoller.Roll(entry.UnitName);
+        byte slots = PassiveSkillRoller.GetActiveSlotCount(entry.Grade);
+        PassiveSkillType[] types = { p0, p1, p2 };
+
+        var preview = new Dictionary<StatType, float>();
+
+        // 앞 슬롯의 예상치까지 얹은 '지금 값' — 전투의 StatComponent 읽기와 같은 자리다
+        float Current(StatType s)
+            => result.Total(s) + (preview.TryGetValue(s, out var v) ? v : 0f);
+
+        // 성장(등급·레벨 롤)만의 값 — 전투의 BaseRollStatComponent 와 같은 기준선.
+        // result.Base 가 곧 RollBase(entry) 이므로 그대로 쓴다.
+        float BaseRoll(StatType s) => result.Base.Get(s);
+
+        for (int i = 0; i < slots; i++)
+        {
+            var pd = db.Get(types[i]);
+            if (pd == null || pd.TriggerType != PassiveTrigger.OnBattleStart) continue;
+            pd.CollectPreviewStats(Current, BaseRoll, preview);
+        }
+
+        foreach (var kv in preview)
+        {
+            if (kv.Value == 0f) continue;
+            result.PassiveBonuses[kv.Key] =
+                result.PassiveBonuses.TryGetValue(kv.Key, out var cur) ? cur + kv.Value : kv.Value;
+        }
     }
 
     // % 유물은 현재 Total(base+passive+equip+ability+이전 유물)에 대해 계산 — RelicApplier.ApplyStatLine과 동일 순서

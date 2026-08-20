@@ -196,7 +196,6 @@ public static class IconGenerator
         Save(48, 48, TRAIT_PATH + "/trait_knight_hero_return.png",      DrawTraitKnightHeroReturn);
         Save(48, 48, TRAIT_PATH + "/trait_knight_martyr.png",           DrawTraitKnightMartyr);
         Save(48, 48, TRAIT_PATH + "/trait_archer_precision.png",        DrawTraitArcher);
-        Save(48, 48, TRAIT_PATH + "/trait_archer_retreat_fire.png",     DrawTraitArcherRetreatFire);
         Save(48, 48, TRAIT_PATH + "/trait_archer_rain_fire.png",        DrawTraitArcherRainFire);
         Save(48, 48, TRAIT_PATH + "/trait_mage_arcane.png",             DrawTraitMage);
         Save(48, 48, TRAIT_PATH + "/trait_mage_attack_cdr.png",         DrawTraitMageAttackCdr);
@@ -946,32 +945,6 @@ public static class IconGenerator
         p.FillRRect(4,  32, 4, 4, 1, new Color32(180, 200, 220, 190));
         p.FillRRect(41, 14, 4, 4, 1, new Color32(180, 200, 220, 190));
         p.FillRRect(43, 33, 3, 3, 1, new Color32(160, 180, 200, 160));
-    }
-
-    // ArcherRetreatFire — 퇴각 사격 (뒤로 향하는 발자국 + 앞으로 향하는 화살)
-    static void DrawTraitArcherRetreatFire(P p)
-    {
-        p.BgGradient(Hex("020E02"), Hex("0E2808"));
-        p.RoundedBorder(8, 2, Hex("44AA22"));
-
-        var gc = Hex("44DD55");
-
-        // 후퇴 화살표 (왼쪽 방향)
-        p.DrawLine(38, 26, 18, 26, gc, 2);
-        p.FillTri(14, 26, 22, 20, 22, 32, gc);
-
-        // 앞으로 향하는 화살 (오른쪽 위, 대각선)
-        p.DrawLine(12, 40, 40, 12, Gold, 3);
-        p.DrawLine(12, 40, 40, 12, Tint(Gold, White, 0.4f), 1);
-        p.FillTri(40, 12, 33, 14, 38, 19, Silver);  // 화살촉
-        p.FillTri(12, 40, 18, 38, 14, 44, Green);    // 깃
-
-        // 분리 강조선
-        p.DrawLine(24, 6, 24, 44, new Color32(255, 255, 255, 30), 1);
-
-        // 발자국 (후퇴 방향)
-        p.FillEllipse(34, 36, 3, 4, new Color32(68, 221, 85, 110));
-        p.FillEllipse(30, 42, 3, 4, new Color32(68, 221, 85, 80));
     }
 
     // ArcherRainFire — 폭우 사격 (여러 화살 부채꼴)

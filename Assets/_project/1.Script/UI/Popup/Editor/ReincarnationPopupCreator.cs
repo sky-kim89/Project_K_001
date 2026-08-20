@@ -16,7 +16,7 @@ using TMPro;
 //  PopupMaxH(1000) 였다 — 타이틀은 위로 28px 잘리고 환생 버튼은
 //  아래로 30px 삐져나갔다. 전부 상단 밴드 기준으로 다시 잡았다.
 //
-//  레이아웃 (1000 × 1000 / 위에서 아래로)
+//  레이아웃 (1240 × 1000 / 위에서 아래로)
 //    Header        Y=  0  H=200  배지 + "패  배" + 웨이브·처치(좌)/총피해·DPS(우)
 //    AccentLine    Y=200  H=  3
 //    Section       Y=218  H= 43  "획득 어빌리티"
@@ -24,8 +24,8 @@ using TMPro;
 //    Section       Y=386  H= 43  "전투 기록"
 //    TabBar        Y=434  H= 92  딜 / 탱 / 힐
 //    GeneralBox    Y=536  → 포인트 패널 위까지 (세로 스크롤)
-//    PointsPanel   하단 170  H= 64
-//    ReincarnateBtn 하단 28  H=BtnMd
+//    PointsPanel   하단 132  H= 64
+//    ReincarnateBtn 하단 22  400×BtnSm
 // ============================================================
 
 public static class ReincarnationPopupCreator
@@ -42,11 +42,14 @@ public static class ReincarnationPopupCreator
     {
         const float rowH   = 92f;
         const float portSz = 72f;
-        // 좌측 고정 영역 끝 (portrait + name group)
-        const float leftEnd   = 230f;
-        // 우측 고정 영역 (TotalText 만 존재)
-        const float rightSize = 110f;
-        float stretchX = (leftEnd - rightSize) / 2f;  // = 60
+        const float nameX  = 90f;   // portrait 우측 끝(78) + 12 gap
+        // 좌측 고정 영역 끝 (portrait + 이름)
+        const float leftEnd   = 268f;
+        // 우측 고정 영역 — 위 총량 / 아래 DPS 가 세로로 쌓인다.
+        // ⚠ 110 으로는 "DPS 4,154" 가 안 들어가 막대 위로 삐져나왔다.
+        //   가장 긴 문자열을 기준으로 잡는다.
+        const float rightSize = 186f;
+        float stretchX = (leftEnd - rightSize) / 2f;
 
         var root    = new GameObject("GeneralStatRow", typeof(RectTransform));
         var rowComp = root.AddComponent<GeneralStatRowUI>();
@@ -86,8 +89,10 @@ public static class ReincarnationPopupCreator
         var nameRt = nameText.rectTransform;
         nameRt.anchorMin = new Vector2(0f, 0.5f); nameRt.anchorMax = new Vector2(0f, 0.5f);
         nameRt.pivot = new Vector2(0f, 0.5f);
-        nameRt.anchoredPosition = new Vector2(84f, 10f);
-        nameRt.sizeDelta = new Vector2(140f, 44f);
+        nameRt.anchoredPosition = new Vector2(nameX, 10f);
+        // 좌측 열 안에서 끝나야 한다 — AutoSize 라 넘치면 폰트가 줄어들 뿐,
+        // 폭을 안 주면 긴 이름이 막대 위로 흘러간다.
+        nameRt.sizeDelta = new Vector2(leftEnd - nameX - 12f, 44f);
 
         // ── StatBar (수평 stretch) ──────────────────────────────
         var barGo = new GameObject("StatBar", typeof(RectTransform), typeof(Image));
@@ -139,8 +144,8 @@ public static class ReincarnationPopupCreator
         var totalRt = totalText.rectTransform;
         totalRt.anchorMin = new Vector2(1f, 0.5f); totalRt.anchorMax = new Vector2(1f, 0.5f);
         totalRt.pivot = new Vector2(1f, 0.5f);
-        totalRt.anchoredPosition = new Vector2(-10f, 10f);
-        totalRt.sizeDelta = new Vector2(100f, 26f);
+        totalRt.anchoredPosition = new Vector2(-14f, 10f);
+        totalRt.sizeDelta = new Vector2(rightSize - 24f, 26f);
 
         // ── DPS 텍스트 (TotalText 아래, 우측 고정) ──────────────
         var dpsText = AddTMP(root, "DPSText", "", UIScale.FontSm, FontStyles.Normal);
@@ -149,8 +154,8 @@ public static class ReincarnationPopupCreator
         var dpsRt = dpsText.rectTransform;
         dpsRt.anchorMin = new Vector2(1f, 0.5f); dpsRt.anchorMax = new Vector2(1f, 0.5f);
         dpsRt.pivot = new Vector2(1f, 0.5f);
-        dpsRt.anchoredPosition = new Vector2(-10f, -16f);
-        dpsRt.sizeDelta = new Vector2(100f, 26f);
+        dpsRt.anchoredPosition = new Vector2(-14f, -16f);
+        dpsRt.sizeDelta = new Vector2(rightSize - 24f, 26f);
 
         // ── 필드 연결 ────────────────────────────────────────────
         var so = new SerializedObject(rowComp);
@@ -175,7 +180,10 @@ public static class ReincarnationPopupCreator
         if (AssetDatabase.LoadAssetAtPath<GameObject>($"{SavePath}/GeneralStatRow.prefab") == null)
             CreateGeneralStatRowPrefab();
 
-        const float PW       = 1000f;
+        // ⚠ BattleResultPopup 과 같은 치수를 쓴다
+        //   승리/패배는 같은 자리에 번갈아 뜨는 한 쌍이다. 크기가 다르면
+        //   전투가 끝날 때마다 창이 커졌다 작아졌다 한다.
+        const float PW       = 1240f;
         const float PH       = UIScale.PopupMaxH;
         const float SidePad  = 40f;
         const float ContentW = PW - SidePad * 2f;
@@ -191,10 +199,14 @@ public static class ReincarnationPopupCreator
         const float ListY       = 536f;
 
         // 하단 고정 스택 — 버튼 → 포인트 패널 → 목록 바닥 순으로 쌓아 올린다
-        const float BtnBottom  = 28f;
+        // ⚠ 버튼 크기를 줄인 만큼 위 목록이 통째로 내려온다
+        //   예전엔 600×132 버튼이 하단을 먹어 장수 목록이 몇 줄 못 보였다.
+        const float BtnW       = 400f;
+        const float BtnH       = UIScale.BtnSm;
+        const float BtnBottom  = 22f;
         const float PtsH       = 64f;
-        const float PtsBottom  = BtnBottom + UIScale.BtnMd + 10f;   // 170
-        const float ListBottom = PtsBottom + PtsH + 12f;            // 246
+        const float PtsBottom  = BtnBottom + BtnH + 10f;             // 132
+        const float ListBottom = PtsBottom + PtsH + 12f;             // 208
 
         var root  = CreateRoot<ReincarnationPopup>("ReincarnationPopup", PW, PH);
         var popup = root.GetComponent<ReincarnationPopup>();
@@ -300,7 +312,9 @@ public static class ReincarnationPopupCreator
         EditorUIBuilder.SectionLabel(panel, "전투 기록", StatY, ContentW, SidePad);
 
         var tabBar = MakeGo("TabBar", panel);
-        AnchorTopBand(tabBar, TabY, TabH, SidePad);
+        // 패널 폭 전체로 늘리면 탭 한 칸이 500 을 넘는다 — 가운데 900 으로 묶는다
+        // (BattleResultPopup 과 같은 규칙)
+        AnchorTopBand(tabBar, TabY, TabH, (PW - 900f) * 0.5f);
 
         var tabHlg = tabBar.AddComponent<HorizontalLayoutGroup>();
         tabHlg.spacing        = 10f;
@@ -385,14 +399,14 @@ public static class ReincarnationPopupCreator
 
         // ── 환생 버튼 ─────────────────────────────────────────
         var reincBtn = EditorUIBuilder.RaisedTextBtn(panel, "ReincarnateButton", "환  생",
-            UIScale.FontLg, RcButton);
+            UIScale.FontMd, RcButton);
         {
             var rt = reincBtn.GetComponent<RectTransform>();
             rt.anchorMin        = new Vector2(0.5f, 0f);
             rt.anchorMax        = new Vector2(0.5f, 0f);
             rt.pivot            = new Vector2(0.5f, 0f);
             rt.anchoredPosition = new Vector2(0f, BtnBottom);
-            rt.sizeDelta        = new Vector2(600f, UIScale.BtnMd);
+            rt.sizeDelta        = new Vector2(BtnW, BtnH);
         }
 
         // ── 장수 Row 프리팹 로드 ─────────────────────────────

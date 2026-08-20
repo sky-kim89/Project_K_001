@@ -19,6 +19,9 @@ public class ActiveLeapStrike : ActiveSkillData
     [Tooltip("도약 속도 (유닛/초)")]
     public float LeapSpeed = 18f;
 
+    [Tooltip("최대 도약 거리. 시야(9유닛)보다 조금 넉넉하게 잡는다.")]
+    public float MaxLeapDistance = UnitGridConstants.SightRange + 3f;
+
     [Tooltip("넉백 배율")]
     public float KnockbackMult = 4f;
 
@@ -36,6 +39,16 @@ public class ActiveLeapStrike : ActiveSkillData
             var lt = ctx.EntityManager.GetComponentData<LocalTransform>(ctx.TargetEntity);
             targetPos = new Vector3(lt.Position.x, lt.Position.y, lt.Position.z);
         }
+
+        // 도약 거리 상한 — 시야 밖으로는 뛰지 않는다.
+        // ⚠ 이 스킬은 이제 사거리 판정을 건너뛴다 (ActiveSkillId.IsDash)
+        //   HasTarget 은 침투 적일 때 최대 50유닛까지 유지되므로, 자르지 않으면
+        //   장수가 적 후방 한가운데에 혼자 떨어져 그대로 녹는다.
+        Vector3 casterPos = ctx.CasterTransform.position;
+        Vector3 toTarget  = targetPos - casterPos;
+        float   leapDist  = toTarget.magnitude;
+        if (leapDist > MaxLeapDistance && leapDist > 0.001f)
+            targetPos = casterPos + toTarget / leapDist * MaxLeapDistance;
 
         // 시전자 팀: 반대 팀이 공격 대상
         var casterIdentity = ctx.EntityManager.GetComponentData<UnitIdentityComponent>(ctx.CasterEntity);

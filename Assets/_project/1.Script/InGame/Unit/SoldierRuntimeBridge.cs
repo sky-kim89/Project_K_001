@@ -176,9 +176,20 @@ public class SoldierRuntimeBridge : UnitRuntimeBridge
         return max > 0f ? Mathf.Min(ratio, max) : ratio;
     }
 
-    /// <summary>배율이 적용되지 않는 스탯 — 사거리·이동속도·공격속도는 장군과 같다.</summary>
+    /// <summary>
+    /// 배율이 적용되지 않는 스탯 — 사거리·이동속도·공격속도는 장군과 같다.
+    ///
+    /// ⚠ CritDamage 는 "크기" 가 아니라 "배수" 라 절대 환산하면 안 된다
+    ///   예전엔 여기 없어서 환산율이 그대로 곱해졌다. 기사 병사(환산율 48%) 기준
+    ///   치명피해가 1.5 × 0.48 = 0.72 가 되어, **치명타가 터지면 오히려 28% 덜
+    ///   아팠다.** 게임 안의 모든 병사에게 치명타가 페널티로 작동하고 있었다.
+    ///
+    ///   CritChance 는 반대로 환산이 맞다 — 병사는 장군보다 덜 노련하다는 뜻이
+    ///   되고, 값이 줄어도 부호가 뒤집히지 않는다.
+    /// </summary>
     public static bool IsUnscaled(StatType type)
         => type == StatType.AttackRange
         || type == StatType.MoveSpeed
-        || type == StatType.AttackSpeed;
+        || type == StatType.AttackSpeed
+        || type == StatType.CritDamage;
 }

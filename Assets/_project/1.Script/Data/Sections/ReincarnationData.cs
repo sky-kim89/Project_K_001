@@ -6,16 +6,21 @@ using UnityEngine;
 //  환생 포인트 + 어빌리티 새로고침 누적 횟수 영구 저장 섹션.
 //
 //  ■ 환생 포인트 (ReincarnationPoints)
-//    RelicPanelUI 에서 유물 강화/획득 시 차감.
-//    즉시 환생(RelicPanelUI.Reincarnate) 시 EarnPoints() 로 적립.
+//    RelicPopup 에서 유물 강화/획득 시 차감.
+//    즉시 환생(RelicPopup.Reincarnate) 시 EarnPoints() 로 적립.
 //
 //  ■ 어빌리티 새로고침 (UsedRefreshCount)
 //    AbilitySelectPopup 에서 새로고침 시 UseRefresh() 로 증가.
 //    환생 시 ResetOnReincarnation() 으로 초기화 — 환생 전까지 누적 유지.
 //
 //  ■ 환생 포인트 획득 공식 (구간별 누적)
-//    5~9구간 +1pt/스테이지, 10~14 +2pt, 15~19 +3pt, 20~24 +4pt, 25+ +(stage-20)pt
-//    → 스테이지 30 최대: 95pt 누적
+//    ReincarnateMinStage(기본 2)~9구간 +1pt/스테이지, 10~14 +2pt, 15~19 +3pt,
+//    20~24 +4pt, 25+ +(stage-20)pt
+//    → 2스테이지부터 시작하면 스테이지 30 최대: 98pt 누적
+//
+//    ⚠ 첫 환생이 너무 멀면 유물 화면이 "볼 수만 있는 화면" 이 된다
+//      예전엔 5스테이지부터였고, 거기 못 가면 한 판을 통째로 날렸다.
+//      2스테이지부터 1pt 씩 붙어 실패해도 뭔가 남는다.
 //
 //  ■ 레벨업 비용 공식 (GameplayConfig 의 지수 + 희귀도 배율)
 //    (currentLevel+1)^지수 × 희귀도 배율 → 올림.
@@ -39,14 +44,15 @@ public class ReincarnationData : ISaveSection
     public int UsedRefreshCount    { get; private set; }
 
     // 환생 가능 최소 스테이지 — StageConfig 에서 읽어 단일 진실 소스 유지
-    public static int ReincarnateMinStage => StageConfig.Current?.ReincarnateMinStage ?? 5;
+    public static int ReincarnateMinStage => StageConfig.Current?.ReincarnateMinStage ?? 2;
 
     // ── 환생 포인트 공식 ──────────────────────────────────────
 
     /// <summary>
     /// 클리어한 일반 스테이지 수에 따른 환생 포인트 (누적).
-    /// 구간별 획득량: 5~9구간 +1pt, 10~14 +2pt, 15~19 +3pt, 20~24 +4pt, 25+ +(stage-20)pt.
-    /// 예) st30 = 1×5 + 2×5 + 3×5 + 4×5 + 5+6+7+8+9+10 = 5+10+15+20+45 = 95pt.
+    /// 구간별 획득량: ~9구간 +1pt, 10~14 +2pt, 15~19 +3pt, 20~24 +4pt, 25+ +(stage-20)pt.
+    /// 시작 지점은 ReincarnateMinStage(기본 2).
+    /// 예) st30 = 1×8 + 2×5 + 3×5 + 4×5 + 5+6+7+8+9+10 = 8+10+15+20+45 = 98pt.
     /// </summary>
     public static int CalculateReincarnationPoints(int clearedNormalStage)
     {

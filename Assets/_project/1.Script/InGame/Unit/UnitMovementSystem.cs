@@ -118,7 +118,7 @@ namespace BattleGame.Units
             }.ScheduleParallel();
 
             // ⑤ 목적지 이동 ────────────────────────────────────────
-            var retreatFireLookup  = SystemAPI.GetComponentLookup<TraitRetreatFireTag>(isReadOnly: true);
+            var retreatFireLookup  = SystemAPI.GetComponentLookup<ArcherRetreatFireTag>(isReadOnly: true);
             new MoveToDestinationJob
             {
                 DeltaTime          = deltaTime,
@@ -356,7 +356,7 @@ namespace BattleGame.Units
         public bool  AllyDefeated;
         public bool  EnemyDefeated;
         public bool  AnyEnemyOnScreen;
-        [ReadOnly] public ComponentLookup<TraitRetreatFireTag> RetreatFireLookup;
+        [ReadOnly] public ComponentLookup<ArcherRetreatFireTag> RetreatFireLookup;
 
         public void Execute(
             Entity                     entity,
@@ -400,7 +400,7 @@ namespace BattleGame.Units
                 {
                     if (attack.AttackCooldown > 0f)
                     {
-                        // A7 퇴각 사격: 타겟이 사거리 절반 이내면 후퇴 이동 (공격 상태 유지)
+                        // 퇴각 사격(궁수 기본): 타겟이 사거리 절반 이내면 후퇴 이동 (공격 상태 유지)
                         if (RetreatFireLookup.HasComponent(entity))
                         {
                             float r     = stat.Final[StatType.AttackRange];
