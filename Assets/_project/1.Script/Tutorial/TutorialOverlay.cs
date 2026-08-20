@@ -359,43 +359,75 @@ public class TutorialOverlay : MonoBehaviour
         float h = textH + BubblePad * 2f + UIScale.RowSm;
 
         Rect full = _root.rect;
-        float cx = full.center.x;
-        float cy;
 
         var anchor = step.Anchor;
         if (hole == null) anchor = TutorialAnchor.Center;
-        if (anchor == TutorialAnchor.Auto)
-        {
-            // 타겟 위아래 중 넓은 쪽 — 좁은 쪽에 붙이면 화면 밖으로 밀린다
-            float above = full.yMax - hole.Value.yMax;
-            float below = hole.Value.yMin - full.yMin;
-            anchor = above >= below ? TutorialAnchor.Above : TutorialAnchor.Below;
-        }
 
-        switch (anchor)
-        {
-            case TutorialAnchor.Above:
-                cy = hole.Value.yMax + BubbleGap + h * 0.5f;
-                cx = Mathf.Clamp(hole.Value.center.x, full.xMin + w * 0.5f + ScreenMargin,
-                                                      full.xMax - w * 0.5f - ScreenMargin);
-                break;
-            case TutorialAnchor.Below:
-                cy = hole.Value.yMin - BubbleGap - h * 0.5f;
-                cx = Mathf.Clamp(hole.Value.center.x, full.xMin + w * 0.5f + ScreenMargin,
-                                                      full.xMax - w * 0.5f - ScreenMargin);
-                break;
-            default:
-                cy = full.center.y;
-                break;
-        }
+        Vector2 center;
+        if (anchor == TutorialAnchor.Center)
+            center = full.center;
+        else
+            center = PlaceBeside(full, hole.Value, w, h, anchor);
 
-        // 화면 밖으로 나가면 안쪽으로 당긴다
-        cy = Mathf.Clamp(cy, full.yMin + h * 0.5f + ScreenMargin,
-                             full.yMax - h * 0.5f - ScreenMargin);
+        float cx = center.x;
+        float cy = center.y;
 
         var rect = new Rect(cx - w * 0.5f, cy - h * 0.5f, w, h);
         SetRect(_bubble, rect);
         SetRect(_bubbleEdge, new Rect(rect.x - 3f, rect.y - 3f, rect.width + 6f, rect.height + 6f));
+    }
+
+
+    /// <summary>
+    /// 말풍선을 타겟 <b>옆</b>에 놓는다. 화면 안에 들어가면서 타겟을 가리지 않는 자리를 고른다.
+    ///
+    /// ⚠ 화면 안으로 당기는 것만으로는 부족하다
+    ///   예전엔 위/아래만 계산하고 화면 밖으로 나가면 안쪽으로 clamp 만 했다.
+    ///   출전 화면의 배치 칸(DeployArea)처럼 **세로로 화면을 꽉 채운 타겟**은
+    ///   위에도 아래에도 자리가 없어서, 당겨진 말풍선이 그대로 그 칸 위에 얹혔다
+    ///   — 눌러 보라고 가리킨 병사 슬롯을 설명 글이 덮어 버렸다.
+    ///
+    /// ■ 고르는 순서
+    ///   ① 요청받은 방향이 들어가면 그대로
+    ///   ② 위·아래 중 자리가 있는 쪽 (넓은 쪽 우선)
+    ///   ③ 좌·우 중 자리가 있는 쪽 — 세로로 긴 타겟은 여기서 풀린다
+    ///   ④ 어디에도 안 들어가면(타겟이 화면 전체) 중앙. 이때만 겹친다.
+    /// </summary>
+    Vector2 PlaceBeside(Rect full, Rect hole, float w, float h, TutorialAnchor requested)
+    {
+        float needV = h + BubbleGap + ScreenMargin;
+        float needH = w + BubbleGap + ScreenMargin;
+
+        float above = full.yMax - hole.yMax;
+        float below = hole.yMin - full.yMin;
+        float left  = hole.xMin - full.xMin;
+        float right = full.xMax - hole.xMax;
+
+        // 타겟 중심을 따라가되 화면 밖으로 나가지 않게 묶는다
+        float cxAligned = Mathf.Clamp(hole.center.x, full.xMin + w * 0.5f + ScreenMargin,
+                                                     full.xMax - w * 0.5f - ScreenMargin);
+        float cyAligned = Mathf.Clamp(hole.center.y, full.yMin + h * 0.5f + ScreenMargin,
+                                                     full.yMax - h * 0.5f - ScreenMargin);
+
+        Vector2 Above() => new(cxAligned, full.yMax - ScreenMargin - h * 0.5f);
+        Vector2 Below() => new(cxAligned, full.yMin + ScreenMargin + h * 0.5f);
+        Vector2 Left()  => new(full.xMin + ScreenMargin + w * 0.5f, cyAligned);
+        Vector2 Right() => new(full.xMax - ScreenMargin - w * 0.5f, cyAligned);
+
+        // ① 요청받은 방향
+        if (requested == TutorialAnchor.Above && above >= needV) return Above();
+        if (requested == TutorialAnchor.Below && below >= needV) return Below();
+
+        // ② 위·아래
+        if (above >= needV || below >= needV)
+            return above >= below ? Above() : Below();
+
+        // ③ 좌·우 — 세로로 긴 타겟(배치 칸 같은 열)이 여기서 풀린다
+        if (left >= needH || right >= needH)
+            return right >= left ? Right() : Left();
+
+        // ④ 어디에도 자리가 없다 — 타겟이 화면을 통째로 덮은 경우뿐이다
+        return full.center;
     }
 
     // ── 유틸 ─────────────────────────────────────────────────

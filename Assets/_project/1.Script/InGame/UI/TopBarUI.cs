@@ -300,6 +300,15 @@ public class TopBarUI : MonoBehaviour
         _killCount   = 0;
         _waveElapsed = 0f;
         RefreshKillCount();
+
+        // ⚠ 배속 잠금은 전투를 준비할 때마다 다시 본다
+        //   Awake 는 인게임 씬이 처음 올라올 때 딱 한 번만 돈다. 씬이 상주하므로
+        //   그 뒤에 로비에서 '시간의 고삐'를 강화해도 버튼은 계속 잠긴 채였다
+        //   — 유물을 배웠는데 배속이 안 눌리던 원인이다.
+        //   반대로 환생으로 유물이 초기화되면 저장된 3× 를 다시 잘라내야 한다.
+        var settings = UserDataManager.Instance?.Get<BattleSettingsData>();
+        _speedIndex  = Mathf.Clamp(settings?.SpeedIndex ?? 0, 0, UnlockedSpeedCount - 1);
+        ApplySpeed();
     }
 
     void HandleUnitKilled(TeamType team)

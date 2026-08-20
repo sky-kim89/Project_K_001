@@ -66,7 +66,9 @@ public static class RunShopPopupCreator
 
     const float MercDivY  = 494f;
     const float MercY     = 540f;
-    const float MercH     = 513f;   // 하단 여백 27 (1080 - 540 - 513)
+    // MercH — 카드 내부 비율 계산용 기준값. 실제 블록 높이는 캔버스 바닥까지 늘어난다.
+    const float MercH      = 513f;
+    const float MercBtmPad =  27f;   // 캔버스 바닥과의 간격
     const float BlockTagH = 40f;
     const float BlockGap  = 56f;    // 장비 ↔ 특성 블록 사이
 
@@ -202,7 +204,19 @@ public static class RunShopPopupCreator
         BuildDivider(panel, MercDivY, "용 병 고 용");
 
         var mercRow = Go("MercRow", panel);
-        AnchorTop(mercRow, MercY, MercH, SidePad * 2f);
+        // ⚠ 높이를 고정하지 않는다
+        //   MercH 는 캔버스 세로 1080 을 가정한 값이었다(1080-540-513=27).
+        //   화면이 16:9 보다 넓어지면 캔버스 세로(단위)가 1080 아래로 내려가
+        //   이 블록이 팝업 아래로 흘러넘쳤다. 위는 MercY 에 붙이고 아래는
+        //   캔버스 바닥에 붙여 남는 높이를 그대로 쓴다.
+        {
+            var rt = mercRow.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot     = new Vector2(0.5f, 1f);
+            rt.offsetMin = new Vector2( SidePad * 2f, MercBtmPad);
+            rt.offsetMax = new Vector2(-SidePad * 2f, -MercY);
+        }
         EvenRow(mercRow, CellGap);
 
         var genSlots = new RunShopGeneralSlot[RunShopData.GeneralSlots];

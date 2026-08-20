@@ -24,17 +24,17 @@ using UnityEngine.UI;
 //    기본 폰트에 ★ ✔ ✕ ▶ ◀ ▲ ⚙ 가 없어 □(두부)로 렌더된다.
 //    EditorUIBuilder.Diamond / CheckMark / Chevron 으로 그린다.
 //
-//  ── 레이아웃 (W=880 고정, H=캔버스높이-80 / 1080 캔버스 기준 H=1000) ──
-//  Header        Y=  0  H=136  다이아 태그 + 타이틀(그림자 포함)
-//  AccentLine    Y=136  H=  3
-//  Illustration  Y=150  H=200  삽화 832×200 원본 비율 + 하단 페이드
-//  BodyPanel     Y=362  H=190  본문 카드 (좌측 강조바 + 여백)
-//  ChoiceDivider Y=562  H= 36  좌우 라인 + 가운데 "선 택"
-//  ChoiceRoot    Y=606  → 하단 24까지 (가변). 1080 캔버스에서 370 확보
-//    ChoiceButtonTemplate H=112
+//  ── 레이아웃 (W=1200 고정, H=캔버스높이-80 / 1080 캔버스 기준 H=1000) ──
+//  Header        Y=0  H=136  다이아 태그 + 타이틀(그림자 포함)
+//  AccentLine         H=  3
+//  ↓ 아래는 Content(VerticalLayoutGroup)가 높이를 나눈다 — 픽셀 고정이 아니다
+//  Illustration  H=200 (최소 110)  삽화 832×200, preserveAspect 로 가운데 정렬
+//  BodyPanel     H=190 (최소 92)   남는 높이를 전부 가져간다 (flexibleHeight=1)
+//  ChoiceDivider H= 36            좌우 라인 + 가운데 "선 택"
+//  ChoiceRoot    필요한 만큼        자기 VerticalLayoutGroup 이 합을 보고한다
+//    ChoiceButtonTemplate H=112 (LayoutElement 필수 — 없으면 칸이 0 으로 보고된다)
 //      Shadow(하단 6px 노출) → Body → TopEdge/BottomEdge/Accent/Label/Hint/Arrow
 //      ※ 그림자 위에 본체를 얹어 "떠 있는 버튼" 으로 읽히게 한다
-//      ※ 3개 × 112 + 간격 2 × 12 = 360 → 370 안에 들어간다
 //  ResultPanel (hidden)  BodyY 부터 확인 버튼 위까지 덮는다.
 //    헤더와 삽화는 남겨서 "어떤 이벤트의 결과인지" 맥락을 유지한다.
 //    내부는 세로 흐름: [결  과 구분선] → [보상 카드 줄] → [결과 문구]
@@ -80,18 +80,27 @@ public static class EventPopupCreator
     static readonly Color ConfirmGreen   = new Color(0.16f, 0.58f, 0.33f, 1f);
 
     // ── 치수 ─────────────────────────────────────────────────────
-    const float PW        = 880f;
+    // ⚠ 폭이 곧 본문 줄 수다
+    //   880 이던 시절엔 본문 한 줄이 784px 뿐이라 긴 이벤트가 6~7줄까지 늘어났다.
+    //   세로가 짧은 화면(20:9 이상)에서는 본문 칸이 최소 높이까지 눌리는데,
+    //   줄 수가 그만큼 많으니 아랫줄이 잘려 선택지 버튼에 가린 것처럼 보였다.
+    //   1200 이면 한 줄이 1104px — 같은 글이 3~4줄로 줄어 잘릴 일이 거의 없다.
+    //   가장 좁은 1:1 캔버스(1440)에서도 좌우 120 여백이 남는다.
+    const float PW        = 1200f;
     const float PVMargin  = 40f;    // 캔버스 위·아래 여백 (패널 높이를 결정)
-    const float SidePad   = 48f;    // 콘텐츠 좌우 여백 → 실제 폭 832 (= 삽화 PNG 폭)
+    const float SidePad   = 48f;    // 콘텐츠 좌우 여백 → 본문 폭 1104
+                                    // (삽화 PNG 는 832×200 — preserveAspect 라 가운데 정렬된다)
     const float HeaderH   = 136f;
-    const float IllustY   = 150f;
-    const float IllustH   = 200f;   // evt_*.png 원본 높이
-    const float BodyY     = 362f;
-    const float BodyH     = 190f;
-    const float DivY      = 562f;
-    const float DivH      = 36f;
-    const float ChoiceY   = 606f;
-    const float ChoiceBtm = 24f;    // ChoiceRoot 하단 여백 (높이는 가변)
+    // ⚠ 세로는 픽셀로 못 박지 않는다 — Content 레이아웃이 나눈다 (아래 주석 참고)
+    const float ContentTop = HeaderH + 3f + 11f;   // 헤더 + 강조선 + 숨돌릴 틈
+    const float ContentGap =  12f;   // 삽화 ↔ 본문 ↔ 구분선 ↔ 선택지 간격
+
+    const float IllustH    = 200f;   // evt_*.png 원본 높이
+    const float IllustMinH = 110f;   // preserveAspect 라 좁아지면 레터박스로 버틴다
+    const float BodyH      = 190f;
+    const float BodyMinH   =  92f;   // FontMd 두 줄
+    const float DivH       =  36f;
+    const float ChoiceBtm  =  24f;   // 패널 바닥과의 간격
 
     const float BtnH      = 112f;   // 선택지 버튼 — FontMd 라벨 + FontSm 힌트 2줄
     const float BtnGap    = 12f;
@@ -166,13 +175,42 @@ public static class EventPopupCreator
         accentLine.AddComponent<Image>().color = AccentPurple;
         AnchorTopH(accentLine, HeaderH, 3f);
 
+        // ══ 본문 영역 — 세로 레이아웃 하나가 높이를 나눠 준다 ══════
+        //
+        //  ⚠ 예전엔 삽화·본문·구분선을 상단에서 픽셀로 못 박았다
+        //    (IllustY 150 / BodyY 362 / DivY 562 / ChoiceY 606)
+        //    팝업 캔버스는 1920×1080 기준에 match 0.5 라 화면비가 16:9 보다
+        //    넓어지면 캔버스 세로가 1080 **아래로** 내려간다.
+        //    21:9 면 935 — 선택지 칸에 225px 밖에 안 남아 버튼 두 개만 들어가고
+        //    세 번째 선택지가 팝업 밖으로 흘러넘쳤다. 요즘 폰이 대부분 20:9 다.
+        //
+        //  ■ 나누는 규칙
+        //    삽화·구분선  고정 (그림과 선은 줄이면 뭉갠다 — 최소치까지만 양보)
+        //    선택지       필요한 만큼 (자기 VerticalLayoutGroup 이 합을 보고한다)
+        //    본문         **남는 전부** (flexibleHeight = 1) — 모자라면 여기가 줄어든다
+        var content = MakeGo("Content", panel);
+        AnchorTopToBottom(content, ContentTop, ChoiceBtm, padH: SidePad);
+        {
+            var vlgC = content.AddComponent<VerticalLayoutGroup>();
+            vlgC.spacing                = ContentGap;
+            vlgC.childAlignment         = TextAnchor.UpperCenter;
+            vlgC.childControlWidth      = true;
+            vlgC.childForceExpandWidth  = true;
+            vlgC.childControlHeight     = true;
+            vlgC.childForceExpandHeight = false;
+        }
+
         // ══ 삽화 ══════════════════════════════════════════════════
-        var illustGo = MakeGo("Illustration", panel);
+        var illustGo = MakeGo("Illustration", content);
         var illustImg = illustGo.AddComponent<Image>();
         illustImg.color          = IllustBg;
         illustImg.preserveAspect = true;   // 832×200 PNG 가 눌리지 않도록
         illustImg.raycastTarget  = false;
-        AnchorTopH(illustGo, IllustY, IllustH, padH: SidePad);
+        {
+            var le = EditorUIBuilder.LE(illustGo, -1f, IllustH);
+            le.minHeight      = IllustMinH;
+            le.flexibleHeight = 0f;
+        }
 
         var illustFade = MakeGo("BottomFade", illustGo);
         var fadeImg = illustFade.AddComponent<Image>();
@@ -186,9 +224,14 @@ public static class EventPopupCreator
         fRt.sizeDelta        = new Vector2(0f, 28f);
 
         // ══ 본문 카드 ══════════════════════════════════════════════
-        var bodyPanel = MakeGo("BodyPanel", panel);
+        var bodyPanel = MakeGo("BodyPanel", content);
         bodyPanel.AddComponent<Image>().color = BodyBg;
-        AnchorTopH(bodyPanel, BodyY, BodyH, padH: SidePad);
+        {
+            // 남는 높이를 전부 받는 칸 — 좁아지면 여기가 먼저 줄어든다
+            var le = EditorUIBuilder.LE(bodyPanel, -1f, BodyH);
+            le.minHeight      = BodyMinH;
+            le.flexibleHeight = 1f;
+        }
 
         var bodyBar = MakeGo("AccentBar", bodyPanel);
         var barImg = bodyBar.AddComponent<Image>();
@@ -203,7 +246,14 @@ public static class EventPopupCreator
         bodyTmp.color              = BodyTextColor;
         bodyTmp.alignment          = TextAlignmentOptions.TopLeft;
         bodyTmp.enableWordWrapping = true;
+        // ⚠ Truncate 로 두면 넘치는 줄이 통째로 사라진다
+        //   세로가 짧은 화면에서 본문 칸이 최소 높이까지 눌리면, 마지막 문장이
+        //   말없이 잘려 나가 이벤트 설명이 중간에 끊긴다.
+        //   폰트를 줄여서라도 다 보여 주는 쪽이 낫다 — 이벤트는 읽고 고르는 화면이다.
         bodyTmp.overflowMode       = TextOverflowModes.Truncate;
+        bodyTmp.enableAutoSizing   = true;
+        bodyTmp.fontSizeMin        = UIScale.FontSm;
+        bodyTmp.fontSizeMax        = UIScale.FontMd;
         bodyTmp.lineSpacing        = 16f;    // 줄간격이 좁으면 한글 본문이 뭉친다
         bodyTmp.raycastTarget      = false;
         var btRt = bodyTmp.rectTransform;
@@ -212,8 +262,12 @@ public static class EventPopupCreator
         btRt.offsetMax = new Vector2(-24f, -18f);
 
         // ══ "선 택" 구분선 ════════════════════════════════════════
-        var divider = MakeGo("ChoiceDivider", panel);
-        AnchorTopH(divider, DivY, DivH, padH: SidePad);
+        var divider = MakeGo("ChoiceDivider", content);
+        {
+            var le = EditorUIBuilder.LE(divider, -1f, DivH);
+            le.minHeight      = DivH;
+            le.flexibleHeight = 0f;
+        }
         DividerLine_(divider, "LineL", 0f, 0.5f, 0f, -66f);
         DividerLine_(divider, "LineR", 0.5f, 1f, 66f, 0f);
 
@@ -224,8 +278,7 @@ public static class EventPopupCreator
         FullStretch(divLabel.gameObject);
 
         // ══ 선택지 ════════════════════════════════════════════════
-        var choiceRoot = MakeGo("ChoiceRoot", panel);
-        AnchorTopToBottom(choiceRoot, ChoiceY, ChoiceBtm, padH: SidePad);
+        var choiceRoot = MakeGo("ChoiceRoot", content);
         var vlg = choiceRoot.AddComponent<VerticalLayoutGroup>();
         vlg.spacing                = BtnGap;
         vlg.childAlignment         = TextAnchor.UpperCenter;
@@ -304,7 +357,9 @@ public static class EventPopupCreator
         var rpRt = rp.GetComponent<RectTransform>();
         rpRt.anchorMin = Vector2.zero; rpRt.anchorMax = Vector2.one;
         rpRt.offsetMin = new Vector2(0f,  UIScale.BtnMd + 44f);
-        rpRt.offsetMax = new Vector2(0f, -BodyY);
+        // 결과 오버레이는 삽화 아래부터 덮는다 — 그림은 남기고 본문·선택지만 가린다.
+        // ⚠ Content 레이아웃이 높이를 나누므로 여기서도 픽셀 대신 같은 기준을 쓴다.
+        rpRt.offsetMax = new Vector2(0f, -(ContentTop + IllustH + ContentGap));
 
         // 상단 강조선
         var topLine = MakeGo("TopLine", rp);
@@ -398,6 +453,16 @@ public static class EventPopupCreator
         var go = MakeGo("ChoiceButtonTemplate", parent);
         var rt = go.GetComponent<RectTransform>();
         rt.sizeDelta = new Vector2(PW - SidePad, BtnH);
+
+        // ⚠ LayoutElement 가 없으면 ChoiceRoot 가 자기 높이를 0 으로 보고한다
+        //   Image·Button 은 ILayoutElement 가 아니라서 preferred 높이가 안 잡힌다.
+        //   그러면 바깥 Content 레이아웃이 선택지 칸을 납작하게 만든다.
+        //   런타임 복제본도 이 컴포넌트를 그대로 물려받는다.
+        {
+            var le = EditorUIBuilder.LE(go, -1f, BtnH);
+            le.minHeight      = BtnH;
+            le.flexibleHeight = 0f;
+        }
 
         // 템플릿 루트가 곧 버튼이어야 하므로 RaisedBtnOn 을 쓴다.
         // (RaisedBtn 은 루트를 새로 만들어 자식 경로가 한 단계 깊어진다)

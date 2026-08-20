@@ -105,7 +105,12 @@ public static class HeroStatResolver
         UnitStat stat = RollBase(entry);
         result.Base = stat;
 
-        // 2. 패시브 보너스 (TriggerType == None & Target == General 만 적용)
+        // 2. 패시브 — 병사 전용 몫만 여기서 모은다
+        //
+        //  ⚠ 장수 전용(Target.General)은 맨 마지막에 붙인다
+        //    전투(GeneralRuntimeBridge)가 그 층을 마지막에 얹기 때문이다.
+        //    여기서 먼저 더하면 아래 어빌리티·유물·특성·도감의 % 계산 근거가
+        //    부풀려져 로비 표시와 전투 수치가 갈린다 (그리고 그 몫이 용병 탭에도 샌다).
         var passiveDb = PassiveSkillDatabase.Current;
         if (passiveDb != null)
         {
@@ -122,18 +127,11 @@ public static class HeroStatResolver
                     // ⚠ 예전엔 그냥 건너뛰었다
                     //   그래서 "강한 장군, 약한 병사"(장군 +30% / 병사 -20%)의 용병 탭에
                     //   장수의 +30% 만 환산돼 보이고 병사의 -20% 는 어디에도 없었다.
-                    if (e.Target == PassiveSkillApplier.ApplyTarget.Soldier)
-                    {
-                        var bucket = e.IsPercent ? result.SoldierPassiveRatios
-                                                 : result.SoldierPassiveFlats;
-                        bucket[e.Stat] = bucket.TryGetValue(e.Stat, out var sc) ? sc + e.Delta : e.Delta;
-                        continue;
-                    }
+                    if (e.Target != PassiveSkillApplier.ApplyTarget.Soldier) continue;
 
-                    if (e.Target != PassiveSkillApplier.ApplyTarget.General) continue;
-                    float delta = e.IsPercent ? stat.Get(e.Stat) * e.Delta : e.Delta;
-                    result.PassiveBonuses[e.Stat] =
-                        result.PassiveBonuses.TryGetValue(e.Stat, out var cur) ? cur + delta : delta;
+                    var bucket = e.IsPercent ? result.SoldierPassiveRatios
+                                             : result.SoldierPassiveFlats;
+                    bucket[e.Stat] = bucket.TryGetValue(e.Stat, out var sc) ? sc + e.Delta : e.Delta;
                 }
             }
         }
@@ -177,8 +175,8 @@ public static class HeroStatResolver
             {
                 var data = abilityDb.Get(id);
                 if (data == null) continue;
-                if (data.Target == AbilityTarget.Unit_Soldier) continue;
-                if (!AbilityApplier.MatchesGeneralTarget(data.Target, job)) continue;
+                // 공통만 — 장수 전용(Unit_General)은 8번에서 맨 마지막에 붙인다
+                if (!AbilityApplier.MatchesCommonTarget(data.Target, job)) continue;
 
                 // Special 은 효과를 Stat1/Value1 이 아니라 OnTrigger 코드로 들고 있다.
                 // 그래서 예전엔 통째로 건너뛰었고 "시간 왜곡 쿨타임 -35%" 가 스탯 화면에
@@ -237,8 +235,8 @@ public static class HeroStatResolver
                 if (level <= 0) continue;
                 var data = relicDb.Get(id);
                 if (data == null || data.EffectType != RelicEffectType.Stat) continue;
-                if (data.Target == AbilityTarget.Unit_Soldier) continue;
-                if (!AbilityApplier.MatchesGeneralTarget(data.Target, relicJob)) continue;
+                // 공통만 — 장수 전용(Unit_General)은 8번에서 맨 마지막에 붙인다
+                if (!AbilityApplier.MatchesCommonTarget(data.Target, relicJob)) continue;
 
                 AccumulateRelicStat(result, data.Stat1, data.Value1PerLevel, level, data.IsAbsoluteValue);
                 if (data.HasStat2)
@@ -324,10 +322,95 @@ public static class HeroStatResolver
         //  ⚠ 전투(CodexApplier.ApplyToGeneralStat)와 순서·대상이 같아야 한다.
         CodexApplier.Accumulate(result);
 
-        // 8. 전투 시작 시 붙을 패시브 예상치
+        // 8. 장수 전용 층 — 반드시 공통 출처가 전부 끝난 뒤 (전투와 같은 순서)
+        ApplyGeneralOnlyBonuses(entry, result);
+
+        // 9. 전투 시작 시 붙을 패시브 예상치
         ApplyBattleStartPreview(entry, result);
 
         return result;
+    }
+
+    /// <summary>
+    /// 장수만 받는 몫 — 패시브(Target.General)를 PassiveBonuses 에 담는다.
+    ///
+    /// ⚠ 용병 탭은 이 값을 쓰지 않는다
+    ///   HeroDetailPopup 이 용병 탭에서 패시브 칸을 SoldierPassiveRatios/Flats 로
+    ///   갈아 끼운다. 그래서 이 층은 장수 탭에만 보인다 — 전투에서 병사 환산이
+    ///   GeneralOnlyKey 층을 걷어내는 것과 같은 규칙이다.
+    ///
+    /// ⚠ 순서가 곧 누수 여부다 — GeneralRuntimeBridge 의 같은 절 주석 참고.
+    /// </summary>
+    static void ApplyGeneralOnlyBonuses(UnitEntry entry, HeroStatResult result)
+    {
+        // ── 패시브 (Target.General) ──────────────────────────
+        var db = PassiveSkillDatabase.Current;
+        if (db != null)
+        {
+            var (p0, p1, p2) = PassiveSkillRoller.Roll(entry.UnitName);
+            byte slots = PassiveSkillRoller.GetActiveSlotCount(entry.Grade);
+            PassiveSkillType[] types = { p0, p1, p2 };
+
+            for (int i = 0; i < slots; i++)
+            {
+                var pd = db.Get(types[i]);
+                if (pd == null || pd.TriggerType != PassiveTrigger.None) continue;
+
+                foreach (var e in pd.StatModifiers)
+                {
+                    if (e.Target != PassiveSkillApplier.ApplyTarget.General) continue;
+
+                    float delta = e.IsPercent ? result.Total(e.Stat) * e.Delta : e.Delta;
+                    result.PassiveBonuses[e.Stat] =
+                        result.PassiveBonuses.TryGetValue(e.Stat, out var cur) ? cur + delta : delta;
+                }
+            }
+        }
+
+        // ── 어빌리티 (Unit_General) ──────────────────────────
+        var abilityDb = AbilityDatabase.Current;
+        var held      = UserDataManager.Instance?.Get<RunAbilityData>()?.HeldAbilities;
+        if (abilityDb != null && held != null)
+        {
+            var ratios = new Dictionary<StatType, float>();
+            foreach (var id in held)
+            {
+                var data = abilityDb.Get(id);
+                if (data == null || data.Target != AbilityTarget.Unit_General) continue;
+                if (data.Grade == AbilityGrade.Special || data.Grade == AbilityGrade.Mastery) continue;
+
+                ratios[data.Stat1] = ratios.GetValueOrDefault(data.Stat1) + data.Value1;
+                if (data.HasStat2)
+                    ratios[data.Stat2] = ratios.GetValueOrDefault(data.Stat2) + data.Value2;
+            }
+            foreach (var kv in ratios)
+            {
+                float delta = AbilityApplier.IsAbsoluteStat(kv.Key)
+                    ? kv.Value
+                    : result.Total(kv.Key) * kv.Value;
+                if (delta == 0f) continue;
+                result.AbilityBonuses[kv.Key] =
+                    result.AbilityBonuses.TryGetValue(kv.Key, out var cur) ? cur + delta : delta;
+            }
+        }
+
+        // ── 유물 (Unit_General) ──────────────────────────────
+        var inv     = UserDataManager.Instance?.Get<RelicInventoryData>();
+        var relicDb = RelicDatabase.Current;
+        if (inv != null && relicDb != null)
+        {
+            foreach (var (id, level) in inv.OwnedRelics)
+            {
+                if (level <= 0) continue;
+                var data = relicDb.Get(id);
+                if (data == null || data.EffectType != RelicEffectType.Stat) continue;
+                if (data.Target != AbilityTarget.Unit_General) continue;
+
+                AccumulateRelicStat(result, data.Stat1, data.Value1PerLevel, level, data.IsAbsoluteValue);
+                if (data.HasStat2)
+                    AccumulateRelicStat(result, data.Stat2, data.Value2PerLevel, level, data.IsAbsoluteValue);
+            }
+        }
     }
 
     /// <summary>

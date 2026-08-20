@@ -111,11 +111,20 @@ public class ReincarnationData : ISaveSection
 
     /// <summary>스테이지 기반 포인트 자동 계산 후 적립.</summary>
     public void EarnPointsByStage(int clearedNormalStage)
+        => EarnPoints(PreviewPoints(clearedNormalStage));
+
+    /// <summary>
+    /// 이번 환생으로 받을 포인트 — **화면에 보여 줄 값도 이것을 쓴다.**
+    ///
+    /// ⚠ CalculateReincarnationPoints 를 직접 부르지 말 것
+    ///   그쪽은 난이도 배율이 빠진 원판이다. 예전엔 패배 팝업이 그 값을 띄우고
+    ///   그대로 지급해서, 높은 난이도로 죽어도 배율이 통째로 사라졌다.
+    /// </summary>
+    public static int PreviewPoints(int clearedNormalStage)
     {
-        // 난이도 배율 — 올릴 이유가 없으면 아무도 안 올린다.
         float mul = DifficultyConfig.CurrentTier()?.ReincarnationMultiplier ?? 1f;
-        EarnPoints(Mathf.RoundToInt(
-            CalculateReincarnationPoints(clearedNormalStage) * Mathf.Max(1f, mul)));
+        return Mathf.RoundToInt(
+            CalculateReincarnationPoints(clearedNormalStage) * Mathf.Max(1f, mul));
     }
 
     public void EarnPoints(int amount)

@@ -85,12 +85,15 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         (_passive0, _passive1, _passive2) = PassiveSkillRoller.Roll(_unitName);
         _activePassiveCount               = PassiveSkillRoller.GetActiveSlotCount(_grade);
 
-        // 패시브 스텟 즉시 반영 (SpawnEntity 전에 UnitStat 에 적용)
+        // ⚠ 패시브 스탯은 여기서 붙이지 않는다 — 맨 마지막이다
+        //   패시브의 Target.General 은 '장수 전용' 층(GeneralOnlyKey)으로 들어간다.
+        //   먼저 붙이면 뒤에 오는 공통 % 옵션(유물·특성·도감)이 그 값까지 포함한
+        //   총합을 기준으로 계산되고, 그 몫은 병사가 물려받는 층에 담긴다.
+        //   결국 **장수만 받아야 할 보너스가 병사에게 새어 들어간다.**
+        //   (아래 "장수 전용 층" 절에서 한 번에 붙인다)
         var db = PassiveSkillDatabase.Current;
         if (db != null)
         {
-            PassiveSkillApplier.ApplyToGeneralStat(_stat, GetActivePassives(), db);
-
             // TitanGeneral 크기 변경 (풀 재사용 시 이전 스케일 누적 방지: 항상 리셋 후 적용)
             transform.localScale = Vector3.one;
             float scaleMult = PassiveSkillApplier.GetGeneralScaleMultiplier(GetActivePassives(), db);
@@ -126,6 +129,26 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         // ⚠ 순서가 HeroStatResolver 의 7번과 같아야 로비 표시와 일치한다.
         //   앞의 모든 출처가 합쳐진 뒤에 곱해지는 마지막 배수다.
         CodexApplier.ApplyToGeneralStat(_stat);
+
+        // ── 장수 전용 층 (GeneralOnlyKey) — 반드시 맨 마지막 ──
+        //
+        //  ⚠ 순서가 곧 누수 여부다
+        //    이 층은 _soldierSourceStat 에서 통째로 걷힌다. 그런데 % 옵션은
+        //    "그 시점의 총합" 을 기준으로 계산되므로, 장수 전용을 먼저 붙이면
+        //    뒤따르는 공통 % 옵션의 **계산 근거**가 부풀려진다.
+        //    그 몫은 공통 층에 담기니 걷히지 않고 병사에게 그대로 간다.
+        //    (실측: 장수 전용 +20% 하나에 유물·도감 각 5% 만 있어도 병사가 +1.9% 를 덤으로 받았다)
+        //
+        //    맨 뒤로 미루면 장수는 최종값 기준으로 제값을 받고,
+        //    병사가 물려받는 층에는 한 푼도 섞이지 않는다.
+        if (db != null)
+            PassiveSkillApplier.ApplyToGeneralStat(_stat, GetActivePassives(), db);
+
+        if (abilityDb != null && heldAbilities != null)
+            AbilityApplier.ApplyGeneralOnly(_stat, heldAbilities, abilityDb);
+
+        if (relicDb != null && relicInventory != null)
+            RelicApplier.ApplyGeneralOnly(_stat, _job, relicInventory, relicDb);
 
         // ── 방어율 소프트캡 실전 적용 (UI·전투 일치) ─────────────
         // UI(EffectiveDefensePct)와 전투(StatComponent.Final)가 같은 값을 사용하도록

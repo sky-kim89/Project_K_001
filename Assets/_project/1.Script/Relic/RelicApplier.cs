@@ -31,6 +31,24 @@ public static class RelicApplier
     public static void ApplyToGeneralStat(
         UnitStat stat, UnitJob job,
         RelicInventoryData inventory, RelicDatabase db)
+        => ApplyStatRelics(stat, job, inventory, db, generalOnly: false);
+
+    /// <summary>
+    /// 장수 전용(Unit_General) 유물만 적용한다.
+    ///
+    /// ⚠ 공통 출처가 전부 끝난 뒤에 부른다
+    ///   먼저 붙이면 뒤에 오는 공통 % 옵션이 장수 전용으로 부풀려진 값을 기준으로
+    ///   계산되고, 그 몫은 병사가 물려받는 층에 담긴다 —
+    ///   결국 장수 전용 보너스의 일부가 병사에게 새어 들어간다.
+    /// </summary>
+    public static void ApplyGeneralOnly(
+        UnitStat stat, UnitJob job,
+        RelicInventoryData inventory, RelicDatabase db)
+        => ApplyStatRelics(stat, job, inventory, db, generalOnly: true);
+
+    static void ApplyStatRelics(
+        UnitStat stat, UnitJob job,
+        RelicInventoryData inventory, RelicDatabase db, bool generalOnly)
     {
         if (stat == null || inventory == null || db == null) return;
 
@@ -42,10 +60,10 @@ public static class RelicApplier
             if (data.Target == AbilityTarget.Unit_Soldier) continue;
             if (!AbilityApplier.MatchesGeneralTarget(data.Target, job)) continue;
 
-            // ⚠ 장수 전용은 별도 레이어에 담는다 — 병사 환산에서 빠져야 한다
-            //   (UnitStat.GeneralOnlyKey 주석 참고. 공통 옵션은 기본 레이어로 간다)
-            string layer = data.Target == AbilityTarget.Unit_General
-                           ? UnitStat.GeneralOnlyKey : "relic";
+            bool isGeneralOnly = data.Target == AbilityTarget.Unit_General;
+            if (isGeneralOnly != generalOnly) continue;
+
+            string layer = isGeneralOnly ? UnitStat.GeneralOnlyKey : "relic";
 
             ApplyStatLine(stat, data.Stat1, data.Value1PerLevel, level, data.IsAbsoluteValue, layer);
             if (data.HasStat2)

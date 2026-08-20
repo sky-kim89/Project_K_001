@@ -101,23 +101,34 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
             case SpawnUnitType.Boss:
                 em.AddComponentData(entity, MakeBossComponent());
 
-                // 보스도 액티브 스킬을 쓴다.
-                // 예전엔 보스가 AoE 평타 + 돌진뿐이라 스킬을 쓰는 엘리트보다
-                // 오히려 행동이 단조로웠다.
-                em.AddComponentData(entity, new GeneralActiveSkillComponent
+                // ⚠ 보스의 광역 스킬은 '폭주'(불지옥)에서만 준다
+                //   BossSkillPool 은 메테오·블리자드·화살비 같은 판 전체를 덮는 스킬을
+                //   EffectValue 2.5 / 반경 3.5 로 쓴다. 오토배틀이라 플레이어가 피할
+                //   수단이 없어서, 낮은 난이도에서는 이 한 방이 승패를 통째로 정했다.
+                //   아래 난이도의 보스는 AoE 평타 + 돌진으로 싸운다.
+                if (FrenzyEnabled)
                 {
-                    SkillId           = BossSkillPool[
-                                            Mathf.Abs(_unitName.GetHashCode()) % BossSkillPool.Length],
-                    EffectValue       = 2.5f,   // 엘리트(1.5)보다 크게
-                    EffectRadius      = 3.5f,
-                    EffectDuration    = 4.0f,
-                    Cooldown          = 16f * CooldownScale,   // 난이도 '각성' 반영
-                    CooldownRemaining = 8f,     // 등장 직후 바로 터지면 대응할 여지가 없다
-                });
+                    em.AddComponentData(entity, new GeneralActiveSkillComponent
+                    {
+                        SkillId           = BossSkillPool[
+                                                Mathf.Abs(_unitName.GetHashCode()) % BossSkillPool.Length],
+                        EffectValue       = 2.5f,   // 엘리트(1.5)보다 크게
+                        EffectRadius      = 3.5f,
+                        EffectDuration    = 4.0f,
+                        Cooldown          = 16f * CooldownScale,   // 난이도 '각성' 반영
+                        CooldownRemaining = 8f,     // 등장 직후 바로 터지면 대응할 여지가 없다
+                    });
+                }
+
+                // ⚠ 버퍼는 스킬 유무와 상관없이 붙인다
+                //   ActiveSkillCooldownSystem 이 AppendToBuffer 로 접근한다.
+                //   조건부로 붙이면 없는 쪽에서 터진다.
                 em.AddBuffer<ActiveSkillExecuteEvent>(entity);
 
                 // 행동 패턴도 스킬이다. 대표 스킬과 달리 AI 만 발동하는 슬롯에 꽂는다.
-                // 돌진은 항상, 분쇄 강타는 '폭주'(무간) 난이도에서만.
+                // 돌진은 항상 — 보스를 보스로 보이게 하는 동작이고, 직선 한 번이라
+                // 광역 스킬처럼 판을 쓸어버리지 않는다.
+                // 분쇄 강타는 '폭주'(불지옥) 난이도에서만.
                 var bossSlots = em.AddBuffer<ActiveSkillSlot>(entity);
                 bossSlots.Add(PatternSlot(ActiveSkillId.BossCharge, cooldown: 9f, first: 5f));
                 if (FrenzyEnabled)

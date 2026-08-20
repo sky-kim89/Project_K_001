@@ -51,8 +51,11 @@ public static class AbilityApplier
             stat.Add(kvp.Key, delta, "ability");
         }
 
-        // 장수 전용(Unit_General)은 따로 모아 별도 레이어에 넣는다 — 병사 환산에서 빠진다.
-        ApplyGeneralOnly(stat, ids, db);
+        // ⚠ 장수 전용은 여기서 붙이지 않는다
+        //   GeneralRuntimeBridge 가 **모든 공통 출처가 끝난 뒤** ApplyGeneralOnly 를 부른다.
+        //   여기서 먼저 붙이면 뒤에 오는 공통 % 옵션(유물·특성·도감)이
+        //   장수 전용으로 부풀려진 값을 기준으로 계산되고, 그 몫은 병사 층에
+        //   담기므로 **장수 전용 보너스가 병사에게 새어 들어간다.**
     }
 
     /// <summary>
@@ -63,7 +66,7 @@ public static class AbilityApplier
     ///   "장수 강화" 와 "부대 강화" 가 구분되지 않는다.
     ///   GeneralRuntimeBridge 가 CloneWithout(GeneralOnlyKey) 로 이 층만 걷어낸다.
     /// </summary>
-    static void ApplyGeneralOnly(UnitStat stat, IReadOnlyList<AbilityId> ids, AbilityDatabase db)
+    public static void ApplyGeneralOnly(UnitStat stat, IReadOnlyList<AbilityId> ids, AbilityDatabase db)
     {
         var bonuses = new Dictionary<StatType, float>();
 

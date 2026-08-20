@@ -106,7 +106,7 @@ public class RelicPopup : PopupBase
 
         int  cleared  = _stageData?.ClearedNormalStages ?? 0;
         bool canReinc = ReincarnationData.CanReincarnate(cleared);
-        int  pts      = ReincarnationData.CalculateReincarnationPoints(cleared);
+        int  pts      = ReincarnationData.PreviewPoints(cleared);   // 난이도 배율 포함
 
         _reincarnateBtn.interactable = canReinc;
 

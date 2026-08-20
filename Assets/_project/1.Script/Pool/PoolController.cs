@@ -97,8 +97,14 @@ public class PoolController : Singleton<PoolController>
         }
         else
         {
-            Debug.LogWarning($"[PoolController] 풀에서 꺼낸 오브젝트가 아님: {obj.name}");
-            Destroy(obj);
+            // ⚠ 파괴하지 않는다
+            //   예전엔 여기서 Destroy 했다. 그런데 이 분기에는 "이미 반납된 것을
+            //   한 번 더 반납" 하는 경우가 섞여 들어온다 (사망 연출 코루틴이 끝나는
+            //   순간 아레나 청소가 같은 오브젝트를 먼저 회수한 경우).
+            //   그걸 파괴하면 **대기 목록에 들어 있는 멀쩡한 인스턴스가 사라져**
+            //   풀이 매 판 조금씩 줄어든다. 두 번째 요청은 그냥 무시하는 게 맞다.
+            if (obj.activeSelf)
+                Debug.LogWarning($"[PoolController] 풀에서 꺼낸 오브젝트가 아님: {obj.name} — 그대로 둔다.");
         }
     }
 

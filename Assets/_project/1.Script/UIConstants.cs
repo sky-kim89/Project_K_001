@@ -139,7 +139,11 @@ public static class StatDisplayHelper
                 ? $"{value:F2}/초"
                 : $"{sign}{value:F2}",
             StatType.MoveSpeed    => $"{sign}{value:F1}",
-            StatType.AttackRange  => $"{sign}{value:F1}",
+            // ⚠ 소수 둘째 자리까지 — F1 이면 근접 직업의 증감이 안 보인다
+            //   기사(1.0)·방패병(0.85)의 사거리에 +4% 는 +0.04 다. F1 로 찍으면
+            //   분해 줄에 "+0.0" 이 뜨고 합계도 그대로라, 옵션이 안 붙은 것처럼 보였다.
+            //   (궁수 7.7 에서는 F1 로도 보이지만 표기는 한 가지여야 한다)
+            StatType.AttackRange  => $"{sign}{value:F2}",
             StatType.SoldierCount => $"{sign}{Mathf.RoundToInt(value)}명",
             StatType.CritChance   => $"{sign}{value * 100f:F1}%",
             // 치명피해는 배수(1.8)로 저장되지만 화면에는 % 로 뿌린다 — 180.0%.

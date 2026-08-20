@@ -14,7 +14,7 @@ using UnityEngine.UI;
 //    HeroDetailPopup·EventPopup 과 같은 가로 기준(1920×1080)이며 세로 여유가 1080 뿐이다.
 //    → 패널은 세로 스트레치(위아래 16 여백)로 캔버스에 맞춘다.
 //
-//  ── 레이아웃 (PW=1840, H=캔버스높이-32 / 1080 캔버스 기준 1048) ──
+//  ── 레이아웃 (캔버스에서 좌우 40 · 위아래 16 을 뺀 크기 / 1920×1080 → 1840×1048) ──
 //  Header      Y=  0  H=136  ◆ 용 병 태그 + 타이틀(그림자) + 닫기
 //  AccentLine  Y=136  H=  3
 //  Body        Y=156  → 하단 26
@@ -39,7 +39,12 @@ public static class MercenaryPopupCreator
     const string SaveDir = "Assets/_project/2.Prefabs/UI";
 
     // ── 치수 ─────────────────────────────────────────────────
-    const float PW       = 1840f;
+    // ⚠ 폭을 고정하지 않는다
+    //   예전엔 PW=1840 을 그대로 박아 뒀다. 팝업 캔버스는 1920×1080 기준에
+    //   match 0.5 라, 화면이 16:9 보다 좁아지면 캔버스 폭(단위)이 1840 아래로
+    //   내려간다 — 4:3 이면 약 1663 이라 팝업이 화면 밖으로 180px 넘게 나갔다.
+    //   좌우 여백만 정하고 나머지는 캔버스에 맡긴다 (1920 에서는 예전과 같은 1840).
+    const float PHMargin =   40f;   // 캔버스 좌·우 여백
     const float PVMargin =   16f;   // 캔버스 위·아래 여백
     const float HeaderH  =  136f;
     const float BodyTop  =  156f;
@@ -48,7 +53,6 @@ public static class MercenaryPopupCreator
 
     const float LeftW    =  832f;   // 카드 620 + 화살표 2×(88+18)
     const float ColGap   =   40f;
-    const float RightW   = PW - SidePad * 2f - LeftW - ColGap;   // 888
 
     const float DivH     =   36f;
     const float HintH    =  120f;
@@ -114,11 +118,11 @@ public static class MercenaryPopupCreator
         // ── 테두리 (Panel 의 앞 형제 — 자식으로 두면 팝업을 덮는다) ──
         var border = Go("Border", root);
         border.AddComponent<Image>().color = PanelBorder;
-        StretchV(border.GetComponent<RectTransform>(), PW + 6f, PVMargin - 3f);
+        StretchAll(border.GetComponent<RectTransform>(), PHMargin - 3f, PVMargin - 3f);
 
         var panel = Go("Panel", root);
         panel.AddComponent<Image>().color = PanelBg;
-        StretchV(panel.GetComponent<RectTransform>(), PW, PVMargin);
+        StretchAll(panel.GetComponent<RectTransform>(), PHMargin, PVMargin);
 
         BuildHeader(panel, so);
         BuildLeftColumn(panel, so);
@@ -310,13 +314,16 @@ public static class MercenaryPopupCreator
 
     static void BuildRightColumn(GameObject panel, SerializedObject so)
     {
+        // ⚠ 오른쪽 열은 남는 폭을 흡수한다 (고정 RightW 아님)
+        //   왼쪽 카드 열은 카드 크기가 정해져 있어 고정이지만, 이쪽은 목록이라
+        //   늘어나도 문제가 없다. 폭이 달라지는 부담을 전부 여기서 받는다.
         var col = Go("ChoiceColumn", panel);
         var rt = col.GetComponent<RectTransform>();
         rt.anchorMin = new Vector2(0f, 0f);
-        rt.anchorMax = new Vector2(0f, 1f);
+        rt.anchorMax = new Vector2(1f, 1f);
         rt.pivot     = new Vector2(0f, 1f);
         rt.offsetMin = new Vector2(SidePad + LeftW + ColGap, BodyBtm);
-        rt.offsetMax = new Vector2(SidePad + LeftW + ColGap + RightW, -BodyTop);
+        rt.offsetMax = new Vector2(-SidePad, -BodyTop);
 
         // ── "선 택" 구분선 ───────────────────────────────────
         var divider = Go("ChoiceDivider", col);
@@ -509,13 +516,14 @@ public static class MercenaryPopupCreator
         => EditorUIBuilder.TMP(parent, name, text, size, style);
 
     // 폭 고정 + 세로 스트레치 (위아래 vMargin 여백)
-    static void StretchV(RectTransform rt, float width, float vMargin)
+    /// <summary>캔버스에 가로·세로로 붙이고 여백만 남긴다 — 해상도가 바뀌어도 안 넘친다.</summary>
+    static void StretchAll(RectTransform rt, float hMargin, float vMargin)
     {
-        rt.anchorMin        = new Vector2(0.5f, 0f);
-        rt.anchorMax        = new Vector2(0.5f, 1f);
-        rt.pivot            = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = Vector2.zero;
-        rt.sizeDelta        = new Vector2(width, -vMargin * 2f);
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.pivot     = new Vector2(0.5f, 0.5f);
+        rt.offsetMin = new Vector2( hMargin,  vMargin);
+        rt.offsetMax = new Vector2(-hMargin, -vMargin);
     }
 
     static void DividerLine(GameObject parent, string name,
