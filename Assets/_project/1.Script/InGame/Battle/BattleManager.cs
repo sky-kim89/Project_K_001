@@ -161,6 +161,11 @@ public class BattleManager : Singleton<BattleManager>
         // 적 외형 키는 스테이지 번호(S{n}W{w}E)를 물고 있어 스테이지가 바뀌면 전부 갈린다.
         // 로딩 팝업이 떠 있는 지금 놓아줘야 전투 중에 언로드 스파이크가 안 생긴다.
         CharacterBuilder.ClearSharedCache();
+        // ⚠ 인스턴스 키도 같이 무효화한다
+        //   비운 것은 '합성 결과' 이고, 각 유닛은 "이미 그 외형을 올려 뒀다" 는 키를
+        //   따로 들고 있다. 키를 안 지우면 재사용된 유닛이 Rebuild 를 건너뛰고
+        //   방금 파괴된 스프라이트를 참조해 **투명하게 싸운다.**
+        UnitAppearanceBridge.InvalidateAll();
         yield return Resources.UnloadUnusedAssets();
 
         // ── 웨이브 1 아군 즉시 스폰 (프리웜 대기 없음) ──────────

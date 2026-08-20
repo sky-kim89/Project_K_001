@@ -243,6 +243,13 @@ public class TraitMartyrHandler : ITraitTriggerHandler
     const string EffectKey   = "FX_Martyr_Explosion";
     const float  EffectLife  = 1.2f;                   // 이펙트 자동 반납까지
 
+    /// <summary>
+    /// 폭발 연출 배율. 프리팹은 "여럿이 겹쳐도 화면을 안 가리는" 크기로 잡혀 있는데,
+    /// 실제로는 병사들 사이에서 터져 눈에 잘 안 띄었다. 한 단계 키운다.
+    /// ⚠ 피해 반경(Radius)과는 무관하다 — 연출만 커진다.
+    /// </summary>
+    const float  EffectScale = 1.2f;
+
     public PassiveTrigger GetTriggerType() => PassiveTrigger.OnSoldierDeath;
 
     public void OnTrigger(PassiveTriggerContext ctx)
@@ -272,7 +279,8 @@ public class TraitMartyrHandler : ITraitTriggerHandler
 
         foreach (var origin in origins)
         {
-            SkillEffectHelper.Spawn(EffectKey, (Vector3)origin, EffectLife);
+            SkillEffectHelper.Spawn(EffectKey, (Vector3)origin, EffectLife,
+                                    default, EffectScale);
 
             for (int i = 0; i < targets.Length; i++)
             {

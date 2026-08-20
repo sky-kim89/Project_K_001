@@ -118,7 +118,7 @@ namespace BattleGame.Units
             }.ScheduleParallel();
 
             // ⑤ 목적지 이동 ────────────────────────────────────────
-            var retreatFireLookup  = SystemAPI.GetComponentLookup<ArcherRetreatFireTag>(isReadOnly: true);
+            var retreatFireLookup  = SystemAPI.GetComponentLookup<RetreatFireTag>(isReadOnly: true);
             new MoveToDestinationJob
             {
                 DeltaTime          = deltaTime,
@@ -356,7 +356,7 @@ namespace BattleGame.Units
         public bool  AllyDefeated;
         public bool  EnemyDefeated;
         public bool  AnyEnemyOnScreen;
-        [ReadOnly] public ComponentLookup<ArcherRetreatFireTag> RetreatFireLookup;
+        [ReadOnly] public ComponentLookup<RetreatFireTag> RetreatFireLookup;
 
         public void Execute(
             Entity                     entity,

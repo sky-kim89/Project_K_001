@@ -170,8 +170,12 @@ public static class PopupPrefabCreator
         expRt.anchorMin = new Vector2(0f, 0.5f); expRt.anchorMax = new Vector2(0f, 0.5f);
         expRt.pivot = new Vector2(0f, 0.5f);
         expRt.anchoredPosition = new Vector2(expX, -22f);
-        expRt.sizeDelta = new Vector2(expW, 34f);
-        // ⚠ 넘치면 줄이고, 절대 옆 칸을 침범하지 않는다
+        // ⚠ 칸 높이는 반드시 UIScale.RowSm(=FontSm 한 줄) 이상이어야 한다
+        //   34 로 두고 Ellipsis 를 걸었더니 **"Exp 1040" 이 통째로 사라졌다.**
+        //   TMP 는 칸이 한 줄보다 낮으면 Ellipsis 모드에서 줄을 아예 안 그린다
+        //   (GeneralStatRow 의 이름 칸에서 이미 한 번 밟은 함정이다).
+        expRt.sizeDelta = new Vector2(expW, UIScale.RowSm);
+        // 넘치면 줄여서 담고, 옆 칸(막대·범례)은 침범하지 않는다
         expText.textWrappingMode = TextWrappingModes.NoWrap;
         expText.overflowMode     = TextOverflowModes.Ellipsis;
 

@@ -76,7 +76,7 @@ public enum TraitType
     KnightSoldierRage   = 5,   // 기사: 전우의 분노 (병사 사망마다 체력 +1%)
     KnightHeroReturn    = 6,   // 기사: 영웅의 귀환 (사망 시 1HP + 병사 즉시 소환)
     // 7 = ArcherRetreatFire(퇴각 사격) — 폐기. 궁수 기본 행동으로 내렸다
-    //     (ArcherRetreatFireTag / GeneralRuntimeBridge). 고를 이유가 없는 선택지였고,
+    //     (RetreatFireTag / GeneralRuntimeBridge). 고를 이유가 없는 선택지였고,
     //     안 고르면 궁수가 근접 유닛처럼 굴어 정체성이 흔들렸다.
     // ⚠ 번호 7 을 재사용하지 말 것 — 옛 세이브에 남아 있어 다른 특성으로 되살아난다.
     ArcherRainFire      = 8,   // 궁수: 폭우 사격 (주변 적 2명 추가 타격 70%)

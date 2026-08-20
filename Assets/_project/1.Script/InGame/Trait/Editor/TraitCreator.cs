@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEditor;
 
 // ============================================================
@@ -144,7 +144,7 @@ public static class TraitCreator
                 (StatType.AttackSpeed,  0.15f, false),
             },
         },
-        // 퇴각 사격은 특성에서 뺐다 — 궁수 기본 행동이다 (ArcherRetreatFireTag).
+        // 퇴각 사격은 특성에서 뺐다 — 궁수 기본 행동이다 (RetreatFireTag).
         new Def
         {
             type = TraitType.ArcherRainFire,

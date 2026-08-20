@@ -334,7 +334,7 @@ public class GameplayConfig : ScriptableObject
         EnemyRange = new EnemyGradeStatRange
         {
             Hp          = new FloatRange(200f,  600f),   // ×2 상향 (아군 대비 격차 해소)
-            Attack      = new FloatRange(18f,   65f),    // ×1.7 상향
+            Attack      = new FloatRange(9f,    32.5f),  // 전투 지속시간 확보 — 전원 ×0.5
             Defense     = new FloatRange(0.05f, 0.15f),
             AttackRange = new FloatRange(1.2f,  2.5f),
             AttackSpeed = new FloatRange(0.6f,  1.6f),
@@ -345,7 +345,7 @@ public class GameplayConfig : ScriptableObject
         EliteRange = new EnemyGradeStatRange
         {
             Hp          = new FloatRange(600f,  1800f),  // ×1.5 상향 — 엘리트 체감이 약했다
-            Attack      = new FloatRange(75f,   225f),   // ×1.5 상향
+            Attack      = new FloatRange(37.5f, 112.5f), // 전투 지속시간 확보 — 전원 ×0.5
             Defense     = new FloatRange(0.10f, 0.55f),  // 에셋 실값과 동기화
             AttackRange = new FloatRange(1.5f,  3.0f),
             AttackSpeed = new FloatRange(0.8f,  2.0f),
@@ -361,8 +361,8 @@ public class GameplayConfig : ScriptableObject
         //   스텟을 올리면 보스 스킬(슬램·돌진·사형선고) 피해까지 3배가 되기 때문이다.
         BossRange = new EnemyGradeStatRange
         {
-            Hp          = new FloatRange(5000f, 14000f), // ×1.8 상향 (AoE 공격 보정)
-            Attack      = new FloatRange(220f,  550f),   // 스킬 계수의 기준값 — 평타 ×3 은 시스템이 얹는다
+            Hp          = new FloatRange(3750f, 10500f), // ×1.8 상향 후 -25% (보스전이 너무 길었다)
+            Attack      = new FloatRange(110f,  275f),   // 스킬 계수의 기준값 — 평타 ×3 은 시스템이 얹는다 (전원 ×0.5)
             Defense     = new FloatRange(0.25f, 0.50f),
             AttackRange = new FloatRange(2.5f,  4.5f),
             AttackSpeed = new FloatRange(0.133f, 0.30f), // ÷3 — 3~7.5초에 한 번
@@ -376,7 +376,7 @@ public class GameplayConfig : ScriptableObject
         KnightRange = new JobStatRange
         {
             Hp           = new FloatRange(960f,   1920f),  // +20% 상향
-            Attack       = new FloatRange(90f,    200f),   // ↑ 근접 고위험 고딜 정체성
+            Attack       = new FloatRange(45f,    100f),   // 근접 고위험 고딜 정체성 (전원 ×0.5)
             Defense      = new FloatRange(0.06f,  0.15f),   // ↓ 하향 — 방패병과 격차 확보 (기사는 체력·공격으로 버틴다)
             AttackRange  = new FloatRange(0.8f,   1.2f),
             AttackSpeed  = new FloatRange(0.9f,   1.9f),
@@ -390,7 +390,7 @@ public class GameplayConfig : ScriptableObject
         {
             Hp           = new FloatRange(525f,   1125f),  // +50% 상향 — 넉백으로 버는 시간을 살리려면
                                                            //   한 번 붙였을 때 한두 대는 버텨야 한다
-            Attack       = new FloatRange(60f,    140f),   // 평타 위주 정체성 — 하향분 원복
+            Attack       = new FloatRange(30f,    70f),    // 평타 위주 정체성 (전원 ×0.5)
             Defense      = new FloatRange(0.03f,  0.10f),
             AttackRange  = new FloatRange(5.5f,   9.9f),   // +10% 상향 — 화력을 뺀 만큼 거리로 돌려준다
             AttackSpeed  = new FloatRange(0.9f,   1.9f),   // 소폭 상향
@@ -403,7 +403,7 @@ public class GameplayConfig : ScriptableObject
         MageRange = new JobStatRange
         {
             Hp           = new FloatRange(405f,   930f),   // +50% 상향
-            Attack       = new FloatRange(130f,   370f),   // 유지 — 한 방이 굵은 것이 법사의 정체성
+            Attack       = new FloatRange(65f,    185f),   // 한 방이 굵은 것이 법사의 정체성 (전원 ×0.5)
             Defense      = new FloatRange(0.02f,  0.08f),
             AttackRange  = new FloatRange(4.0f,   7.0f),
             AttackSpeed  = new FloatRange(0.315f, 0.675f), // -10% 하향 — DPS 는 공속으로만 깎는다
@@ -416,7 +416,7 @@ public class GameplayConfig : ScriptableObject
         ShieldBearerRange = new JobStatRange
         {
             Hp           = new FloatRange(1200f,  3000f),  // -25% 하향 (과도한 HP 조정)
-            Attack       = new FloatRange(50f,    120f),   // +50% 상향 (DPS 보정)
+            Attack       = new FloatRange(25f,    60f),    // (전원 ×0.5)
             Defense      = new FloatRange(0.22f,  0.32f),  // 상한만 조인다 — 하한이 낮으면 "방패병인데 물렁한"
                                                            //   개체가 나온다. 폭을 좁혀 항상 단단하되
                                                            //   장비·유물을 얹어도 실효 90% 에는 쉽게 닿지 않게.

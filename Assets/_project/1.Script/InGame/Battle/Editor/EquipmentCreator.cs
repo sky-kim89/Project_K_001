@@ -95,31 +95,31 @@ public static class EquipmentCreator
         Make(db, "equip_sword_normal",
             "낡은 단검", UnitGrade.Normal, itemLv: 1, stone: 1, gold: 100,
             "날이 무뎌진 낡은 단검.",
-            S(StatType.Attack,       15f),
+            S(StatType.Attack,       7.5f),
             S(StatType.AttackSpeed,   0.10f));
 
         Make(db, "equip_sword_uncommon",
             "강철 단검", UnitGrade.Uncommon, itemLv: 2, stone: 2, gold: 200,
             "잘 벼려진 강철 단검. 빠른 연격에 적합하다.",
-            S(StatType.Attack,       30f),
+            S(StatType.Attack,       15f),
             S(StatType.AttackSpeed,   0.18f));
 
         Make(db, "equip_sword_rare",
             "세공된 장검", UnitGrade.Rare, itemLv: 3, stone: 3, gold: 400,
             "보석이 박힌 세공된 장검. 타격감과 속도를 겸비했다.",
-            S(StatType.Attack,       60f),
+            S(StatType.Attack,       30f),
             S(StatType.AttackSpeed,   0.28f));
 
         Make(db, "equip_sword_unique",
             "명품 장검", UnitGrade.Unique, itemLv: 4, stone: 5, gold: 800,
             "명장이 평생을 바쳐 만든 검. 날카로움이 극에 달했다.",
-            S(StatType.Attack,      105f),
+            S(StatType.Attack,      52.5f),
             S(StatType.AttackSpeed,   0.40f));
 
         Make(db, "equip_sword_epic",
             "전설의 검", UnitGrade.Epic, itemLv: 5, stone: 8, gold: 1500,
             "영웅들의 피를 마신 전설의 검. 들어 올리는 것만으로도 전의가 타오른다.",
-            S(StatType.Attack,      165f),
+            S(StatType.Attack,      82.5f),
             S(StatType.AttackSpeed,   0.55f));
 
         // ══════════════════════════════════════════════════════
@@ -164,7 +164,7 @@ public static class EquipmentCreator
         Make(db, "equip_sniper_rare",
             "저격수의 장갑", UnitGrade.Rare, itemLv: 3, stone: 4, gold: 500,
             "원거리 저격에 최적화된 장갑. 급소를 노리는 법을 알고 있다.",
-            S(StatType.Attack,      40f),
+            S(StatType.Attack,      20f),
             S(StatType.CritChance,   0.12f),
             S(StatType.AttackRange,  0.4f));
 
@@ -172,7 +172,7 @@ public static class EquipmentCreator
         var vamp = Make(db, "equip_vamp_unique",
             "흡혈 반지", UnitGrade.Unique, itemLv: 4, stone: 6, gold: 1000,
             "피를 빨아들이는 저주받은 반지. 공격 시 30% 확률로 준 피해의 10%를 체력으로 흡수한다.",
-            S(StatType.Attack, 80f));
+            S(StatType.Attack, 40f));
         vamp.TriggerType        = EquipmentTrigger.OnAttack;
         vamp.TriggerStat        = StatType.MaxHp;
         vamp.TriggerValue       = 0.10f;          // 준 피해량의 10%
@@ -198,7 +198,7 @@ public static class EquipmentCreator
         var berserk = Make(db, "equip_berserk_epic",
             "광기의 검", UnitGrade.Epic, itemLv: 5, stone: 10, gold: 2000,
             "광기가 깃든 검. 피를 볼수록 더욱 날카로워진다.",
-            S(StatType.Attack,      130f),
+            S(StatType.Attack,      65f),
             S(StatType.AttackSpeed,   0.40f));
         berserk.TriggerType     = EquipmentTrigger.OnAttack;
         berserk.TriggerStat     = StatType.Attack;

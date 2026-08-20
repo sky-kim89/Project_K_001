@@ -187,6 +187,13 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         OnSpawned?.Invoke(this);
     }
 
+    /// <summary>
+    /// 거리를 벌며 싸우는 직업인가 — 퇴각 사격(RetreatFireTag) 대상.
+    /// ⚠ AbilityTarget.Range_Ranged 와 같은 집합이어야 한다 (궁수·법사).
+    /// </summary>
+    static bool IsRangedJob(UnitJob job)
+        => job == UnitJob.Archer || job == UnitJob.Mage;
+
     /// <summary>외부에서 롤된 스탯을 읽을 때 사용.</summary>
     public UnitStat GetRolledStat() => _stat;
 
@@ -215,10 +222,10 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
             em.AddBuffer<ProjectileLaunchRequest>(entity);
         }
 
-        // 퇴각 사격은 궁수의 기본 행동이다 — 붙어 오는 적에게서 물러나며 쏜다.
+        // 퇴각 사격은 원거리 직업의 기본 행동이다 — 붙어 오는 적에게서 물러나며 쏜다.
         // (예전 TraitType.ArcherRetreatFire 특성이 하던 일)
-        if (_job == UnitJob.Archer)
-            em.AddComponent<ArcherRetreatFireTag>(entity);
+        if (IsRangedJob(_job))
+            em.AddComponent<RetreatFireTag>(entity);
 
 
         // ── 성장분 기준선 ────────────────────────────────────
@@ -459,15 +466,15 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
                 em.RemoveComponent<RangedTag>(entity);
         }
 
-        // ── 퇴각 사격 갱신 (궁수 기본 행동) ──────────────────────
+        // ── 퇴각 사격 갱신 (원거리 기본 행동) ────────────────────
         // ⚠ 붙이는 것만큼 떼는 것도 중요하다
-        //   엔티티는 풀에서 재사용되므로 궁수가 쓰던 자리를 법사가 물려받는다.
-        //   떼지 않으면 그 법사가 적이 붙을 때마다 뒷걸음질친다.
-        bool retreats = _job == UnitJob.Archer;
-        if (retreats && !em.HasComponent<ArcherRetreatFireTag>(entity))
-            em.AddComponent<ArcherRetreatFireTag>(entity);
-        else if (!retreats && em.HasComponent<ArcherRetreatFireTag>(entity))
-            em.RemoveComponent<ArcherRetreatFireTag>(entity);
+        //   엔티티는 풀에서 재사용되므로 원거리가 쓰던 자리를 근접이 물려받는다.
+        //   떼지 않으면 그 기사가 적이 붙을 때마다 뒷걸음질친다.
+        bool retreats = IsRangedJob(_job);
+        if (retreats && !em.HasComponent<RetreatFireTag>(entity))
+            em.AddComponent<RetreatFireTag>(entity);
+        else if (!retreats && em.HasComponent<RetreatFireTag>(entity))
+            em.RemoveComponent<RetreatFireTag>(entity);
 
         if (em.HasComponent<TauntTag>(entity)) em.RemoveComponent<TauntTag>(entity);
 

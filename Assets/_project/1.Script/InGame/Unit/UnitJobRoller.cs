@@ -171,6 +171,16 @@ public static class UnitJobRoller
 
     // ── 내부 ─────────────────────────────────────────────────
 
+    /// <summary>
+    /// 이름 → 안정 해시. **string.GetHashCode() 를 쓰지 말 것.**
+    ///
+    /// ⚠ GetHashCode 는 프로세스마다 값이 달라진다
+    ///   .NET/IL2CPP 의 문자열 해시는 실행할 때마다 시드가 바뀐다. 그걸로 뽑으면
+    ///   같은 이름인데 **앱을 껐다 켤 때마다 결과가 달라진다** —
+    ///   "같은 장수는 늘 같은 것" 이라는 규칙이 조용히 깨진다.
+    /// </summary>
+    public static uint StableHash(string name) => ComputeSeed(name);
+
     /// <summary>FNV-1a 32bit 해시 — 플랫폼·실행마다 일치 보장.</summary>
     static uint ComputeSeed(string name)
     {

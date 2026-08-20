@@ -110,8 +110,11 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
                 {
                     em.AddComponentData(entity, new GeneralActiveSkillComponent
                     {
+                        // ⚠ GetHashCode 가 아니라 안정 해시다
+                        //   문자열 해시 시드는 프로세스마다 바뀐다 — 예전엔 같은 보스인데
+                        //   앱을 다시 켤 때마다 스킬이 갈렸다.
                         SkillId           = BossSkillPool[
-                                                Mathf.Abs(_unitName.GetHashCode()) % BossSkillPool.Length],
+                                                (int)(UnitJobRoller.StableHash(_unitName) % (uint)BossSkillPool.Length)],
                         EffectValue       = 2.5f,   // 엘리트(1.5)보다 크게
                         EffectRadius      = 3.5f,
                         EffectDuration    = 4.0f,
@@ -137,7 +140,8 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
 
             case SpawnUnitType.Elite:
                 // unitName 시드로 스킬 결정 (결정적 랜덤 — 같은 이름은 같은 스킬)
-                int skillIndex = Mathf.Abs(_unitName.GetHashCode()) % EliteSkillPool.Length;
+                // 안정 해시 — 실행마다 달라지면 "같은 이름은 같은 스킬" 이 깨진다
+                int skillIndex = (int)(UnitJobRoller.StableHash(_unitName) % (uint)EliteSkillPool.Length);
                 int skillId    = EliteSkillPool[skillIndex];
 
                 em.AddComponentData(entity, new EliteComponent

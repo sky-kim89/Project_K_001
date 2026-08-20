@@ -108,7 +108,13 @@ namespace BattleGame.Units
                           in  UnitSizeComponent  size,
                           in  UnitIdentityComponent identity) =>
                 {
-                    if (!attack.HasTarget || attack.AttackCooldown > 0f) return;
+                    // ⚠ 쿨다운은 여기서 보지 않는다 — 아래 사거리 판정 뒤로 미룬다
+                    //   보스 공격속도는 0.133~0.3 (3~7.5초에 한 번)이다. 예전엔 쿨다운이
+                    //   차 있으면 여기서 바로 빠져나가 **TargetPosition 을 갱신하지 못했다.**
+                    //   추격 목적지(UnitMovementSystem)는 그 값을 쓰므로, 보스는
+                    //   "적이 있던 자리" 로 걸어가 멈춰 섰다 — 아군이 조금만 움직여도
+                    //   보스가 영영 따라붙지 못하는 그 증상이다.
+                    if (!attack.HasTarget) return;
                     if (!EntityManager.Exists(attack.TargetEntity)) { attack.HasTarget = false; return; }
                     if (!EntityManager.HasComponent<HealthComponent>(attack.TargetEntity)) return;
                     if (EntityManager.GetComponentData<HealthComponent>(attack.TargetEntity).CurrentHp <= 0f)
@@ -117,12 +123,19 @@ namespace BattleGame.Units
                     float3 targetPos   = EntityManager.GetComponentData<LocalTransform>(attack.TargetEntity).Position;
                     float  attackRange = stat.Final[StatType.AttackRange];
 
+                    // 매 프레임 갱신 — 근접 보스는 UnitAttackSystem 을 타지 않아
+                    // (MeleeAttackJob 이 [WithNone(BossComponent)]) 여기가 유일한 갱신처다.
+                    attack.TargetPosition = targetPos;
+
                     if (math.distancesq(transform.Position, targetPos) > attackRange * attackRange)
                     {
                         if (unitState.Current != UnitState.Chasing)
                         { unitState.Previous = unitState.Current; unitState.Current = UnitState.Chasing; unitState.StateTimer = 0f; }
                         return;
                     }
+
+                    // 사거리 안이다 — 이제 쿨다운을 본다
+                    if (attack.AttackCooldown > 0f) return;
 
                     // 공격 발동 — 쿨다운 리셋
                     attack.AttackCooldown = 1f / stat.Final[StatType.AttackSpeed];

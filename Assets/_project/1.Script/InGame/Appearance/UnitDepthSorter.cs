@@ -34,8 +34,24 @@ public class UnitDepthSorter : MonoBehaviour
     /// <summary>Y 1 유닛당 벌어지는 sortingOrder 폭.</summary>
     const int Step = 8;
 
-    /// <summary>order 가 int 범위를 벗어나지 않도록 Y 를 잘라 둔다.</summary>
-    const float MaxY = 200f;
+    /// <summary>
+    /// 정렬에 쓰는 Y 반경. 화면 클램프 범위(카메라 orthographicSize)와 같은 규모다.
+    /// 이 밖으로 나간 유닛은 양 끝에 몰려 같은 order 를 쓰고, 미세 순서는 축 정렬이 맡는다.
+    /// </summary>
+    const float HalfBand = 4f;
+
+    /// <summary>
+    /// 오프셋 상한 = HalfBand * 2 * Step. 이 값이 곧 '유닛 정렬 띠' 의 두께다.
+    ///
+    /// ⚠ 이 띠는 배경(-2)과 이펙트(200) 사이에 갇혀 있어야 한다
+    ///   프리팹 기준값은 그림자 -1 · 몸통 100 · 무기 105 다. 오프셋은 0 이상이라
+    ///   그림자가 배경 아래로 내려가지 않고, 최대 64 라 무기도 169 에서 멈춘다.
+    ///   (이펙트는 51종이 200, 범위 표시 4종이 90 이다 — 200 까지 31 의 여유를 둔다)
+    ///   예전엔 상한이 없어 재사용 때마다 값이 밀려 올라갔고(그 버그는 Cache 에서 고쳤다),
+    ///   200 을 넘는 순간 **유닛이 이펙트를 덮어** 폭발·타격 연출이 통째로 가려졌다.
+    ///   (순교 폭발이 안 보이던 증상이 이것이다)
+    /// </summary>
+    const int MaxOffset = (int)(HalfBand * 2f) * Step;   // 64
 
     SpriteRenderer[] _renderers;
     int[]            _baseOrders;
@@ -51,19 +67,34 @@ public class UnitDepthSorter : MonoBehaviour
 
     void Cache()
     {
+        // ⚠ 적용해 둔 오프셋을 먼저 벗긴다
+        //   여기서 읽는 sortingOrder 가 다음 기준값이 된다. 이전 오프셋이 얹힌 채로
+        //   읽으면 그 오프셋이 기준값으로 굳어, 풀에서 꺼낼 때마다 정렬값이
+        //   Step 만큼 계속 밀려 올라간다 (재사용 5번이면 100 → 300).
+        //   Rebuild 로 사라진 렌더러는 null 이라 알아서 건너뛰고,
+        //   새로 붙은 렌더러는 프리팹 값 그대로라 벗길 것이 없다.
+        if (_renderers != null && _lastOffset != int.MinValue)
+        {
+            for (int i = 0; i < _renderers.Length; i++)
+                if (_renderers[i] != null) _renderers[i].sortingOrder -= _lastOffset;
+        }
+
         _renderers  = GetComponentsInChildren<SpriteRenderer>(true);
         _baseOrders = new int[_renderers.Length];
         for (int i = 0; i < _renderers.Length; i++)
             _baseOrders[i] = _renderers[i].sortingOrder;
+
+        _lastOffset = int.MinValue;
     }
 
     void LateUpdate()
     {
         if (_renderers == null || _renderers.Length == 0) return;
 
-        // 아래(Y 작음)에 있을수록 앞 = order 가 커야 한다
-        float y      = Mathf.Clamp(transform.position.y, -MaxY, MaxY);
-        int   offset = -Mathf.RoundToInt(y * Step);
+        // 아래(Y 작음)에 있을수록 앞 = order 가 커야 한다.
+        // 띠 위쪽(Y = +HalfBand)이 0, 아래쪽(Y = -HalfBand)이 MaxOffset 이다.
+        float y      = Mathf.Clamp(transform.position.y, -HalfBand, HalfBand);
+        int   offset = Mathf.Clamp(Mathf.RoundToInt((HalfBand - y) * Step), 0, MaxOffset);
         if (offset == _lastOffset) return;   // 값이 그대로면 렌더러를 건드리지 않는다
         _lastOffset = offset;
 
@@ -78,9 +109,5 @@ public class UnitDepthSorter : MonoBehaviour
     /// 외형이 새로 조립돼 SpriteRenderer 구성이 바뀌었을 때 다시 훑는다.
     /// (CharacterBuilder.Rebuild 처럼 자식을 갈아 끼우는 경로에서 부른다)
     /// </summary>
-    public void Rescan()
-    {
-        Cache();
-        _lastOffset = int.MinValue;
-    }
+    public void Rescan() => Cache();
 }

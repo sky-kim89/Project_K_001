@@ -605,8 +605,13 @@ namespace BattleGame.Units
     ///   "거리를 유지하며 평타로 딜한다" 인데, 그 정체성을 고를 수 있는 옵션으로
     ///   두니 안 고르면 궁수가 근접 유닛처럼 굴었다. 특성 슬롯 하나를 쓸 만한
     ///   선택지도 아니어서 기본 행동으로 내렸다.
+    ///
+    ///   ⚠ 궁수 전용이 아니다 — 법사도 붙는다
+    ///     법사는 사거리 4~7 에 공격속도가 궁수의 1/3 이다. 제자리에 서 있으면
+    ///     쿨다운 도는 3초 동안 근접이 그대로 붙어 사거리가 무의미해졌다.
+    ///     "거리를 벌며 큰 걸 꽂는다" 는 원거리 공통 규칙으로 넓혔다.
     /// </summary>
-    public struct ArcherRetreatFireTag : IComponentData { }
+    public struct RetreatFireTag : IComponentData { }
 
     /// <summary>
     /// A4 폭우 사격 — 공격이 실제로 타겟에 닿았을 때(OnAttackLanded) 주변 적 2명 스플래시.
