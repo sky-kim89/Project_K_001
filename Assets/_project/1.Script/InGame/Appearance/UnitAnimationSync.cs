@@ -20,7 +20,10 @@ using UnityEngine;
 //    ApplyState 에서는 trigger 를 발동하지 않아 더블 트리거를 방지.
 //
 //  ■ 피격 연출
-//    Hit 상태 진입 감지 → SpriteRenderer 색 플래시 (빨강 → 흰색)
+//    Hit 상태 진입 감지 → 스프라이트 색 플래시 (빨강 → 원래 색)
+//    틴트는 '원래 색 × 배수' 다 (SetTint). 몸·무기가 함께 물들고, 검정 반투명인
+//    그림자는 곱해도 그대로다. 되돌릴 때는 ClearTint() 한 번이면 된다 —
+//    풀에서 꺼내는 쪽(UnitRuntimeBridge.SpawnEntity)도 이걸 부른다.
 //
 //  ■ 사망 연출 (UnitDeathDespawnSystem 이 TriggerDeath() 를 호출)
 //    1. EntityLink.SyncPosition = false → ECS 위치 덮어쓰기 중단
@@ -62,8 +65,9 @@ public class UnitAnimationSync : MonoBehaviour
     [Tooltip("날아간 뒤 Die 애니메이션을 기다리는 추가 시간 (초)")]
     [SerializeField] float _deathHoldDuration = 0.75f;
 
-    EntityLink     _link;
-    SpriteRenderer _renderer;
+    EntityLink       _link;
+    SpriteRenderer[] _renderers;
+    Color[]          _baseColors;
 
     UnitState _prevState;
     float     _prevCooldown;
@@ -100,7 +104,18 @@ public class UnitAnimationSync : MonoBehaviour
         if (_animator == null)
             _animator = GetComponentInChildren<Animator>();
 
-        _renderer = GetComponentInChildren<SpriteRenderer>();
+        // ⚠ 스프라이트는 하나가 아니다 (Body · 무기 Renderer · 그림자 Square)
+        //   예전엔 GetComponentInChildren 으로 하나만 잡아 그것만 물들이고 되돌렸다.
+        //   되돌리는 쪽이 한 장뿐이면, 그 한 장이 아닌 곳에 물이 들었을 때
+        //   빨간 채로 풀에 들어가 다음 유닛이 그대로 물려받는다.
+        //
+        // ⚠ 원래 색을 기억해 둔다 — 흰색으로 되돌리면 안 된다
+        //   그림자(Square)는 검정 반투명이다. 일괄로 흰색을 칠하면 그림자가 하얘진다.
+        //   틴트는 '원래 색 × 배수' 로 걸고, 되돌릴 때는 배수를 흰색(=1)으로 준다.
+        _renderers  = GetComponentsInChildren<SpriteRenderer>(true);
+        _baseColors = new Color[_renderers.Length];
+        for (int i = 0; i < _renderers.Length; i++)
+            _baseColors[i] = _renderers[i].color;
     }
 
     void OnEnable()
@@ -114,7 +129,7 @@ public class UnitAnimationSync : MonoBehaviour
         _jobCached             = false;
 
         if (_animator  != null) _animator.speed = 1f;
-        if (_renderer  != null) _renderer.color = Color.white;
+        ClearTint();
     }
 
     void LateUpdate()
@@ -274,7 +289,7 @@ public class UnitAnimationSync : MonoBehaviour
             if (_animator != null) _animator.speed = 1f;
         }
 
-        if (_renderer != null) _renderer.color = Color.white;
+        ClearTint();
 
         // EntityLink 의 ECS→Transform 위치 동기화를 중단해 코루틴이 자유롭게 이동
         if (_link != null) _link.SyncPosition = false;
@@ -323,28 +338,53 @@ public class UnitAnimationSync : MonoBehaviour
     void TriggerHitFlash()
     {
         if (_hitCoroutine != null) StopCoroutine(_hitCoroutine);
-        if (_renderer != null)    _renderer.color = Color.white;
+        ClearTint();
         _hitCoroutine = StartCoroutine(HitFlashRoutine());
     }
+
+    // ── 틴트 ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// 모든 스프라이트에 '원래 색 × tint' 를 건다. 흰색(1,1,1,1)이면 원래 색 그대로다.
+    /// 곱셈이라 검정 반투명인 그림자는 어떤 틴트를 줘도 그대로 남는다.
+    /// </summary>
+    void SetTint(Color tint)
+    {
+        if (_renderers == null) return;
+        for (int i = 0; i < _renderers.Length; i++)
+        {
+            if (_renderers[i] == null) continue;
+            _renderers[i].color = _baseColors[i] * tint;
+        }
+    }
+
+    /// <summary>
+    /// 물든 색을 원래대로 되돌린다.
+    ///
+    /// ⚠ 풀에서 꺼낼 때 반드시 한 번 지나야 한다 (UnitRuntimeBridge.SpawnEntity)
+    ///   피격 플래시가 도는 도중에 죽으면 코루틴이 중간에 끊긴 채 오브젝트가
+    ///   비활성화된다 — 빨간 색이 그대로 굳은 채 풀에 들어간다.
+    ///   OnEnable 에도 같은 호출이 있지만, 켜지는 시점을 타지 않는 재사용 경로가
+    ///   있어서 꺼내 쓰는 쪽에서도 한 번 지운다. 두 번 지워도 비용은 없다.
+    /// </summary>
+    public void ClearTint() => SetTint(Color.white);
 
     // ── 코루틴 ───────────────────────────────────────────────
 
     System.Collections.IEnumerator HitFlashRoutine()
     {
-        if (_renderer == null) yield break;
-
-        _renderer.color = _hitFlashColor;
+        SetTint(_hitFlashColor);
 
         float t = 0f;
         while (t < _hitFlashDuration)
         {
             t += Time.deltaTime;
-            _renderer.color = Color.Lerp(_hitFlashColor, Color.white, t / _hitFlashDuration);
+            SetTint(Color.Lerp(_hitFlashColor, Color.white, t / _hitFlashDuration));
             yield return null;
         }
 
-        _renderer.color = Color.white;
-        _hitCoroutine   = null;
+        ClearTint();
+        _hitCoroutine = null;
     }
 
     // 쌍신 공격(DoubleStrikeTag): 2배 속도로 공격 모션을 0.15초 간격으로 2회 재생

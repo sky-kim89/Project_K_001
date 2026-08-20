@@ -9,7 +9,9 @@ using UnityEngine;
 //
 //  ■ 수치 근거 — 보통부터 계단이 점점 커진다
 //    광포(적 공·체)는 보통 이후 한 단계마다 대략 두 배씩 뛴다.
-//      보통 +50% → 어려움 +120% → 지옥 +250% → 불지옥 +500%
+//      보통 +70% → 어려움 +180% → 지옥 +360% → 불지옥 +700%
+//    스테이지 진행 배율(StageConfig)을 완만하게 낮춘 대신, 난이도 등급의
+//    체감은 여기서 벌어야 한다 — 상향 폭이 스테이지가 아니라 선택에서 나온다.
 //    앞 단계는 완만해서 난이도를 올려볼 마음이 들고, 뒷 단계는
 //    한 칸 올릴 때마다 확실히 다른 게임이 된다.
 //
@@ -21,7 +23,7 @@ using UnityEngine;
 //
 //  ■ 환생 포인트 배율이 유일한 보상이다
 //    난이도를 올릴 이유가 없으면 아무도 안 올린다.
-//    광포가 500% 까지 가는 만큼 보상도 ×3 까지 올렸다.
+//    광포가 700% 까지 가는 만큼 보상도 ×3 까지 올렸다.
 //    다만 보상은 점진적이다 — 증가폭이 +0.3 → +0.4 → +0.55 → +0.75 로
 //    완만하게 커진다. 광포처럼 배로 뛰면 낮은 난이도를 아무도 안 돈다.
 //      쉬움 ×1.0 → 보통 ×1.3 → 어려움 ×1.7 → 지옥 ×2.25 → 불지옥 ×3.0
@@ -57,14 +59,14 @@ public static class DifficultyConfigCreator
             new DifficultyConfig.TierEntry
             {
                 Tier                    = DifficultyTier.Normal,
-                EnemyStatBonus          = 0.5f,   // +50%
+                EnemyStatBonus          = 0.7f,   // +70%
                 ReincarnationMultiplier = 1.3f,
             },
             // 사지 — 물량 추가. 여기서부터 광역 스킬의 가치가 뛴다.
             new DifficultyConfig.TierEntry
             {
                 Tier                    = DifficultyTier.Hard,
-                EnemyStatBonus          = 1.2f,   // +120% (직전 대비 +70%p)
+                EnemyStatBonus          = 1.8f,   // +180% (직전 대비 +110%p)
                 EnemyCountBonus         = 0.2f,
                 ReincarnationMultiplier = 1.7f,
             },
@@ -72,7 +74,7 @@ public static class DifficultyConfigCreator
             new DifficultyConfig.TierEntry
             {
                 Tier                    = DifficultyTier.Hell,
-                EnemyStatBonus          = 2.5f,   // +250% (직전 대비 +130%p)
+                EnemyStatBonus          = 3.6f,   // +360% (직전 대비 +180%p)
                 EnemyCountBonus         = 0.45f,
                 BossCooldownCut         = 0.4f,
                 ReincarnationMultiplier = 2.25f,
@@ -82,7 +84,7 @@ public static class DifficultyConfigCreator
             new DifficultyConfig.TierEntry
             {
                 Tier                    = DifficultyTier.Inferno,
-                EnemyStatBonus          = 5.0f,   // +500% (직전 대비 +250%p — 상한)
+                EnemyStatBonus          = 7.0f,   // +700% (직전 대비 +340%p — 상한)
                 EnemyCountBonus         = 0.8f,   // 상한 (1,000마리 프레임 한계)
                 BossCooldownCut         = 0.55f,  // 상한 (보스 연출 길이 한계)
                 FrenzyPatterns          = true,

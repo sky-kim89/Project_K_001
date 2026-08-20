@@ -99,6 +99,11 @@ public class TutorialManager : Singleton<TutorialManager>
         BattleManager.OnWavesStarted += HandleWavesStarted;
         BattleManager.OnVictory      += HandleVictory;
         BattleManager.OnDefeat       += HandleDefeat;
+        MainPanelUI.OnShown          += HandleMainPanelShown;
+
+        // ⚠ 매니저가 화면보다 늦게 생길 수 있다 (AutoCreate 는 씬 로드 뒤에 돈다)
+        //   이미 떠 있는 메인 화면은 OnShown 을 놓친 뒤다. 지금 상태를 직접 본다.
+        if (FindAnyObjectByType<MainPanelUI>() != null) HandleMainPanelShown();
     }
 
     void OnDisable()
@@ -106,6 +111,7 @@ public class TutorialManager : Singleton<TutorialManager>
         BattleManager.OnWavesStarted -= HandleWavesStarted;
         BattleManager.OnVictory      -= HandleVictory;
         BattleManager.OnDefeat       -= HandleDefeat;
+        MainPanelUI.OnShown          -= HandleMainPanelShown;
 
         // 씬이 갈리거나 매니저가 꺼질 때 멈춘 채로 두지 않는다.
         // 이 한 줄이 없으면 "튜토리얼 중 씬 전환 = 게임 영구 정지" 가 된다.
@@ -130,6 +136,22 @@ public class TutorialManager : Singleton<TutorialManager>
     ///   첫 판에 지고 환생했다고 튜토리얼을 본 것은 아니다. 다음 전투에서 이어 본다.
     /// </summary>
     void HandleDefeat() => Abort();
+
+    /// <summary>
+    /// 메인 화면(장수 선택) 진입 — 첫 환생을 마친 사람에게만 유물을 안내한다.
+    ///
+    /// ⚠ 환생을 한 번도 안 했으면 띄우지 않는다
+    ///   쓸 포인트가 0 인 화면에서 "여기서 강화하세요" 는 설명이 아니라 광고다.
+    ///   첫 환생 뒤라야 포인트를 손에 쥔 채로 같은 화면을 본다.
+    ///
+    ///   두 번째부터는 TutorialData 기록이 알아서 거른다 — 여기서 셀 필요가 없다.
+    /// </summary>
+    void HandleMainPanelShown()
+    {
+        var reinc = UserDataManager.Instance?.Get<ReincarnationData>();
+        if (reinc == null || reinc.TotalCount < 1) return;
+        Enqueue(TutorialId.FirstRelic);
+    }
 
     // ── 예약 큐 ──────────────────────────────────────────────
     //
@@ -176,6 +198,7 @@ public class TutorialManager : Singleton<TutorialManager>
         Register(new BattleResultTutorial());
         Register(new LobbyTutorial());
         Register(new HeroStatTutorial());
+        Register(new FirstRelicTutorial());
 
         // 도움말 (팝업 헤더의 i 버튼) — 강제로 뜨지 않는다
         Register(new RelicHelpTutorial());

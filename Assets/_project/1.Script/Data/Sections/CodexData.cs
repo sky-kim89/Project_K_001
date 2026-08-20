@@ -16,6 +16,17 @@ using UnityEngine;
 //    (SoldierRuntimeBridge.StatRatio) 자동으로 같이 올라간다.
 //    ⚠ 병사에도 따로 걸면 이중 적용이다.
 //
+//  ■ 버프는 여정 시작 시점에 고정된다 (LockForRun)
+//    여정 도중에 새로 채운 도감은 이번 여정의 스탯에 즉시 반영되지 않고,
+//    다음 여정을 시작할 때 한꺼번에 들어온다.
+//    수집은 여정 중반에 몰려서 일어나는데(장비·특성·어빌리티를 그때 만난다)
+//    그걸 즉시 얹으면 "지금 조금씩 세지는" 잡음이 되고, 정작 다음 회차
+//    출발선이 올라간 체감은 사라진다. 성장은 회차 경계에서 한 번에 느껴야 한다.
+//
+//    잠금 : RunStarter.BeginRun  (여정 시작 — 이 시점의 수집 수를 박는다)
+//    해제 : UserDataManager.Reincarnate (환생 — 다음 여정까지는 실시간 값)
+//    ⚠ 잠긴 수는 세이브에 남는다 — 여정 도중에 앱을 껐다 켜도 그대로여야 한다.
+//
 //  ■ 기록 지점 (전부 Record 한 줄만 추가돼 있다)
 //    장비     : EquipInventoryData.Add
 //    어빌리티 : RunAbilityData.AddAbility
@@ -34,6 +45,9 @@ class CodexJson
     public List<int>    abilities = new();
     public List<int>    traits    = new();
     public List<string> generals  = new();
+
+    // 이번 여정에 적용 중인 수집 수. -1 = 잠기지 않음(실시간 값을 쓴다).
+    public int lockedCount = -1;
 }
 
 public class CodexData : ISaveSection
@@ -65,8 +79,34 @@ public class CodexData : ISaveSection
 
     public int TotalCollected => _equips.Count + _abilities.Count + _traits.Count + _generals.Count;
 
+    // 이번 여정에 박힌 수집 수. -1 = 아직 안 잠김 (여정 밖 · 옛 세이브).
+    int _lockedCount = -1;
+
+    /// <summary>지금 스탯에 실제로 걸리는 수집 수. 여정 중이면 시작 시점 값.</summary>
+    public int AppliedCount => _lockedCount >= 0 ? _lockedCount : TotalCollected;
+
     /// <summary>도감 버프 배율. 0.12 = 공격력·체력 +12%.</summary>
-    public float StatBonusRatio => TotalCollected * BonusPerEntry;
+    public float StatBonusRatio => AppliedCount * BonusPerEntry;
+
+    /// <summary>다음 여정부터 걸릴 배율 — 지금까지 채운 것 전부.</summary>
+    public float PendingStatBonusRatio => TotalCollected * BonusPerEntry;
+
+    // ── 여정 잠금 ────────────────────────────────────────────
+
+    /// <summary>여정 시작 — 지금 수집 수를 이번 여정 값으로 박는다.</summary>
+    public void LockForRun()
+    {
+        _lockedCount = TotalCollected;
+        Changed();
+    }
+
+    /// <summary>환생 — 잠금을 푼다. 다음 여정을 시작할 때까지는 실시간 값.</summary>
+    public void UnlockForNextRun()
+    {
+        if (_lockedCount < 0) return;
+        _lockedCount = -1;
+        Changed();
+    }
 
     // ── 기록 ─────────────────────────────────────────────────
     //  호출부가 짧아지도록 정적 진입점을 둔다.
@@ -101,6 +141,7 @@ public class CodexData : ISaveSection
         json.generals.AddRange(_generals);
         foreach (var a in _abilities) json.abilities.Add((int)a);
         foreach (var t in _traits)    json.traits.Add((int)t);
+        json.lockedCount = _lockedCount;
         return JsonUtility.ToJson(json);
     }
 
@@ -116,6 +157,11 @@ public class CodexData : ISaveSection
         foreach (var g in json.generals)  _generals.Add(g);
         foreach (var a in json.abilities) _abilities.Add((AbilityId)a);
         foreach (var t in json.traits)    _traits.Add((TraitType)t);
+
+        // 잠금 필드가 없던 옛 세이브는 -1(미잠금)로 본다 — 진행 중이던 여정에서
+        // 도감 버프가 통째로 사라지지 않게. JsonUtility 는 없는 필드를 0 으로
+        // 채울 수 있으므로 필드 존재 여부를 문자열로 직접 본다.
+        _lockedCount = jsonStr.Contains("\"lockedCount\"") ? json.lockedCount : -1;
     }
 
     public void SetDefaults()
@@ -124,5 +170,6 @@ public class CodexData : ISaveSection
         _abilities.Clear();
         _traits.Clear();
         _generals.Clear();
+        _lockedCount = -1;
     }
 }

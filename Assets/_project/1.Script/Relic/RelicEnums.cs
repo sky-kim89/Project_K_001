@@ -59,40 +59,40 @@ public enum RelicId
     // 어빌리티 관련
     R_AbilityRefresh       = 101,  // 어빌리티 재편성  — 새로고침 +1/레벨,         Lv3, Rare
     R_AbilityChoicePlus    = 102,  // 선택의 축복      — 선택지 +1/레벨,           Lv2, Epic
-    R_AbilityAdvanced      = 103,  // 고급 비전        — 고급이상 확률 +10%p/레벨, Lv3, Rare
+    R_AbilityAdvanced      = 103,  // 고급 비전        — 고급이상 확률 +15%p/레벨, Lv3, Rare
 
     // 보상 증가
-    R_GoldBonus            = 104,  // 황금의 가호      — 골드 +15%/레벨,           Lv5, Common
-    R_SoulBonus            = 105,  // 전사의 유산      — 소울 +15%/레벨,           Lv5, Common
-    R_ExpBonus             = 106,  // 성장의 증표      — 경험치 +10%/레벨,         Lv5, Uncommon
+    R_GoldBonus            = 104,  // 황금의 가호      — 골드 +25%/레벨,           Lv5, Common
+    R_SoulBonus            = 105,  // 전사의 유산      — 소울 +25%/레벨,           Lv5, Common
+    R_ExpBonus             = 106,  // 성장의 증표      — 경험치 +20%/레벨,         Lv5, Uncommon
 
     // 적 약화
-    R_EnemyHpDown          = 107,  // 시련의 세례      — 적 체력 -5%/레벨,         Lv4, Rare
-    R_EnemyAtkDown         = 108,  // 공포의 각인      — 적 공격력 -4%/레벨,       Lv4, Rare
+    R_EnemyHpDown          = 107,  // 시련의 세례      — 적 체력 -7%/레벨,         Lv4, Rare
+    R_EnemyAtkDown         = 108,  // 공포의 각인      — 적 공격력 -6%/레벨,       Lv4, Rare
     R_GeneralSlotExpand    = 109,  // 출병 명령        — 장수 배치 슬롯 +1칸,      Lv1, Epic
     R_BattleSpeed          = 110,  // 시간의 고삐      — 전투 배속 +1단계/레벨,    Lv2, Epic
 
     // ── 장수 스텟 유물 (2xx) ─────────────────────────────────
     // 전체 장수 (All)
-    R_GeneralHp            = 201,  // 장군의 심장      — All 최대 체력 +5%/레벨,       Lv5, Common
-    R_GeneralAtk           = 202,  // 전투의 기억      — All 공격력 +4%/레벨,           Lv5, Common
-    R_GeneralDef           = 203,  // 철의 의지        — All 방어율 +3%/레벨,           Lv5, Common
-    R_GeneralSpd           = 204,  // 질풍의 발걸음    — All 이동속도 +4%/레벨,         Lv5, Common
-    R_GeneralRange         = 205,  // 사냥꾼의 눈      — All 공격 사거리 +4%/레벨,      Lv5, Common
-    R_GeneralCrit          = 206,  // 비수의 날        — All 치명타 확률 +3%/레벨,      Lv5, Rare
-    R_GeneralCooldown      = 207,  // 시간의 압축      — All 스킬 쿨감 +3%p/레벨,       Lv5, Rare  (절대값)
+    R_GeneralHp            = 201,  // 장군의 심장      — All 최대 체력 +10%/레벨,       Lv5, Common
+    R_GeneralAtk           = 202,  // 전투의 기억      — All 공격력 +8%/레벨,           Lv5, Common
+    R_GeneralDef           = 203,  // 철의 의지        — All 방어율 +4%p/레벨,           Lv5, Common
+    R_GeneralSpd           = 204,  // 질풍의 발걸음    — All 이동속도 +6%/레벨,         Lv5, Common
+    R_GeneralRange         = 205,  // 사냥꾼의 눈      — All 공격 사거리 +6%/레벨,      Lv5, Common
+    R_GeneralCrit          = 206,  // 비수의 날        — All 치명타 확률 +5%p/레벨,      Lv5, Rare
+    R_GeneralCooldown      = 207,  // 시간의 압축      — All 스킬 쿨감 +5%p/레벨,       Lv5, Rare  (절대값)
     R_GeneralSoldierCount  = 208,  // 지휘의 깃발      — All 기본 병사 수 +1/레벨,      Lv5, Rare  (절대값)
 
     // 직업 특화 장수 유물
-    R_KnightArmor          = 211,  // 기사왕의 갑주    — Knight 체력 +8%, 방어율 +5%/레벨, Lv3, Rare
-    R_ArcherSwift          = 212,  // 활의 정령        — Archer 공속 +8%, 사거리 +6%/레벨, Lv3, Rare
-    R_MagePower            = 213,  // 마력의 결정      — Mage 공격력 +10%, 쿨감 +6%p/레벨, Lv3, Epic (절대값)
-    R_ShieldFortress       = 214,  // 방벽의 군주      — Shield 방어율 +10%, 체력 +8%/레벨,Lv3, Epic
+    R_KnightArmor          = 211,  // 기사왕의 갑주    — Knight 체력 +14%, 방어율 +8%/레벨, Lv3, Rare
+    R_ArcherSwift          = 212,  // 활의 정령        — Archer 공속 +14%, 사거리 +10%/레벨, Lv3, Rare
+    R_MagePower            = 213,  // 마력의 결정      — Mage 공격력 +16%, 쿨감 +10%p/레벨, Lv3, Epic (절대값)
+    R_ShieldFortress       = 214,  // 방벽의 군주      — Shield 방어율 +16%, 체력 +14%/레벨,Lv3, Epic
 
     // ── 병사 스텟 유물 (3xx) ─────────────────────────────────
     //  Target = Unit_Soldier — 병사에게만 붙는다. 장수는 그대로다.
-    R_SoldierAtk           = 301,  // 병사의 혼        — Soldier 공격력 +5%/레벨,     Lv5, Common
-    R_SoldierHp            = 302,  // 병사의 생명력    — Soldier 최대 체력 +5%/레벨,  Lv5, Common
+    R_SoldierAtk           = 301,  // 병사의 혼        — Soldier 공격력 +10%/레벨,     Lv5, Common
+    R_SoldierHp            = 302,  // 병사의 생명력    — Soldier 최대 체력 +10%/레벨,  Lv5, Common
 
     // ── 장수 전용 유물 (4xx) ─────────────────────────────────
     //  Target = Unit_General — 장수에게만 붙고 병사 환산을 타지 않는다.
@@ -105,10 +105,10 @@ public enum RelicId
     //  ⚠ 공통(All) 유물과 역할이 다르다
     //    All 은 부대 전체를 조금씩 올린다. 이쪽은 장수 한 명에게 몰아준다.
     //    병사에게 안 가는 대신 배율을 크게 잡아야 고를 이유가 생긴다 —
-    //    2xx 공통 유물(+4~5%/레벨)보다 높게 둔 이유다.
-    R_OnlyGeneralAtk       = 401,  // 장군의 검        — General 공격력 +9%/레벨,       Lv5, Uncommon
-    R_OnlyGeneralHp        = 402,  // 장군의 투구      — General 최대 체력 +9%/레벨,    Lv5, Uncommon
-    R_OnlyGeneralDef       = 403,  // 장군의 흉갑      — General 방어율 +3%p/레벨,      Lv3, Rare (절대값)
-    R_OnlyGeneralCrit      = 404,  // 장군의 안목      — General 치명확률 +4%p/레벨,    Lv3, Rare (절대값)
-    R_OnlyGeneralMight     = 405,  // 영웅의 증표      — General 공격력·체력 +12%/레벨, Lv3, Epic
+    //    2xx 공통 유물(+8~10%/레벨)보다 높게 둔 이유다.
+    R_OnlyGeneralAtk       = 401,  // 장군의 검        — General 공격력 +15%/레벨,       Lv5, Uncommon
+    R_OnlyGeneralHp        = 402,  // 장군의 투구      — General 최대 체력 +15%/레벨,    Lv5, Uncommon
+    R_OnlyGeneralDef       = 403,  // 장군의 흉갑      — General 방어율 +5%p/레벨,      Lv3, Rare (절대값)
+    R_OnlyGeneralCrit      = 404,  // 장군의 안목      — General 치명확률 +6%p/레벨,    Lv3, Rare (절대값)
+    R_OnlyGeneralMight     = 405,  // 영웅의 증표      — General 공격력·체력 +18%/레벨, Lv3, Epic
 }

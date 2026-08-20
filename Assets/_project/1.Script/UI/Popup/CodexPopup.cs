@@ -141,8 +141,15 @@ public class CodexPopup : PopupBase
         if (_bonusTmp != null)
         {
             // 실제로 걸리는 값과 같은 출처를 쓴다 — 여기서 따로 계산하면 표시만 어긋난다
-            float pct = CodexApplier.BonusRatio * 100f;
+            float pct     = CodexApplier.BonusRatio  * 100f;
+            float pending = CodexApplier.PendingRatio * 100f;
+
             _bonusTmp.text = $"공격력·체력 <color=#{StatBonusColors.Codex}>+{pct:F1}%</color>";
+
+            // 여정 중에 채운 몫은 다음 여정부터 붙는다 — 안 적어 두면
+            // "도감을 채웠는데 스탯이 그대로" 로 보인다.
+            if (pending > pct + 0.01f)
+                _bonusTmp.text += $"  <size=75%>(다음 여정 +{pending:F1}%)</size>";
         }
     }
 

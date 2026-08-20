@@ -155,6 +155,13 @@ public class UserDataManager : PureSingleton<UserDataManager>
         Get<RunShopData>()?.SetDefaults();
         Get<RunEventBonusData>()?.SetDefaults();
 
+        // 도감은 지우지 않되 '이번 여정 고정치' 잠금만 푼다 —
+        // 다음 여정을 시작(RunStarter.BeginRun)할 때 이번 회차에 모은 것까지 얹혀 잠긴다.
+        Get<CodexData>()?.UnlockForNextRun();
+
+        // 이번이 몇 번째 환생인지 — 첫 환생 직후에만 뜨는 안내가 이 값을 본다.
+        reincData?.CountReincarnation();
+
         // 초기 장수 자동 배치
         AutoDeployFirstHeroIfNeeded();
 

@@ -16,6 +16,10 @@ using UnityEngine;
 //    장군이 오르면 병사도 자동으로 오른다.
 //    ⚠ 병사에 따로 걸면 이중 적용이다.
 //
+//  ■ 배율은 여정 시작 시점에 박힌다
+//    여정 도중에 새로 채운 도감은 이번 여정에 즉시 반영되지 않고 다음 여정부터
+//    걸린다 (CodexData.LockForRun). 표시용 PendingRatio 가 그 예정값이다.
+//
 //  ■ 왜 공격력·체력뿐인가
 //    방어율·쿨감처럼 0~1 비율 스탯에 %를 곱하면 수집이 쌓일수록
 //    상한에 그냥 도달해 버린다. 도감은 "전반적으로 세진다" 를 담당하고
@@ -27,13 +31,26 @@ public static class CodexApplier
     /// <summary>도감 버프가 붙는 스탯.</summary>
     static readonly StatType[] BuffedStats = { StatType.Attack, StatType.MaxHp };
 
-    /// <summary>현재 도감 배율. 수집이 없거나 세이브가 없으면 0.</summary>
+    /// <summary>
+    /// 지금 실제로 걸리는 도감 배율. 수집이 없거나 세이브가 없으면 0.
+    /// ⚠ 여정 중에는 시작 시점에 박힌 값이다 (CodexData.LockForRun).
+    /// </summary>
     public static float BonusRatio
     {
         get
         {
             var codex = UserDataManager.Instance?.Get<CodexData>();
             return codex != null ? codex.StatBonusRatio : 0f;
+        }
+    }
+
+    /// <summary>다음 여정부터 걸릴 배율 — 여정 중에 채운 것까지 포함한다.</summary>
+    public static float PendingRatio
+    {
+        get
+        {
+            var codex = UserDataManager.Instance?.Get<CodexData>();
+            return codex != null ? codex.PendingStatBonusRatio : 0f;
         }
     }
 

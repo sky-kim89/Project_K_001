@@ -34,6 +34,7 @@ class ReincarnationJson
 {
     public int points;
     public int usedRefreshCount;
+    public int totalCount;
 }
 
 public class ReincarnationData : ISaveSection
@@ -42,6 +43,9 @@ public class ReincarnationData : ISaveSection
 
     public int ReincarnationPoints { get; private set; }
     public int UsedRefreshCount    { get; private set; }
+
+    /// <summary>지금까지 환생한 횟수. 첫 환생 직후 안내(FirstRelic 튜토리얼)가 본다.</summary>
+    public int TotalCount { get; private set; }
 
     // 환생 가능 최소 스테이지 — StageConfig 에서 읽어 단일 진실 소스 유지
     public static int ReincarnateMinStage => StageConfig.Current?.ReincarnateMinStage ?? 2;
@@ -137,6 +141,9 @@ public class ReincarnationData : ISaveSection
     /// <summary>환생 시 새로고침 횟수 초기화.</summary>
     public void ResetOnReincarnation() => UsedRefreshCount = 0;
 
+    /// <summary>환생 1회를 센다 — UserDataManager.Reincarnate 만 부른다.</summary>
+    public void CountReincarnation() => TotalCount++;
+
     // ── ISaveSection ─────────────────────────────────────────
 
     public string Serialize()
@@ -144,6 +151,7 @@ public class ReincarnationData : ISaveSection
         {
             points           = ReincarnationPoints,
             usedRefreshCount = UsedRefreshCount,
+            totalCount       = TotalCount,
         });
 
     public void Deserialize(string json)
@@ -153,11 +161,13 @@ public class ReincarnationData : ISaveSection
         if (dto == null) return;
         ReincarnationPoints = dto.points;
         UsedRefreshCount    = dto.usedRefreshCount;
+        TotalCount          = dto.totalCount;
     }
 
     public void SetDefaults()
     {
         ReincarnationPoints = 0;
         UsedRefreshCount    = 0;
+        TotalCount          = 0;
     }
 }

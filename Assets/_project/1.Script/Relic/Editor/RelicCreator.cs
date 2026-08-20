@@ -76,21 +76,21 @@ public static class RelicCreator
         MakeSys(RelicId.R_AbilityChoicePlus, "선택의 축복",      RelicRarity.Epic,      2,
             RelicSystemEffect.AbilityChoiceCount,    1f,   true);  // +1개/레벨
         MakeSys(RelicId.R_AbilityAdvanced,   "고급 비전",        RelicRarity.Rare,      3,
-            RelicSystemEffect.AbilityAdvancedChance, 0.10f, false); // +10%p/레벨
+            RelicSystemEffect.AbilityAdvancedChance, 0.15f, false); // +15%p/레벨
 
         // 보상 증가
         MakeSys(RelicId.R_GoldBonus,  "황금의 가호",  RelicRarity.Common,   5,
-            RelicSystemEffect.GoldGainBonus,        0.15f, false);
+            RelicSystemEffect.GoldGainBonus,        0.25f, false);
         MakeSys(RelicId.R_SoulBonus,  "전사의 유산",  RelicRarity.Common,   5,
-            RelicSystemEffect.SoldierSoulGainBonus, 0.15f, false);
+            RelicSystemEffect.SoldierSoulGainBonus, 0.25f, false);
         MakeSys(RelicId.R_ExpBonus,   "성장의 증표",  RelicRarity.Uncommon, 5,
-            RelicSystemEffect.ExpGainBonus,         0.10f, false);
+            RelicSystemEffect.ExpGainBonus,         0.20f, false);
 
         // 적 약화
         MakeSys(RelicId.R_EnemyHpDown,  "시련의 세례", RelicRarity.Rare, 4,
-            RelicSystemEffect.EnemyMaxHpReduction,  0.05f, false);
+            RelicSystemEffect.EnemyMaxHpReduction,  0.07f, false);
         MakeSys(RelicId.R_EnemyAtkDown, "공포의 각인", RelicRarity.Rare, 4,
-            RelicSystemEffect.EnemyAttackReduction, 0.04f, false);
+            RelicSystemEffect.EnemyAttackReduction, 0.06f, false);
 
         // 장수 배치 슬롯 — 기본 2칸(RelicApplier.BaseGeneralSlots)에서 한 칸만 더 연다.
         // ⚠ 1레벨짜리다
@@ -110,19 +110,19 @@ public static class RelicCreator
     {
         // 전체 장수 (All)
         MakeStat1(RelicId.R_GeneralHp,           "장군의 심장",   RelicRarity.Common,  5,
-            AbilityTarget.All, StatType.MaxHp,               0.05f, false);
+            AbilityTarget.All, StatType.MaxHp,               0.10f, false);
         MakeStat1(RelicId.R_GeneralAtk,          "전투의 기억",   RelicRarity.Common,  5,
-            AbilityTarget.All, StatType.Attack,               0.04f, false);
+            AbilityTarget.All, StatType.Attack,               0.08f, false);
         MakeStat1(RelicId.R_GeneralDef,          "철의 의지",     RelicRarity.Common,  5,
-            AbilityTarget.All, StatType.Defense,              0.03f, true);  // +3%p
+            AbilityTarget.All, StatType.Defense,              0.04f, true);  // +4%p
         MakeStat1(RelicId.R_GeneralSpd,          "질풍의 발걸음", RelicRarity.Common,  5,
-            AbilityTarget.All, StatType.MoveSpeed,            0.04f, false);
+            AbilityTarget.All, StatType.MoveSpeed,            0.06f, false);
         MakeStat1(RelicId.R_GeneralRange,        "사냥꾼의 눈",   RelicRarity.Common,  5,
-            AbilityTarget.All, StatType.AttackRange,          0.04f, false);
+            AbilityTarget.All, StatType.AttackRange,          0.06f, false);
         MakeStat1(RelicId.R_GeneralCrit,         "비수의 날",     RelicRarity.Rare,    5,
-            AbilityTarget.All, StatType.CritChance,           0.03f, true);  // +3%p
+            AbilityTarget.All, StatType.CritChance,           0.05f, true);  // +5%p
         MakeStat1(RelicId.R_GeneralCooldown,     "시간의 압축",   RelicRarity.Rare,    5,
-            AbilityTarget.All, StatType.SkillCooldownReduce,  0.03f, true);  // +3%p
+            AbilityTarget.All, StatType.SkillCooldownReduce,  0.05f, true);  // +5%p
         MakeStat1(RelicId.R_GeneralSoldierCount, "지휘의 깃발",   RelicRarity.Rare,    5,
             AbilityTarget.All, StatType.SoldierCount,         1f,    true);  // +1명
     }
@@ -134,29 +134,29 @@ public static class RelicCreator
         // Knight — MaxHp + Defense (IsAbsolute=false: 비율 적용)
         MakeStat2(RelicId.R_KnightArmor,    "기사왕의 갑주", RelicRarity.Rare, 3,
             AbilityTarget.Job_Knight,
-            StatType.MaxHp,    0.08f,
-            StatType.Defense,  0.05f,
+            StatType.MaxHp,    0.14f,
+            StatType.Defense,  0.08f,
             false);
 
         // Archer — AttackSpeed + AttackRange
         MakeStat2(RelicId.R_ArcherSwift,    "활의 정령",     RelicRarity.Rare, 3,
             AbilityTarget.Job_Archer,
-            StatType.AttackSpeed, 0.08f,
-            StatType.AttackRange, 0.06f,
+            StatType.AttackSpeed, 0.14f,
+            StatType.AttackRange, 0.10f,
             false);
 
         // Mage — Attack + SkillCooldownReduce (IsAbsolute=true: 둘 다 절대값)
         MakeStat2(RelicId.R_MagePower,      "마력의 결정",   RelicRarity.Epic, 3,
             AbilityTarget.Job_Mage,
-            StatType.Attack,              0.10f,
-            StatType.SkillCooldownReduce, 0.06f,
+            StatType.Attack,              0.16f,
+            StatType.SkillCooldownReduce, 0.10f,
             false);  // Attack은 비율이 의미있으므로 false
 
         // ShieldBearer — Defense + MaxHp
         MakeStat2(RelicId.R_ShieldFortress, "방벽의 군주",   RelicRarity.Epic, 3,
             AbilityTarget.Job_ShieldBearer,
-            StatType.Defense, 0.10f,
-            StatType.MaxHp,   0.08f,
+            StatType.Defense, 0.16f,
+            StatType.MaxHp,   0.14f,
             false);
     }
 
@@ -165,16 +165,16 @@ public static class RelicCreator
     static void CreateSoldierRelics()
     {
         MakeStat1(RelicId.R_SoldierAtk, "병사의 혼",    RelicRarity.Common, 5,
-            AbilityTarget.Unit_Soldier, StatType.Attack, 0.05f, false);
+            AbilityTarget.Unit_Soldier, StatType.Attack, 0.10f, false);
         MakeStat1(RelicId.R_SoldierHp,  "병사의 생명력", RelicRarity.Common, 5,
-            AbilityTarget.Unit_Soldier, StatType.MaxHp,  0.05f, false);
+            AbilityTarget.Unit_Soldier, StatType.MaxHp,  0.10f, false);
     }
 
     // ── 장수 스탯 유물 (4xx) ─────────────────────────────────
     //
     //  Target = Unit_General — 장수에게만 붙고 병사 환산을 타지 않는다.
     //
-    //  ⚠ 병사 유물보다 배율이 높다 (5% → 9%)
+    //  ⚠ 병사 유물보다 배율이 높다 (10% → 15%)
     //    공통 유물은 장수와 병사 양쪽에 붙지만 이쪽은 한 명에게만 붙는다.
     //    같은 수치로 두면 고를 이유가 전혀 없어 죽은 선택지가 된다.
     //    "부대를 넓게 올릴까, 장수 하나에 몰까" 가 되어야 고민이 생긴다.
@@ -182,20 +182,20 @@ public static class RelicCreator
     static void CreateGeneralOnlyRelics()
     {
         MakeStat1(RelicId.R_OnlyGeneralAtk,  "장군의 검",   RelicRarity.Uncommon, 5,
-            AbilityTarget.Unit_General, StatType.Attack, 0.09f, false);
+            AbilityTarget.Unit_General, StatType.Attack, 0.15f, false);
         MakeStat1(RelicId.R_OnlyGeneralHp,   "장군의 투구", RelicRarity.Uncommon, 5,
-            AbilityTarget.Unit_General, StatType.MaxHp,  0.09f, false);
+            AbilityTarget.Unit_General, StatType.MaxHp,  0.15f, false);
 
         // 방어율·치명확률은 0~1 비율이라 %가 아니라 %p 로 더한다 (IsAbsoluteValue)
         MakeStat1(RelicId.R_OnlyGeneralDef,  "장군의 흉갑", RelicRarity.Rare, 3,
-            AbilityTarget.Unit_General, StatType.Defense,    0.03f, true);
+            AbilityTarget.Unit_General, StatType.Defense,    0.05f, true);
         MakeStat1(RelicId.R_OnlyGeneralCrit, "장군의 안목", RelicRarity.Rare, 3,
-            AbilityTarget.Unit_General, StatType.CritChance, 0.04f, true);
+            AbilityTarget.Unit_General, StatType.CritChance, 0.06f, true);
 
         MakeStat2(RelicId.R_OnlyGeneralMight, "영웅의 증표", RelicRarity.Epic, 3,
             AbilityTarget.Unit_General,
-            StatType.Attack, 0.12f,
-            StatType.MaxHp,  0.12f,
+            StatType.Attack, 0.18f,
+            StatType.MaxHp,  0.18f,
             false);
     }
 

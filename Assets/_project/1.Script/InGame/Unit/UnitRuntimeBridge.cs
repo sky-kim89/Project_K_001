@@ -79,6 +79,11 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
             depth = gameObject.AddComponent<UnitDepthSorter>();
         depth.Rescan();
 
+        // 피격 플래시가 도는 중에 죽으면 코루틴이 끊긴 채 빨간 색이 굳는다.
+        // 풀에서 꺼낸 유닛이 그 색을 물려받지 않게 여기서 원래 색으로 되돌린다.
+        if (TryGetComponent<UnitAnimationSync>(out var animSync))
+            animSync.ClearTint();
+
         if (!TryGetComponent<EntityLink>(out var link))
         {
             Debug.LogWarning($"[{GetType().Name}:{_unitName}] EntityLink 없음. 프리팹에 추가하세요.");

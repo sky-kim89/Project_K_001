@@ -48,6 +48,15 @@ public class MainPanelUI : MonoBehaviour
     int         _currentPage = 0;
     UnitEntry[] _candidates;
 
+    /// <summary>
+    /// 이 화면이 떴다 — 튜토리얼이 이 신호로 유물 안내를 건다.
+    ///
+    /// ⚠ 여기서 TryPlay 를 부르지 않는다
+    ///   "언제 띄울지" 는 TutorialManager 가 통째로 소유한다 (트리거 한 곳 모으기).
+    ///   패널은 "떴다" 만 알린다.
+    /// </summary>
+    public static event System.Action OnShown;
+
     // ── 생명주기 ──────────────────────────────────────────────
 
     void OnEnable()
@@ -106,6 +115,9 @@ public class MainPanelUI : MonoBehaviour
             _refreshBtn.onClick.RemoveAllListeners();
             _refreshBtn.onClick.AddListener(RerollCandidate);
         }
+
+        // 버튼을 다 묶은 뒤에 알린다 — 튜토리얼이 곧바로 유물 버튼을 누르게 한다.
+        OnShown?.Invoke();
     }
 
     void OnDisable()

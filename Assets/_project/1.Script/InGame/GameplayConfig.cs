@@ -333,8 +333,8 @@ public class GameplayConfig : ScriptableObject
         // 여기는 스테이지 1 기준값만 정의한다.
         EnemyRange = new EnemyGradeStatRange
         {
-            Hp          = new FloatRange(200f,  600f),   // ×2 상향 (아군 대비 격차 해소)
-            Attack      = new FloatRange(9f,    32.5f),  // 전투 지속시간 확보 — 전원 ×0.5
+            Hp          = new FloatRange(240f,  720f),   // ×2 상향 후 +20% (아군 대비 격차 해소)
+            Attack      = new FloatRange(9.9f,  35.75f), // 전투 지속시간 확보(×0.5) 후 +10%
             Defense     = new FloatRange(0.05f, 0.15f),
             AttackRange = new FloatRange(1.2f,  2.5f),
             AttackSpeed = new FloatRange(0.6f,  1.6f),
@@ -344,8 +344,8 @@ public class GameplayConfig : ScriptableObject
         };
         EliteRange = new EnemyGradeStatRange
         {
-            Hp          = new FloatRange(600f,  1800f),  // ×1.5 상향 — 엘리트 체감이 약했다
-            Attack      = new FloatRange(37.5f, 112.5f), // 전투 지속시간 확보 — 전원 ×0.5
+            Hp          = new FloatRange(720f,  2160f),  // ×1.5 상향 후 +20% — 엘리트 체감이 약했다
+            Attack      = new FloatRange(41.25f, 123.75f), // 전투 지속시간 확보(×0.5) 후 +10%
             Defense     = new FloatRange(0.10f, 0.55f),  // 에셋 실값과 동기화
             AttackRange = new FloatRange(1.5f,  3.0f),
             AttackSpeed = new FloatRange(0.8f,  2.0f),
@@ -388,7 +388,7 @@ public class GameplayConfig : ScriptableObject
         };
         ArcherRange = new JobStatRange
         {
-            Hp           = new FloatRange(525f,   1125f),  // +50% 상향 — 넉백으로 버는 시간을 살리려면
+            Hp           = new FloatRange(577.5f, 1237.5f), // +50% 상향 후 +10% — 넉백으로 버는 시간을 살리려면
                                                            //   한 번 붙였을 때 한두 대는 버텨야 한다
             Attack       = new FloatRange(30f,    70f),    // 평타 위주 정체성 (전원 ×0.5)
             Defense      = new FloatRange(0.03f,  0.10f),
@@ -402,7 +402,7 @@ public class GameplayConfig : ScriptableObject
         };
         MageRange = new JobStatRange
         {
-            Hp           = new FloatRange(405f,   930f),   // +50% 상향
+            Hp           = new FloatRange(445.5f, 1023f),  // +50% 상향 후 +10%
             Attack       = new FloatRange(65f,    185f),   // 한 방이 굵은 것이 법사의 정체성 (전원 ×0.5)
             Defense      = new FloatRange(0.02f,  0.08f),
             AttackRange  = new FloatRange(4.0f,   7.0f),

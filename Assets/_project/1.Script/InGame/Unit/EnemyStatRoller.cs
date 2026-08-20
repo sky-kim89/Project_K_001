@@ -84,7 +84,7 @@ public static class EnemyStatRoller
     {
         SpawnUnitType.Elite => new EnemyGradeStatRange
         {
-            Hp = new FloatRange(700f, 2000f), Attack = new FloatRange(70f, 210f),
+            Hp = new FloatRange(840f, 2400f), Attack = new FloatRange(77f, 231f),
             Defense = new FloatRange(0.12f, 0.32f), AttackRange = new FloatRange(1.5f, 3.0f),
             AttackSpeed = new FloatRange(0.8f, 2.0f), MoveSpeed = new FloatRange(2.5f, 4.5f),
             CritChance = 0.08f, CritDamage = 1.60f,
@@ -103,7 +103,7 @@ public static class EnemyStatRoller
         },
         _ => new EnemyGradeStatRange
         {
-            Hp = new FloatRange(200f, 600f), Attack = new FloatRange(18f, 65f),
+            Hp = new FloatRange(240f, 720f), Attack = new FloatRange(19.8f, 71.5f),
             Defense = new FloatRange(0.05f, 0.15f), AttackRange = new FloatRange(1.2f, 2.5f),
             AttackSpeed = new FloatRange(0.6f, 1.6f), MoveSpeed = new FloatRange(2.0f, 4.0f),
             CritChance = 0.05f, CritDamage = 1.50f,

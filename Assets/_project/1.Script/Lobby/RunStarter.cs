@@ -108,6 +108,11 @@ public static class RunStarter
         if (jobTrait != TraitType.None)
             udm.Get<RunTraitData>().AddTrait(jobTrait);
 
+        // 도감 버프를 이번 여정 값으로 박는다.
+        // ⚠ 모든 등록이 끝난 뒤라야 한다 — 시작 장수·직업 특성도 도감에 기록되므로
+        //   먼저 잠그면 이번 여정에 그 두 종이 빠진 값으로 싸우게 된다.
+        udm.Get<CodexData>().LockForRun();
+
         udm.SaveAll();
     }
 
