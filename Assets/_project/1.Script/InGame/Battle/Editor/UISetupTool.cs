@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 //  UISetupTool.cs  [Editor Only]
 //  Tools > Project K > 씬 셋업 > InGame 씬 구성 에서 실행.
 //
@@ -738,6 +738,11 @@ public static class UISetupTool
         //   생성 시점의 face 색 기준으로 역산돼 있다 (EditorUIBuilder.TintFor).
         //   본체 색을 런타임에 바꾸면 그 역산이 어긋나 눌린 색이 이상해진다.
         var speedAccent = MakeImg(speedBody, "SpeedAccent", new Color(0.18f, 0.30f, 0.46f));
+
+        // 배속이 잠겨 있을 때 이유를 알려 주는 툴팁.
+        // ⚠ 버튼(speedBody)이 아니라 TopBar 아래에 둔다 — 버튼 자식이면
+        //   버튼의 작은 사각형에 잘리고, 눌림 애니메이션을 따라 같이 내려간다.
+        var speedLockTip = InfoTooltipBuilder.Build(topBarGo, 420f);
         {
             var rt = speedAccent.rectTransform;
             rt.anchorMin = new Vector2(0f, 0f); rt.anchorMax = new Vector2(1f, 0f);
@@ -803,6 +808,7 @@ public static class UISetupTool
         tso.FindProperty("_speedButton").objectReferenceValue      = speedBtn;
         tso.FindProperty("_speedLabel").objectReferenceValue       = speedLabel;
         tso.FindProperty("_speedFace").objectReferenceValue        = speedAccent;
+        tso.FindProperty("_speedLockTooltip").objectReferenceValue = speedLockTip;
         tso.FindProperty("_autoButton").objectReferenceValue       = autoBtn;
         tso.FindProperty("_autoLabel").objectReferenceValue        = autoLabel;
         tso.FindProperty("_autoFace").objectReferenceValue         = autoAccent;

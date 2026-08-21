@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
@@ -71,13 +71,11 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
     /// </summary>
     protected void SpawnEntity()
     {
-        // 앞뒤(그리는 순서)는 발 위치 Y 로 정한다 — 여기가 모든 유닛이 지나는 유일한 길목이다.
+        // 앞뒤(그리는 순서)는 Unity 의 Transparency Sort Axis 에 맡긴다.
         // ⚠ 외형 조립(ApplyAlly/ApplyEnemy)이 끝난 뒤라야 한다
         //   CharacterBuilder 가 SpriteRenderer 를 갈아 끼우므로 그 전에 훑으면
-        //   이미 사라진 렌더러 목록을 들고 있게 된다.
-        if (!TryGetComponent<UnitDepthSorter>(out var depth))
-            depth = gameObject.AddComponent<UnitDepthSorter>();
-        depth.Rescan();
+        //   이미 사라진 렌더러 목록을 손보게 된다.
+        UnitSortingSetup.Apply(gameObject);
 
         // 피격 플래시가 도는 중에 죽으면 코루틴이 끊긴 채 빨간 색이 굳는다.
         // 풀에서 꺼낸 유닛이 그 색을 물려받지 않게 여기서 원래 색으로 되돌린다.
@@ -85,7 +83,7 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
             animSync.ClearTint();
 
         // 강화 버프 표시 — 프리팹을 고치지 않고 여기서 한 번만 붙인다
-        // (UnitDepthSorter 와 같은 방식. 모든 유닛이 지나는 유일한 길목이다)
+        // (UnitSortingSetup 과 같은 방식. 모든 유닛이 지나는 유일한 길목이다)
         if (!TryGetComponent<UnitBuffAuraView>(out _))
             gameObject.AddComponent<UnitBuffAuraView>();
 

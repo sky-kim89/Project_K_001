@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -409,10 +409,26 @@ public class TutorialOverlay : MonoBehaviour
         float cyAligned = Mathf.Clamp(hole.center.y, full.yMin + h * 0.5f + ScreenMargin,
                                                      full.yMax - h * 0.5f - ScreenMargin);
 
-        Vector2 Above() => new(cxAligned, full.yMax - ScreenMargin - h * 0.5f);
-        Vector2 Below() => new(cxAligned, full.yMin + ScreenMargin + h * 0.5f);
-        Vector2 Left()  => new(full.xMin + ScreenMargin + w * 0.5f, cyAligned);
-        Vector2 Right() => new(full.xMax - ScreenMargin - w * 0.5f, cyAligned);
+        // ⚠ 화면 가장자리가 아니라 **타겟 바로 옆**에 붙인다
+        //   예전엔 Above 가 full.yMax(화면 맨 위)로 보냈다. 그래서 화면 아래쪽
+        //   스킬 슬롯을 가리키면 말풍선만 화면 꼭대기로 날아가, 무엇을 가리키는지
+        //   눈으로 이을 수 없었다 ("지금 눌러 보세요" 가 아이콘에서 멀던 이유).
+        //   타겟에서 BubbleGap 만큼만 띄우고, 화면을 벗어날 때만 안으로 당긴다.
+        Vector2 Above() => new(cxAligned,
+            Mathf.Min(hole.yMax + BubbleGap + h * 0.5f,
+                      full.yMax - ScreenMargin - h * 0.5f));
+
+        Vector2 Below() => new(cxAligned,
+            Mathf.Max(hole.yMin - BubbleGap - h * 0.5f,
+                      full.yMin + ScreenMargin + h * 0.5f));
+
+        Vector2 Left()  => new(
+            Mathf.Max(hole.xMin - BubbleGap - w * 0.5f,
+                      full.xMin + ScreenMargin + w * 0.5f), cyAligned);
+
+        Vector2 Right() => new(
+            Mathf.Min(hole.xMax + BubbleGap + w * 0.5f,
+                      full.xMax - ScreenMargin - w * 0.5f), cyAligned);
 
         // ① 요청받은 방향
         if (requested == TutorialAnchor.Above && above >= needV) return Above();

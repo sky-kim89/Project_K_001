@@ -1,4 +1,4 @@
-using BattleGame.Units;
+﻿using BattleGame.Units;
 using Unity.Entities;
 using Unity.Transforms;
 using UnityEngine;
@@ -104,6 +104,12 @@ public class UnitAnimationSync : MonoBehaviour
 
         if (_animator == null)
             _animator = GetComponentInChildren<Animator>();
+
+        // 클립이 들고 있는 AnimationEvent 를 받아 줄 자리를 Animator 옆에 세운다.
+        // ⚠ 여기(루트)에 메서드를 추가해도 소용없다 — Unity 는 Animator 가 붙은
+        //   GameObject 에서만 수신자를 찾는다. 자세한 이유는 AnimationEventSink 참고.
+        if (_animator != null && !_animator.TryGetComponent<AnimationEventSink>(out _))
+            _animator.gameObject.AddComponent<AnimationEventSink>();
 
         // ⚠ 스프라이트는 하나가 아니다 (Body · 무기 Renderer · 그림자 Square)
         //   예전엔 GetComponentInChildren 으로 하나만 잡아 그것만 물들이고 되돌렸다.
@@ -292,7 +298,9 @@ public class UnitAnimationSync : MonoBehaviour
     ///   반영뿐이라, 일어나는 동안에도 맞고 때린다. 무적 구간을 만들려면
     ///   ECS 에 태그를 붙여야 한다 — 그건 연출이 아니라 규칙이다.
     /// </summary>
-    public void PlayRise(float duration = 0.45f)
+    // 기본값은 부르는 쪽이 값을 안 줄 때의 안전망일 뿐이다.
+    // 실제 길이의 정본은 SkeletonSpawner.RiseDuration — 두 값이 어긋나 보이지 않게 맞춰 둔다.
+    public void PlayRise(float duration = 0.3f)
     {
         if (_isDying || _isRising || _animator == null) return;
         StartCoroutine(RiseRoutine(duration));

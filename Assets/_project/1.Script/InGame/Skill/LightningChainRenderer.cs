@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 // ============================================================
@@ -42,7 +42,7 @@ public class LightningChainRenderer : MonoBehaviour
     /// </summary>
     public const int MaxChains = 160;
 
-    const int SortingOrder = 200;      // 유닛 스프라이트(100 / 105)보다 앞
+    const int SortingOrder = 200;      // 이펙트 대역 — EffectPrefabGenerator.EffectSortingOrder 와 같은 값
 
     // ⚠ 머티리얼 블렌드가 SrcAlpha One 이다 — 화면에 더해지는 양 = RGB × 알파.
     //   즉 알파가 곧 밝기다. 알파 0 인 정점은 아예 보이지 않는다.

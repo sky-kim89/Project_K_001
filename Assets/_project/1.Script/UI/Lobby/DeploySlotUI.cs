@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -46,6 +46,9 @@ public class DeploySlotUI : MonoBehaviour
     Texture2D              _portraitTexture;
 
     // ── 공개 API ─────────────────────────────────────────────
+
+    /// <summary>이 칸에 장수가 서 있는가. 튜토리얼이 가리킬 칸을 고를 때 쓴다.</summary>
+    public bool IsOccupied => _entry != null;
 
     public void Setup(int slotIndex, bool locked, Action<UnitEntry, int> onOccupied)
     {

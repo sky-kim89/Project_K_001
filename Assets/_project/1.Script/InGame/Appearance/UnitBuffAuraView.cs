@@ -41,23 +41,11 @@ using UnityEngine;
 //      자식 스프라이트는 유닛과 수명이 같아 그 관리가 통째로 사라진다.
 //
 //  ■ 정렬 — '제 유닛 앞' 이지 '모두의 앞' 이 아니다
-//    UnitDepthSorter 가 유닛마다 발 위치 Y 로 sortingOrder 를 매 프레임 다시 준다.
-//    앞줄 유닛은 큰 order, 뒷줄은 작은 order 를 갖는다.
-//    줄기는 **제 유닛의 가장 앞 레이어 +1** 을 따라가므로,
+//    유닛 루트에 SortingGroup 이 있어(UnitSortingSetup) 자식들의 order 는
+//    **그 유닛 안에서만** 의미를 갖는다. 무기(105)보다 큰 값을 주면
 //      · 제 몸·무기보다는 앞          (버프가 보인다)
-//      · 앞줄에 선 다른 유닛보다는 뒤  (남의 몸을 덮지 않는다)
-//    두 조건이 동시에 성립한다.
-//
-//    ⚠ Build 시점의 order 를 찍어 두면 안 된다
-//      그 값은 그 순간의 Y 로 계산된 것이다. 유닛이 움직이면 몸의 order 는
-//      따라 바뀌는데 줄기만 제자리에 남아, 결국 엉뚱한 유닛 앞뒤로 튄다.
-//      → 기준 렌더러를 들고 있다가 매 프레임 그 값을 다시 읽는다.
-//
-//    ⚠ UnitDepthSorter 에 등록하지 않는다
-//      Rescan() 은 캐시를 다시 잡는 무거운 경로이고, 오프셋이 적용된 상태에서
-//      부르면 그 오프셋이 기준값으로 굳어 재사용 때마다 정렬값이 밀려 올라간다
-//      (그 함정은 UnitDepthSorter.Cache 주석에 기록돼 있다).
-//      따라오기만 하면 되는 쪽이 스스로 읽는 편이 안전하다.
+//      · 다른 유닛과의 앞뒤는 그룹이 결정  (남의 몸을 덮지 않는다)
+//    두 조건이 저절로 성립한다 — 매 프레임 order 를 쫓아다닐 필요가 없다.
 //
 //  ■ 버프 목록은 매 프레임 훑지 않는다
 //    DynamicBuffer 읽기는 비용이 있다. 목록 확인은 0.2초마다,
@@ -105,9 +93,13 @@ public class UnitBuffAuraView : MonoBehaviour
     float            _nextPoll;
     int              _activeCount;  // 지금 보여 주는 '버프' 수 (줄기 수가 아니다)
 
-    // 정렬 기준 — 이 유닛에서 가장 앞에 그려지는 렌더러. 매 프레임 이 값 +1 을 따라간다.
-    SpriteRenderer   _orderRef;
-    int              _lastOrder = int.MinValue;
+    /// <summary>
+    /// 그룹 안에서 줄기가 설 자리. 무기(105)보다 위면 된다.
+    ///
+    /// SortingGroup 덕분에 이 값은 다른 유닛과 아무 관계가 없다 —
+    /// 유닛끼리의 앞뒤는 그룹이 통째로 정한다.
+    /// </summary>
+    const int StreakOrder = 110;
 
     // 유닛마다 다른 박자로 솟게 하는 시작 위상 — 부대 전체가 같이 깜빡이면 기계처럼 보인다
     float _phase;
@@ -193,75 +185,13 @@ public class UnitBuffAuraView : MonoBehaviour
         _nextPoll    = 0f;
         _activeCount = 0;
 
-        // 풀에서 다시 꺼내면 외형이 갈아 끼워졌을 수 있다 — 기준을 다시 잡는다
-        _orderRef    = null;
-        _lastOrder   = int.MinValue;
-
         Hide();
     }
 
     void LateUpdate()
     {
         RefreshPicks();
-        UpdateOrder();
         Animate();
-    }
-
-    /// <summary>
-    /// 줄기를 '제 유닛의 가장 앞' 바로 앞에 세운다.
-    ///
-    /// UnitDepthSorter 가 매 프레임 유닛의 order 를 Y 로 다시 주므로,
-    /// 여기서도 매 프레임 그 값을 다시 읽어야 한다. 한 번 찍어 두면
-    /// 유닛이 움직이는 순간부터 다른 유닛들 사이 엉뚱한 깊이에 남는다.
-    /// </summary>
-    void UpdateOrder()
-    {
-        if (_activeCount <= 0 || _streaks == null) return;
-
-        // 외형이 새로 조립되면(CharacterBuilder.Rebuild) 기준 렌더러가 사라진다
-        if (_orderRef == null) FindOrderRef();
-        if (_orderRef == null) return;
-
-        int want = _orderRef.sortingOrder + 1;
-        if (want == _lastOrder) return;      // 값이 그대로면 렌더러를 건드리지 않는다
-        _lastOrder = want;
-
-        for (int i = 0; i < _streaks.Length; i++)
-        {
-            if (_streaks[i] == null) continue;
-            _streaks[i].sortingOrder = want;
-        }
-    }
-
-    /// <summary>
-    /// 이 유닛에서 가장 앞에 그려지는 렌더러를 찾는다.
-    ///
-    /// ⚠ 줄기 자신은 후보에서 빼야 한다
-    ///   포함하면 매 프레임 '가장 앞 = 줄기' 가 되어 order 가 1씩 계속 올라가고,
-    ///   결국 이펙트 대역(200)을 넘어 폭발 연출을 덮는다.
-    /// </summary>
-    void FindOrderRef()
-    {
-        var all = GetComponentsInChildren<SpriteRenderer>(true);
-        SpriteRenderer best = null;
-
-        for (int i = 0; i < all.Length; i++)
-        {
-            var r = all[i];
-            if (r == null || IsStreak(r)) continue;
-            if (best == null || r.sortingOrder > best.sortingOrder) best = r;
-        }
-
-        _orderRef  = best;
-        _lastOrder = int.MinValue;
-    }
-
-    bool IsStreak(SpriteRenderer r)
-    {
-        if (_streaks == null) return false;
-        for (int i = 0; i < _streaks.Length; i++)
-            if (ReferenceEquals(_streaks[i], r)) return true;
-        return false;
     }
 
     /// <summary>0.2초마다 버프 목록을 훑어 보여 줄 색을 정한다.</summary>
@@ -455,7 +385,6 @@ public class UnitBuffAuraView : MonoBehaviour
     {
         _streaks = new SpriteRenderer[TotalStreaks];
 
-        FindOrderRef();
         var sprite = SharedPillar();
 
         for (int i = 0; i < MaxBuffs; i++)
@@ -470,9 +399,9 @@ public class UnitBuffAuraView : MonoBehaviour
             var sr    = go.AddComponent<SpriteRenderer>();
             sr.sprite = sprite;
 
-            // 레이어만 맞춰 둔다 — order 는 UpdateOrder 가 매 프레임 잡는다
-            if (_orderRef != null)
-                sr.sortingLayerID = _orderRef.sortingLayerID;
+
+            // 그룹 안이라 값이 고정이다 — 유닛끼리의 앞뒤는 SortingGroup 이 정한다
+            sr.sortingOrder = StreakOrder;
 
             _streaks[i * StreaksPerBuff + k] = sr;
         }

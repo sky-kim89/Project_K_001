@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
@@ -50,7 +50,7 @@ public static class RareSkillEffectGenerator
 {
     const string kSavePath = "Assets/_project/2.Prefabs/Effect";
     const string kMatPath  = "Assets/_project/4.Materials/FX";
-    const int    kSortOrder = 200;   // EffectPrefabGenerator 와 같은 값 — 유닛(100/105)보다 앞
+    const int    kSortOrder = 200;   // EffectPrefabGenerator.EffectSortingOrder 와 같은 값 — 유닛 그룹(100)보다 앞
 
     // 바닥에 깔리는 범위 표시용. 유닛(100/105)보다 **뒤** 라야 캐릭터를 덮지 않는다.
     // 범위 표시는 "어디까지 걸리는가" 를 읽는 정보라 캐릭터를 가리면 안 된다.

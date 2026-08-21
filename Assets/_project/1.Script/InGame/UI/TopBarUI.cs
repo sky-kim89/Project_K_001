@@ -1,4 +1,4 @@
-using Unity.Collections;
+﻿using Unity.Collections;
 using Unity.Entities;
 using BattleGame.Units;
 using UnityEngine;
@@ -65,6 +65,9 @@ public class TopBarUI : MonoBehaviour
     //   본체는 Button.targetGraphic 이라 색을 바꾸면 눌림 색 역산이 어긋난다.
     [SerializeField] Image           _speedFace;
 
+    [Tooltip("배속이 잠겨 있을 때 이유를 알려 주는 툴팁. 배속 버튼 아래로 펼쳐진다.")]
+    [SerializeField] InfoTooltipUI    _speedLockTooltip;
+
     [Header("AUTO 토글 (스킬 자동 사용)")]
     [SerializeField] Button          _autoButton;
     [SerializeField] TextMeshProUGUI _autoLabel;
@@ -84,12 +87,20 @@ public class TopBarUI : MonoBehaviour
     static int UnlockedSpeedCount
         => Mathf.Clamp(RelicApplier.GetBattleSpeedStepCount(), 1, SpeedSteps.Length);
 
+    // 잠겨 있을 때 눌렀을 때의 안내. 유물 이름을 직접 박아 두지 않는다 —
+    // 유물 이름이 바뀌면 여기도 같이 틀려지므로 DB 에서 읽어 온다.
+    const string SpeedLockTitle = "전투 배속";
+    const string SpeedLockDesc  = "배속 유물을 습득한 뒤 시도해 주세요.";
+
     static readonly Color[] SpeedColors =
     {
         new Color(0.18f, 0.30f, 0.46f, 1f),   // 1× — 차분한 남색
         new Color(0.24f, 0.46f, 0.36f, 1f),   // 2× — 청록
         new Color(0.52f, 0.36f, 0.10f, 1f),   // 3× — 금빛 (가장 빠름)
     };
+
+    // 배속이 잠겼을 때의 띠 색 — 1× 정상 색보다 확실히 죽은 회색.
+    static readonly Color SpeedLockedFace = new Color(0.26f, 0.27f, 0.32f, 1f);
 
     // AUTO 켜짐/꺼짐 — 띠 색과 글자 색을 함께 바꾼다.
     // 6px 띠 하나만으로는 켜졌는지 한눈에 안 잡힌다.
@@ -337,6 +348,17 @@ public class TopBarUI : MonoBehaviour
         // 여기서 바꾸면 그 복원값이 0 으로 덮여 게임이 멈춘 채 돌아온다.
         if (Time.timeScale <= 0f) return;
 
+        // 아직 못 여는 상태면 왜 안 되는지 알려 준다.
+        //
+        // ⚠ 버튼을 비활성(interactable=false)으로 두면 안 된다
+        //   눌러도 onClick 이 오지 않아 이유를 말할 기회 자체가 없다.
+        //   회색으로 죽어 있는 버튼은 "고장" 으로 읽히지, "조건 미달" 로 읽히지 않는다.
+        if (UnlockedSpeedCount <= 1)
+        {
+            ShowSpeedLockTooltip();
+            return;
+        }
+
         // 해금된 단계 안에서만 순환한다 (유물 0레벨이면 1× 하나뿐이라 제자리).
         _speedIndex = (_speedIndex + 1) % UnlockedSpeedCount;
         ApplySpeed();
@@ -354,8 +376,37 @@ public class TopBarUI : MonoBehaviour
         if (_speedLabel != null) _speedLabel.text  = $"{speed:0}×";
         if (_speedFace  != null) _speedFace.color  = SpeedColors[_speedIndex];
 
-        // 1× 하나뿐이면 눌러도 바뀌는 게 없다 — 눌리지 않게 해서 이유를 보여 준다.
-        if (_speedButton != null) _speedButton.interactable = UnlockedSpeedCount > 1;
+        // ⚠ 잠겨 있어도 버튼은 살려 둔다
+        //   예전엔 여기서 interactable=false 를 줬는데, 그러면 눌러도 아무 일이
+        //   일어나지 않아 "왜 안 되는지" 를 말할 자리가 사라진다.
+        //   대신 눌렀을 때 CycleSpeed 가 툴팁으로 답한다.
+        if (_speedButton != null) _speedButton.interactable = true;
+
+        // 잠긴 상태는 색으로 미리 알린다 — 눌러 보기 전에도 구분되게.
+        if (_speedFace != null && UnlockedSpeedCount <= 1)
+            _speedFace.color = SpeedLockedFace;
+    }
+
+    /// <summary>
+    /// 배속이 왜 안 되는지 알려 준다.
+    ///
+    /// 유물 이름은 DB 에서 읽는다 — 여기에 문자열로 박아 두면 유물 이름을
+    /// 고쳤을 때 안내만 옛 이름으로 남는다.
+    /// </summary>
+    void ShowSpeedLockTooltip()
+    {
+        if (_speedLockTooltip == null) return;
+
+        string relicName = RelicDatabase.Current != null
+            ? RelicDatabase.Current.NameOfSystemEffect(RelicSystemEffect.BattleSpeedUnlock)
+            : null;
+
+        string desc = string.IsNullOrEmpty(relicName)
+            ? SpeedLockDesc
+            : $"'{relicName}' 유물을 습득한 뒤 시도해 주세요.";
+
+        _speedLockTooltip.ShowAnchored(
+            _speedButton.transform as RectTransform, SpeedLockTitle, desc, "");
     }
 
     // ── 자동 스킬 토글 ─────────────────────────────────────────

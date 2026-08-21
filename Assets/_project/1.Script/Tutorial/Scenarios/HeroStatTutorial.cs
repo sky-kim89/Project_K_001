@@ -1,6 +1,7 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine;
 
 // ============================================================
 //  HeroStatTutorial.cs
@@ -39,20 +40,47 @@ public class HeroStatTutorial : TutorialScenario
     // ── 팝업 열기 ────────────────────────────────────────────
 
     /// <summary>
-    /// ⚠ DeployArea 는 버튼이 아니라 배치 칸을 담은 컨테이너다
-    ///   눌린 것을 Button.onClick 으로 잡을 수 없어(첫 칸이 비었거나 잠겼을
-    ///   수도 있다) 시간 초과까지 멈춰 있게 된다.
+    /// ⚠ DeployArea 를 가리키면 안 된다 — 화면 세로 전체를 차지하는 열이다
+    ///   구멍이 화면 높이만큼 뚫려 말풍선이 그 옆으로 밀려나고, 정작 눌러야 할
+    ///   장수가 어느 칸인지 가리켜지지 않는다. 실제로 서 있는 칸 하나만 판다.
+    ///
+    /// ⚠ 눌린 것을 Button.onClick 으로 잡지 않는다
+    ///   칸이 비었거나 잠겼을 수도 있어 확실하지 않다.
     ///   "장수 상세가 열렸다" 를 완료 조건으로 준다.
     /// </summary>
     IEnumerator AskToOpen()
     {
         yield return Show(TutorialStep.Point(
-                ByName("DeployArea"),
+                FirstOccupiedSlot,
                 "배치된 장수를 눌러 보세요.",
                 TutorialAnchor.Above)
             .ClickTarget()
             .Until(() => PopupManager.Instance != null
                       && PopupManager.Instance.IsOpen(PopupType.HeroDetail)));
+    }
+
+    /// <summary>
+    /// 장수가 서 있는 첫 배치 칸. 하나도 없으면 열 전체로 물러선다.
+    ///
+    /// ⚠ ByName("Slot_0") 을 쓰지 않는다
+    ///   0번 칸이 비어 있을 수 있다. 빈 칸은 버튼이 꺼져 있어(interactable=false)
+    ///   눌러도 아무 일이 없고, 튜토리얼은 시간 초과까지 멈춰 선다.
+    /// </summary>
+    static RectTransform FirstOccupiedSlot()
+    {
+        var area = ByName("DeployArea")();
+        if (area == null) return null;
+
+        for (int i = 0; i < area.childCount; i++)
+        {
+            var child = area.GetChild(i);
+            if (!child.gameObject.activeInHierarchy) continue;
+
+            var slot = child.GetComponent<DeploySlotUI>();
+            if (slot != null && slot.IsOccupied) return child as RectTransform;
+        }
+
+        return area;   // 배치된 장수가 없다 — 적어도 어디를 보는지는 알려 준다
     }
 
     IEnumerator WaitForPopupOpen()

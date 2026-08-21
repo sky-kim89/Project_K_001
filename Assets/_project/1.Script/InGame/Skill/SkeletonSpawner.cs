@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using UnityEngine;
 using BattleGame.Units;
 
@@ -27,7 +27,7 @@ public static class SkeletonSpawner
     /// ⚠ 연출·이동잠금·무적이 같은 값을 써야 한다
     ///   따로 두면 "일어섰는데 아직 못 움직인다" 거나 "웅크린 채 맞는다" 가 된다.
     /// </summary>
-    public const float RiseDuration = 0.45f;
+    public const float RiseDuration = 0.3f;
 
     /// <summary>지정 위치에 스켈레톤 1기를 소환한다. 실패하면 null.</summary>
     public static GameObject Spawn(EntityManager em, string poolKey, Vector3 position,

@@ -114,6 +114,12 @@ public static class EffectPrefabGenerator
     //    Unity 가 조용히 무시했고, 결국 모든 이펙트가 Default 레이어의 order 5 로 남았다.
     //    유닛 스프라이트는 order 100 / 105 를 쓰므로 이펙트가 전부 캐릭터 뒤에 깔렸다.
     //    → 같은 레이어 안에서 order 로만 앞뒤가 갈리므로 유닛보다 확실히 큰 값을 준다.
+    //
+    //  유닛은 SortingGroup 으로 묶여 order 100 하나만 쓴다(UnitSortingSetup).
+    //  200 이면 항상 그 위에 뜬다.
+    //
+    //  ⚠ 이 값을 바꾸면 RareSkillEffectGenerator.kSortOrder 와
+    //    LightningChainRenderer.SortingOrder 도 같이 바꿔야 한다 (같은 대역이다).
     const int EffectSortingOrder = 200;
 
     static ParticleSystem AddPS(GameObject go)
