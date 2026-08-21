@@ -19,6 +19,17 @@ using UnityEngine;
 
 public static class EventRewardHandler
 {
+    /// <summary>
+    /// 이벤트로 여는 장비 박스의 최저 등급.
+    ///
+    /// ⚠ 이벤트는 기대를 세워 놓고 카드를 뒤집는다
+    ///   "귀한 것을 내주겠다" 는 문장을 읽고 고른 선택지에서 일반 등급이 나오면
+    ///   보상이 아니라 실망이 된다. 일상 드랍(스테이지 클리어)과 달리 이쪽은
+    ///   하한을 올려 둔다. 초반 스테이지라 상위 등급 풀이 비어 있으면
+    ///   EquipmentDatabase.GetDropPool 이 하한 등급만은 열어 준다.
+    /// </summary>
+    public const UnitGrade EventEquipMinGrade = UnitGrade.Uncommon;
+
     // ── 랜덤 버프/디버프 특성 풀 ─────────────────────────────
 
     static readonly TraitType[] BuffTraitPool =
@@ -145,7 +156,8 @@ public static class EventRewardHandler
                         for (int i = 0; i < count; i++)
                         {
                             var opened = RewardOpener.Commit(
-                                new ItemAmount { Item = r.Item, Amount = 1 }, CurrentStageLevel());
+                                new ItemAmount { Item = r.Item, Amount = 1 }, CurrentStageLevel(),
+                                EventEquipMinGrade);
                             granted.Add(RewardOpener.ToView(opened));
                         }
                         break;

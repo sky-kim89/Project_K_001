@@ -6,10 +6,9 @@ using UnityEngine;
 //
 //  수집 1종당 공격력·체력 +0.5% (CodexData.BonusPerEntry).
 //
-//  ■ 두 경로가 같은 규칙을 쓴다 — 반드시 여기만 고칠 것
-//    로비 표시 : HeroStatResolver.Resolve  → Accumulate(result)
-//    전투 실제 : GeneralRuntimeBridge      → ApplyToGeneralStat(stat)
-//    한쪽만 고치면 로비에서 본 수치와 전투 수치가 어긋난다.
+//  ■ 경로가 하나다
+//    HeroStatPipeline 6단계에서 ApplyToGeneralStat 한 번만 불린다.
+//    표시도 전투도 그 결과를 읽으므로 어긋날 자리가 없다.
 //
 //  ■ 장군에게만 건다
 //    병사 스탯은 장군 스탯 × SoldierRuntimeBridge.StatRatio 로 파생되므로
@@ -54,24 +53,7 @@ public static class CodexApplier
         }
     }
 
-    /// <summary>로비 표시용 — HeroStatResult 에 도감 몫을 채운다.</summary>
-    public static void Accumulate(HeroStatResult result)
-    {
-        float ratio = BonusRatio;
-        if (result == null || ratio <= 0f) return;
-
-        foreach (var stat in BuffedStats)
-        {
-            // 앞 단계까지의 합계에 비례 — 전투의 stat.Get(stat) 시점과 같다
-            float delta = result.Total(stat) * ratio;
-            if (Mathf.Abs(delta) < 0.001f) continue;
-
-            result.CodexBonuses[stat] =
-                result.CodexBonuses.TryGetValue(stat, out var cur) ? cur + delta : delta;
-        }
-    }
-
-    /// <summary>전투용 — 장군 UnitStat 에 도감 몫을 더한다.</summary>
+    /// <summary>장군 UnitStat 에 도감 몫을 더한다 (표시·전투 공용 — HeroStatPipeline 6단계).</summary>
     public static void ApplyToGeneralStat(UnitStat stat)
     {
         float ratio = BonusRatio;

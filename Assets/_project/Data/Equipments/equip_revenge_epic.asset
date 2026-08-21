@@ -10,26 +10,32 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2af4d907098e79d4b9dc36dc59da3a24, type: 3}
-  m_Name: equip_revenge_unique
+  m_Name: equip_revenge_epic
   m_EditorClassIdentifier: 
-  EquipmentId: equip_revenge_unique
+  EquipmentId: equip_revenge_epic
   EquipmentName: "\uBCF5\uC218\uC758 \uAC11\uC637"
   Description: "\uD53C\uB97C \uBCF4\uBA74 \uBD84\uB178\uAC00 \uB053\uC5B4\uC624\uB974\uB294
     \uAC11\uC637. \uD53C\uACA9\uB420 \uB54C\uB9C8\uB2E4 \uC804\uD22C\uB825\uC774
     \uD3ED\uBC1C\uD55C\uB2E4."
-  Icon: {fileID: 21300000, guid: 39db3f6da366967498a99ebf3fbe2750, type: 3}
-  Grade: 3
+  Icon: {fileID: 21300000, guid: 62c2187e4b989b3c6fbb06dcfe6f7fda, type: 3}
+  Grade: 4
   StatEntries:
   - Stat: 1
-    Delta: 0.12
+    Delta: 0.16
+  - Stat: 0
+    Delta: 250
   TriggerType: 2
+  EffectKind: 0
+  TriggerTarget: 0
   TriggerStat: 2
-  TriggerValue: 250
+  TriggerValue: 150
   TriggerIsPercent: 0
   TriggerPercentBase: 0
   TriggerChance: 0.4
   TriggerDuration: 2
-  ItemLevel: 4
+  ItemLevel: 5
+  SummonPoolKey: Soldier
+  SummonStatRatio: 0.4
   ValuePerLevel: 0.1
-  BaseEnhanceStoneCost: 6
-  BaseGoldCost: 1000
+  BaseEnhanceStoneCost: 10
+  BaseGoldCost: 2000

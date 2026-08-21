@@ -94,7 +94,8 @@ public static class TraitCreator
         {
             type = TraitType.KnightCommand,
             name = "지휘관의 기질",
-            desc = "전장을 호령하는 기사의 타고난 통솔력. 병사 +5, 지휘력 +5.",
+            // 설명에 수치를 적지 않는다 — 스탯 줄(BuildStatText)이 이미 말한다
+            desc = "전장을 호령하는 기사의 타고난 통솔력.",
             job  = UnitJob.Knight,
             fx   = new[]
             {

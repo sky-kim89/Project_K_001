@@ -10,26 +10,30 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2af4d907098e79d4b9dc36dc59da3a24, type: 3}
-  m_Name: equip_vamp_unique
+  m_Name: equip_vamp_epic
   m_EditorClassIdentifier: 
-  EquipmentId: equip_vamp_unique
-  EquipmentName: "\uD761\uD608 \uBC18\uC9C0"
+  EquipmentId: equip_vamp_epic
+  EquipmentName: "\uD761\uD608\uC758 \uBC18\uC9C0"
   Description: "\uD53C\uB97C \uBE68\uC544\uB4E4\uC774\uB294 \uC800\uC8FC\uBC1B\uC740
-    \uBC18\uC9C0. \uACF5\uACA9 \uC2DC 30% \uD655\uB960\uB85C \uC900 \uD53C\uD574\uC758
-    10%\uB97C \uCCB4\uB825\uC73C\uB85C \uD761\uC218\uD55C\uB2E4."
-  Icon: {fileID: 21300000, guid: bddced8262c7f1440aae8b97ae1e9f53, type: 3}
-  Grade: 3
+    \uBC18\uC9C0. \uACF5\uACA9\uD560 \uB54C\uB9C8\uB2E4 \uB0A8\uC758 \uD53C\uB85C
+    \uC81C \uC0C1\uCC98\uB97C \uBA54\uC6B4\uB2E4."
+  Icon: {fileID: 21300000, guid: 4e8208a45c52a2d924dd69bd7acd0a5c, type: 3}
+  Grade: 4
   StatEntries:
   - Stat: 2
-    Delta: 40
+    Delta: 55
   TriggerType: 1
+  EffectKind: 0
+  TriggerTarget: 0
   TriggerStat: 0
-  TriggerValue: 0.1
+  TriggerValue: 0.15
   TriggerIsPercent: 1
   TriggerPercentBase: 1
-  TriggerChance: 0.3
+  TriggerChance: 0.35
   TriggerDuration: 0
-  ItemLevel: 4
+  ItemLevel: 5
+  SummonPoolKey: Soldier
+  SummonStatRatio: 0.4
   ValuePerLevel: 0.1
-  BaseEnhanceStoneCost: 6
-  BaseGoldCost: 1000
+  BaseEnhanceStoneCost: 10
+  BaseGoldCost: 2000

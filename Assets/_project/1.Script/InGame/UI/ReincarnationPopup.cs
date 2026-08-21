@@ -27,6 +27,10 @@ public class ReincarnationPopup : PopupBase
     [SerializeField] Transform       _abilityIconContent;   // HLG + CSF, 런타임 생성
     [SerializeField] TextMeshProUGUI _abilityEmptyText;     // 하나도 없을 때만 표시
 
+    // 아이콘만으로는 무슨 어빌리티인지 알 수 없다 — 도감과 같은 툴팁을 띄운다.
+    // (팝업 루트에 하나만 두고 누른 타일 옆으로 옮겨 붙인다)
+    [SerializeField] InfoTooltipUI   _abilityTooltip;
+
     [Header("통계 탭")]
     [SerializeField] Button[] _tabButtons;            // 0=딜, 1=탱, 2=힐
     [SerializeField] Image[]  _tabButtonBgs;          // 탭 하단 강조바 (활성만 색을 켠다)
@@ -152,6 +156,15 @@ public class ReincarnationPopup : PopupBase
         faceRt.offsetMax = new Vector2(-Border, -Border);
         face.GetComponent<Image>().color = gc * 0.22f + new Color(0.06f, 0.07f, 0.12f, 1f);
 
+        // 타일을 누르면 도감과 같은 내용(이름·설명·스탯)을 띄운다
+        //  ⚠ 면(Face)이 아니라 타일 자신에 붙인다 — 자식이 레이캐스트를 먹으면
+        //    등급 테두리 가장자리를 눌렀을 때 반응이 없다.
+        var tileBtn = tile.AddComponent<Button>();
+        tileBtn.transition = Selectable.Transition.None;
+        var tileRt = tile.GetComponent<RectTransform>();
+        var captured = data;
+        tileBtn.onClick.AddListener(() => ShowAbilityTooltip(captured, tileRt));
+
         if (data.Icon != null)
         {
             var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(Image));
@@ -189,6 +202,20 @@ public class ReincarnationPopup : PopupBase
         lvTmp.color     = level >= data.MaxLevel
             ? new Color(1f, 0.85f, 0.2f)
             : new Color(0.7f, 0.85f, 1f);
+    }
+
+    /// <summary>
+    /// 어빌리티 타일 툴팁 — 내용은 도감·보상 카드와 같은 출처(RewardInfoResolver)를 쓴다.
+    ///
+    /// 여기서 문구를 따로 만들지 않는다 — 같은 어빌리티가 화면마다 다르게
+    /// 설명되면 그 순간 어느 쪽이 맞는지 알 수 없다.
+    /// </summary>
+    void ShowAbilityTooltip(AbilityData data, RectTransform owner)
+    {
+        if (_abilityTooltip == null || data == null) return;
+
+        var info = RewardInfoResolver.Resolve(RewardView.OfAbility(data.Id));
+        _abilityTooltip.ShowAnchored(owner, info.Name, info.Description, info.StatText);
     }
 
     // ── 장수 행 ───────────────────────────────────────────────

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 
 // ============================================================
@@ -403,7 +403,11 @@ public class GameplayConfig : ScriptableObject
         MageRange = new JobStatRange
         {
             Hp           = new FloatRange(445.5f, 1023f),  // +50% 상향 후 +10%
-            Attack       = new FloatRange(65f,    185f),   // 한 방이 굵은 것이 법사의 정체성 (전원 ×0.5)
+            Attack       = new FloatRange(85f,    185f),   // 한 방이 굵은 것이 법사의 정체성 (전원 ×0.5)
+                                                          // ⚠ 하한을 올린 이유 — 못 뽑힌 법사가 게임에서 제일 약했다
+                                                          //   공속이 궁수의 1/3 이라 공격력 하한이 낮으면 DPS 바닥이
+                                                          //   궁수·기사보다도 아래로 내려간다. 상한은 그대로 두어
+                                                          //   '한 방이 굵다' 는 정체성과 뽑기의 진폭은 유지한다.
             Defense      = new FloatRange(0.02f,  0.08f),
             AttackRange  = new FloatRange(4.0f,   7.0f),
             AttackSpeed  = new FloatRange(0.315f, 0.675f), // -10% 하향 — DPS 는 공속으로만 깎는다

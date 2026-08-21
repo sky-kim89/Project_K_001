@@ -70,6 +70,9 @@ public class SkillZoneRunner : MonoBehaviour
         public TeamType   CasterTeam;    // 적 팀 = 반대 팀
         public Entity     CasterEntity;
 
+        /// <summary>어느 스킬이 깐 장판인가 — 디버프 중첩 판정의 열쇠다.</summary>
+        public ActiveSkillId SourceSkill;
+
         // 디버프 1 (선택)
         public bool       HasDebuff1;
         public StatType   Debuff1Stat;
@@ -195,9 +198,11 @@ public class SkillZoneRunner : MonoBehaviour
                 var buff = em.Value.GetBuffer<StatusEffectBufferElement>(entities[i]);
 
                 if (cfg.HasDebuff1)
-                    RefreshOrAddDebuff(buff, cfg.Debuff1Stat, cfg.Debuff1Delta, cfg.Debuff1Mode, refreshTime);
+                    RefreshOrAddDebuff(buff, cfg.Debuff1Stat, cfg.Debuff1Delta, cfg.Debuff1Mode,
+                                       refreshTime, cfg.SourceSkill);
                 if (cfg.HasDebuff2)
-                    RefreshOrAddDebuff(buff, cfg.Debuff2Stat, cfg.Debuff2Delta, cfg.Debuff2Mode, refreshTime);
+                    RefreshOrAddDebuff(buff, cfg.Debuff2Stat, cfg.Debuff2Delta, cfg.Debuff2Mode,
+                                       refreshTime, cfg.SourceSkill);
             }
         }
 
@@ -210,30 +215,52 @@ public class SkillZoneRunner : MonoBehaviour
         query.Dispose();
     }
 
+    /// <summary>
+    /// 존 디버프를 건다 — **같은 스킬이면 갱신, 다른 스킬이면 따로 쌓인다.**
+    ///
+    /// ⚠ 자기 자신과는 절대 겹치면 안 된다
+    ///   장판은 0.5초마다 틱을 돈다. 틱마다 새 줄이 생기면 세 틱 만에
+    ///   이동속도가 ×0.25³ = 0.015 가 되어 **가만히 서서 맞기만 하는 유닛**이 된다.
+    ///   장판 안에 오래 있을수록 느려지는 것이 아니라, 들어온 순간의 세기가 유지돼야 한다.
+    ///
+    /// ⚠ 다른 스킬과는 겹쳐야 한다
+    ///   블리자드 위에 독성 지대를 겹쳐 까는 것은 플레이어의 선택이고 값을 치른 결과다.
+    ///   그래서 '스탯' 이 아니라 (스탯 · 모드 · **출처 스킬**) 로 자리를 잡는다.
+    ///
+    /// ⚠ 자리를 스킬로 잡으므로 시전자가 둘이어도 하나다
+    ///   법사 둘이 같은 블리자드를 깔아도 한 자리를 나눠 쓴다 — 겹쳐 깔아 얼리는
+    ///   전술이 성립하지 않게 하려는 의도다 (같은 마법을 두 번 쓴 것뿐이다).
+    /// </summary>
     static void RefreshOrAddDebuff(
         DynamicBuffer<StatusEffectBufferElement> buff,
-        StatType stat, float delta, EffectMode mode, float refreshTime)
+        StatType stat, float delta, EffectMode mode, float refreshTime,
+        ActiveSkillId sourceSkill)
     {
+        int sourceId = (int)sourceSkill;
+
         for (int j = 0; j < buff.Length; j++)
         {
             var b = buff[j];
-            if (b.Stat == stat && b.Mode == mode && math.abs(b.Delta - delta) < 0.001f)
-            {
-                // 기존 효과 갱신 (남은 시간 연장)
-                b.Remaining = math.max(b.Remaining, refreshTime);
-                buff[j]     = b;
-                return;
-            }
+            if (b.Stat != stat || b.Mode != mode) continue;
+            if (b.SourceType != BuffSourceType.ActiveSkill || b.SourceId != sourceId) continue;
+
+            // 같은 스킬의 다음 틱 — 새로 쌓지 않고 시간만 되살린다
+            b.Delta     = delta;
+            b.Remaining = math.max(b.Remaining, refreshTime);
+            b.Duration  = math.max(b.Duration,  refreshTime);
+            buff[j]     = b;
+            return;
         }
 
-        // 새로 추가
         buff.Add(new StatusEffectBufferElement
         {
-            Stat      = stat,
-            Delta     = delta,
-            Mode      = mode,
-            Duration  = refreshTime,
-            Remaining = refreshTime,
+            Stat       = stat,
+            Delta      = delta,
+            Mode       = mode,
+            Duration   = refreshTime,
+            Remaining  = refreshTime,
+            SourceType = BuffSourceType.ActiveSkill,
+            SourceId   = sourceId,
         });
     }
 }

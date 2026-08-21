@@ -102,6 +102,59 @@ public static class StatBonusColors
     public static Color PassiveColor => new Color(0.33f, 0.80f, 0.47f);
     public static Color AbilityColor => new Color(1.00f, 0.67f, 0.27f);
     public static Color RelicColor   => new Color(0.80f, 0.40f, 1.00f);
+    public static Color TraitColor   => new Color(1.00f, 0.40f, 0.53f);
+    public static Color CodexColor   => new Color(0.27f, 0.87f, 0.80f);
+
+    // ── 출처 색 입히기 ────────────────────────────────────────
+    //
+    //  ⚠ 색이 곧 '어디서 온 수치인가' 다
+    //    스탯 창에서 숫자를 누르면 "2,343 +28 +2,502 …" 로 출처별 색이 갈린다.
+    //    그런데 정작 그 수치를 주는 화면(장비·어빌리티·유물·도감)은 전부 흰 글씨라
+    //    파란 +2,502 가 어느 장비에서 왔는지 알 방법이 없었다.
+    //    옵션을 보여 주는 모든 화면이 같은 색을 쓰면, 색만 보고 출처가 읽힌다.
+    //
+    //  ⚠ 새 화면을 만들 때도 반드시 이걸 거칠 것
+    //    각자 하드코딩하면 화면마다 파랑이 조금씩 달라지고, 그 순간 규칙이 깨진다.
+
+    public static string Hex(StatSource source) => source switch
+    {
+        StatSource.Equip   => Equip,
+        StatSource.Passive => Passive,
+        StatSource.Ability => Ability,
+        StatSource.Relic   => Relic,
+        StatSource.Trait   => Trait,
+        StatSource.Codex   => Codex,
+        _                  => "FFFFFF",
+    };
+
+    public static Color Of(StatSource source) => source switch
+    {
+        StatSource.Equip   => EquipColor,
+        StatSource.Passive => PassiveColor,
+        StatSource.Ability => AbilityColor,
+        StatSource.Relic   => RelicColor,
+        StatSource.Trait   => TraitColor,
+        StatSource.Codex   => CodexColor,
+        _                  => Color.white,
+    };
+
+    /// <summary>"공격력 +30" 을 출처 색으로 감싼다. 빈 문자열은 그대로 둔다.</summary>
+    public static string Wrap(StatSource source, string text)
+        => string.IsNullOrEmpty(text) ? text : $"<color=#{Hex(source)}>{text}</color>";
+}
+
+/// <summary>
+/// 스탯을 올려 주는 출처. 색·아이콘·분해 표시가 이 값으로 갈린다.
+/// (스탯 창의 분해 순서와 같은 순서로 둔다)
+/// </summary>
+public enum StatSource
+{
+    Equip   = 0,
+    Passive = 1,
+    Ability = 2,
+    Relic   = 3,
+    Trait   = 4,
+    Codex   = 5,
 }
 
 // ── 스탯 수치 포맷터 ─────────────────────────────────────────
@@ -179,6 +232,11 @@ public static class StatDisplayHelper
         float baseVal, float equipVal, float passiveVal, float abilityVal, float relicVal = 0f, float traitVal = 0f,
         float codexVal = 0f)
     {
+        // ⚠ 한 줄로 유지한다 — 줄바꿈으로 늘리지 말 것
+        //   출처가 여섯이라 길어지지만, 두 줄로 접으면 스탯 목록의 행 간격이
+        //   행마다 들쭉날쭉해져 표가 통째로 지저분해진다.
+        //   칸을 넘칠 때는 TMP AutoSize 로 글자를 줄여 담는다
+        //   (HeroDetailPopup.RefreshStatRow 의 overflowMode 주석 참고).
         var sb = new System.Text.StringBuilder();
         sb.Append(FormatStat(stat, baseVal));
         if (equipVal   != 0f) sb.Append($"  <color=#{StatBonusColors.Equip}>{FormatStat(stat, equipVal,   withSign: true)}</color>");

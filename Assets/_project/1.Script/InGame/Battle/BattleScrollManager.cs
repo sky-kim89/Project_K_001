@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // ============================================================
 //  BattleScrollManager.cs
@@ -98,17 +98,35 @@ public class BattleScrollManager : Singleton<BattleScrollManager>
     void OnBattleEnd()   => StopScroll();
 
     /// <summary>
-    /// 난이도 선택이 바뀌었다 — 대기 화면 배경을 갈아 끼운다.
+    /// 난이도 선택이 바뀌었다 — 배경을 그 자리에서 갈아 끼운다.
     ///
-    /// ⚠ 스크롤 중이면 손대지 않는다
-    ///   폭이 다른 배경으로 갈면 두 장을 다시 깔아야 하는데, 전진 중에 그러면
-    ///   화면이 한 번 튄다. 난이도는 런 도중 못 바꾸므로(RunInProgress 잠금)
-    ///   실제로는 대기 화면에서만 들어온다 — 그 전제를 코드로도 지킨다.
+    /// ⚠ 캐시를 직접 버린다 — 구독 순서에 기대면 안 된다
+    ///   DifficultyConfig 는 CurrentTier() 를 처음 부를 때 비로소 OnChanged 에
+    ///   Invalidate 를 건다. 이 스크립트는 OnEnable(=Start 보다 먼저) 에서 구독하므로
+    ///   호출 순서가 [이 핸들러] → [Invalidate] 가 되어, 여기서 읽는 난이도가
+    ///   **바뀌기 전 값**이었다. 배경이 한 박자 늦게 바뀌던 원인이 이것이다.
+    ///   순서에 의존하지 말고 읽기 직전에 스스로 버린다 (여러 번 불러도 무해하다).
+    ///
+    /// ⚠ 스크롤 중에도 갈아 끼운다
+    ///   예전엔 _active 면 그냥 돌아갔는데, 로비 데모 전투가 늘 돌고 있어서
+    ///   (LobbyDemoBattle 이 StartScroll 을 부른다) 사실상 항상 무시됐다.
+    ///   난이도를 바꾸는 것은 플레이어의 명시적 조작이므로, 배경이 그 자리에서
+    ///   즉시 바뀌는 편이 옳다.
+    ///
+    /// ⚠ 카메라는 건드리지 않는다
+    ///   ResetBackgroundToStart 는 배경을 _initCamX 에 깐다. 전진 중에 그러면
+    ///   배경만 뒤로 확 끌려가 화면이 크게 튄다. 지금 카메라가 보는 자리에
+    ///   다시 깔면 그림만 바뀌고 위치는 유지된다.
     /// </summary>
     void OnDifficultyChanged()
     {
-        if (_active) return;
-        ResetBackgroundToStart();
+        DifficultyConfig.Invalidate();
+
+        if (!_active) { ResetBackgroundToStart(); return; }
+
+        _cam = ResolveCamera();
+        if (_cam == null) return;
+        ResetBackground(_cam.transform.position.x);
     }
 
     // ── 공개 제어 (실전·로비 데모 공용) ───────────────────────

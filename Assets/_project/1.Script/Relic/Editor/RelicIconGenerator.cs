@@ -61,6 +61,13 @@ public static class RelicIconGenerator
         (RelicId.R_ShieldFortress,    "relic_r214", RelicRarity.Epic),
         (RelicId.R_SoldierAtk,        "relic_r301", RelicRarity.Common),
         (RelicId.R_SoldierHp,         "relic_r302", RelicRarity.Common),
+
+        // 장수 전용 (4xx) — 병사에게 가지 않는 유물. 모두 "장군" 계열 도안이다.
+        (RelicId.R_OnlyGeneralAtk,    "relic_r401", RelicRarity.Uncommon),
+        (RelicId.R_OnlyGeneralHp,     "relic_r402", RelicRarity.Uncommon),
+        (RelicId.R_OnlyGeneralDef,    "relic_r403", RelicRarity.Rare),
+        (RelicId.R_OnlyGeneralCrit,   "relic_r404", RelicRarity.Rare),
+        (RelicId.R_OnlyGeneralMight,  "relic_r405", RelicRarity.Epic),
     };
 
     // ── 진입점 ────────────────────────────────────────────────
@@ -79,6 +86,7 @@ public static class RelicIconGenerator
             DrawR206, DrawR207, DrawR208,
             DrawR211, DrawR212, DrawR213, DrawR214,
             DrawR301, DrawR302,
+            DrawR401, DrawR402, DrawR403, DrawR404, DrawR405,
         };
 
         for (int i = 0; i < Defs.Length; i++)
@@ -682,6 +690,111 @@ public static class RelicIconGenerator
     // ═══════════════════════════════════════════════════════════
     //  병사 유물 (301~302)
     // ═══════════════════════════════════════════════════════════
+
+    // ══════════════════════════════════════════════════════════
+    //  장수 전용 유물 (4xx)
+    //
+    //  ⚠ 공통(2xx) 유물과 한눈에 구분돼야 한다
+    //    효과 문구를 읽기 전에 "이건 장수만 세지는 것" 이 보여야 고를 때 헷갈리지 않는다.
+    //    그래서 다섯 개 모두 **월계관** 을 깔고 그 위에 각자의 상징을 얹는다.
+    // ══════════════════════════════════════════════════════════
+
+    /// <summary>장수 전용 표식 — 아래쪽에 깔리는 월계관.</summary>
+    static void GeneralWreath(P p, Color32 col)
+    {
+        // 좌우로 벌어진 잎맥
+        for (int i = 0; i < 5; i++)
+        {
+            int y = 14 + i * 6;
+            int w = 7 - i;
+            p.FillTri(26, y, 26 - w, y + 3, 26, y + 6, col);
+            p.FillTri(38, y, 38 + w, y + 3, 38, y + 6, col);
+        }
+        p.DrawLine(26, 14, 26, 44, col, 1);
+        p.DrawLine(38, 14, 38, 44, col, 1);
+    }
+
+    // R401 — 장군의 검 (Uncommon): 월계관 + 검
+    static void DrawR401(P p)
+    {
+        Bg(p, RelicRarity.Uncommon);
+        GeneralWreath(p, H("2E6B33"));
+        Sword(p, 32, 16, 34, Silver, Gold, Brown);
+        Border(p, RelicRarity.Uncommon);
+    }
+
+    // R402 — 장군의 투구 (Uncommon): 월계관 + 투구
+    static void DrawR402(P p)
+    {
+        Bg(p, RelicRarity.Uncommon);
+        GeneralWreath(p, H("2E6B33"));
+        // 투구 — 둥근 머리통 + 얼굴 가리개
+        p.FillCircle(32, 34, 13, H("8899AA"));
+        p.FillRect(19, 20, 26, 14, H("8899AA"));
+        p.FillRect(19, 20, 26, 3, H("55667A"));
+        // 얼굴 T자 틈
+        p.FillRect(30, 22, 4, 16, H("101018"));
+        p.FillRect(23, 30, 18, 4, H("101018"));
+        // 볏
+        p.FillRRect(30, 44, 5, 10, 2, Red);
+        p.FillRRect(31, 46, 2, 7, 1, H("FF7788"));
+        Border(p, RelicRarity.Uncommon);
+    }
+
+    // R403 — 장군의 흉갑 (Rare): 월계관 + 흉갑
+    static void DrawR403(P p)
+    {
+        Bg(p, RelicRarity.Rare);
+        GeneralWreath(p, H("24507A"));
+        // 어깨
+        p.FillCircle(21, 40, 7, H("6A7A90"));
+        p.FillCircle(43, 40, 7, H("6A7A90"));
+        // 몸통
+        p.FillRRect(22, 20, 21, 22, 4, H("8899AA"));
+        p.FillRect(22, 38, 21, 4, H("AABBCC"));
+        // 가슴 문양
+        p.FillTri(26, 34, 38, 34, 32, 24, LtBlue);
+        p.DrawLine(32, 24, 32, 34, White, 1);
+        Border(p, RelicRarity.Rare);
+    }
+
+    // R404 — 장군의 안목 (Rare): 월계관 + 눈
+    static void DrawR404(P p)
+    {
+        Bg(p, RelicRarity.Rare);
+        GeneralWreath(p, H("24507A"));
+        // 눈 외곽 (위아래 곡선을 삼각 두 개로)
+        p.FillTri(16, 32, 48, 32, 32, 44, H("DDE6F5"));
+        p.FillTri(16, 32, 48, 32, 32, 20, H("DDE6F5"));
+        // 홍채·동공
+        p.FillCircle(32, 32, 8, Blue);
+        p.FillCircle(32, 32, 4, H("0A1424"));
+        p.FillCircle(30, 34, 2, White);
+        // 조준 눈금
+        p.DrawLine(12, 32, 17, 32, LtBlue, 1);
+        p.DrawLine(47, 32, 52, 32, LtBlue, 1);
+        Border(p, RelicRarity.Rare);
+    }
+
+    // R405 — 영웅의 증표 (Epic): 월계관 + 훈장
+    static void DrawR405(P p)
+    {
+        Bg(p, RelicRarity.Epic);
+        GeneralWreath(p, H("4A2A7A"));
+        // 리본
+        p.FillTri(26, 46, 32, 36, 32, 52, Red);
+        p.FillTri(38, 46, 32, 36, 32, 52, DkRed);
+        // 훈장 원판
+        p.FillCircle(32, 28, 12, Gold);
+        p.DrawCircle(32, 28, 12, 1, DkGold);
+        p.FillCircle(32, 28, 8, H("2A1A40"));
+        // 별
+        p.FillTri(32, 36, 27, 24, 37, 24, Yellow);
+        p.FillTri(32, 20, 27, 32, 37, 32, Yellow);
+        p.FillCircle(32, 28, 2, White);
+        Border(p, RelicRarity.Epic);
+    }
+
 
     // R301 — 병사의 혼 (Common): 교차 검
     static void DrawR301(P p)

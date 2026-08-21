@@ -88,8 +88,11 @@ public class AbilityCardUI : MonoBehaviour
         if (data.Grade == AbilityGrade.Special || data.Grade == AbilityGrade.Mastery)
             return data.Description;
 
-        string d = $"{LocalizationManager.Instance.Get(data.Stat1.ToString())} {AbilityUIHelper.FormatStatValue(data.Stat1, data.Value1)}";
-        if (data.HasStat2) d += $"\n{LocalizationManager.Instance.Get(data.Stat2.ToString())} {AbilityUIHelper.FormatStatValue(data.Stat2, data.Value2)}";
+        // 스탯 창의 '어빌리티' 색과 같은 주황 — 색만 보고 출처를 알 수 있게 한다
+        string d = StatBonusColors.Wrap(StatSource.Ability,
+            $"{LocalizationManager.Instance.Get(data.Stat1.ToString())} {AbilityUIHelper.FormatStatValue(data.Stat1, data.Value1)}");
+        if (data.HasStat2) d += "\n" + StatBonusColors.Wrap(StatSource.Ability,
+            $"{LocalizationManager.Instance.Get(data.Stat2.ToString())} {AbilityUIHelper.FormatStatValue(data.Stat2, data.Value2)}");
         return d;
     }
 }

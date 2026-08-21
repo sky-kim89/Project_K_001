@@ -39,20 +39,28 @@ namespace BattleGame.Units
 
     // ── 사망 감지 + 디스폰 시스템 ────────────────────────────
 
+    // ⚠ 통계 시스템보다 먼저 돌아야 한다
+    //   처치자를 알아내려면 피격자의 DamageResultElement(IsKill 이 찍힌 항목)를 읽어야 하는데,
+    //   BattleStatCollectorSystem 이 그 버퍼를 다 읽고 **비운다.** 순서를 못 박지 않으면
+    //   어떤 프레임엔 처치자가 잡히고 어떤 프레임엔 안 잡히는 식으로 갈린다.
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(UnitHitSystem))]
+    [UpdateBefore(typeof(BattleStatCollectorSystem))]
     public partial class UnitDeathDespawnSystem : SystemBase
     {
         // GO 반납 목록 — ForEach 외부에서 처리하기 위해 캐싱
         // generalEntity: 병사 사망 시 소속 장군 알림용 (병사 아니면 Entity.Null)
         // deathPos    : 쓰러진 지점 — 순교 등 위치 기반 특성이 SoldierDeathEvent 로 받는다
         readonly System.Collections.Generic.List<(GameObject obj, TeamType team, Entity generalEntity, float3 deathPos)> _pending = new();
-        bool _anyEnemyDied;
+
+        // 이번 프레임에 쓰러진 적 — 순회가 끝난 뒤 처치자를 되짚는다
+        //  ⚠ ForEach 람다 안에서 시스템 메서드를 부르지 않는다 (this 캡처 제약)
+        readonly System.Collections.Generic.List<Entity> _deadEnemies = new();
 
         protected override void OnUpdate()
         {
             _pending.Clear();
-            _anyEnemyDied = false;
+            _deadEnemies.Clear();
 
             // ── ① 사망 유닛 수집 + 링크 컴포넌트 제거 예약 ─────
             var ecb = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
@@ -81,24 +89,30 @@ namespace BattleGame.Units
                     ecb.RemoveComponent<UnitPoolLinkComponent>(entity);
 
                     if (identity.Team == TeamType.Enemy)
-                        _anyEnemyDied = true;
+                        _deadEnemies.Add(entity);
                 })
                 .Run();
 
             ecb.Playback(EntityManager);
             ecb.Dispose();
 
-            // ── ② 적 처치 이벤트 → 아군 장군 전체에 브로드캐스트 ─
-            if (_anyEnemyDied)
+            // ── ② 적 처치 이벤트 → 잡은 부대의 장군에게만 ─────────
+            //
+            //  ⚠ 예전엔 아군 장군 전원에게 뿌렸다
+            //    적이 죽기만 하면 누가 잡았든 전부에게 이벤트가 갔다. 그래서
+            //    "처치 시" 장비(처형자의 낙인·사냥꾼의 장갑)가 남의 부대 전과로 터졌고,
+            //    처치 스택 패시브도 자기 부대가 한 일이 아닌 것까지 셌다.
+            //    지금은 마지막 일격을 넣은 유닛의 주인 부대에만 들어간다
+            //    (장군 본인이 벴든, 그 장군의 병사·소환수가 벴든 그 부대의 전과다).
+            foreach (Entity victim in _deadEnemies)
             {
-                foreach (var (killBuf, id) in SystemAPI
-                    .Query<DynamicBuffer<EnemyKillEvent>, RefRO<UnitIdentityComponent>>()
-                    .WithAll<GeneralComponent>()
-                    .WithNone<DeadTag>())
-                {
-                    if (id.ValueRO.Team == TeamType.Ally)
-                        killBuf.Add(default);
-                }
+                Entity general = ResolveKillCredit(victim);
+                if (general == Entity.Null) continue;
+                if (!EntityManager.Exists(general)) continue;
+                if (!EntityManager.HasBuffer<EnemyKillEvent>(general)) continue;
+                if (EntityManager.HasComponent<DeadTag>(general)) continue;
+
+                EntityManager.GetBuffer<EnemyKillEvent>(general).Add(default);
             }
 
             // ── ③ 병사 사망 이벤트 → 소속 장군에게 알림 ─────────
@@ -139,6 +153,40 @@ namespace BattleGame.Units
                 else
                     PoolController.Instance?.Despawn(obj);
             }
+        }
+
+        // ── 처치 귀속 ────────────────────────────────────────────
+
+        /// <summary>
+        /// 이 적을 잡은 부대의 장군을 돌려준다. 알 수 없으면 Entity.Null.
+        ///
+        /// 마지막 일격은 UnitHitSystem 이 피격자의 DamageResultElement 에 IsKill 로 찍어 둔다.
+        /// 그 공격자가 병사·소환수면 소속 장군으로 올라간다 — 부대 단위 전과다.
+        ///
+        /// ⚠ 출처 없는 피해는 아무에게도 안 간다
+        ///   독 장판처럼 공격자 엔티티가 비어 오는 피해로 죽으면 귀속할 대상이 없다.
+        ///   전군에 뿌리던 예전 방식으로 되돌리는 것보다, 그냥 세지 않는 편이 낫다
+        ///   ("내가 잡았을 때" 라고 적힌 장비가 남의 전과로 터지는 것이 더 큰 거짓말이다).
+        /// </summary>
+        Entity ResolveKillCredit(Entity victim)
+        {
+            if (!EntityManager.HasBuffer<DamageResultElement>(victim)) return Entity.Null;
+
+            var results = EntityManager.GetBuffer<DamageResultElement>(victim);
+            for (int i = results.Length - 1; i >= 0; i--)
+            {
+                if (!results[i].IsKill) continue;
+
+                Entity attacker = results[i].AttackerEntity;
+                if (attacker == Entity.Null || !EntityManager.Exists(attacker)) return Entity.Null;
+
+                if (EntityManager.HasComponent<GeneralComponent>(attacker)) return attacker;
+                if (EntityManager.HasComponent<SoldierComponent>(attacker))
+                    return EntityManager.GetComponentData<SoldierComponent>(attacker).GeneralEntity;
+
+                return Entity.Null;
+            }
+            return Entity.Null;
         }
     }
 }

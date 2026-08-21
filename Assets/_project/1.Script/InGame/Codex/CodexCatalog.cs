@@ -215,8 +215,10 @@ public static class CodexCatalog
         {
             if (sb.Length > 0) sb.Append('\n');
             // 강화 0단계 = 기본값. 도감은 "이런 장비가 있다" 를 보여 주는 곳이다.
-            sb.Append($"{LocalizationManager.Instance.Get(s.Stat.ToString())} " +
-                      AbilityUIHelper.FormatStatValue(s.Stat, e.GetStatValue(s, 0)));
+            // 색은 스탯 창의 '장비' 와 같은 파랑 — 어디서 오르는 수치인지 색으로 읽힌다.
+            sb.Append(StatBonusColors.Wrap(StatSource.Equip,
+                $"{LocalizationManager.Instance.Get(s.Stat.ToString())} " +
+                AbilityUIHelper.FormatStatValue(s.Stat, e.GetStatValue(s, 0))));
         }
         return sb.ToString();
     }
@@ -230,14 +232,18 @@ public static class CodexCatalog
 
     static string AbilityStatLine(AbilityData a)
     {
-        if (a.Grade == AbilityGrade.Special) return null;   // Description 이 이미 다 말한다
+        // Special·Mastery 는 스탯 칸이 비어 있다 (효과가 OnTrigger 코드에 있다).
+        // 그리면 "체력 +0%" 같은 빈 줄이 붙는다 — Description 이 이미 다 말한다.
+        if (a.Grade == AbilityGrade.Special || a.Grade == AbilityGrade.Mastery) return null;
 
         var sb = new System.Text.StringBuilder();
-        sb.Append($"{LocalizationManager.Instance.Get(a.Stat1.ToString())} " +
-                  AbilityUIHelper.FormatStatValue(a.Stat1, a.Value1));
+        sb.Append(StatBonusColors.Wrap(StatSource.Ability,
+            $"{LocalizationManager.Instance.Get(a.Stat1.ToString())} " +
+            AbilityUIHelper.FormatStatValue(a.Stat1, a.Value1)));
         if (a.HasStat2)
-            sb.Append($"\n{LocalizationManager.Instance.Get(a.Stat2.ToString())} " +
-                      AbilityUIHelper.FormatStatValue(a.Stat2, a.Value2));
+            sb.Append("\n").Append(StatBonusColors.Wrap(StatSource.Ability,
+                $"{LocalizationManager.Instance.Get(a.Stat2.ToString())} " +
+                AbilityUIHelper.FormatStatValue(a.Stat2, a.Value2)));
         return sb.ToString();
     }
 

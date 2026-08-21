@@ -31,12 +31,21 @@ public static class RewardOpener
     /// - 박스 아이템: 랜덤 개봉 후 결과를 인벤토리에 추가
     /// - 특성·어빌리티: 런 데이터에 추가
     /// </summary>
-    public static OpenedReward Commit(ItemAmount reward, int stageLevel)
+    /// <param name="minEquipGrade">
+    /// 장비 박스에서 나올 수 있는 최저 등급.
+    ///
+    /// ⚠ 기대를 세워 놓고 최하위를 주면 보상이 아니라 실망이 된다
+    ///   이벤트는 "귀한 것을 준다" 는 연출을 깔고 카드를 뒤집는다. 거기서 일반 등급이
+    ///   나오면 안 준 것만 못하다. 그런 자리는 하한을 올려서 부른다
+    ///   (EventRewardHandler.EventEquipMinGrade).
+    /// </param>
+    public static OpenedReward Commit(ItemAmount reward, int stageLevel,
+                                      UnitGrade minEquipGrade = UnitGrade.Normal)
     {
         switch (reward.Item)
         {
             case eItem.EquipBox:
-                return OpenEquipBox(reward, stageLevel);
+                return OpenEquipBox(reward, stageLevel, minEquipGrade);
 
             case eItem.Equipment:
                 return GrantEquipment(reward);
@@ -76,10 +85,11 @@ public static class RewardOpener
 
     // ── 박스 개봉 ────────────────────────────────────────────
 
-    static OpenedReward OpenEquipBox(ItemAmount reward, int stageLevel)
+    static OpenedReward OpenEquipBox(ItemAmount reward, int stageLevel,
+                                     UnitGrade minGrade = UnitGrade.Normal)
     {
         var db    = EquipmentDatabase.Current;
-        var equip = db?.PickRandom(stageLevel > 0 ? stageLevel : 1);
+        var equip = db?.PickRandom(stageLevel > 0 ? stageLevel : 1, minGrade);
 
         if (equip != null)
         {

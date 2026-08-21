@@ -26,6 +26,9 @@ using BattleGame.Units;
 
 public static class RelicApplier
 {
+    /// <summary>장수 전용 유물이 들어가는 레이어 — 병사 환산에서 걷힌다.</summary>
+    public const string GeneralLayerKey = HeroStatPipeline.RelicKey + UnitStat.GeneralOnlySuffix;
+
     // ── 장군 스텟 적용 ─────────────────────────────────────────
 
     public static void ApplyToGeneralStat(
@@ -63,7 +66,7 @@ public static class RelicApplier
             bool isGeneralOnly = data.Target == AbilityTarget.Unit_General;
             if (isGeneralOnly != generalOnly) continue;
 
-            string layer = isGeneralOnly ? UnitStat.GeneralOnlyKey : "relic";
+            string layer = isGeneralOnly ? GeneralLayerKey : HeroStatPipeline.RelicKey;
 
             ApplyStatLine(stat, data.Stat1, data.Value1PerLevel, level, data.IsAbsoluteValue, layer);
             if (data.HasStat2)

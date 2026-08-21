@@ -13,11 +13,11 @@ public class ActiveBlizzard : ActiveSkillZoneBase
     [UnityEngine.Header("블리자드 설정")]
     [UnityEngine.Tooltip("이동속도 감소 배율 (예: 0.4 → 이동속도 40%)")]
     [UnityEngine.Range(0.1f, 0.9f)]
-    public float MoveSlowMultiplier = 0.4f;
+    public float MoveSlowMultiplier = 0.25f;
 
     [UnityEngine.Tooltip("공격속도 감소 배율 (예: 0.5 → 공격속도 50%)")]
     [UnityEngine.Range(0.1f, 0.9f)]
-    public float AttackSlowMultiplier = 0.5f;
+    public float AttackSlowMultiplier = 0.35f;
 
     protected override float DefaultRadius   => 3f;
     protected override float DefaultDuration => 8f;

@@ -3,8 +3,14 @@ using UnityEngine;
 
 // ============================================================
 //  HeroStatResolver.cs
-//  장수 스탯을 기본 → 패시브 → 장비 순으로 계산하는 단일 진입점.
-//  HeroCardUI, HeroPanelUI 등 모든 UI가 이 결과를 사용한다.
+//  화면이 읽는 창구. 계산은 하지 않는다 — HeroStatPipeline 이 만든 결과를
+//  UI 가 쓰기 좋은 모양으로 감싸 줄 뿐이다.
+//
+//  ⚠ 여기에 계산을 다시 적지 말 것
+//    예전엔 이 파일이 전투(GeneralRuntimeBridge)와 같은 순서를 손으로 한 번 더
+//    적고 있었다. 자료구조까지 달라서(딕셔너리 8통 vs UnitStat 레이어) 한쪽에
+//    항목을 추가하면 다른 쪽이 조용히 빠졌고, 같은 버그가 반복해서 났다.
+//    스탯을 조립하는 코드는 HeroStatPipeline 하나뿐이어야 한다.
 //
 //  사용:
 //    HeroStatResult r = HeroStatResolver.Resolve(entry);
@@ -12,49 +18,65 @@ using UnityEngine;
 //    // 스탯 클릭 분해: r.Base / r.GetEquip() / r.GetPassive()
 // ============================================================
 
+/// <summary>
+/// 파이프라인 결과를 출처별로 꺼내 보는 얇은 창구.
+///
+/// 값을 따로 들고 있지 않는다 — 전부 UnitStat 레이어에서 즉석으로 읽는다.
+/// 그래서 "표시에는 있는데 전투에는 없는 보너스" 가 원천적으로 불가능하다.
+/// </summary>
 public class HeroStatResult
 {
-    public UnitStat                    Base            = new();
-    public Dictionary<StatType, float> EquipBonuses    = new();
-    public Dictionary<StatType, float> PassiveBonuses  = new();
-    public Dictionary<StatType, float> AbilityBonuses  = new();
-    public Dictionary<StatType, float> RelicBonuses    = new();
-    public Dictionary<StatType, float> TraitBonuses    = new();
-    public Dictionary<StatType, float> CodexBonuses    = new();
+    /// <summary>전투에 그대로 들어가는 장수 최종 스탯.</summary>
+    public UnitStat Stat { get; }
 
-    /// <summary>
-    /// 병사 전용 패시브(ApplyTarget.Soldier). **장수 탭에서는 쓰지 않는다.**
-    ///
-    /// ⚠ PassiveBonuses 와 섞으면 안 된다
-    ///   PassiveBonuses 는 Target.General — 장수만 받는 몫이라 병사 환산에서 빠진다
-    ///   (PassiveSkillApplier 가 UnitStat.GeneralOnlyKey 층에 넣는다).
-    ///   그 자리를 대신 채우는 것이 이 두 개다.
-    ///   Ratios 는 환산된 병사 스탯에 곱하고, Flats 는 그대로 더한다
-    ///   — SoldierStatApplier 와 같은 규칙이라야 로비 표시와 전투가 맞는다.
-    /// </summary>
-    public Dictionary<StatType, float> SoldierPassiveRatios = new();
-    public Dictionary<StatType, float> SoldierPassiveFlats  = new();
+    /// <summary>성장만의 값 (등급·레벨 롤). 분해 표시의 '기본' 칸.</summary>
+    public UnitStat Base { get; }
 
-    public float GetSoldierPassiveRatio(StatType s) => SoldierPassiveRatios.TryGetValue(s, out var v) ? v : 0f;
-    public float GetSoldierPassiveFlat(StatType s)  => SoldierPassiveFlats.TryGetValue(s,  out var v) ? v : 0f;
+    /// <summary>장수 전용을 걷어낸 사본 — 용병 탭이 이걸 환산해 보여 준다.</summary>
+    public UnitStat SoldierSource { get; }
 
-    public float Total(StatType stat)
+    readonly HeroStatBuild _build;
+
+    public HeroStatResult(HeroStatBuild build)
     {
-        float b = Base?.Get(stat) ?? 0f;
-        float e = EquipBonuses.TryGetValue(stat,   out var ev) ? ev : 0f;
-        float p = PassiveBonuses.TryGetValue(stat,  out var pv) ? pv : 0f;
-        float a = AbilityBonuses.TryGetValue(stat,  out var av) ? av : 0f;
-        float r = RelicBonuses.TryGetValue(stat,    out var rv) ? rv : 0f;
-        float t = TraitBonuses.TryGetValue(stat,    out var tv) ? tv : 0f;
-        float c = CodexBonuses.TryGetValue(stat,    out var cv) ? cv : 0f;
-
-        // 쿨감만 곱연산 — 인게임(UnitStat.MultiplyResidual)과 같은 규칙이어야
-        // 로비에서 본 수치와 전투에서 적용되는 수치가 일치한다.
-        if (stat == StatType.SkillCooldownReduce)
-            return CombineResidual(b, e, p, a, r, t, c);
-
-        return b + e + p + a + r + t + c;
+        _build        = build;
+        Stat          = build.Stat;
+        Base          = build.BaseRoll;
+        SoldierSource = build.SoldierSource;
     }
+
+    // ── 총합 ─────────────────────────────────────────────────
+    //  쿨감의 곱연산 결합까지 UnitStat 이 처리한다 (CombineMode.MultiplyResidual).
+
+    public float Total(StatType stat)          => Stat.Get(stat);
+
+    /// <summary>장수 전용을 뺀 값 — 병사가 물려받는 몫.</summary>
+    public float TotalForSoldier(StatType stat) => SoldierSource.Get(stat);
+
+    // ── 출처별 분해 ──────────────────────────────────────────
+    //  장비는 슬롯마다 레이어가 따로라 접두사로 모은다 ("equip_0", "equip_1"…).
+
+    public float GetEquip(StatType stat)   => Stat.GetPrefixed(HeroStatPipeline.EquipKey, stat);
+    public float GetPassive(StatType stat) => Stat.GetLayer(PassiveSkillApplier.GeneralLayerKey, stat);
+    public float GetAbility(StatType stat) => Stat.GetPrefixed(HeroStatPipeline.AbilityKey, stat);
+    public float GetRelic(StatType stat)   => Stat.GetPrefixed(HeroStatPipeline.RelicKey, stat);
+    public float GetCodex(StatType stat)   => Stat.GetLayer(HeroStatPipeline.CodexKey, stat);
+
+    public float GetTrait(StatType stat)
+        => Stat.GetPrefixed(HeroStatPipeline.TraitKey, stat);   // trait · trait_conv · trait_penalty
+
+    /// <summary>용병 탭용 — 장수 전용 몫을 뺀 출처별 값.</summary>
+    public float GetForSoldier(string sourceKey, StatType stat)
+        => SoldierSource.GetPrefixed(sourceKey, stat);
+
+    // ── 병사 전용 패시브 ─────────────────────────────────────
+    //  환산된 병사 스탯에 Ratios 를 곱하고 Flats 를 더한다 (SoldierStatApplier 와 같은 규칙).
+
+    public float GetSoldierPassiveRatio(StatType s)
+        => _build.SoldierPassiveRatios.TryGetValue(s, out var v) ? v : 0f;
+
+    public float GetSoldierPassiveFlat(StatType s)
+        => _build.SoldierPassiveFlats.TryGetValue(s, out var v) ? v : 0f;
 
     /// <summary>1 - Π(1 - v). 출처가 하나면 그 값 그대로.</summary>
     public static float CombineResidual(params float[] values)
@@ -63,13 +85,6 @@ public class HeroStatResult
         foreach (float v in values) remain *= (1f - v);
         return 1f - remain;
     }
-
-    public float GetEquip(StatType stat)   => EquipBonuses.TryGetValue(stat,  out var v) ? v : 0f;
-    public float GetPassive(StatType stat) => PassiveBonuses.TryGetValue(stat, out var v) ? v : 0f;
-    public float GetAbility(StatType stat) => AbilityBonuses.TryGetValue(stat, out var v) ? v : 0f;
-    public float GetRelic(StatType stat)   => RelicBonuses.TryGetValue(stat,   out var v) ? v : 0f;
-    public float GetTrait(StatType stat)   => TraitBonuses.TryGetValue(stat,   out var v) ? v : 0f;
-    public float GetCodex(StatType stat)   => CodexBonuses.TryGetValue(stat,   out var v) ? v : 0f;
 }
 
 public static class HeroStatResolver
@@ -96,381 +111,10 @@ public static class HeroStatResolver
         return stat;
     }
 
-    /// <summary>UnitEntry 를 받아 기본·패시브·장비 보너스를 모두 계산한 결과를 반환.</summary>
+    /// <summary>
+    /// 화면에 보여 줄 스탯 — 전투 시작 패시브 예상치까지 얹은 값이다.
+    /// 계산은 HeroStatPipeline 이 한다.
+    /// </summary>
     public static HeroStatResult Resolve(UnitEntry entry)
-    {
-        var result = new HeroStatResult();
-
-        // 1. 기본 스탯 (전투와 같은 함수 — RollBase 참고)
-        UnitStat stat = RollBase(entry);
-        result.Base = stat;
-
-        // 2. 패시브 — 병사 전용 몫만 여기서 모은다
-        //
-        //  ⚠ 장수 전용(Target.General)은 맨 마지막에 붙인다
-        //    전투(GeneralRuntimeBridge)가 그 층을 마지막에 얹기 때문이다.
-        //    여기서 먼저 더하면 아래 어빌리티·유물·특성·도감의 % 계산 근거가
-        //    부풀려져 로비 표시와 전투 수치가 갈린다 (그리고 그 몫이 용병 탭에도 샌다).
-        var passiveDb = PassiveSkillDatabase.Current;
-        if (passiveDb != null)
-        {
-            var (p0, p1, p2) = PassiveSkillRoller.Roll(entry.UnitName);
-            byte pSlots = PassiveSkillRoller.GetActiveSlotCount(entry.Grade);
-            PassiveSkillType[] pts = { p0, p1, p2 };
-            for (int pi = 0; pi < pSlots; pi++)
-            {
-                var pd = passiveDb.Get(pts[pi]);
-                if (pd == null || pd.TriggerType != PassiveTrigger.None) continue;
-                foreach (var e in pd.StatModifiers)
-                {
-                    // 병사 전용 — 장수 스탯에는 한 푼도 안 들어간다. 용병 탭이 따로 쓴다.
-                    // ⚠ 예전엔 그냥 건너뛰었다
-                    //   그래서 "강한 장군, 약한 병사"(장군 +30% / 병사 -20%)의 용병 탭에
-                    //   장수의 +30% 만 환산돼 보이고 병사의 -20% 는 어디에도 없었다.
-                    if (e.Target != PassiveSkillApplier.ApplyTarget.Soldier) continue;
-
-                    var bucket = e.IsPercent ? result.SoldierPassiveRatios
-                                             : result.SoldierPassiveFlats;
-                    bucket[e.Stat] = bucket.TryGetValue(e.Stat, out var sc) ? sc + e.Delta : e.Delta;
-                }
-            }
-        }
-
-        // 3. 장비 보너스 (열린 슬롯 수는 EquipmentApplier 가 소유한다)
-        int equipSlotCount = EquipmentApplier.ActiveSlotCount;
-        var equipDb = EquipmentDatabase.Current;
-        if (equipDb != null && entry.RunEquipSlots != null)
-        {
-            for (int s = 0; s < equipSlotCount; s++)
-            {
-                string eid = s < entry.RunEquipSlots.Length ? entry.RunEquipSlots[s] : "";
-                if (string.IsNullOrEmpty(eid)) continue;
-                var equip = equipDb.Get(eid);
-                if (equip == null) continue;
-                int enhance = (entry.RunEquipEnhance != null && s < entry.RunEquipEnhance.Length)
-                              ? entry.RunEquipEnhance[s] : 0;
-                foreach (var e in equip.StatEntries)
-                {
-                    float val = equip.GetStatValue(e, enhance);
-                    result.EquipBonuses[e.Stat] =
-                        result.EquipBonuses.TryGetValue(e.Stat, out var cur) ? cur + val : val;
-                }
-            }
-        }
-
-        // 4. 어빌리티 보너스 (base+passive+equip 합산 기준 % 증가 — AbilityApplier와 동일 방식)
-        var abilityDb     = AbilityDatabase.Current;
-        var heldAbilities = UserDataManager.Instance?.Get<RunAbilityData>()?.HeldAbilities;
-        if (abilityDb != null && heldAbilities?.Count > 0)
-        {
-            UnitJob job = UnitJobRoller.GetJob(entry.UnitName);
-
-            // 비율 합산 (StatType별)
-            var ratios = new Dictionary<StatType, float>();
-
-            // Special 신고분은 따로 모은다 — 합치는 규칙이 다르기 때문이다 (아래 참고)
-            var special = new Dictionary<StatType, float>();
-
-            foreach (var id in heldAbilities)
-            {
-                var data = abilityDb.Get(id);
-                if (data == null) continue;
-                // 공통만 — 장수 전용(Unit_General)은 8번에서 맨 마지막에 붙인다
-                if (!AbilityApplier.MatchesCommonTarget(data.Target, job)) continue;
-
-                // Special 은 효과를 Stat1/Value1 이 아니라 OnTrigger 코드로 들고 있다.
-                // 그래서 예전엔 통째로 건너뛰었고 "시간 왜곡 쿨타임 -35%" 가 스탯 화면에
-                // 전혀 안 보였다. 지금은 각자 신고한 값만 받는다 (CollectPreviewStats 주석 참고).
-                if (data.Grade == AbilityGrade.Special)
-                {
-                    data.CollectPreviewStats(special);
-                    continue;
-                }
-
-                ratios[data.Stat1] = ratios.GetValueOrDefault(data.Stat1) + data.Value1;
-                if (data.HasStat2)
-                    ratios[data.Stat2] = ratios.GetValueOrDefault(data.Stat2) + data.Value2;
-            }
-
-            // ── Special 병합 ─────────────────────────────────────
-            //
-            //  ⚠ 쿨감은 더하면 안 된다 — 잔여 곱연산이다
-            //    일반 어빌리티끼리는 같은 "ability" 레이어라 가산이 맞다
-            //    (AbilityApplier.Accumulate 와 같은 규칙).
-            //    하지만 시간 왜곡은 전투에서 ApplyCooldown 이 기존 쿨감과
-            //    **잔여 곱연산**으로 합친다. 여기서 그냥 더하면
-            //    마법사의 집중(8%) + 마법의 각성(15%) + 시간 왜곡(35%) 이
-            //    로비에서 58% 로 뜨는데 실제 전투는 50% 다.
-            //
-            //  ⚠ 그래서 두 번 돌린다
-            //    한 루프에서 처리하면 시간 왜곡이 먼저 오느냐 나중에 오느냐에 따라
-            //    결과가 달라진다. 일반 어빌리티를 다 더한 뒤에 합쳐야 순서와 무관해진다.
-            foreach (var kv in special)
-            {
-                ratios[kv.Key] = kv.Key == StatType.SkillCooldownReduce
-                    ? HeroStatResult.CombineResidual(ratios.GetValueOrDefault(kv.Key), kv.Value)
-                    : ratios.GetValueOrDefault(kv.Key) + kv.Value;
-            }
-
-            // 이 시점 result.Total() = base + passive + equip (어빌리티 미포함) → % 기준 동일
-            // 절대값 스탯(CDR·CritChance·Defense)은 % of base 가 아닌 직접 가산
-            foreach (var kvp in ratios)
-            {
-                float delta = AbilityApplier.IsAbsoluteStat(kvp.Key)
-                    ? kvp.Value
-                    : result.Total(kvp.Key) * kvp.Value;
-                if (UnityEngine.Mathf.Abs(delta) > 0.001f)
-                    result.AbilityBonuses[kvp.Key] = delta;
-            }
-        }
-
-        // 5. 유물 보너스 (어빌리티까지 합산된 스탯 기준 % 증가 — RelicApplier와 동일 방식)
-        var relicInventory = UserDataManager.Instance?.Get<RelicInventoryData>();
-        var relicDb        = RelicDatabase.Current;
-        if (relicInventory != null && relicDb != null)
-        {
-            UnitJob relicJob = UnitJobRoller.GetJob(entry.UnitName);
-            foreach (var (id, level) in relicInventory.OwnedRelics)
-            {
-                if (level <= 0) continue;
-                var data = relicDb.Get(id);
-                if (data == null || data.EffectType != RelicEffectType.Stat) continue;
-                // 공통만 — 장수 전용(Unit_General)은 8번에서 맨 마지막에 붙인다
-                if (!AbilityApplier.MatchesCommonTarget(data.Target, relicJob)) continue;
-
-                AccumulateRelicStat(result, data.Stat1, data.Value1PerLevel, level, data.IsAbsoluteValue);
-                if (data.HasStat2)
-                    AccumulateRelicStat(result, data.Stat2, data.Value2PerLevel, level, data.IsAbsoluteValue);
-            }
-        }
-
-        // 6. 특성 보너스 (런 중 획득한 특성 — RunTraitData 기준)
-        var traitDb   = TraitDatabase.Current;
-        var traitData = UserDataManager.Instance?.Get<RunTraitData>();
-        if (traitDb != null && traitData != null)
-        {
-            float allStatPenalty = 0f;
-            foreach (var type in traitData.AcquiredTraits)
-            {
-                var td = traitDb.Get(type);
-                if (td == null) continue;
-                foreach (var fx in td.Effects)
-                {
-                    if (fx.Stat == StatType.GeneralSlotBonus) continue;
-                    if (fx.Stat == StatType.EquipSlotBonus)   continue;
-                    if (fx.Stat == StatType.AllStatPenalty)
-                    {
-                        allStatPenalty += fx.Value;
-                        continue;
-                    }
-                    float delta = fx.IsPercent ? result.Base.Get(fx.Stat) * fx.Value : fx.Value;
-                    result.TraitBonuses[fx.Stat] =
-                        result.TraitBonuses.TryGetValue(fx.Stat, out var cur) ? cur + delta : delta;
-                }
-            }
-            // 6-b. 스탯 전환 (중갑·거인·속공 등)
-            //  ⚠ TraitApplier.ApplyConversions 와 반드시 같은 순서·같은 기준이어야 한다.
-            //    · 고정 효과가 전부 들어간 뒤, 전체 감산보다는 앞
-            //    · 재료·보상 모두 "전환 이전" 합계 기준 (계산과 반영을 분리)
-            //  한쪽만 고치면 로비에 뜬 수치와 실제 전투 수치가 어긋난다.
-            List<(StatType to, float delta)> convPending = null;
-            foreach (var type in traitData.AcquiredTraits)
-            {
-                var td = traitDb.Get(type);
-                if (td?.Conversions == null) continue;
-
-                foreach (var c in td.Conversions)
-                {
-                    if (c.PerUnit <= 0f) continue;
-
-                    float units = result.Total(c.From) / c.PerUnit;
-                    if (units <= 0f) continue;
-
-                    float delta = result.Total(c.To) * c.Rate * units;
-                    if (delta == 0f) continue;
-
-                    (convPending ??= new List<(StatType, float)>()).Add((c.To, delta));
-                }
-            }
-            if (convPending != null)
-            {
-                foreach (var (to, delta) in convPending)
-                    result.TraitBonuses[to] =
-                        result.TraitBonuses.TryGetValue(to, out var cur) ? cur + delta : delta;
-            }
-
-            if (allStatPenalty > 0f)
-            {
-                foreach (StatType s in System.Enum.GetValues(typeof(StatType)))
-                {
-                    if (s == StatType.AllStatPenalty || s == StatType.GeneralSlotBonus || s == StatType.EquipSlotBonus) continue;
-                    float total = result.Total(s);
-                    if (total <= 0f) continue;
-                    float penalty = -total * allStatPenalty;
-                    result.TraitBonuses[s] =
-                        result.TraitBonuses.TryGetValue(s, out var cur) ? cur + penalty : penalty;
-                }
-            }
-        }
-
-        // 7. 도감 보너스 — 수집 1종당 공격력·체력 +0.5%
-        //
-        //  ⚠ 맨 마지막에 건다
-        //    앞의 모든 출처가 합쳐진 뒤의 값에 비례한다 = 다른 성장과 곱해진다.
-        //    도감은 "지금까지 만나 본 것" 에 대한 보상이라 성장의 토대가 아니라
-        //    성장을 밀어 올리는 배수여야 한다.
-        //  ⚠ 전투(CodexApplier.ApplyToGeneralStat)와 순서·대상이 같아야 한다.
-        CodexApplier.Accumulate(result);
-
-        // 8. 장수 전용 층 — 반드시 공통 출처가 전부 끝난 뒤 (전투와 같은 순서)
-        ApplyGeneralOnlyBonuses(entry, result);
-
-        // 9. 전투 시작 시 붙을 패시브 예상치
-        ApplyBattleStartPreview(entry, result);
-
-        return result;
-    }
-
-    /// <summary>
-    /// 장수만 받는 몫 — 패시브(Target.General)를 PassiveBonuses 에 담는다.
-    ///
-    /// ⚠ 용병 탭은 이 값을 쓰지 않는다
-    ///   HeroDetailPopup 이 용병 탭에서 패시브 칸을 SoldierPassiveRatios/Flats 로
-    ///   갈아 끼운다. 그래서 이 층은 장수 탭에만 보인다 — 전투에서 병사 환산이
-    ///   GeneralOnlyKey 층을 걷어내는 것과 같은 규칙이다.
-    ///
-    /// ⚠ 순서가 곧 누수 여부다 — GeneralRuntimeBridge 의 같은 절 주석 참고.
-    /// </summary>
-    static void ApplyGeneralOnlyBonuses(UnitEntry entry, HeroStatResult result)
-    {
-        // ── 패시브 (Target.General) ──────────────────────────
-        var db = PassiveSkillDatabase.Current;
-        if (db != null)
-        {
-            var (p0, p1, p2) = PassiveSkillRoller.Roll(entry.UnitName);
-            byte slots = PassiveSkillRoller.GetActiveSlotCount(entry.Grade);
-            PassiveSkillType[] types = { p0, p1, p2 };
-
-            for (int i = 0; i < slots; i++)
-            {
-                var pd = db.Get(types[i]);
-                if (pd == null || pd.TriggerType != PassiveTrigger.None) continue;
-
-                foreach (var e in pd.StatModifiers)
-                {
-                    if (e.Target != PassiveSkillApplier.ApplyTarget.General) continue;
-
-                    float delta = e.IsPercent ? result.Total(e.Stat) * e.Delta : e.Delta;
-                    result.PassiveBonuses[e.Stat] =
-                        result.PassiveBonuses.TryGetValue(e.Stat, out var cur) ? cur + delta : delta;
-                }
-            }
-        }
-
-        // ── 어빌리티 (Unit_General) ──────────────────────────
-        var abilityDb = AbilityDatabase.Current;
-        var held      = UserDataManager.Instance?.Get<RunAbilityData>()?.HeldAbilities;
-        if (abilityDb != null && held != null)
-        {
-            var ratios = new Dictionary<StatType, float>();
-            foreach (var id in held)
-            {
-                var data = abilityDb.Get(id);
-                if (data == null || data.Target != AbilityTarget.Unit_General) continue;
-                if (data.Grade == AbilityGrade.Special || data.Grade == AbilityGrade.Mastery) continue;
-
-                ratios[data.Stat1] = ratios.GetValueOrDefault(data.Stat1) + data.Value1;
-                if (data.HasStat2)
-                    ratios[data.Stat2] = ratios.GetValueOrDefault(data.Stat2) + data.Value2;
-            }
-            foreach (var kv in ratios)
-            {
-                float delta = AbilityApplier.IsAbsoluteStat(kv.Key)
-                    ? kv.Value
-                    : result.Total(kv.Key) * kv.Value;
-                if (delta == 0f) continue;
-                result.AbilityBonuses[kv.Key] =
-                    result.AbilityBonuses.TryGetValue(kv.Key, out var cur) ? cur + delta : delta;
-            }
-        }
-
-        // ── 유물 (Unit_General) ──────────────────────────────
-        var inv     = UserDataManager.Instance?.Get<RelicInventoryData>();
-        var relicDb = RelicDatabase.Current;
-        if (inv != null && relicDb != null)
-        {
-            foreach (var (id, level) in inv.OwnedRelics)
-            {
-                if (level <= 0) continue;
-                var data = relicDb.Get(id);
-                if (data == null || data.EffectType != RelicEffectType.Stat) continue;
-                if (data.Target != AbilityTarget.Unit_General) continue;
-
-                AccumulateRelicStat(result, data.Stat1, data.Value1PerLevel, level, data.IsAbsoluteValue);
-                if (data.HasStat2)
-                    AccumulateRelicStat(result, data.Stat2, data.Value2PerLevel, level, data.IsAbsoluteValue);
-            }
-        }
-    }
-
-    /// <summary>
-    /// OnBattleStart 패시브(방패의 날·강철 체력·집중 사격·황금의 힘)가 전투 시작
-    /// 순간에 더할 값을 미리 계산해 패시브 칸에 합친다.
-    ///
-    /// ⚠ 반드시 맨 마지막이다
-    ///   이 패시브들은 전투 시작 시점의 **완성된** 스탯을 읽는다
-    ///   (방어율·최대체력·공격속도). 앞에서 계산하면 장비·특성·도감이 빠진 값으로 센다.
-    ///
-    /// ⚠ 슬롯 순서대로 앞의 결과를 물려준다
-    ///   전투에서는 Slot0 → Slot1 → Slot2 로 돌면서 각자 그때의 StatComponent 를 읽는다.
-    ///   강철 체력이 공격력을 올린 뒤에 방패의 날이 돌면 그 올라간 공격력이 기준이 된다.
-    ///   여기서도 같은 순서로 누적해야 숫자가 맞는다.
-    ///
-    /// ⚠ 패시브 칸에 합친다 — 별도 칸을 만들지 않는다
-    ///   플레이어에게는 그냥 '패시브가 준 공격력' 이고, 분해 표시(BuildBreakdown)의
-    ///   칸 수를 늘리면 좁은 줄에 숫자가 하나 더 끼어 읽기만 나빠진다.
-    /// </summary>
-    static void ApplyBattleStartPreview(UnitEntry entry, HeroStatResult result)
-    {
-        var db = PassiveSkillDatabase.Current;
-        if (db == null) return;
-
-        var (p0, p1, p2) = PassiveSkillRoller.Roll(entry.UnitName);
-        byte slots = PassiveSkillRoller.GetActiveSlotCount(entry.Grade);
-        PassiveSkillType[] types = { p0, p1, p2 };
-
-        var preview = new Dictionary<StatType, float>();
-
-        // 앞 슬롯의 예상치까지 얹은 '지금 값' — 전투의 StatComponent 읽기와 같은 자리다
-        float Current(StatType s)
-            => result.Total(s) + (preview.TryGetValue(s, out var v) ? v : 0f);
-
-        // 성장(등급·레벨 롤)만의 값 — 전투의 BaseRollStatComponent 와 같은 기준선.
-        // result.Base 가 곧 RollBase(entry) 이므로 그대로 쓴다.
-        float BaseRoll(StatType s) => result.Base.Get(s);
-
-        for (int i = 0; i < slots; i++)
-        {
-            var pd = db.Get(types[i]);
-            if (pd == null || pd.TriggerType != PassiveTrigger.OnBattleStart) continue;
-            pd.CollectPreviewStats(Current, BaseRoll, preview);
-        }
-
-        foreach (var kv in preview)
-        {
-            if (kv.Value == 0f) continue;
-            result.PassiveBonuses[kv.Key] =
-                result.PassiveBonuses.TryGetValue(kv.Key, out var cur) ? cur + kv.Value : kv.Value;
-        }
-    }
-
-    // % 유물은 현재 Total(base+passive+equip+ability+이전 유물)에 대해 계산 — RelicApplier.ApplyStatLine과 동일 순서
-    static void AccumulateRelicStat(HeroStatResult result, StatType type, float valuePerLevel, int level, bool isAbsolute)
-    {
-        float delta = isAbsolute
-            ? valuePerLevel * level
-            : result.Total(type) * valuePerLevel * level;
-        if (UnityEngine.Mathf.Abs(delta) < 0.001f) return;
-        result.RelicBonuses[type] = result.RelicBonuses.TryGetValue(type, out var cur) ? cur + delta : delta;
-    }
+        => new HeroStatResult(HeroStatPipeline.Build(entry, previewBattleStart: true));
 }

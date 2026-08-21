@@ -193,9 +193,8 @@ public static class RewardInfoResolver
             foreach (var e in data.StatEntries)
             {
                 if (sb.Length > 0) sb.Append('\n');
-                sb.Append(loc.Get(e.Stat.ToString()))
-                  .Append(" +")
-                  .Append(StatDisplayHelper.FormatStat(e.Stat, data.GetStatValue(e, 0)));
+                sb.Append(StatBonusColors.Wrap(StatSource.Equip,
+                    $"{loc.Get(e.Stat.ToString())} +{StatDisplayHelper.FormatStat(e.Stat, data.GetStatValue(e, 0))}"));
             }
 
         if (data.TriggerType != EquipmentTrigger.None)
@@ -249,15 +248,35 @@ public static class RewardInfoResolver
         };
     }
 
+    /// <summary>
+    /// 어빌리티가 올려 주는 스탯 줄.
+    ///
+    /// ⚠ Special·Mastery 는 스탯 칸이 비어 있다
+    ///   효과를 Stat1/Value1 이 아니라 OnTrigger 코드로 들고 있어서
+    ///   기본값(체력 0)이 그대로 남아 있다. 그걸 그리면 '고통의 계약' 툴팁에
+    ///   설명과 무관한 "체력 +0%" 가 붙는다. 이 등급은 Description 이 전부다.
+    ///
+    /// ⚠ 값이 0 이면 줄을 만들지 않는다
+    ///   등급과 무관하게, 안 오르는 스탯을 적어 두면 읽는 사람이 0 의 의미를 찾는다.
+    /// </summary>
     static string BuildAbilityStats(AbilityData data)
     {
+        if (data.Grade == AbilityGrade.Special || data.Grade == AbilityGrade.Mastery)
+            return "";
+
         var loc = LocalizationManager.Instance;
         var sb  = new StringBuilder();
-        sb.Append(loc.Get(data.Stat1.ToString())).Append(' ')
-          .Append(AbilityUIHelper.FormatStatValue(data.Stat1, data.Value1));
-        if (data.HasStat2)
-            sb.Append('\n').Append(loc.Get(data.Stat2.ToString())).Append(' ')
-              .Append(AbilityUIHelper.FormatStatValue(data.Stat2, data.Value2));
+
+        void Line(StatType stat, float value)
+        {
+            if (value == 0f) return;
+            if (sb.Length > 0) sb.Append('\n');
+            sb.Append(StatBonusColors.Wrap(StatSource.Ability,
+                $"{loc.Get(stat.ToString())} {AbilityUIHelper.FormatStatValue(stat, value)}"));
+        }
+
+        Line(data.Stat1, data.Value1);
+        if (data.HasStat2) Line(data.Stat2, data.Value2);
         return sb.ToString();
     }
 

@@ -150,7 +150,8 @@ public class DisassemblePopup : PopupBase
             {
                 float  val  = equip.GetStatValue(entry, 0);
                 string name = LocalizationManager.Instance.Get(entry.Stat.ToString());
-                sb.AppendLine($"{name}  +{StatDisplayHelper.FormatStat(entry.Stat, val)}");
+                sb.AppendLine(StatBonusColors.Wrap(StatSource.Equip,
+                    $"{name}  +{StatDisplayHelper.FormatStat(entry.Stat, val)}"));
             }
             _selectedStatsText.text = sb.ToString().TrimEnd();
         }

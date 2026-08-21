@@ -75,11 +75,13 @@ namespace BattleGame.Units
                 // 도트 데미지 — 매 프레임 HitEvent 로 주입
                 if (buff.Mode == EffectMode.Dot)
                 {
+                    // 시전자를 그대로 실어 보낸다 — 도트로 잡은 적도 그 부대의 전과가 된다
+                    // (UnitDeathDespawnSystem.ResolveKillCredit 이 이 값을 본다)
                     hitBuffer.Add(new HitEventBufferElement
                     {
                         Damage         = buff.Delta * DeltaTime,
                         HitDirection   = float3.zero,
-                        AttackerEntity = Entity.Null,
+                        AttackerEntity = buff.SourceEntity,
                     });
                 }
 

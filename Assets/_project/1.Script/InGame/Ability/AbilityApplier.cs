@@ -19,6 +19,9 @@ using BattleGame.Units;
 
 public static class AbilityApplier
 {
+    /// <summary>장수 전용 어빌리티가 들어가는 레이어 — 병사 환산에서 걷힌다.</summary>
+    public const string GeneralLayerKey = HeroStatPipeline.AbilityKey + UnitStat.GeneralOnlySuffix;
+
     // ── 장군 스텟 적용 ─────────────────────────────────────────
 
     public static void ApplyToGeneralStat(
@@ -59,12 +62,12 @@ public static class AbilityApplier
     }
 
     /// <summary>
-    /// Unit_General 타겟만 UnitStat.GeneralOnlyKey 레이어에 넣는다.
+    /// Unit_General 타겟만 장수 전용 레이어(ability@g)에 넣는다.
     ///
     /// ⚠ 레이어를 나누는 이유는 병사 때문이다
     ///   병사는 장수 스탯에서 환산되는데, 장수만 지목한 옵션까지 물려받으면
     ///   "장수 강화" 와 "부대 강화" 가 구분되지 않는다.
-    ///   GeneralRuntimeBridge 가 CloneWithout(GeneralOnlyKey) 로 이 층만 걷어낸다.
+    ///   HeroStatPipeline 이 CloneWithoutGeneralOnly() 로 이 층을 걷어낸다.
     /// </summary>
     public static void ApplyGeneralOnly(UnitStat stat, IReadOnlyList<AbilityId> ids, AbilityDatabase db)
     {
@@ -74,6 +77,9 @@ public static class AbilityApplier
         {
             var data = db.Get(id);
             if (data == null || data.Target != AbilityTarget.Unit_General) continue;
+            // Special·Mastery 는 효과를 OnTrigger 로 들고 있다 — 공용 경로(ApplyToGeneralStat)와
+            // 같은 규칙이어야 한다. 여기서만 Stat1/Value1 을 읽으면 트리거와 이중으로 들어간다.
+            if (data.Grade == AbilityGrade.Special || data.Grade == AbilityGrade.Mastery) continue;
 
             Accumulate(bonuses, data.Stat1, data.Value1);
             if (data.HasStat2) Accumulate(bonuses, data.Stat2, data.Value2);
@@ -82,7 +88,7 @@ public static class AbilityApplier
         foreach (var kvp in bonuses)
         {
             float delta = IsAbsoluteStat(kvp.Key) ? kvp.Value : stat.Get(kvp.Key) * kvp.Value;
-            stat.Add(kvp.Key, delta, UnitStat.GeneralOnlyKey);
+            stat.Add(kvp.Key, delta, GeneralLayerKey);
         }
     }
 

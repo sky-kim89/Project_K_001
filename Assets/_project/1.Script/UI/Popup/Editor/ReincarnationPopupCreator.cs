@@ -409,6 +409,12 @@ public static class ReincarnationPopupCreator
             rt.sizeDelta        = new Vector2(BtnW, BtnH);
         }
 
+        // ── 어빌리티 툴팁 ───────────────────────────────────
+        //  아이콘만으로는 무슨 어빌리티인지 알 수 없다. 도감·보상 카드와
+        //  같은 모양·같은 동작이어야 하므로 공용 빌더를 쓴다.
+        //  ⚠ 팝업 루트에 하나만 만든다 — 위치는 런타임에 누른 타일 기준으로 잡힌다.
+        var abilityTooltip = InfoTooltipBuilder.Build(panel, 420f);
+
         // ── 장수 Row 프리팹 로드 ─────────────────────────────
         var generalRowPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{SavePath}/GeneralStatRow.prefab");
 
@@ -419,6 +425,7 @@ public static class ReincarnationPopupCreator
         SetObj (so, "_statsText",          statsText);
         SetObj (so, "_abilityIconContent", abilityArea.transform);
         SetObj (so, "_abilityEmptyText",   emptyText);
+        SetObj (so, "_abilityTooltip",     abilityTooltip);
         SetObj (so, "_generalArea",        generalContent.transform);
         SetObj (so, "_currentPtsText",     currentPtsTmp);
         SetObj (so, "_earnPtsText",        earnPtsTmp);

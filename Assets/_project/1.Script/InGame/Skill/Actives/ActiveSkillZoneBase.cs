@@ -49,6 +49,7 @@ public abstract class ActiveSkillZoneBase : ActiveSkillData
             DamagePerTick      = ctx.CasterStat.Final[StatType.Attack] * EffectValue,
             CasterTeam         = identity.Team,
             CasterEntity       = ctx.CasterEntity,
+            SourceSkill        = SkillId,       // 디버프 자리를 잡는 열쇠
             BaseEffectKey      = BaseEffectKey,
             EffectDespawnDelay = EffectDespawnDelay,
         };

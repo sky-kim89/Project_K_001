@@ -52,8 +52,9 @@ public class EquipCardUI : MonoBehaviour
                 foreach (var e in data.StatEntries)
                 {
                     float val = data.GetStatValue(e, 0);
-                    sb.Append(LocalizationManager.Instance.Get(e.Stat.ToString())).Append(" +");
-                    sb.AppendLine(StatDisplayHelper.FormatStat(e.Stat, val));
+                    // 스탯 창의 '장비' 색과 같은 파랑 — 색만 보고 출처를 알 수 있게 한다
+                    sb.AppendLine(StatBonusColors.Wrap(StatSource.Equip,
+                        $"{LocalizationManager.Instance.Get(e.Stat.ToString())} +{StatDisplayHelper.FormatStat(e.Stat, val)}"));
                 }
                 _statText.text = sb.ToString().TrimEnd();
             }

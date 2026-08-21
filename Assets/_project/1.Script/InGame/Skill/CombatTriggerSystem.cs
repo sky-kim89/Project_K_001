@@ -22,12 +22,20 @@ namespace BattleGame.Units
     {
         EntityQuery _enemyQuery;
         EntityQuery _generalQuery;
+        EntityQuery _soldierQuery;
 
         protected override void OnCreate()
         {
             _enemyQuery = GetEntityQuery(new EntityQueryDesc
             {
                 All  = new ComponentType[] { ComponentType.ReadOnly<UnitIdentityComponent>(), ComponentType.ReadOnly<LocalTransform>() },
+                None = new ComponentType[] { typeof(DeadTag) },
+            });
+
+            // 병사 버프 장비(군단의 뿔피리 등)가 쓰는 쿼리 — 장군별 필터는 순회에서 한다
+            _soldierQuery = GetEntityQuery(new EntityQueryDesc
+            {
+                All  = new ComponentType[] { ComponentType.ReadOnly<SoldierComponent>(), ComponentType.ReadOnly<StatComponent>() },
                 None = new ComponentType[] { typeof(DeadTag) },
             });
 
@@ -89,6 +97,12 @@ namespace BattleGame.Units
                 };
 
                 // ── 장비 트리거 디스패치 ─────────────────────────
+                //
+                //  ⚠ 판정은 프레임 단위다 — 확률을 정할 때 이걸 감안해야 한다
+                //    "적 처치 시" 는 누가 죽였든 적이 죽은 프레임마다 참이 된다
+                //    (UnitDeathDespawnSystem 이 아군 장군 전원에게 브로드캐스트).
+                //    난전에서는 초당 수십 번 굴린다는 뜻이라, 표시된 확률이 곧
+                //    체감 빈도가 아니다.
                 for (int s = 0; s < trigSet.ActiveEquipSlots; s++)
                 {
                     var equip   = trigSet.EquipSlots[s];
@@ -170,28 +184,50 @@ namespace BattleGame.Units
 
         // ── 장비 트리거 효과 적용 ────────────────────────────────
 
-        static void ApplyEquipTrigger(EquipmentData equip, int enhance, int slotIndex, PassiveTriggerContext ctx)
+        void ApplyEquipTrigger(EquipmentData equip, int enhance, int slotIndex, PassiveTriggerContext ctx)
         {
-            var   em    = ctx.EntityManager;
-            float value = CalcValue(equip, enhance, ctx);
+            if (equip.EffectKind == EquipTriggerEffect.Summon)
+            {
+                SummonForEquip(equip, enhance, ctx);
+                return;
+            }
+
+            if (equip.TriggerTarget == EquipTriggerTarget.Soldiers)
+            {
+                ApplyToSoldiers(equip, enhance, slotIndex, ctx);
+                return;
+            }
+
+            ApplyStatEffect(equip, enhance, slotIndex, ctx, ctx.GeneralEntity,
+                            CalcValue(equip, enhance, ctx));
+        }
+
+        /// <summary>한 대상에게 회복 또는 버프를 건다.</summary>
+        static void ApplyStatEffect(EquipmentData equip, int enhance, int slotIndex,
+                                    PassiveTriggerContext ctx, Entity target, float value)
+        {
+            var em = ctx.EntityManager;
+            if (!em.Exists(target)) return;
 
             // MaxHp 스탯 = 즉시 체력 회복 특수 처리
-            if (equip.TriggerStat == StatType.MaxHp)
+            if (equip.EffectKind == EquipTriggerEffect.StatBuff && equip.TriggerStat == StatType.MaxHp)
             {
-                if (!em.HasBuffer<HealEventBufferElement>(ctx.GeneralEntity)) return;
-                em.GetBuffer<HealEventBufferElement>(ctx.GeneralEntity).Add(
+                if (!em.HasBuffer<HealEventBufferElement>(target)) return;
+                em.GetBuffer<HealEventBufferElement>(target).Add(
                     new HealEventBufferElement { Amount = value, SourceEntity = ctx.GeneralEntity });
                 return;
             }
 
             // 그 외 스탯 = StatusEffect 버프
-            if (!em.HasBuffer<StatusEffectBufferElement>(ctx.GeneralEntity)) return;
-            float dur = equip.TriggerDuration > 0f ? equip.TriggerDuration : 0.1f;
-            em.GetBuffer<StatusEffectBufferElement>(ctx.GeneralEntity).Add(new StatusEffectBufferElement
+            //  RatioBuff 는 Multiply 로 들어간다 — 대상마다 기본 수치가 다른 병사 버프용.
+            if (!em.HasBuffer<StatusEffectBufferElement>(target)) return;
+            bool  ratio = equip.EffectKind == EquipTriggerEffect.RatioBuff;
+            float dur   = equip.TriggerDuration > 0f ? equip.TriggerDuration : 0.1f;
+            em.GetBuffer<StatusEffectBufferElement>(target).Add(new StatusEffectBufferElement
             {
                 Stat       = equip.TriggerStat,
-                Delta      = value,
-                Mode       = EffectMode.Add,
+                Delta      = ratio ? 1f + value : value,
+                Mode       = ratio ? EffectMode.Multiply : EffectMode.Add,
                 Duration   = dur,
                 Remaining  = dur,
                 SourceType = BuffSourceType.Equipment,
@@ -199,7 +235,79 @@ namespace BattleGame.Units
             });
         }
 
+        /// <summary>
+        /// 이 장군 휘하 병사 전원에게 효과를 뿌린다.
+        ///
+        /// ⚠ 캐시한 쿼리로 배열을 떠서 돈다
+        ///   SystemAPI.Query 순회 안에서 버퍼를 만지면 구조적 변경 한 번에
+        ///   TypeHandle 이 통째로 무효화된다 (이 파일 상단 주석과 같은 이유).
+        /// </summary>
+        void ApplyToSoldiers(EquipmentData equip, int enhance, int slotIndex, PassiveTriggerContext ctx)
+        {
+            var em       = ctx.EntityManager;
+            var soldiers = _soldierQuery.ToEntityArray(Unity.Collections.Allocator.Temp);
+
+            for (int i = 0; i < soldiers.Length; i++)
+            {
+                Entity s = soldiers[i];
+                if (!em.Exists(s)) continue;
+                if (em.GetComponentData<SoldierComponent>(s).GeneralEntity != ctx.GeneralEntity) continue;
+
+                // 회복·비율 버프는 병사 자신의 수치를 기준으로 잡아야 한다
+                float value = CalcValueFor(equip, enhance, ctx, s);
+                ApplyStatEffect(equip, enhance, slotIndex, ctx, s, value);
+            }
+
+            soldiers.Dispose();
+        }
+
+        /// <summary>
+        /// 스켈레톤 소환. 스폰·외형·태그는 SkeletonSpawner 가 소유한다 —
+        /// 스켈레톤 소환 스킬(ActiveSummonSkeleton)과 같은 모습이어야 한다.
+        /// </summary>
+        void SummonForEquip(EquipmentData equip, int enhance, PassiveTriggerContext ctx)
+        {
+            var em = ctx.EntityManager;
+            if (PoolController.Instance == null) return;
+
+            // 장군 GameObject 는 UnitPoolLinkComponent 로 찾는다 (ActiveSkillExecuteSystem 과 같은 길)
+            if (!em.HasComponent<UnitPoolLinkComponent>(ctx.GeneralEntity)) return;
+            var go = em.GetComponentObject<UnitPoolLinkComponent>(ctx.GeneralEntity)?.LinkedObject;
+            if (go == null || !go.TryGetComponent<GeneralRuntimeBridge>(out var bridge)) return;
+
+            UnitStat generalStat = bridge.GetRolledStat();
+            if (generalStat == null) return;
+            if (!em.HasComponent<UnitJobComponent>(ctx.GeneralEntity)) return;
+
+            UnitJob job      = em.GetComponentData<UnitJobComponent>(ctx.GeneralEntity).Job;
+            Vector3 basePos  = go.transform.position;
+            int     count    = Mathf.Max(1, Mathf.RoundToInt(
+                                   equip.TriggerValue * (1f + enhance * equip.ValuePerLevel)));
+
+            for (int i = 0; i < count; i++)
+            {
+                float   angle = (360f / count) * i * Mathf.Deg2Rad;
+                Vector3 pos   = basePos + new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f) * SummonRadius;
+                SkeletonSpawner.Spawn(em, equip.SummonPoolKey, pos, generalStat,
+                                      equip.SummonStatRatio, ctx.GeneralEntity, job);
+            }
+        }
+
+        /// <summary>소환 위치 반경 — 장군을 둘러싸고 나온다.</summary>
+        const float SummonRadius = 1.5f;
+
         static float CalcValue(EquipmentData equip, int enhance, PassiveTriggerContext ctx)
+            => CalcValueFor(equip, enhance, ctx, ctx.GeneralEntity);
+
+        /// <summary>
+        /// 효과 수치를 대상 기준으로 계산한다.
+        ///
+        /// ⚠ 기준값은 '받는 쪽' 에서 읽는다
+        ///   최대 체력 비례 회복을 병사에게 뿌릴 때 장군의 체력을 기준으로 잡으면
+        ///   병사가 한 방에 풀피가 된다. 대상이 자기 수치를 기준으로 삼아야 한다.
+        ///   (피해량 기준만은 장군이 때린 값이라 대상과 무관하다)
+        /// </summary>
+        static float CalcValueFor(EquipmentData equip, int enhance, PassiveTriggerContext ctx, Entity target)
         {
             float v = equip.TriggerValue;
             if (equip.TriggerIsPercent)
@@ -208,8 +316,8 @@ namespace BattleGame.Units
                 {
                     EquipTriggerPercentBase.OfDamage => ctx.DamageDealt,
                     EquipTriggerPercentBase.OfMaxHp  =>
-                        ctx.EntityManager.HasComponent<StatComponent>(ctx.GeneralEntity)
-                            ? ctx.EntityManager.GetComponentData<StatComponent>(ctx.GeneralEntity).Final[StatType.MaxHp]
+                        ctx.EntityManager.HasComponent<StatComponent>(target)
+                            ? ctx.EntityManager.GetComponentData<StatComponent>(target).Final[StatType.MaxHp]
                             : 0f,
                     _ => 1f,
                 };

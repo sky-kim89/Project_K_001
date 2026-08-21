@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using UnityEngine;
 using BattleGame.Units;
 
@@ -96,6 +96,13 @@ public class ActiveSkillData : ScriptableObject
     [Tooltip("기본/범위 이펙트 풀 키 (존 중심, 낙하 예고 등). 비워두면 미사용.")]
     public string BaseEffectKey = "";
 
+    [Header("범위 표시")]
+    [Tooltip("버프·오라의 적용 범위를 바닥 원으로 보여 줄지. 반경(EffectRadius)이 있는 스킬만 의미가 있다.")]
+    public bool ShowRangeIndicator = true;
+
+    [Tooltip("범위 원이 떠 있는 시간(초). 0 이면 EffectDespawnDelay 를 쓴다.")]
+    public float RangeIndicatorDuration = 0f;
+
     [Min(0.1f)]
     [Tooltip("이펙트 자동 반납 딜레이 (초). 파티클 재생 시간에 맞게 조절.")]
     public float EffectDespawnDelay = 2f;
@@ -109,6 +116,35 @@ public class ActiveSkillData : ScriptableObject
     /// 스킬을 실행한다. ActiveSkillExecuteSystem 이 이벤트 발생 시 호출.
     /// context 를 통해 ECS Entity / StatComponent 와 Unity GO / Transform 에 접근 가능.
     /// </summary>
+    /// <summary>
+    /// 이 스킬의 적용 범위를 바닥에 원으로 그린다.
+    ///
+    /// ⚠ 버프는 범위가 보이지 않으면 판단할 수 없다
+    ///   "주변 아군 공격력 +30%" 는 어디까지가 주변인지 화면에 아무 단서가 없었다.
+    ///   부대를 어디에 세워야 받는지 알 수 없으니, 사실상 운에 맡기는 스킬이었다.
+    ///
+    /// ⚠ 반경이 없는 스킬은 아무것도 그리지 않는다
+    ///   단일 대상 스킬에 원을 그리면 범위가 있는 것처럼 읽힌다.
+    /// </summary>
+    protected void ShowRange(ActiveSkillContext ctx, float radius)
+        => ShowRange(ctx, radius, BuffStatPalette.Unknown);
+
+    /// <summary>
+    /// 범위를 버프 색으로 그린다 — 무엇이 오르는 범위인지까지 보여 준다.
+    ///
+    /// 색은 BuffStatPalette 에서 가져온다. 발밑 빛기둥과 같은 표라
+    /// 원 안에 선 병사의 기둥 색과 반드시 일치한다.
+    /// </summary>
+    protected void ShowRange(ActiveSkillContext ctx, float radius, Color tint)
+    {
+        if (!ShowRangeIndicator || radius <= 0f) return;
+        if (ctx.CasterTransform == null) return;
+
+        float dur = RangeIndicatorDuration > 0f ? RangeIndicatorDuration : EffectDespawnDelay;
+        SkillEffectHelper.SpawnRange(SkillEffectHelper.RangeRingKey,
+                                     ctx.CasterTransform.position, radius, dur, tint);
+    }
+
     public virtual void Execute(ActiveSkillContext context) { }
 }
 

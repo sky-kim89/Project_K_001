@@ -243,6 +243,11 @@ public class HeroDetailPopup : PopupBase
             _passiveNameTexts[i].text = pd?.SkillName   ?? "-";
             _passiveDescTexts[i].text = pd?.Description ?? "";
 
+            // 이름을 '패시브' 색(초록)으로 — 스탯 창에서 초록으로 뜬 수치가
+            // 어느 패시브에서 왔는지 색으로 이어진다.
+            // ⚠ 액티브 스킬 이름은 칠하지 않는다 — 스탯을 올리는 출처가 아니다.
+            _passiveNameTexts[i].color = StatBonusColors.PassiveColor;
+
             if (_passiveIcons != null && i < _passiveIcons.Length && _passiveIcons[i] != null)
             {
                 var pic = pd?.Icon;
@@ -568,10 +573,19 @@ public class HeroDetailPopup : PopupBase
         float k          = SoldierScale(row.Type);
         float baseVal    = _statResult.Base.Get(row.Type)   * k;
         float equipVal   = _statResult.GetEquip(row.Type)   * k;
-        float abilityVal = _statResult.GetAbility(row.Type) * k;
-        float relicVal   = _statResult.GetRelic(row.Type)   * k;
         float traitVal   = _statResult.GetTrait(row.Type)   * k;
         float codexVal   = _statResult.GetCodex(row.Type)   * k;
+
+        // ⚠ 어빌리티·유물은 장수 전용 몫이 섞여 있다
+        //   "장군의 위엄"(Unit_General) 같은 옵션은 병사에게 가지 않는데,
+        //   출처 총합을 그대로 환산하면 용병 탭에 그 몫까지 얹혀 보였다.
+        //   병사 탭에서는 장수 전용을 걷어낸 사본에서 읽는다 (전투와 같은 값).
+        float abilityVal = (_showSoldier
+            ? _statResult.GetForSoldier(HeroStatPipeline.AbilityKey, row.Type)
+            : _statResult.GetAbility(row.Type)) * k;
+        float relicVal   = (_showSoldier
+            ? _statResult.GetForSoldier(HeroStatPipeline.RelicKey, row.Type)
+            : _statResult.GetRelic(row.Type)) * k;
 
         // ── 패시브 칸은 탭마다 출처가 다르다 ──────────────────
         //  장수 : Target.General 몫

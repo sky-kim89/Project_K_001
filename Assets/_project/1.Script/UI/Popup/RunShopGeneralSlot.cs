@@ -80,7 +80,9 @@ public class RunShopGeneralSlot : MonoBehaviour
 
             if (_hpText      != null) { _hpText.text      = $"{result.Total(StatType.MaxHp):N0}"; _hpText.color = StatColors.Hp; }
             if (_atkText     != null) { _atkText.text     = $"{result.Total(StatType.Attack):N0}"; _atkText.color = StatColors.Atk; }
-            if (_defText     != null) { _defText.text     = $"{StatDisplayHelper.EffectiveDefensePct(result.Total(StatType.Defense)):F1}%"; _defText.color = StatColors.Def; }
+            // 방어율은 소수점을 버린다 — 2열로 접히면서 칸이 절반이 됐고,
+            // 0.1%p 차이가 구매 판단을 바꾸지도 않는다
+            if (_defText     != null) { _defText.text     = $"{StatDisplayHelper.EffectiveDefensePct(result.Total(StatType.Defense)):F0}%"; _defText.color = StatColors.Def; }
             if (_soldierText != null) { _soldierText.text = $"{Mathf.RoundToInt(result.Total(StatType.SoldierCount))}명"; _soldierText.color = StatColors.Soldier; }
             if (_passiveSlotsText != null) _passiveSlotsText.text = $"패시브 {cfg.GetPassiveSlotCount(entry.Grade)}슬롯";
 

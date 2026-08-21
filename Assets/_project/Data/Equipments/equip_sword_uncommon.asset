@@ -13,17 +13,19 @@ MonoBehaviour:
   m_Name: equip_sword_uncommon
   m_EditorClassIdentifier: 
   EquipmentId: equip_sword_uncommon
-  EquipmentName: "\uAC15\uCCA0 \uB2E8\uAC80"
-  Description: "\uC798 \uBCBC\uB824\uC9C4 \uAC15\uCCA0 \uB2E8\uAC80. \uBE60\uB978
-    \uC5F0\uACA9\uC5D0 \uC801\uD569\uD558\uB2E4."
+  EquipmentName: "\uAC15\uCCA0 \uAC80"
+  Description: "\uC798 \uBCBC\uB824\uC9C4 \uAC15\uCCA0 \uAC80. \uBB34\uAC8C\uAC00
+    \uC190\uC5D0 \uC775\uB294\uB2E4."
   Icon: {fileID: 21300000, guid: 5d4883b51668e8143b9d4e1fabea5955, type: 3}
   Grade: 1
   StatEntries:
   - Stat: 2
     Delta: 15
-  - Stat: 4
-    Delta: 0.18
+  - Stat: 7
+    Delta: 0.1
   TriggerType: 0
+  EffectKind: 0
+  TriggerTarget: 0
   TriggerStat: 2
   TriggerValue: 0
   TriggerIsPercent: 0
@@ -31,6 +33,8 @@ MonoBehaviour:
   TriggerChance: 0
   TriggerDuration: 0
   ItemLevel: 2
+  SummonPoolKey: Soldier
+  SummonStatRatio: 0.4
   ValuePerLevel: 0.1
   BaseEnhanceStoneCost: 2
   BaseGoldCost: 200

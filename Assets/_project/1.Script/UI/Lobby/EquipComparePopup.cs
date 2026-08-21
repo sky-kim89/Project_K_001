@@ -199,8 +199,9 @@ public class EquipComparePopup : PopupBase
         foreach (var e in equip.StatEntries)
         {
             if (sb.Length > 0) sb.Append('\n');
-            sb.Append(loc.Get(e.Stat.ToString())).Append(" +")
-              .Append(StatDisplayHelper.FormatStat(e.Stat, equip.GetStatValue(e, enhance)));
+            // 스탯 창의 '장비' 색과 같은 파랑 — 색만 보고 출처를 알 수 있게 한다
+            sb.Append(StatBonusColors.Wrap(StatSource.Equip,
+                $"{loc.Get(e.Stat.ToString())} +{StatDisplayHelper.FormatStat(e.Stat, equip.GetStatValue(e, enhance))}"));
         }
         AppendTrigger(sb, equip, loc);
         return sb.ToString();
@@ -220,8 +221,8 @@ public class EquipComparePopup : PopupBase
         foreach (var kv in selVals)
         {
             if (sb.Length > 0) sb.Append('\n');
-            sb.Append(loc.Get(kv.Key.ToString())).Append(" +")
-              .Append(StatDisplayHelper.FormatStat(kv.Key, kv.Value));
+            sb.Append(StatBonusColors.Wrap(StatSource.Equip,
+                $"{loc.Get(kv.Key.ToString())} +{StatDisplayHelper.FormatStat(kv.Key, kv.Value)}"));
 
             curVals.TryGetValue(kv.Key, out float before);
             AppendDelta(sb, kv.Key, kv.Value - before);
@@ -232,7 +233,7 @@ public class EquipComparePopup : PopupBase
         {
             if (selVals.ContainsKey(kv.Key)) continue;
             if (sb.Length > 0) sb.Append('\n');
-            sb.Append(loc.Get(kv.Key.ToString())).Append(" +0");
+            sb.Append(StatBonusColors.Wrap(StatSource.Equip, $"{loc.Get(kv.Key.ToString())} +0"));
             AppendDelta(sb, kv.Key, -kv.Value);
         }
 

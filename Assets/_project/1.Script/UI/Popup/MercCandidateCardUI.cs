@@ -115,7 +115,12 @@ public class MercCandidateCardUI : MonoBehaviour
             if (!show) continue;
 
             var pd = passiveDb.Get(passives[i]);
-            if (nameTexts[i] != null) nameTexts[i].text = pd?.SkillName    ?? "-";
+            if (nameTexts[i] != null)
+            {
+                nameTexts[i].text  = pd?.SkillName ?? "-";
+                // 장수 상세와 같은 규칙 — 패시브 이름은 '패시브' 색(초록)이다
+                nameTexts[i].color = StatBonusColors.PassiveColor;
+            }
             if (descTexts[i] != null) descTexts[i].text = pd?.Description  ?? "";
         }
     }

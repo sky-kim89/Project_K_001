@@ -56,12 +56,35 @@ public static class SkillCrowdControl
 
     // ── 버프 / 디버프 ────────────────────────────────────────
 
+    /// <summary>
+    /// 상태 효과를 건다 — **같은 스킬이면 갱신, 다른 스킬이면 따로 쌓인다.**
+    ///
+    /// ⚠ 예전엔 부를 때마다 새 줄을 만들었다
+    ///   화살비·연쇄번개는 한 번 시전에 여러 번 명중한다. 명중마다 둔화가 쌓여
+    ///   서너 발이면 목표가 제자리에 굳었다. 장판(SkillZoneRunner)과 같은 규칙으로 맞춘다.
+    /// </summary>
     public static void AddEffect(EntityManager em, Entity target, StatType stat, float delta,
                                  EffectMode mode, float duration, ActiveSkillId sourceSkill)
     {
         if (!em.Exists(target) || !em.HasBuffer<StatusEffectBufferElement>(target)) return;
 
-        em.GetBuffer<StatusEffectBufferElement>(target).Add(new StatusEffectBufferElement
+        var buff     = em.GetBuffer<StatusEffectBufferElement>(target);
+        int sourceId = (int)sourceSkill;
+
+        for (int i = 0; i < buff.Length; i++)
+        {
+            var b = buff[i];
+            if (b.Stat != stat || b.Mode != mode) continue;
+            if (b.SourceType != BuffSourceType.ActiveSkill || b.SourceId != sourceId) continue;
+
+            b.Delta     = delta;
+            b.Remaining = Mathf.Max(b.Remaining, duration);
+            b.Duration  = Mathf.Max(b.Duration,  duration);
+            buff[i]     = b;
+            return;
+        }
+
+        buff.Add(new StatusEffectBufferElement
         {
             Stat       = stat,
             Delta      = delta,
@@ -69,7 +92,7 @@ public static class SkillCrowdControl
             Duration   = duration,
             Remaining  = duration,
             SourceType = BuffSourceType.ActiveSkill,
-            SourceId   = (int)sourceSkill,
+            SourceId   = sourceId,
         });
     }
 

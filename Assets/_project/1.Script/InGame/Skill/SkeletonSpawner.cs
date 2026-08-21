@@ -21,6 +21,14 @@ using BattleGame.Units;
 
 public static class SkeletonSpawner
 {
+    /// <summary>
+    /// 땅에서 일어나는 연출 길이(초).
+    ///
+    /// ⚠ 연출·이동잠금·무적이 같은 값을 써야 한다
+    ///   따로 두면 "일어섰는데 아직 못 움직인다" 거나 "웅크린 채 맞는다" 가 된다.
+    /// </summary>
+    public const float RiseDuration = 0.45f;
+
     /// <summary>지정 위치에 스켈레톤 1기를 소환한다. 실패하면 null.</summary>
     public static GameObject Spawn(EntityManager em, string poolKey, Vector3 position,
                                    UnitStat generalStat, float statRatio,
@@ -51,9 +59,26 @@ public static class SkeletonSpawner
         // 외형만 언데드로 덮어쓴다 — Initialize 안의 ApplyAlly 이후여야 한다
         ApplySkeletonLook(go, position);
 
-        // 소환 유닛 마킹 — 딜을 스킬 딜로 귀속
+        // 땅에서 기어 나오는 연출 — 웅크렸다가 일어선다.
+        //  ⚠ 외형을 덮어쓴 뒤에 부른다
+        //    ApplySkeletonLook 이 SpriteLibrary 를 갈아 끼우므로, 그 전에 자세를
+        //    잡으면 아군 외형의 웅크림이 한 프레임 스친다.
+        if (go.TryGetComponent<UnitAnimationSync>(out var anim))
+            anim.PlayRise(RiseDuration);
+
         if (go.TryGetComponent<EntityLink>(out var link) && link.Entity != Entity.Null)
+        {
+            // 소환 유닛 마킹 — 딜을 스킬 딜로 귀속
             em.AddComponent<SummonedTag>(link.Entity);
+
+            // 일어나는 동안은 가만히 있고, 맞지도 않는다.
+            //  ⚠ 새 규칙을 만들지 않는다 — 이미 있는 부품 두 개를 그대로 쓴다
+            //    SkillCastLock   : 이동·평타·추가 스킬 잠금 (스킬 시전과 같은 장치)
+            //    SpawnProtection : 그 동안 받는 피해 무효
+            //    둘 다 시간 기반이라 연출이 중간에 끊기거나 풀로 반납돼도 남지 않는다.
+            SkillCastLockUtil.Apply(em, link.Entity, RiseDuration);
+            SpawnProtectionUtil.Apply(em, link.Entity, RiseDuration);
+        }
 
         return go;
     }

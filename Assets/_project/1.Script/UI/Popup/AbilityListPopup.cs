@@ -203,9 +203,13 @@ public class AbilityListPopup : PopupBase
             string LvTag() => lv > 0 ? $"  <color=#aaaaaa>Lv {lv}/{maxLv}</color>" : string.Empty;
             int    mult   = lv > 0 ? lv : 1;
 
-            AddInfoRow($"<color=#888888>{LocalizationManager.Instance.Get(d.Stat1.ToString())}</color>  {AbilityUIHelper.FormatStatValue(d.Stat1, d.Value1 * mult)}{LvTag()}", Color.white);
+            AddInfoRow($"<color=#888888>{LocalizationManager.Instance.Get(d.Stat1.ToString())}</color>  " +
+                       StatBonusColors.Wrap(StatSource.Ability,
+                           $"{AbilityUIHelper.FormatStatValue(d.Stat1, d.Value1 * mult)}{LvTag()}"), Color.white);
             if (d.HasStat2)
-                AddInfoRow($"<color=#888888>{LocalizationManager.Instance.Get(d.Stat2.ToString())}</color>  {AbilityUIHelper.FormatStatValue(d.Stat2, d.Value2 * mult)}{LvTag()}", Color.white);
+                AddInfoRow($"<color=#888888>{LocalizationManager.Instance.Get(d.Stat2.ToString())}</color>  " +
+                           StatBonusColors.Wrap(StatSource.Ability,
+                               $"{AbilityUIHelper.FormatStatValue(d.Stat2, d.Value2 * mult)}{LvTag()}"), Color.white);
         }
     }
 

@@ -56,11 +56,13 @@ public class ActiveBind : ActiveSkillData
         {
             em.GetBuffer<StatusEffectBufferElement>(target).Add(new StatusEffectBufferElement
             {
-                Stat      = StatType.MaxHp,  // Dot 모드에서는 Stat 필드 무시됨
-                Delta     = ctx.CasterStat.Final[StatType.Attack] * EffectValue,
-                Mode      = EffectMode.Dot,
-                Duration  = duration,
-                Remaining = duration,
+                Stat         = StatType.MaxHp,  // Dot 모드에서는 Stat 필드 무시됨
+                Delta        = ctx.CasterStat.Final[StatType.Attack] * EffectValue,
+                Mode         = EffectMode.Dot,
+                Duration     = duration,
+                Remaining    = duration,
+                // 도트로 잡은 적도 이 장군의 전과로 잡히게 한다
+                SourceEntity = ctx.CasterEntity,
             });
         }
     }

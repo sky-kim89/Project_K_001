@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // ============================================================
 //  RelicData.cs
@@ -95,25 +95,39 @@ public class RelicData : ScriptableObject
     public string GetTargetLabel()
         => LocalizationManager.Instance.Get(Target.ToString());
 
+    /// <summary>
+    /// 유물 스킬 줄 한 줄.
+    ///
+    /// ⚠ 색은 여기서 입힌다 — 부르는 쪽이 감싸면 빠뜨린다
+    ///   유물 설명은 팝업·툴팁·도감·보상 카드 네 곳에서 불린다.
+    ///   부르는 쪽마다 감싸게 하면 한 곳은 반드시 빠진다.
+    /// </summary>
     string BuildStatLine(StatType stat, float valuePerLevel, int level)
     {
         float total = valuePerLevel * level;
         string label = LocalizationManager.Instance.Get(stat.ToString());
+        string body;
         if (IsAbsoluteValue)
         {
             if (stat == StatType.SoldierCount)
-                return $"{label} +{Mathf.RoundToInt(total)}명";
-            if (stat == StatType.SkillCooldownReduce || stat == StatType.Defense || stat == StatType.CritChance)
-                return $"{label} +{total * 100f:0}%p";
-            return $"{label} +{total:0.#}";
+                body = $"{label} +{Mathf.RoundToInt(total)}명";
+            else if (stat == StatType.SkillCooldownReduce || stat == StatType.Defense || stat == StatType.CritChance)
+                body = $"{label} +{total * 100f:0}%p";
+            else
+                body = $"{label} +{total:0.#}";
         }
-        return $"{label} +{total * 100f:0}%";
+        else
+        {
+            body = $"{label} +{total * 100f:0}%";
+        }
+        return StatBonusColors.Wrap(StatSource.Relic, body);
     }
 
     string BuildSystemDesc(int level)
     {
         float v = SystemValuePerLevel * level;
-        return SystemEffect switch
+        // 스킬이 아니더라도 '유물이 준 것' 은 맞다 — 같은 색을 쓴다
+        return StatBonusColors.Wrap(StatSource.Relic, SystemEffect switch
         {
             RelicSystemEffect.AbilityRefreshCount   => $"어빌리티 새로고침 +{Mathf.RoundToInt(v)}회",
             RelicSystemEffect.AbilityChoiceCount    => $"어빌리티 선택지 +{Mathf.RoundToInt(v)}개",
@@ -126,7 +140,7 @@ public class RelicData : ScriptableObject
             RelicSystemEffect.GeneralSlotBonus      => $"장수 배치 슬롯 +{Mathf.RoundToInt(v)}칸",
             RelicSystemEffect.BattleSpeedUnlock      => $"전투 배속 {1 + Mathf.RoundToInt(v)}× 까지 사용",
             _ => string.Empty,
-        };
+        });
     }
 
 }

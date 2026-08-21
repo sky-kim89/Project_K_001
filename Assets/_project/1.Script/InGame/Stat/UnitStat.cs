@@ -41,6 +41,24 @@ public class UnitStat
     /// </summary>
     public const string GeneralOnlyKey = "general_only";
 
+    /// <summary>
+    /// 장수 전용 레이어임을 나타내는 접미사. "ability@g" 처럼 붙인다.
+    ///
+    /// ⚠ 왜 레이어를 하나로 안 두고 출처별로 나누나
+    ///   병사 환산에서 걷어내는 것과, 화면에 "어빌리티 +30" 으로 분해해 보여 주는 것은
+    ///   서로 다른 요구다. 예전엔 전자만 보고 general_only 한 통에 몰아넣었더니
+    ///   로비가 분해를 못 해서 자기 딕셔너리를 따로 만들었고, 그 순간 계산이 둘로 갈렸다.
+    ///   출처를 보존한 채 접미사로 표시하면 한 자료구조가 둘 다 답한다.
+    /// </summary>
+    public const string GeneralOnlySuffix = "@g";
+
+    /// <summary>출처 이름에 장수 전용 표시를 붙인다 ("ability" → "ability@g").</summary>
+    public static string GeneralOnly(string sourceKey) => sourceKey + GeneralOnlySuffix;
+
+    public static bool IsGeneralOnlyKey(string key) =>
+        !string.IsNullOrEmpty(key) &&
+        (key == GeneralOnlyKey || key.EndsWith(GeneralOnlySuffix, StringComparison.Ordinal));
+
     // ── 데이터 ────────────────────────────────────────────────
     // key(레이어) → (StatType → 해당 레이어 내 합산값)
     readonly Dictionary<string, Dictionary<StatType, float>> _layers      = new();
@@ -115,6 +133,39 @@ public class UnitStat
     public bool  HasKey(string key)     => _layers.ContainsKey(NormalizeKey(key));
     public IEnumerable<string> GetKeys() => _layers.Keys;
 
+    /// <summary>
+    /// 특정 레이어가 이 스탯에 넣은 몫. 없으면 0.
+    /// 화면 분해("장비 +119")가 이걸 읽는다 — 계산과 표시가 같은 자료를 본다.
+    /// </summary>
+    public float GetLayer(string key, StatType type)
+    {
+        if (!_layers.TryGetValue(NormalizeKey(key), out var layer)) return 0f;
+        return layer.TryGetValue(type, out float v) ? v : 0f;
+    }
+
+    /// <summary>
+    /// 출처 하나의 총합 — 공용 레이어와 장수 전용 레이어를 함께 센다.
+    /// (예: "ability" 와 "ability@g")
+    /// </summary>
+    public float GetSource(string sourceKey, StatType type)
+        => GetLayer(sourceKey, type) + GetLayer(GeneralOnly(sourceKey), type);
+
+    /// <summary>
+    /// 이름이 prefix 로 시작하는 레이어를 전부 더한다.
+    /// 장비처럼 슬롯마다 레이어가 갈리는 출처("equip_0"·"equip_1"…)를 한 줄로 볼 때 쓴다.
+    /// </summary>
+    public float GetPrefixed(string prefix, StatType type)
+    {
+        prefix = NormalizeKey(prefix);
+        float sum = 0f;
+        foreach (var layerKv in _layers)
+        {
+            if (!layerKv.Key.StartsWith(prefix, StringComparison.Ordinal)) continue;
+            if (layerKv.Value.TryGetValue(type, out float v)) sum += v;
+        }
+        return sum;
+    }
+
     // ── 결합 모드 설정 ─────────────────────────────────────────
     public void SetCombineMode(StatType type, CombineMode mode)
     {
@@ -153,6 +204,28 @@ public class UnitStat
     /// 특정 레이어만 뺀 깊은 복사. 병사 환산의 원본을 만들 때 쓴다.
     /// (장수 전용 보너스를 빼고 나머지는 그대로 물려주는 용도)
     /// </summary>
+    /// <summary>
+    /// 장수 전용 레이어를 전부 걷어낸 사본 — 병사 환산의 원본이다.
+    ///
+    /// ⚠ 레이어 하나만 지우면 안 된다
+    ///   장수 전용은 출처별로 나뉘어 있다 (passive@g · ability@g · relic@g).
+    ///   하나만 지우면 나머지가 병사에게 그대로 흘러간다.
+    /// </summary>
+    public UnitStat CloneWithoutGeneralOnly()
+    {
+        var clone = new UnitStat();
+        foreach (var kv in _combineModes)
+            clone.SetCombineMode(kv.Key, kv.Value);
+
+        foreach (var layerKv in _layers)
+        {
+            if (IsGeneralOnlyKey(layerKv.Key)) continue;
+            foreach (var statKv in layerKv.Value)
+                clone.Set(statKv.Key, statKv.Value, layerKv.Key);
+        }
+        return clone;
+    }
+
     public UnitStat CloneWithout(string excludeKey)
     {
         excludeKey = NormalizeKey(excludeKey);

@@ -71,108 +71,45 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         // 등급 업그레이드 횟수 반영 (unitEntry 없으면 태생 등급 사용)
         _grade     = unitEntry != null ? unitEntry.Grade : UnitJobRoller.GetBirthGrade(unitName);
         _job      = UnitJobRoller.GetJob(unitName);
-        // 기본 스탯 조립은 HeroStatResolver 가 소유한다 — 로비 표시와 같은 값이어야 한다
-        _stat     = unitEntry != null
-                    ? HeroStatResolver.RollBase(unitEntry)
-                    : GeneralStatRoller.Roll(unitName, _level, _grade);
-
-        // ⚠ 여기서 떠야 한다 — 아래 한 줄이라도 지나면 '성장만' 이 아니게 된다
-        //   패시브·장비·어빌리티·유물·특성·도감이 붙기 전의 순수 성장치다.
-        //   "외부 컨텐츠로 오른 증가분" 을 세는 패시브(속전속결)가 이 값을 뺀다.
-        _baseRoll = StatBlock.FromUnitStat(_stat);
-
-        // ── 패시브 스킬 결정 ──────────────────────────────────
+        // ── 패시브 슬롯 결정 (스탯 적용은 파이프라인이 한다) ──
         (_passive0, _passive1, _passive2) = PassiveSkillRoller.Roll(_unitName);
         _activePassiveCount               = PassiveSkillRoller.GetActiveSlotCount(_grade);
 
-        // ⚠ 패시브 스탯은 여기서 붙이지 않는다 — 맨 마지막이다
-        //   패시브의 Target.General 은 '장수 전용' 층(GeneralOnlyKey)으로 들어간다.
-        //   먼저 붙이면 뒤에 오는 공통 % 옵션(유물·특성·도감)이 그 값까지 포함한
-        //   총합을 기준으로 계산되고, 그 몫은 병사가 물려받는 층에 담긴다.
-        //   결국 **장수만 받아야 할 보너스가 병사에게 새어 들어간다.**
-        //   (아래 "장수 전용 층" 절에서 한 번에 붙인다)
-        var db = PassiveSkillDatabase.Current;
-        if (db != null)
+        // ── 스탯 조립 — 규칙은 HeroStatPipeline 하나가 소유한다 ──
+        //
+        //  ⚠ 여기서 순서를 다시 적지 말 것
+        //    예전엔 이 자리에 장비→어빌리티→유물→특성→도감→장수전용 순서가
+        //    통째로 적혀 있었고, 로비(HeroStatResolver)에도 같은 순서가 한 번 더
+        //    적혀 있었다. 한쪽에 항목을 추가하면 다른 쪽이 조용히 빠져
+        //    "화면과 전투가 다른" 버그가 반복해서 났다.
+        //
+        //  ⚠ previewBattleStart 는 false 다
+        //    전투 시작 패시브는 실제로 PassiveSkillRuntimeSystem 이 건다.
+        //    여기서 미리 얹으면 같은 보너스가 두 번 들어간다.
+        if (unitEntry != null)
         {
-            // TitanGeneral 크기 변경 (풀 재사용 시 이전 스케일 누적 방지: 항상 리셋 후 적용)
-            transform.localScale = Vector3.one;
-            float scaleMult = PassiveSkillApplier.GetGeneralScaleMultiplier(GetActivePassives(), db);
+            var build          = HeroStatPipeline.Build(unitEntry, previewBattleStart: false);
+            _stat              = build.Stat;
+            _baseRoll          = StatBlock.FromUnitStat(build.BaseRoll);
+            _soldierSourceStat = build.SoldierSource;
+        }
+        else
+        {
+            // 에디터 직접 스폰 등 — 세이브가 없어 성장분만 굴린다
+            _stat              = GeneralStatRoller.Roll(unitName, _level, _grade);
+            _baseRoll          = StatBlock.FromUnitStat(_stat);
+            _soldierSourceStat = _stat.CloneWithoutGeneralOnly();
+        }
+
+        // TitanGeneral 크기 변경 (풀 재사용 시 이전 스케일 누적 방지: 항상 리셋 후 적용)
+        transform.localScale = Vector3.one;
+        var passiveDb = PassiveSkillDatabase.Current;
+        if (passiveDb != null)
+        {
+            float scaleMult = PassiveSkillApplier.GetGeneralScaleMultiplier(GetActivePassives(), passiveDb);
             if (!Mathf.Approximately(scaleMult, 1f))
                 transform.localScale = new Vector3(scaleMult, scaleMult, scaleMult);
         }
-
-        // ── 장비 스탯 적용 (패시브 이후, SpawnEntity 직전) ────
-        var equipDb = EquipmentDatabase.Current;
-        if (equipDb != null && unitEntry != null)
-            EquipmentApplier.ApplyAll(_stat, unitEntry, equipDb);
-
-
-        // ── 어빌리티 스탯 적용 (장군 대상 All/Job/Range/Unit_General) ──
-        var abilityDb    = AbilityDatabase.Current;
-        var heldAbilities = UserDataManager.Instance?.Get<RunAbilityData>()?.HeldAbilities;
-        if (abilityDb != null && heldAbilities != null)
-            AbilityApplier.ApplyToGeneralStat(_stat, _job, heldAbilities, abilityDb);
-
-        // ── 유물 스텟 적용 (영구 보유) ────────────────────────────
-        var relicDb        = RelicDatabase.Current;
-        var relicInventory = UserDataManager.Instance?.Get<RelicInventoryData>();
-        if (relicDb != null && relicInventory != null)
-            RelicApplier.ApplyToGeneralStat(_stat, _job, relicInventory, relicDb);
-
-        // ── 특성 스텟 적용 (런 획득 특성) ─────────────────────
-        TraitApplier.ApplyToGeneralStat(
-            _stat,
-            UserDataManager.Instance?.Get<RunTraitData>(),
-            TraitDatabase.Current);
-
-        // ── 도감 보너스 (수집 1종당 공/체 +0.5%) ──────────────
-        // ⚠ 순서가 HeroStatResolver 의 7번과 같아야 로비 표시와 일치한다.
-        //   앞의 모든 출처가 합쳐진 뒤에 곱해지는 마지막 배수다.
-        CodexApplier.ApplyToGeneralStat(_stat);
-
-        // ── 장수 전용 층 (GeneralOnlyKey) — 반드시 맨 마지막 ──
-        //
-        //  ⚠ 순서가 곧 누수 여부다
-        //    이 층은 _soldierSourceStat 에서 통째로 걷힌다. 그런데 % 옵션은
-        //    "그 시점의 총합" 을 기준으로 계산되므로, 장수 전용을 먼저 붙이면
-        //    뒤따르는 공통 % 옵션의 **계산 근거**가 부풀려진다.
-        //    그 몫은 공통 층에 담기니 걷히지 않고 병사에게 그대로 간다.
-        //    (실측: 장수 전용 +20% 하나에 유물·도감 각 5% 만 있어도 병사가 +1.9% 를 덤으로 받았다)
-        //
-        //    맨 뒤로 미루면 장수는 최종값 기준으로 제값을 받고,
-        //    병사가 물려받는 층에는 한 푼도 섞이지 않는다.
-        if (db != null)
-            PassiveSkillApplier.ApplyToGeneralStat(_stat, GetActivePassives(), db);
-
-        if (abilityDb != null && heldAbilities != null)
-            AbilityApplier.ApplyGeneralOnly(_stat, heldAbilities, abilityDb);
-
-        if (relicDb != null && relicInventory != null)
-            RelicApplier.ApplyGeneralOnly(_stat, _job, relicInventory, relicDb);
-
-        // ── 방어율 소프트캡 실전 적용 (UI·전투 일치) ─────────────
-        // UI(EffectiveDefensePct)와 전투(StatComponent.Final)가 같은 값을 사용하도록
-        // 모든 스탯 계산이 끝난 뒤 원시 방어율을 소프트캡 공식으로 덮어씀
-        ApplyDefenseSoftCap(_stat);
-
-        // ── 병사 환산의 원본 ─────────────────────────────────
-        //
-        //  장수의 최종 스탯에서 **장수 전용 레이어만** 걷어낸 사본이다.
-        //
-        //  ⚠ 소스가 아니라 타겟으로 가른다
-        //    패시브·특성·도감·장비의 평범한 "공격력 증가" 는 부대 전체를 올리는
-        //    옵션이므로 병사에게도 간다 — 그대로 남겨 둔다.
-        //    명시적으로 장수를 지목한 옵션(AbilityTarget.Unit_General)만 빠진다.
-        //    출처로 가르면 같은 문구의 옵션이 어디서 왔느냐에 따라 다르게 동작한다.
-        //
-        //  ⚠ 비율 보너스는 환산과 순서를 바꿔도 결과가 같다
-        //    (base × 1.1) × ratio == (base × ratio) × 1.1 이므로, 공통 % 옵션을
-        //    장수 스탯에 넣어 두고 환산해도 병사에게 액면가 그대로 +10% 가 간다.
-        //    그래서 공통 옵션을 병사에게 또 적용하지 않는다 — 하면 이중 적용이다.
-        //
-        //  ⚠ 모든 적용이 끝난 뒤에 뜬다
-        //    앞에서 뜨면 뒤에 붙는 특성·도감이 병사에게 반영되지 않는다.
-        _soldierSourceStat = _stat.CloneWithout(UnitStat.GeneralOnlyKey);
 
         // 외형 적용 (ECS Entity 생성과 독립적으로 실행)
         GetComponent<UnitAppearanceBridge>()?.ApplyAlly(unitName, _job, _grade);
@@ -723,25 +660,6 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
             case 2: return new[] { _passive0, _passive1 };
             default: return new[] { _passive0 };
         }
-    }
-
-    /// <summary>
-    /// 모든 스탯 계산 후 방어율에 소프트캡을 적용한다.
-    /// UI(StatDisplayHelper.EffectiveDefensePct)와 실전 전투(StatComponent.Final)가 동일한 값을 갖는다.
-    /// </summary>
-    static void ApplyDefenseSoftCap(UnitStat stat)
-    {
-        var cfg = GameplayConfig.Current;
-        if (cfg == null) return;
-
-        float raw       = stat.Get(StatType.Defense);
-        float effective = raw <= cfg.DefenseMax
-            ? raw
-            : cfg.DefenseMax + (raw - cfg.DefenseMax) * cfg.DefenseOverflowRate;
-        effective = Mathf.Min(effective, cfg.DefenseEffectiveCap);
-
-        if (Mathf.Abs(raw - effective) > 0.0001f)
-            stat.Set(StatType.Defense, effective, UnitStat.BaseKey);
     }
 
     /// <summary>

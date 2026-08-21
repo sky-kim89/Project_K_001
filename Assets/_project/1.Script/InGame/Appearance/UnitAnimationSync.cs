@@ -73,6 +73,7 @@ public class UnitAnimationSync : MonoBehaviour
     float     _prevCooldown;
     float     _lastFacingX = 1f;
     bool      _isDying;
+    bool      _isRising;    // 소환 직후 '땅에서 일어나는' 연출 중
     Coroutine _hitCoroutine;
 
     UnitJob   _job;
@@ -124,6 +125,7 @@ public class UnitAnimationSync : MonoBehaviour
         _prevCooldown = 0f;
         _lastFacingX  = 1f;
         _isDying               = false;
+        _isRising              = false;
         _hitCoroutine          = null;
         _doubleStrikeCoroutine = null;
         _jobCached             = false;
@@ -134,6 +136,11 @@ public class UnitAnimationSync : MonoBehaviour
 
     void LateUpdate()
     {
+        // ⚠ 기상 중이라고 여기서 return 하면 안 된다
+        //   피격 플래시·공격 트리거·쿨다운 추적이 전부 이 안에 있다. 통째로 막으면
+        //   웅크린 채로 맞고 때리며, 쿨다운 값이 낡아 일어난 직후 헛스윙이 나간다.
+        //   막는 것은 '자세를 덮어쓰는 한 줄'(ApplyState)뿐이고, 실제로 무슨 일이
+        //   벌어지면(피격·공격) 기상 연출을 취소한다.
         if (_isDying) return;
         if (_animator == null) return;
         if (_link == null || _link.Entity == Entity.Null) return;
@@ -163,6 +170,7 @@ public class UnitAnimationSync : MonoBehaviour
 
             if (current == UnitState.Attacking && cooldown > _prevCooldown + 0.05f)
             {
+                CancelRise();   // 때리기 시작했으면 일어나는 연출은 끝이다
                 if (!_jobCached)
                 {
                     _job = em.HasComponent<BattleGame.Units.UnitJobComponent>(_link.Entity)
@@ -193,6 +201,7 @@ public class UnitAnimationSync : MonoBehaviour
             var reaction = em.GetComponentData<HitReactionComponent>(_link.Entity);
             if (reaction.NeedsFlash)
             {
+                CancelRise();   // 맞았으면 웅크린 자세를 붙들고 있을 이유가 없다
                 TriggerHitFlash();
                 reaction.NeedsFlash = false;
                 em.SetComponentData(_link.Entity, reaction);
@@ -204,9 +213,14 @@ public class UnitAnimationSync : MonoBehaviour
         {
             // Hit 상태 진입 → 색 플래시 (스턴 동반 강타 등)
             if (current == UnitState.Hit)
+            {
+                CancelRise();
                 TriggerHitFlash();
+            }
 
-            ApplyState(current);
+            // 기상 중에는 자세만 유지한다 — 이동·대기 상태가 웅크림을 덮지 않게.
+            // 취소는 위(피격·공격)에서 이미 처리됐다.
+            if (!_isRising) ApplyState(current);
             _prevState = current;
         }
 
@@ -268,6 +282,54 @@ public class UnitAnimationSync : MonoBehaviour
     }
 
     // ── 공개 API (UnitDeathDespawnSystem 에서 호출) ───────────
+
+    /// <summary>
+    /// 소환 직후 '땅에서 일어나는' 연출 — 웅크린 자세로 나타났다가 일어선다.
+    /// 스켈레톤 소환(SkeletonSpawner)이 부른다.
+    ///
+    /// ⚠ 연출일 뿐 전투는 그대로 돈다
+    ///   ECS 쪽은 소환 즉시 살아 있는 유닛이다. 여기서 막는 것은 애니메이터 상태
+    ///   반영뿐이라, 일어나는 동안에도 맞고 때린다. 무적 구간을 만들려면
+    ///   ECS 에 태그를 붙여야 한다 — 그건 연출이 아니라 규칙이다.
+    /// </summary>
+    public void PlayRise(float duration = 0.45f)
+    {
+        if (_isDying || _isRising || _animator == null) return;
+        StartCoroutine(RiseRoutine(duration));
+    }
+
+    System.Collections.IEnumerator RiseRoutine(float duration)
+    {
+        _isRising = true;
+        SetBool("Crouch");
+
+        // 실시간으로 센다 — 배속·일시정지에 연출이 갇히지 않게 (HitFlashRoutine 과 같은 이유)
+        // _isRising 을 함께 본다 — 피격·공격으로 이미 취소됐으면 여기서도 즉시 빠진다.
+        float end = Time.unscaledTime + duration;
+        while (Time.unscaledTime < end && _isRising && !_isDying)
+            yield return null;
+
+        if (_isRising) EndRise();
+    }
+
+    /// <summary>맞거나 때리면 기상 연출을 즉시 접는다.</summary>
+    void CancelRise()
+    {
+        if (_isRising) EndRise();
+    }
+
+    /// <summary>
+    /// 기상 연출 종료 — 다음 LateUpdate 가 실제 상태를 다시 씌우게 만든다.
+    ///
+    /// ⚠ 여기서 Idle 을 박으면 안 된다
+    ///   이미 달리거나 때리는 중일 수 있다. _prevState 를 없는 값으로 돌려놓아
+    ///   '상태가 바뀐 것' 으로 보이게 하면, 다음 프레임이 진짜 상태를 씌운다.
+    /// </summary>
+    void EndRise()
+    {
+        _isRising  = false;
+        _prevState = (UnitState)255;
+    }
 
     /// <summary>
     /// 사망 연출을 시작한다. 연출 완료 후 자동으로 PoolController.Despawn() 을 호출한다.
@@ -378,7 +440,12 @@ public class UnitAnimationSync : MonoBehaviour
         float t = 0f;
         while (t < _hitFlashDuration)
         {
-            t += Time.deltaTime;
+            // ⚠ 실시간(unscaled)으로 센다 — Time.deltaTime 을 쓰면 안 된다
+            //   일시정지·튜토리얼·배속 0 은 timeScale 을 0 으로 만든다. 그러면
+            //   deltaTime 이 0 이라 이 루프가 영영 안 끝나고, 맞는 순간 멈춘 유닛이
+            //   **빨간 채로 굳는다** (에디터 일시정지에서 보이던 그 현상).
+            //   피격 번쩍임은 연출이라 게임 시간과 무관하게 흘러야 한다.
+            t += Time.unscaledDeltaTime;
             SetTint(Color.Lerp(_hitFlashColor, Color.white, t / _hitFlashDuration));
             yield return null;
         }

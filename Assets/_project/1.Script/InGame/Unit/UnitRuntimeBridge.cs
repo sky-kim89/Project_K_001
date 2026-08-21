@@ -84,6 +84,11 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
         if (TryGetComponent<UnitAnimationSync>(out var animSync))
             animSync.ClearTint();
 
+        // 강화 버프 표시 — 프리팹을 고치지 않고 여기서 한 번만 붙인다
+        // (UnitDepthSorter 와 같은 방식. 모든 유닛이 지나는 유일한 길목이다)
+        if (!TryGetComponent<UnitBuffAuraView>(out _))
+            gameObject.AddComponent<UnitBuffAuraView>();
+
         if (!TryGetComponent<EntityLink>(out var link))
         {
             Debug.LogWarning($"[{GetType().Name}:{_unitName}] EntityLink 없음. 프리팹에 추가하세요.");
@@ -185,6 +190,19 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
         // SummonedTag 제거 (소환 유닛으로 쓰였던 엔티티가 재사용될 때 잔류 방지)
         if (em.HasComponent<SummonedTag>(entity))
             em.RemoveComponent<SummonedTag>(entity);
+
+        // 소환 연출용 잠금·보호 제거
+        //
+        //  ⚠ '시간 기반이니 알아서 풀린다' 로는 부족하다
+        //    남은 시간은 시뮬레이션이 도는 동안에만 줄어든다. 연출 도중 웨이브가
+        //    끝나거나 전투가 멈춘 채 반납되면 0.45 가 그대로 남아 있고, 그 엔티티를
+        //    물려받은 **다음 유닛이 못 움직이고 조준도 안 되는 상태로** 등장한다.
+        //    (다음 스테이지 시작 순간이라 눈에 잘 띈다)
+        if (em.HasComponent<SkillCastLock>(entity))
+            em.RemoveComponent<SkillCastLock>(entity);
+
+        if (em.HasComponent<SpawnProtection>(entity))
+            em.RemoveComponent<SpawnProtection>(entity);
 
         // 풀 링크 갱신 — 사망 처리 시 UnitDeathDespawnSystem 이 제거하므로 없으면 재추가
         if (em.HasComponent<BattleGame.Units.UnitPoolLinkComponent>(entity))

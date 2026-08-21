@@ -38,6 +38,11 @@ using UnityEngine.UI;
 //    자식 이름(PortraitBg/NameText/HpText…)은 그대로라 RunShopGeneralSlot 은
 //    손대지 않아도 된다.
 //
+//    ■ 스탯은 2행 2열이다 (체력·공격 / 방어·용병)
+//      4행으로 세웠더니 마지막 행이 카드 바닥을 4px 넘겨 고용 버튼 뒤로 숨었다
+//      (StatY 215 + 4행 × 48 = 407 > 카드 403). 2열로 접으면 311 에서 끝나
+//      버튼과 겹칠 자리가 없고, 출전 화면의 장수 카드와 읽는 순서도 같아진다.
+//
 //    상품 칸은 RewardCard(전투 결과·이벤트와 같은 카드) + 이름 + 가격뿐이다.
 //    스탯·설명·추가 옵션은 카드를 누르면 InfoTooltipUI 로 뜬다.
 // ============================================================
@@ -82,12 +87,15 @@ public static class RunShopPopupCreator
     const float BuyBtmPad    = 10f;
 
     // 용병 칸 내부
-    const float MercPad    = 12f;
+    // ⚠ 여백을 줄여 스탯 칸의 가로를 번다
+    //   스탯을 2열로 세우면 한 칸이 카드 폭의 절반뿐이다. 예전 여백(12+14)을
+    //   그대로 두면 "체력 12,345" 가 라벨을 파고든다.
+    const float MercPad    = 6f;
     const float PortraitH  = 150f;
     const float MercNameY  = 156f;   // CardArea 기준
     const float MercStatY  = 215f;   // CardArea 기준
-    const float StatRowH   = 44f;
-    const float StatRowGap = 4f;
+    const float StatRowH   = 52f;
+    const float StatRowGap = 6f;
     const float HireBtmPad = 14f;
 
     static readonly float BuyBtnH  = UIScale.BtnFor(UIScale.FontSm);   // 58
@@ -576,11 +584,13 @@ public static class RunShopPopupCreator
         nameTmp.fontSizeMax      = UIScale.FontMd;
         AnchorTop(nameTmp.gameObject, MercNameY, UIScale.RowMd, 20f);
 
-        // ── 스탯 4행 — 한 행에 하나씩, 라벨 좌 / 값 우 ───────
-        var hpTmp   = BuildStatRow(cardGo, 0, "Hp",      "체 력", StatColors.Hp);
-        var atkTmp  = BuildStatRow(cardGo, 1, "Atk",     "공 격", StatColors.Atk);
-        var defTmp  = BuildStatRow(cardGo, 2, "Def",     "방 어", StatColors.Def);
-        var sldTmp  = BuildStatRow(cardGo, 3, "Soldier", "병 사", StatColors.Soldier);
+        // ── 스탯 2행 × 2열 — 출전 화면(BattlePanel)의 장수 카드와 같은 배치 ──
+        //   체력 · 공격
+        //   방어 · 용병
+        var (hpTmp,  atkTmp) = BuildStatPair(cardGo, 0,
+            "Hp",  "체력", StatColors.Hp,  "Atk",     "공격", StatColors.Atk);
+        var (defTmp, sldTmp) = BuildStatPair(cardGo, 1,
+            "Def", "방어", StatColors.Def, "Soldier", "용병", StatColors.Soldier);
 
         // ── 초상화 렌더용 빌더 (비활성 — 화면에 그리지 않는다) ──
         var preview = Go("PortraitPreview", cardGo);
@@ -661,20 +671,48 @@ public static class RunShopPopupCreator
     //  둘 다 AutoSize 를 끄고 같은 크기(FontSm)로 못 박는다 —
     //  칸마다 제각각 줄어들어 글자 크기가 어긋나던 문제의 원인이었다.
     //  값 칸이 200px 넘게 남으므로 "999,999" 도 줄이지 않고 들어간다.
-    static TextMeshProUGUI BuildStatRow(GameObject card, int index, string id,
-                                        string label, Color valueColor)
+    /// <summary>
+    /// 스탯 두 개를 한 행에 나란히 놓는다 — [라벨 값] [라벨 값].
+    ///
+    /// ⚠ 값 칸은 AutoSize 로 줄어들게 둔다
+    ///   한 칸이 카드 폭의 절반뿐이라 "12,345" 같은 다섯 자리가 라벨을 파고든다.
+    ///   라벨은 고정 폭으로 자리를 지키고, 넘치는 쪽은 값의 글자 크기가 줄어든다.
+    /// </summary>
+    static (TextMeshProUGUI left, TextMeshProUGUI right) BuildStatPair(
+        GameObject card, int index,
+        string idL, string labelL, Color colorL,
+        string idR, string labelR, Color colorR)
     {
-        const float LabelW = 100f;
-
         float y = MercStatY + index * (StatRowH + StatRowGap);
 
-        var row = Go($"Stat_{id}", card, typeof(Image));
+        var row = Go($"StatRow_{index}", card, typeof(Image));
         var rowImg = row.GetComponent<Image>();
         rowImg.color         = StatRowBg;
         rowImg.raycastTarget = false;
-        AnchorTop(row, y, StatRowH, 20f);
+        AnchorTop(row, y, StatRowH, 12f);
 
-        var lbl = TMP(row, $"{id}Label", label, UIScale.FontSm, FontStyles.Normal);
+        var l = BuildStatCell(row, idL, labelL, colorL, 0f,   0.5f);
+        var r = BuildStatCell(row, idR, labelR, colorR, 0.5f, 1f);
+        return (l, r);
+    }
+
+    /// <summary>행 안의 한 칸. xMin~xMax 는 행을 좌우로 나눈 비율.</summary>
+    static TextMeshProUGUI BuildStatCell(GameObject row, string id, string label,
+                                         Color valueColor, float xMin, float xMax)
+    {
+        const float LabelW = 74f;   // "체력" 2글자 (FontSm) 가 들어가는 최소 폭
+        const float Pad    = 10f;
+
+        var cell = Go($"Stat_{id}", row);
+        {
+            var rt = cell.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(xMin, 0f);
+            rt.anchorMax = new Vector2(xMax, 1f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+        }
+
+        var lbl = TMP(cell, $"{id}Label", label, UIScale.FontSm, FontStyles.Normal);
         lbl.color            = StatLabelC;
         lbl.alignment        = TextAlignmentOptions.MidlineLeft;
         lbl.raycastTarget    = false;
@@ -684,21 +722,24 @@ public static class RunShopPopupCreator
             var rt = lbl.rectTransform;
             rt.anchorMin = new Vector2(0f, 0f); rt.anchorMax = new Vector2(0f, 1f);
             rt.pivot     = new Vector2(0f, 0.5f);
-            rt.offsetMin = new Vector2(14f, 0f);
-            rt.offsetMax = new Vector2(14f + LabelW, 0f);
+            rt.offsetMin = new Vector2(Pad, 0f);
+            rt.offsetMax = new Vector2(Pad + LabelW, 0f);
         }
 
-        var val = TMP(row, $"{id}Text", "—", UIScale.FontSm, FontStyles.Bold);
-        val.color            = valueColor;
-        val.alignment        = TextAlignmentOptions.MidlineRight;
-        val.raycastTarget    = false;
-        val.textWrappingMode = TextWrappingModes.NoWrap;
-        val.overflowMode     = TextOverflowModes.Overflow;
+        var val = TMP(cell, $"{id}Text", "—", UIScale.FontSm, FontStyles.Bold);
+        val.color             = valueColor;
+        val.alignment         = TextAlignmentOptions.MidlineRight;
+        val.raycastTarget     = false;
+        val.textWrappingMode  = TextWrappingModes.NoWrap;
+        val.overflowMode      = TextOverflowModes.Overflow;
+        val.enableAutoSizing  = true;
+        val.fontSizeMin       = UIScale.FontSm - 8f;
+        val.fontSizeMax       = UIScale.FontSm;
         {
             var rt = val.rectTransform;
             rt.anchorMin = new Vector2(0f, 0f); rt.anchorMax = new Vector2(1f, 1f);
-            rt.offsetMin = new Vector2(14f + LabelW + 8f, 0f);
-            rt.offsetMax = new Vector2(-14f, 0f);
+            rt.offsetMin = new Vector2(Pad + LabelW + 4f, 0f);
+            rt.offsetMax = new Vector2(-Pad, 0f);
         }
         return val;
     }

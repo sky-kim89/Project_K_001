@@ -202,8 +202,8 @@ public static class ActiveSkillCreator
             radius      : 3f,
             duration    : 8f,
             jobs        : new[] { UnitJob.Mage });
-        blizzard.MoveSlowMultiplier   = 0.4f;
-        blizzard.AttackSlowMultiplier = 0.5f;
+        blizzard.MoveSlowMultiplier   = 0.25f;   // 이동 -75%
+        blizzard.AttackSlowMultiplier = 0.35f;   // 공속 -65%
         blizzard.TickInterval         = 0.5f;
         EditorUtility.SetDirty(blizzard);
 

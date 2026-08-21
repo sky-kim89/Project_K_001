@@ -28,6 +28,10 @@ public class ActiveBattleCry : ActiveSkillData
         var casterTf       = em.GetComponentData<LocalTransform>(ctx.CasterEntity);
         float3 center      = new float3(casterTf.Position.x, casterTf.Position.y, 0f);
 
+        // 걸리는 범위를 바닥에 그린다 — 어디까지가 '주변' 인지 보여야 부대를 세울 수 있다.
+        // 색은 올려 주는 스탯(공격력) 색 — 범위 안 병사의 발밑 기둥과 같은 색으로 뜬다.
+        ShowRange(ctx, radius, BuffStatPalette.Get(StatType.Attack));
+
         // 사용자 이펙트 (함성 연출)
         SkillEffectHelper.Spawn(CasterEffectKey,
             new UnityEngine.Vector3(casterTf.Position.x, casterTf.Position.y, casterTf.Position.z),

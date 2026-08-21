@@ -223,7 +223,11 @@ public class RelicPopup : PopupBase
         // 설명 (0레벨이면 1레벨 미리보기 — 강화하면 뭐가 붙는지 보여준다)
         var descTmp = card.transform.Find("DescText")?.GetComponent<TextMeshProUGUI>();
         if (descTmp != null)
-            descTmp.text = data.GetDescription(Mathf.Max(level, 1));
+        {
+            // 스탯 창의 '유물' 색과 같은 보라 — 색만 보고 출처를 알 수 있게 한다
+            descTmp.text  = data.GetDescription(Mathf.Max(level, 1));
+            descTmp.color = StatBonusColors.RelicColor;
+        }
 
         // 비용 / 버튼
         var costTmp    = card.transform.Find("CostText")?.GetComponent<TextMeshProUGUI>();

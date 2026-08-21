@@ -11,7 +11,7 @@ using BattleGame.Units;
 //    ApplyTarget.General / Soldier 항목을 스폰 시 한 번 반영한다.
 //
 //  ■ 처리 대상
-//    ApplyTarget.General → UnitStat.Add(GeneralOnlyKey) 로 제너럴 스텟 변경
+//    ApplyTarget.General → UnitStat.Add(GeneralLayerKey) 로 제너럴 스텟 변경
 //                          (장수 전용 층 — 병사 환산에서 걷힌다)
 //    ApplyTarget.Soldier → 여기서 하지 않는다. SoldierStatApplier 가 패시브·어빌리티·
 //                          유물을 한 번에 모아 적용한다 (출처별로 나눠 부르면
@@ -25,6 +25,9 @@ using BattleGame.Units;
 
 public static class PassiveSkillApplier
 {
+    /// <summary>장수 전용 패시브가 들어가는 레이어 — 병사 환산에서 걷힌다.</summary>
+    public const string GeneralLayerKey = "passive" + UnitStat.GeneralOnlySuffix;
+
     // ── 적용 대상 ─────────────────────────────────────────────
 
     public enum ApplyTarget : byte
@@ -80,15 +83,15 @@ public static class PassiveSkillApplier
                 sbPassive.AppendLine($"  {mod.Stat,-14} {currentValue:F1} → {currentValue + delta:F1}  ({(mod.IsPercent ? $"{mod.Delta * 100f:+0.#;-0.#}% × {soldierMult}" : $"{delta:+0.#;-0.#}")})");
 #endif
 
-                // ⚠ 반드시 GeneralOnlyKey 레이어다 — 예전엔 "passive" 였다
-                //   병사 환산의 원본은 _stat.CloneWithout(GeneralOnlyKey) 다.
+                // ⚠ 반드시 장수 전용 레이어다 — 예전엔 "passive" 였다
+                //   병사 환산의 원본은 CloneWithoutGeneralOnly() 다.
                 //   "passive" 로 넣으면 이 층이 걷히지 않아 **장수 전용 보너스가
                 //   병사에게 그대로 흘러갔다**.
                 //   "강한 장군, 약한 병사"(장군 +30% / 병사 -20%)가 병사에게
                 //   1.30 × 0.80 = 1.04 로 들어가 오히려 세지는 게 그 증상이었다.
                 //   Target.General 은 말 그대로 장수만 가리킨다 — 부대 전체를
                 //   올리고 싶은 패시브는 Soldier 항목을 따로 적는다 (광전사의 맹약 참고).
-                stat.Add(mod.Stat, delta, UnitStat.GeneralOnlyKey);
+                stat.Add(mod.Stat, delta, GeneralLayerKey);
             }
 
 #if UNITY_EDITOR

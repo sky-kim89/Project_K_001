@@ -126,8 +126,12 @@ namespace BattleGame.Units
     // Grid 맵 빌드 Job
     // ──────────────────────────────────────────
 
+    // ⚠ 소환 연출 중(SpawnProtection)인 유닛은 그리드에 넣지 않는다
+    //   피해만 막으면 적이 조준하고 달려와 0.45초 동안 허공을 때린다. 그 사이
+    //   진짜 위협을 놓치므로, 아예 '보이지 않는' 상태로 두는 편이 자연스럽다.
+    //   땅에서 올라오는 중이니 연출과도 맞는다.
     [BurstCompile]
-    [WithNone(typeof(DeadTag))]
+    [WithNone(typeof(DeadTag), typeof(SpawnProtection))]
     public partial struct BuildGridMapJob : IJobEntity
     {
         public NativeParallelMultiHashMap<int2, UnitGridEntry>.ParallelWriter GridWriter;

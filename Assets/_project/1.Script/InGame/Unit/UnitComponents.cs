@@ -314,6 +314,16 @@ namespace BattleGame.Units
         public float           Remaining;   // 남은 시간
         public BuffSourceType  SourceType;  // 출처 종류
         public int             SourceId;    // 출처 내 ID (종류별 의미는 BuffSourceType 주석 참고)
+
+        /// <summary>
+        /// 이 효과를 건 유닛. Dot 모드에서 처치 귀속에 쓴다 (그 외에는 비어 있어도 된다).
+        ///
+        /// ⚠ 비워 두면 도트로 죽인 적이 아무의 전과도 아니게 된다
+        ///   UnitDeathDespawnSystem 은 마지막 일격의 AttackerEntity 로 부대를 찾는다.
+        ///   도트 피해가 출처 없이 들어가면 그 적을 잡아도 "처치 시" 장비·패시브가
+        ///   아무에게도 발동하지 않는다.
+        /// </summary>
+        public Entity          SourceEntity;
     }
 
     // ──────────────────────────────────────────

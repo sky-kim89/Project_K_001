@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using UnityEngine;
 using BattleGame.Units;
 
@@ -92,7 +92,9 @@ public static class AbilityUIHelper
         foreach (var e in effects)
         {
             if (sb.Length > 0) sb.Append('\n');
-            sb.Append($"{LocalizationManager.Instance.Get(e.Stat.ToString())} {FormatStatValue(e.Stat, e.Value, e.IsPercent)}");
+            // 스탯 창의 '특성' 색과 같은 분홍 — 색만 보고 출처를 알 수 있게 한다
+            sb.Append(StatBonusColors.Wrap(StatSource.Trait,
+                $"{LocalizationManager.Instance.Get(e.Stat.ToString())} {FormatStatValue(e.Stat, e.Value, e.IsPercent)}"));
         }
         return sb.ToString();
     }
@@ -120,8 +122,9 @@ public static class AbilityUIHelper
             {
                 if (c.PerUnit <= 0f) continue;
                 if (sb.Length > 0) sb.Append('\n');
-                sb.Append($"{LocalizationManager.Instance.Get(c.From.ToString())} {FormatUnit(c.From, c.PerUnit)}" +
-                          $" → {LocalizationManager.Instance.Get(c.To.ToString())} {Percent(c.Rate)}");
+                sb.Append(StatBonusColors.Wrap(StatSource.Trait,
+                    $"{LocalizationManager.Instance.Get(c.From.ToString())} {FormatUnit(c.From, c.PerUnit)}" +
+                    $" → {LocalizationManager.Instance.Get(c.To.ToString())} {Percent(c.Rate)}"));
             }
         }
 
@@ -138,14 +141,18 @@ public static class AbilityUIHelper
             string name = LocalizationManager.Instance.Get(e.Stat.ToString());
             string per  = FormatStatValue(e.Stat, e.Value, e.IsPercent);
 
+            // ⚠ 스택 줄도 반드시 특성 색으로 감싼다
+            //   고정 효과(Effects)·전환(Conversions)만 감싸 두었더니 전우의 분노처럼
+            //   스택 특성만 흰 글씨로 남아, 색으로 출처를 읽는 규칙이 거기서 깨졌다.
             if (stacks <= 0)
             {
-                sb.Append($"{name} 스택당 {per}");
+                sb.Append(StatBonusColors.Wrap(StatSource.Trait, $"{name} 스택당 {per}"));
                 continue;
             }
 
             string total = FormatStatValue(e.Stat, e.Value * stacks, e.IsPercent);
-            sb.Append($"{name} {total}  ({per} × {stacks}{cap}스택)");
+            sb.Append(StatBonusColors.Wrap(StatSource.Trait,
+                $"{name} {total}  ({per} × {stacks}{cap}스택)"));
         }
         return sb.ToString();
     }

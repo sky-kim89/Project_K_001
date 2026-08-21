@@ -52,44 +52,64 @@ public class EquipmentDatabase : ScriptableObject
         return Equipments.Where(e => e != null && e.Grade == minGrade).ToList();
     }
 
+    // ── 추출 ──────────────────────────────────────────────────
+    //
+    //  ■ 등급을 먼저 뽑고, 그 등급 안에서 균등하게 고른다
+    //    예전엔 개체마다 1/아이템레벨 가중치를 매겨 한 번에 뽑았다. 그러면
+    //    **등급별 종수가 곧 그 등급의 출현 확률**이 된다 — Epic 장비를 5종에서
+    //    12종으로 늘렸더니 Epic 드랍이 12% → 22% 로 저절로 올라갔다.
+    //    데이터를 추가했을 뿐인데 드랍 테이블이 바뀌는 구조라 밸런스를 잡을 수 없다.
+    //
+    //    지금은 등급 확률(GradeWeight)이 종수와 무관하게 고정이고, 그 안에서만
+    //    균등 추첨한다. 장비를 몇 개 더 만들어도 등급 분포는 그대로다.
+    //
+    //  ⚠ 등급 가중치는 예전 공식(1/아이템레벨)을 그대로 옮긴 값이다
+    //    Normal 1 / Uncommon 1/2 / Rare 1/3 / Unique 1/4 / Epic 1/5.
+    //    체감 드랍률을 바꾸려면 이 표만 고치면 된다 — 종수는 건드릴 필요가 없다.
+
+    static float GradeWeight(UnitGrade grade) => 1f / (1 + (int)grade);
+
     /// <summary>
-    /// 스테이지 레벨에 따라 장비 1개를 가중치 랜덤으로 추출.
-    /// 아이템 레벨이 높을수록 낮은 가중치 (희귀).
-    ///   weight = 1 / itemLevel
+    /// 스테이지 레벨에 따라 장비 1개를 추출한다.
+    /// 등급을 먼저 뽑고 그 등급 안에서 균등 선택 — 종수가 확률을 바꾸지 않는다.
     /// </summary>
-    public EquipmentData PickRandom(int stageLevel)
-    {
-        var pool = GetDropPool(stageLevel);
-        if (pool.Count == 0) return null;
-
-        float totalWeight = pool.Sum(e => 1f / e.ItemLevel);
-        float roll        = Random.value * totalWeight;
-        float cumulative  = 0f;
-
-        foreach (var equip in pool)
-        {
-            cumulative += 1f / equip.ItemLevel;
-            if (roll <= cumulative) return equip;
-        }
-        return pool[^1];
-    }
+    public EquipmentData PickRandom(int stageLevel, UnitGrade minGrade = UnitGrade.Normal)
+        => PickFromPool(GetDropPool(stageLevel, minGrade), () => Random.value);
 
     /// <summary>결정론적 시드 기반 추출 (System.Random 사용). minGrade = 등급 하한.</summary>
     public EquipmentData PickRandom(int stageLevel, System.Random rng,
                                     UnitGrade minGrade = UnitGrade.Normal)
+        => PickFromPool(GetDropPool(stageLevel, minGrade), () => (float)rng.NextDouble());
+
+    static EquipmentData PickFromPool(List<EquipmentData> pool, System.Func<float> roll01)
     {
-        var pool = GetDropPool(stageLevel, minGrade);
-        if (pool.Count == 0) return null;
+        if (pool == null || pool.Count == 0) return null;
 
-        float totalWeight = pool.Sum(e => 1f / e.ItemLevel);
-        float roll        = (float)(rng.NextDouble() * totalWeight);
-        float cumulative  = 0f;
-
-        foreach (var equip in pool)
+        // 풀에 실제로 들어 있는 등급만 후보로 둔다 — 초반 스테이지는 상위 등급이 아예 없다
+        var byGrade = new Dictionary<UnitGrade, List<EquipmentData>>();
+        foreach (var e in pool)
         {
-            cumulative += 1f / equip.ItemLevel;
-            if (roll <= cumulative) return equip;
+            if (!byGrade.TryGetValue(e.Grade, out var list))
+                byGrade[e.Grade] = list = new List<EquipmentData>();
+            list.Add(e);
         }
+
+        float total = 0f;
+        foreach (var kv in byGrade) total += GradeWeight(kv.Key);
+
+        float pick       = roll01() * total;
+        float cumulative = 0f;
+        foreach (var kv in byGrade)
+        {
+            cumulative += GradeWeight(kv.Key);
+            if (pick <= cumulative)
+            {
+                var list = kv.Value;
+                int idx  = Mathf.Clamp((int)(roll01() * list.Count), 0, list.Count - 1);
+                return list[idx];
+            }
+        }
+
         return pool[^1];
     }
 }

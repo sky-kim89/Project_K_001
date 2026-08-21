@@ -45,6 +45,7 @@ namespace BattleGame.Units
         ComponentLookup<MirrorArmorComponent> _mirrorArmorLookup;
         ComponentLookup<KnockbackImmuneTag>   _knockbackImmuneLookup;
         ComponentLookup<InvulnerableTag>      _invulnerableLookup;
+        ComponentLookup<SpawnProtection>      _spawnProtectionLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -54,6 +55,7 @@ namespace BattleGame.Units
             _mirrorArmorLookup     = state.GetComponentLookup<MirrorArmorComponent>(isReadOnly: true);
             _knockbackImmuneLookup = state.GetComponentLookup<KnockbackImmuneTag>(isReadOnly: true);
             _invulnerableLookup    = state.GetComponentLookup<InvulnerableTag>(isReadOnly: true);
+            _spawnProtectionLookup = state.GetComponentLookup<SpawnProtection>(isReadOnly: true);
         }
 
         // [BurstCompile]
@@ -64,6 +66,7 @@ namespace BattleGame.Units
             _mirrorArmorLookup.Update(ref state);
             _knockbackImmuneLookup.Update(ref state);
             _invulnerableLookup.Update(ref state);
+            _spawnProtectionLookup.Update(ref state);
 
             var cfg = GameplayConfig.Current;
             if (cfg == null) return;
@@ -83,6 +86,7 @@ namespace BattleGame.Units
                 MirrorArmorLookup     = _mirrorArmorLookup,
                 KnockbackImmuneLookup = _knockbackImmuneLookup,
                 InvulnerableLookup    = _invulnerableLookup,
+                SpawnProtectionLookup = _spawnProtectionLookup,
                 DefenseSoftCap        = softCap,
                 DefenseOverflowRate   = overflowRate,
                 DefenseEffectiveCap   = effectiveCap,
@@ -104,6 +108,8 @@ namespace BattleGame.Units
         [ReadOnly] public ComponentLookup<MirrorArmorComponent> MirrorArmorLookup;
         [ReadOnly] public ComponentLookup<KnockbackImmuneTag>   KnockbackImmuneLookup;
         [ReadOnly] public ComponentLookup<InvulnerableTag>      InvulnerableLookup;
+        // 소환 연출 중(땅에서 일어나는 중)인 유닛 — 잠깐 피해를 받지 않는다
+        [ReadOnly] public ComponentLookup<SpawnProtection>      SpawnProtectionLookup;
         public float DefenseSoftCap;
         public float DefenseOverflowRate;
         public float DefenseEffectiveCap;
@@ -210,7 +216,10 @@ namespace BattleGame.Units
             //  ⚠ 반드시 여기서 막는다 — 죽음은 이 자리에서 확정되므로
             //    밖에서 체력을 주기적으로 채우는 방식은 한 틱 안에 통이 비는
             //    병사를 못 살린다 (로비 데모에서 장군만 살아남던 이유).
-            if (!InvulnerableLookup.HasComponent(entity))
+            // ⚠ 연출·무적은 '피해만' 막는다
+            //   플래시·넉백·경직은 위에서 이미 처리됐다. 체력을 지키는 것이 전부다.
+            if (!InvulnerableLookup.HasComponent(entity) &&
+                !SpawnProtectionLookup.HasComponent(entity))
                 health.CurrentHp -= totalDamage;
 
             hitBuffer.Clear();

@@ -35,13 +35,17 @@ public static class EffectPrefabGenerator
         { "FX_Heal_Target",      new[] { "MAT_FX_Cross_Add",    "MAT_FX_Wisp_Add",      "MAT_FX_Soft_Add"      } },
         { "FX_Bind",             new[] { "MAT_FX_Spiral_Add",   "MAT_FX_Ring_Add",      "MAT_FX_Smoke_Alpha"   } },
         { "FX_Poison_Zone",      new[] { "MAT_FX_Smoke_Alpha",  "MAT_FX_Poison_Alpha",  "MAT_FX_Ring_Add"      } },
-        { "FX_Blizzard",             new[] { "MAT_FX_Snowflake_Add","MAT_FX_Crystal_Add",   "MAT_FX_Smoke_Alpha"   } },
+        { "FX_Blizzard",             new[] { "MAT_FX_Snowflake_Add","MAT_FX_Streak_Add",    "MAT_FX_Vortex_Add",  "MAT_FX_Smoke_Alpha" } },
+        // 메테오 본체 — 폭발(FX_Meteor_Explosion)과는 다른 물건이다. 이건 떨어지는 돌덩이.
+        { "FX_Meteor_Rock",          new[] { "MAT_FX_Shard_Add",   "MAT_FX_Flame_Add",     "MAT_FX_Smoke_Alpha", "MAT_FX_Spark_Add"   } },
+        // 버프 범위 — 흰색으로 만들고 색은 EffectTint 가 런타임에 입힌다
+        { "FX_Buff_Range",           new[] { "MAT_FX_Ring_Add",    "MAT_FX_Wisp_Add",      "MAT_FX_Soft_Add"      } },
         // 파티클 없이 LineRenderer 하나뿐 — 머티리얼은 BuildRedLightningChain 이 직접 넣는다
         // 순교 — 병사가 쓰러진 자리의 폭발
         { "FX_Martyr_Explosion",     new[] { "MAT_FX_Flame_Add",   "MAT_FX_Shard_Add",     "MAT_FX_Ring_Add",    "MAT_FX_Wisp_Add"    } },
     };
 
-    [MenuItem(ProjectKMenu.Fx + "Effect 프리팹 (24종)", priority = ProjectKMenu.PrefabPrio + 51)]
+    [MenuItem(ProjectKMenu.Fx + "Effect 프리팹 (26종)", priority = ProjectKMenu.PrefabPrio + 51)]
     public static void GenerateAll()
     {
         Directory.CreateDirectory(Path.Combine(Application.dataPath, "_project/2.Prefabs/Effect"));
@@ -72,6 +76,8 @@ public static class EffectPrefabGenerator
         n += Save("FX_Blizzard",           BuildBlizzard());
         n += Save("FX_RedLightning_Chain", BuildRedLightningChain());
         n += Save("FX_Martyr_Explosion",   BuildMartyrExplosion());
+        n += Save("FX_Meteor_Rock",        BuildMeteorRock());
+        n += Save("FX_Buff_Range",         BuildBuffRange());
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
@@ -1630,69 +1636,379 @@ public static class EffectPrefabGenerator
 
     // ── #22  FX_Blizzard ─────────────────────────────────────
     // Root:Snowflake_Add  c1:Crystal_Add  c2:Smoke_Alpha  (지속 장판)
+    // ── FX_Blizzard ──────────────────────────────────────────────────
+    //  눈보라 — 바람에 실려 비스듬히 몰아치는 눈.
+    //
+    //  ⚠ 예전 것은 '눈보라' 가 아니라 '내리는 눈' 이었다
+    //    입자가 중력만 받아 수직으로 떨어졌다. 조용한 강설이라 광역 빙결
+    //    마법으로 읽히지 않았다. 눈보라를 만드는 것은 눈송이가 아니라 **바람**이다.
+    //    → 강한 가로 속도(velocityOverLifetime.x)를 주고, 늘어난 줄기(Streak)를
+    //      섞어 방향을 만든다. 바닥에는 휘도는 소용돌이를 깔아 회전을 더한다.
+    //
+    //  ⚠ 방향은 한쪽으로 고정한다
+    //    입자마다 방향이 다르면 폭발처럼 보인다. 바람은 한 방향이라야 바람이다.
     static GameObject BuildBlizzard()
     {
         var go = NewGO();
 
-        // Root — 낙설 (Snowflake_Add, loop 지속)
+        // 바람이 부는 방향 — 자식들이 전부 이 값을 쓴다. 어긋나면 바람이 아니라 난기류가 된다.
+        const float WindX = -7.5f;
+        const float WindY = -3.2f;
+
+        // Root — 몰아치는 눈송이 (Snowflake_Add, loop)
         {
             var ps = AddPS(go);
             var m = ps.main;
             m.duration = 2f; m.loop = true;
-            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.8f, 1.6f);
-            m.startSpeed     = new ParticleSystem.MinMaxCurve(0.5f, 2.5f);
-            m.startSize      = new ParticleSystem.MinMaxCurve(0.15f, 0.55f);
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.55f, 1.0f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0.2f, 1.2f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.12f, 0.42f);
             m.startColor     = new ParticleSystem.MinMaxGradient(C(240,250,255), C(160,220,255));
             m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
-            m.gravityModifier = 0.15f;
-            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 80;
-            var em = ps.emission; em.rateOverTime = 30f;
-            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 3f; sh.radiusThickness = 1f;
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 220;
+            var em = ps.emission; em.rateOverTime = 110f;
+
+            // 위쪽·바람 상류에서 뿌린다 — 원 안에서 생기면 '솟아나는 눈' 이 된다
+            var sh = ps.shape; sh.enabled = true;
+            sh.shapeType = ParticleSystemShapeType.Box;
+            sh.scale     = new Vector3(6.5f, 4.5f, 0.1f);
+            sh.position  = new Vector3(2.2f, 1.6f, 0f);
+
+            var vel = ps.velocityOverLifetime; vel.enabled = true;
+            vel.space = ParticleSystemSimulationSpace.World;
+            // ⚠ x·y·z 를 전부 같은 모드로 채운다
+            //   MinMaxCurve 는 축마다 모드(상수/두 상수/커브)를 따로 갖는데,
+            //   Unity 는 세 축이 같은 모드일 때만 받는다. z 를 비워 두면
+            //   "Particle Velocity curves must all be in the same mode" 로 거부당한다.
+            vel.x = new ParticleSystem.MinMaxCurve(WindX * 0.75f, WindX * 1.25f);
+            vel.y = new ParticleSystem.MinMaxCurve(WindY * 0.7f,  WindY * 1.3f);
+            vel.z = new ParticleSystem.MinMaxCurve(0f, 0f);
+
+            // 흔들림 — 곧게만 날면 눈이 아니라 빗줄기다
+            var noise = ps.noise; noise.enabled = true;
+            noise.strength = 0.9f; noise.frequency = 1.4f; noise.scrollSpeed = 1.2f;
+
             var col = ps.colorOverLifetime; col.enabled = true;
             col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
-                new[] { (0f, Color.white), (0.5f, new Color(0.72f,0.9f,1f)), (1f, new Color(0.35f,0.65f,1f)) },
-                new[] { (0f, 1f), (0.6f, 0.75f), (1f, 0f) }));
+                new[] { (0f, Color.white), (0.5f, new Color(0.75f,0.92f,1f)), (1f, new Color(0.4f,0.7f,1f)) },
+                new[] { (0f, 0f), (0.15f, 1f), (0.75f, 0.85f), (1f, 0f) }));
         }
 
-        // c1 — 빙결 결정 부유 (Crystal_Add, loop)
-        var c1 = new GameObject("IceCrystals"); c1.transform.SetParent(go.transform, false);
+        // c1 — 늘어난 눈줄기 (Streak_Add, loop)
+        //   빠른 입자를 진행 방향으로 늘여 '몰아친다' 는 인상을 만든다.
+        var c1 = new GameObject("SnowStreaks"); c1.transform.SetParent(go.transform, false);
         {
             var ps = AddPS(c1);
+            var rd = c1.GetComponent<ParticleSystemRenderer>();
+            rd.renderMode         = ParticleSystemRenderMode.Stretch;
+            rd.velocityScale      = 0.14f;   // 빠를수록 길어진다
+            rd.lengthScale        = 2.2f;
+
             var m = ps.main;
             m.duration = 2f; m.loop = true;
-            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.6f, 1.2f);
-            m.startSpeed     = new ParticleSystem.MinMaxCurve(0.3f, 1.5f);
-            m.startSize      = new ParticleSystem.MinMaxCurve(0.1f, 0.38f);
-            m.startColor     = new ParticleSystem.MinMaxGradient(C(210,240,255), C(85,185,255));
-            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
-            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 40;
-            var em = ps.emission; em.rateOverTime = 18f;
-            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 2.5f; sh.radiusThickness = 1f;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.35f, 0.7f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0.5f, 1.5f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.1f, 0.26f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,255,255), C(185,230,255));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 140;
+            var em = ps.emission; em.rateOverTime = 70f;
+
+            var sh = ps.shape; sh.enabled = true;
+            sh.shapeType = ParticleSystemShapeType.Box;
+            sh.scale     = new Vector3(6.5f, 5f, 0.1f);
+            sh.position  = new Vector3(2.6f, 1.8f, 0f);
+
+            var vel = ps.velocityOverLifetime; vel.enabled = true;
+            vel.space = ParticleSystemSimulationSpace.World;
+            vel.x = new ParticleSystem.MinMaxCurve(WindX * 1.3f, WindX * 1.9f);
+            vel.y = new ParticleSystem.MinMaxCurve(WindY * 1.1f, WindY * 1.6f);
+            vel.z = new ParticleSystem.MinMaxCurve(0f, 0f);   // 세 축 모드 일치 (위 주석 참고)
+
             var col = ps.colorOverLifetime; col.enabled = true;
             col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
-                new[] { (0f, Color.white), (0.4f, new Color(0.58f,0.88f,1f)), (1f, new Color(0.18f,0.55f,1f)) },
-                new[] { (0f, 0.85f), (0.6f, 0.5f), (1f, 0f) }));
+                new[] { (0f, Color.white), (1f, new Color(0.6f,0.85f,1f)) },
+                new[] { (0f, 0f), (0.2f, 0.9f), (0.8f, 0.6f), (1f, 0f) }));
         }
 
-        // c2 — 빙설 안개 (Smoke_Alpha, loop 지속)
-        var c2 = new GameObject("IcyMist"); c2.transform.SetParent(go.transform, false);
+        // c2 — 바닥 소용돌이 (Vortex_Add, loop)
+        //   장판의 경계를 알려 주는 역할도 겸한다 — 어디까지가 얼어붙는 곳인지 보인다.
+        var c2 = new GameObject("GroundSwirl"); c2.transform.SetParent(go.transform, false);
         {
             var ps = AddPS(c2);
             var m = ps.main;
             m.duration = 2f; m.loop = true;
-            m.startLifetime  = new ParticleSystem.MinMaxCurve(1.2f, 2.0f);
-            m.startSpeed     = new ParticleSystem.MinMaxCurve(0.2f, 1.0f);
-            m.startSize      = new ParticleSystem.MinMaxCurve(0.8f, 2.2f);
-            m.startColor     = new ParticleSystem.MinMaxGradient(C(195,230,255,140), C(130,195,255,95));
-            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 25;
-            var em = ps.emission; em.rateOverTime = 6f;
-            var sh = ps.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 2.8f; sh.radiusThickness = 1f;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(1.1f, 1.8f);
+            m.startSpeed     = 0f;
+            m.startSize      = new ParticleSystem.MinMaxCurve(3.4f, 4.6f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(200,236,255,120), C(130,200,255,80));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
+            m.simulationSpace = ParticleSystemSimulationSpace.Local; m.maxParticles = 8;
+            var em = ps.emission; em.rateOverTime = 3.5f;
+            var sh = ps.shape; sh.enabled = false;
+
+            // 회전 — 소용돌이는 돌아야 소용돌이다
+            var rot = ps.rotationOverLifetime; rot.enabled = true;
+            rot.z = new ParticleSystem.MinMaxCurve(120f * Mathf.Deg2Rad, 210f * Mathf.Deg2Rad);
+
             var col = ps.colorOverLifetime; col.enabled = true;
             col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
-                new[] { (0f, new Color(0.78f,0.9f,1f)), (1f, new Color(0.52f,0.76f,1f)) },
-                new[] { (0f, 0.45f), (0.5f, 0.3f), (1f, 0f) }));
+                new[] { (0f, new Color(0.85f,0.95f,1f)), (1f, new Color(0.45f,0.75f,1f)) },
+                new[] { (0f, 0f), (0.3f, 0.5f), (0.7f, 0.35f), (1f, 0f) }));
+
             var sz = ps.sizeOverLifetime; sz.enabled = true;
-            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.2f, 0.5f, 1.4f, 0.4f));
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.7f, 0.5f, 1.05f, 1.2f));
+        }
+
+        // c3 — 빙설 안개 (Smoke_Alpha, loop) — 바람을 타고 흘러간다
+        var c3 = new GameObject("IcyMist"); c3.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c3);
+            var m = ps.main;
+            m.duration = 2f; m.loop = true;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(1.0f, 1.8f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0.2f, 0.8f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(1.0f, 2.4f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(195,230,255,120), C(130,195,255,80));
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 30;
+            var em = ps.emission; em.rateOverTime = 9f;
+            var sh = ps.shape; sh.enabled = true;
+            sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 2.9f; sh.radiusThickness = 1f;
+
+            var vel = ps.velocityOverLifetime; vel.enabled = true;
+            vel.space = ParticleSystemSimulationSpace.World;
+            vel.x = new ParticleSystem.MinMaxCurve(WindX * 0.28f, WindX * 0.5f);
+            vel.y = new ParticleSystem.MinMaxCurve(WindY * 0.2f,  WindY * 0.35f);
+            vel.z = new ParticleSystem.MinMaxCurve(0f, 0f);   // 세 축 모드 일치 (위 주석 참고)
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.8f,0.92f,1f)), (1f, new Color(0.5f,0.76f,1f)) },
+                new[] { (0f, 0f), (0.25f, 0.45f), (0.6f, 0.3f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.3f, 0.5f, 1.3f, 0.5f));
+        }
+
+        return go;
+    }
+
+    // ── FX_Meteor_Rock ───────────────────────────────────────────────
+    //  하늘에서 떨어지는 운석 본체.
+    //
+    //  ⚠ FX_Meteor_Explosion 은 착탄 폭발이지 운석이 아니다
+    //    낙하 연출에 폭발 프리팹을 쓰면 하늘에서부터 계속 터지면서 내려온다.
+    //    떨어지는 것은 '덩어리' 여야 하고, 폭발은 땅에 닿는 순간 한 번이어야 한다.
+    //
+    //  ⚠ 본체는 Local, 꼬리는 World
+    //    본체가 World 면 트랜스폼(EffectFallMotion)이 움직여도 입자가 제자리에 남는다.
+    //    반대로 꼬리가 Local 이면 운석에 딱 붙어 따라와 꼬리로 보이지 않는다.
+    static GameObject BuildMeteorRock()
+    {
+        var go = NewGO();
+
+        // Root — 운석 덩어리 (Shard_Add). 트랜스폼을 따라 움직여야 하므로 Local.
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 3f; m.loop = true;
+            m.startLifetime  = 0.25f;
+            m.startSpeed     = 0f;
+            m.startSize      = new ParticleSystem.MinMaxCurve(1.5f, 1.9f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,190,90), C(255,110,40));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
+            m.simulationSpace = ParticleSystemSimulationSpace.Local; m.maxParticles = 12;
+            var em = ps.emission; em.rateOverTime = 40f;   // 촘촘히 겹쳐 하나의 덩어리로 보이게
+            var sh = ps.shape; sh.enabled = false;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(1f,0.95f,0.7f)), (0.5f, new Color(1f,0.55f,0.15f)), (1f, new Color(0.6f,0.18f,0.05f)) },
+                new[] { (0f, 1f), (0.8f, 1f), (1f, 0.6f) }));
+        }
+
+        // c1 — 불꽃 꼬리 (Flame_Add, World) — 지나온 길에 남는다
+        var c1 = new GameObject("FireTrail"); c1.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 3f; m.loop = true;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.3f, 0.6f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0.2f, 1.0f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.7f, 1.5f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,215,120), C(255,95,25));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 90;
+            var em = ps.emission; em.rateOverTime = 65f;
+            var sh = ps.shape; sh.enabled = true;
+            sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.35f;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(1f,0.92f,0.6f)), (0.45f, new Color(1f,0.45f,0.1f)), (1f, new Color(0.45f,0.1f,0.02f)) },
+                new[] { (0f, 0.95f), (0.5f, 0.6f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(1f, 0.5f, 0.6f, 0.15f));
+        }
+
+        // c2 — 검은 연기 (Smoke_Alpha, World) — 불꽃보다 오래 남아 궤적을 그린다
+        var c2 = new GameObject("SmokeTrail"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 3f; m.loop = true;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.7f, 1.3f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(0.1f, 0.6f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.8f, 1.7f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(90,70,60,170), C(40,32,30,120));
+            m.startRotation  = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 60;
+            var em = ps.emission; em.rateOverTime = 30f;
+            var sh = ps.shape; sh.enabled = true;
+            sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.4f;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(0.35f,0.28f,0.25f)), (1f, new Color(0.12f,0.1f,0.1f)) },
+                new[] { (0f, 0.55f), (0.5f, 0.35f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.5f, 0.6f, 1.3f, 1.7f));
+        }
+
+        // c3 — 흩날리는 불티 (Spark_Add, World)
+        var c3 = new GameObject("Embers"); c3.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c3);
+            var m = ps.main;
+            m.duration = 3f; m.loop = true;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.35f, 0.8f);
+            m.startSpeed     = new ParticleSystem.MinMaxCurve(1.5f, 4.5f);
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.1f, 0.32f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,235,150), C(255,140,45));
+            m.gravityModifier = -0.25f;   // 뒤로 흩날려 올라간다
+            m.simulationSpace = ParticleSystemSimulationSpace.World; m.maxParticles = 70;
+            var em = ps.emission; em.rateOverTime = 40f;
+            var sh = ps.shape; sh.enabled = true;
+            sh.shapeType = ParticleSystemShapeType.Sphere; sh.radius = 0.3f;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, new Color(1f,0.95f,0.7f)), (1f, new Color(1f,0.35f,0.05f)) },
+                new[] { (0f, 1f), (0.6f, 0.7f), (1f, 0f) }));
+        }
+
+        return go;
+    }
+
+    // ── FX_Buff_Range ────────────────────────────────────────────────
+    //  버프·오라의 적용 범위를 바닥에 그리는 전용 원.
+    //
+    //  ⚠ 소환진(FX_Summon_Circle)을 빌려 쓰면 안 된다
+    //    소환진은 "여기서 스켈레톤이 나온다" 는 뜻을 이미 갖고 있다.
+    //    전투 함성 범위에 같은 원이 뜨면 플레이어는 소환을 기다린다.
+    //
+    //  ⚠ 흰색으로 만든다 — 색은 EffectTint 가 런타임에 입힌다
+    //    공격력 버프는 붉게, 방어 버프는 파랗게 같은 프리팹을 물들여 쓴다.
+    //    색깔 수만큼 프리팹을 만들면 풀도 머티리얼도 그만큼 갈린다.
+    //
+    //  ⚠ scalingMode 는 반드시 Hierarchy
+    //    SpawnRange 는 루트 스케일로 반경을 맞춘다. 기본값 Local 이면 자식이
+    //    부모 스케일을 무시해서, 반경을 아무리 바꿔도 원이 그대로다.
+    //    (WarBannerRunner 가 예전에 같은 함정을 밟았다)
+    //
+    //  기준 반경 = 1 : SpawnRange(scale = radius) 가 그대로 먹도록 맞춰 둔다.
+    static GameObject BuildBuffRange()
+    {
+        var go = NewGO();
+
+        // 링 텍스처(TX_FX_Ring)는 쿼드 반폭의 72% 지점에 원이 그려진다.
+        // 보이는 원을 반경 1 에 맞추려면 그만큼 되키워야 한다. (WarBannerRunner 와 같은 값)
+        const float RingTexRatio = 0.72f;
+        const float RingSize     = 2f / RingTexRatio;
+
+        // Root — 경계선 (Ring_Add). 한 장이 계속 떠 있고 숨쉬듯 밝기만 오간다.
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 1.2f; m.loop = true;
+            m.startLifetime  = 1.2f;
+            m.startSpeed     = 0f;
+            m.startSize      = RingSize;
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,255,255,225));
+            m.simulationSpace = ParticleSystemSimulationSpace.Local;
+            m.scalingMode     = ParticleSystemScalingMode.Hierarchy;
+            m.maxParticles    = 4;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 1) { cycleCount = 0, repeatInterval = 1.2f } });
+            var sh = ps.shape; sh.enabled = false;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, Color.white) },
+                new[] { (0f, 0f), (0.18f, 1f), (0.65f, 0.75f), (1f, 0f) }));
+
+            // 살짝 벌어졌다 오므라든다 — 완전히 고정된 원은 UI 처럼 보인다
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.94f, 0.5f, 1.03f, 0.97f));
+        }
+
+        // c1 — 경계에서 피어오르는 티끌 (Wisp_Add) — "약간의 임펙트"
+        var c1 = new GameObject("EdgeMotes"); c1.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c1);
+            var m = ps.main;
+            m.duration = 1.2f; m.loop = true;
+            m.startLifetime  = new ParticleSystem.MinMaxCurve(0.4f, 0.8f);
+            m.startSpeed     = 0f;
+            m.startSize      = new ParticleSystem.MinMaxCurve(0.1f, 0.26f);
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,255,255,215));
+            m.simulationSpace = ParticleSystemSimulationSpace.Local;
+            m.scalingMode     = ParticleSystemScalingMode.Hierarchy;
+            m.maxParticles    = 40;
+            var em = ps.emission; em.rateOverTime = 26f;
+
+            // 테두리에서만 — radiusThickness 0 이 곧 '선 위에서만 생성'
+            var sh = ps.shape; sh.enabled = true;
+            sh.shapeType = ParticleSystemShapeType.Circle;
+            sh.radius = 1f; sh.radiusThickness = 0f;
+
+            // 위로 떠오른다 — 바닥에 붙어 있으면 원의 일부로 보여 눈에 안 띈다
+            var vel = ps.velocityOverLifetime; vel.enabled = true;
+            vel.space = ParticleSystemSimulationSpace.Local;
+            // ⚠ x·y·z 를 전부 같은 모드로 채운다
+            //   MinMaxCurve 는 축마다 모드(상수/두 상수/커브)를 따로 갖는데,
+            //   Unity 는 세 축이 같은 모드일 때만 받는다. z 를 비워 두면
+            //   "Particle Velocity curves must all be in the same mode" 로 거부당한다.
+            vel.x = new ParticleSystem.MinMaxCurve(0f, 0f);
+            vel.y = new ParticleSystem.MinMaxCurve(0.5f, 1.4f);
+            vel.z = new ParticleSystem.MinMaxCurve(0f, 0f);
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, Color.white) },
+                new[] { (0f, 0f), (0.25f, 0.95f), (1f, 0f) }));
+        }
+
+        // c2 — 안쪽을 아주 옅게 채우는 빛 (Soft_Add) — 범위가 '면' 임을 알려 준다
+        var c2 = new GameObject("Fill"); c2.transform.SetParent(go.transform, false);
+        {
+            var ps = AddPS(c2);
+            var m = ps.main;
+            m.duration = 1.6f; m.loop = true;
+            m.startLifetime  = 1.6f;
+            m.startSpeed     = 0f;
+            m.startSize      = 2f;
+            // ⚠ 알파를 낮게 — 진하면 그 안의 유닛이 안 보인다. 범위 표시가 전투를 가리면 안 된다.
+            m.startColor     = new ParticleSystem.MinMaxGradient(C(255,255,255,60));
+            m.simulationSpace = ParticleSystemSimulationSpace.Local;
+            m.scalingMode     = ParticleSystemScalingMode.Hierarchy;
+            m.maxParticles    = 4;
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 1) { cycleCount = 0, repeatInterval = 1.6f } });
+            var sh = ps.shape; sh.enabled = false;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, Color.white) },
+                new[] { (0f, 0f), (0.3f, 0.28f), (0.7f, 0.22f), (1f, 0f) }));
         }
 
         return go;
