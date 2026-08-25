@@ -96,6 +96,21 @@ namespace BattleGame.Units
                     SoldierDeathCount = soldierDeaths,
                 };
 
+                // 사건이 일어난 자리 — 소환이 "그 자리에서" 일어나게 하려고 같이 넘긴다.
+                // 여러 건이면 마지막 것을 쓴다(한 프레임에 한 번만 터지는 판정이라 하나면 충분하다).
+                if (doKill)
+                {
+                    var killBuf = EntityManager.GetBuffer<EnemyKillEvent>(entity);
+                    ctx.KillPosition    = killBuf[killBuf.Length - 1].Position;
+                    ctx.HasKillPosition = true;
+                }
+                if (doSoldierDeath)
+                {
+                    var deathBuf = EntityManager.GetBuffer<SoldierDeathEvent>(entity);
+                    ctx.SoldierDeathPosition    = deathBuf[deathBuf.Length - 1].Position;
+                    ctx.HasSoldierDeathPosition = true;
+                }
+
                 // ── 장비 트리거 디스패치 ─────────────────────────
                 //
                 //  ⚠ 판정은 프레임 단위다 — 확률을 정할 때 이걸 감안해야 한다
@@ -280,20 +295,46 @@ namespace BattleGame.Units
             if (!em.HasComponent<UnitJobComponent>(ctx.GeneralEntity)) return;
 
             UnitJob job      = em.GetComponentData<UnitJobComponent>(ctx.GeneralEntity).Job;
-            Vector3 basePos  = go.transform.position;
+            Vector3 basePos  = SummonOrigin(equip, ctx, go.transform.position);
             int     count    = Mathf.Max(1, Mathf.RoundToInt(
                                    equip.TriggerValue * (1f + enhance * equip.ValuePerLevel)));
 
             for (int i = 0; i < count; i++)
             {
-                float   angle = (360f / count) * i * Mathf.Deg2Rad;
-                Vector3 pos   = basePos + new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f) * SummonRadius;
+                // 한 기짜리는 그 자리 그대로 — 굳이 반경만큼 밀어내면 "쓰러진 자리" 가 어긋난다
+                Vector3 pos = basePos;
+                if (count > 1)
+                {
+                    float angle = (360f / count) * i * Mathf.Deg2Rad;
+                    pos += new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f) * SummonRadius;
+                }
+
                 SkeletonSpawner.Spawn(em, equip.SummonPoolKey, pos, generalStat,
                                       equip.SummonStatRatio, ctx.GeneralEntity, job);
             }
         }
 
-        /// <summary>소환 위치 반경 — 장군을 둘러싸고 나온다.</summary>
+        /// <summary>
+        /// 소환이 일어날 자리.
+        ///
+        /// ⚠ 사건이 벌어진 곳에서 일어나야 무엇이 일어났는지 읽힌다
+        ///   "처형자의 낙인"(적 처치) 은 쓰러진 적 위에서, "망자의 소환서"(병사 사망) 는
+        ///   쓰러진 병사 자리에서 일어난다 — 둘 다 설명 문구가 그렇게 약속하고 있다.
+        ///   예전엔 전부 장군 발밑이라, 병사 떼 사이에서 하나 더 생겨도 눈에 띄지 않았다.
+        ///   위치를 못 받은 경우(스킬 사용 트리거 등)만 장군 자리로 물러선다.
+        /// </summary>
+        static Vector3 SummonOrigin(EquipmentData equip, PassiveTriggerContext ctx, Vector3 fallback)
+        {
+            if (equip.TriggerType == EquipmentTrigger.OnEnemyKill && ctx.HasKillPosition)
+                return ctx.KillPosition;
+
+            if (equip.TriggerType == EquipmentTrigger.OnSoldierDeath && ctx.HasSoldierDeathPosition)
+                return ctx.SoldierDeathPosition;
+
+            return fallback;
+        }
+
+        /// <summary>소환 위치 반경 — 소환 지점을 둘러싸고 나온다.</summary>
         const float SummonRadius = 1.5f;
 
         static float CalcValue(EquipmentData equip, int enhance, PassiveTriggerContext ctx)

@@ -27,6 +27,13 @@ namespace BattleGame.Projectiles
         public float    Speed;
         public float    Lifetime;     // 남은 유효 시간 — 0 이하 시 소멸
         public TeamType Team;
+        /// <summary>
+        /// 발사 시점 공격자의 방어율 관통 (0~1).
+        /// ⚠ 착탄 때 공격자를 다시 읽지 않는다 — 비행 중 시전자가 죽어 풀에 반납되면
+        ///   관통이 조용히 0 이 되고, 예약 피해(AccumulateIncomingDamageJob)와
+        ///   실제 피해가 어긋나 오버킬 방지가 깨진다.
+        /// </summary>
+        public float    DefensePierce;
         // ── 이동 방식 ───────────────────────────────────────────
         // ArcHeight > 0 : 포물선 이동 (Arrow)
         // ArcHeight = 0 : 직선 이동   (MagicBolt)

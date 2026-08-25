@@ -51,9 +51,21 @@ public class ItemData : ISaveSection
 
     ItemRawData _raw = new();
 
+    // ── 환생 포인트 위임 ─────────────────────────────────────
+    //  ⚠ 환생 포인트는 이 섹션에 저장하지 않는다
+    //    잔액의 정본은 ReincarnationData 하나뿐이다 (유물 강화가 거기서 차감한다).
+    //    게다가 이 섹션은 환생할 때 SetDefaults 로 통째로 비워진다 —
+    //    여기에 쌓으면 "환생 포인트 +5" 이벤트 보상이 어디에도 보이지 않고
+    //    환생과 함께 사라진다. 실제로 그랬다.
+    //    지급·소비·조회가 어느 경로로 들어오든 전부 그쪽으로 넘긴다.
+
+    static bool IsReincPoint(eItem item) => item == eItem.ReincarnationPoint;
+
+    static ReincarnationData Reinc => UserDataManager.Instance.Get<ReincarnationData>();
+
     // ── 조회 ─────────────────────────────────────────────────
 
-    public int Get(eItem item) => _raw.Get(item);
+    public int Get(eItem item) => IsReincPoint(item) ? Reinc.ReincarnationPoints : _raw.Get(item);
 
     public bool CanSpend(eItem item, int amount) => Get(item) >= amount;
 
@@ -62,6 +74,13 @@ public class ItemData : ISaveSection
     public void Add(eItem item, int amount, string specificId = "")
     {
         if (amount <= 0) return;
+
+        if (IsReincPoint(item))
+        {
+            Reinc.EarnPoints(amount);
+            OnItemChanged?.Invoke(item, Reinc.ReincarnationPoints);
+            return;
+        }
 
         if (IsSpecial(item))
         {
@@ -86,6 +105,13 @@ public class ItemData : ISaveSection
     /// <returns>소비 성공 여부. 잔액 부족이면 false 반환하고 수량 변경 없음.</returns>
     public bool Spend(eItem item, int amount)
     {
+        if (IsReincPoint(item))
+        {
+            if (!Reinc.TrySpendPoints(amount)) return false;
+            OnItemChanged?.Invoke(item, Reinc.ReincarnationPoints);
+            return true;
+        }
+
         if (!CanSpend(item, amount)) return false;
         _raw.Add(item, -amount);
         OnItemChanged?.Invoke(item, _raw.Get(item));
@@ -116,7 +142,9 @@ public class ItemData : ISaveSection
     {
         foreach (eItem item in System.Enum.GetValues(typeof(eItem)))
         {
-            if (item == eItem.None || IsSpecial(item)) continue;
+            // 환생 포인트는 여기서 빼둔다 — 로드 도중이라 ReincarnationData 가
+            // 아직 자기 세이브를 읽기 전일 수 있다. 0 을 방송하면 거짓말이 된다.
+            if (item == eItem.None || IsSpecial(item) || IsReincPoint(item)) continue;
             OnItemChanged?.Invoke(item, _raw.Get(item));
         }
     }

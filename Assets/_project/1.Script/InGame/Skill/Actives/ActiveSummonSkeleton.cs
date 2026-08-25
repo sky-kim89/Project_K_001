@@ -79,8 +79,10 @@ public class ActiveSummonSkeleton : ActiveSkillData
         {
             Vector3 spawnPos = spawnPositions[i];
 
-            // 사망 위치에 이펙트
-            SkillEffectHelper.Spawn(BaseEffectKey, spawnPos, EffectDespawnDelay);
+            // ⚠ 소환진 이펙트를 여기서 깔지 않는다
+            //   SkeletonSpawner 가 실제로 한 기를 세운 자리에 직접 깐다.
+            //   여기서도 깔면 같은 자리에 소환진이 두 겹으로 돌고,
+            //   스폰이 실패한 자리에도 소환진만 남는다.
 
             // 스폰·외형·태그는 SkeletonSpawner 가 소유한다 —
             // 비석 강림(Gravestone)과 같은 스켈레톤으로 보여야 한다

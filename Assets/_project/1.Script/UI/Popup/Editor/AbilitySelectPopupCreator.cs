@@ -43,10 +43,16 @@ public static class AbilitySelectPopupCreator
 
     const int   MaxCards =    5;
     const float CardW    =  328f;
-    const float CardH    =  640f;
+
+    // ⚠ 설명이 잘려 있었다 (2026-08-21)
+    //   카드 640 에서 설명 칸에 남는 높이는 116 — FontSm 기준 2줄이 조금 넘는다.
+    //   '고통의 계약' 처럼 두 문단짜리 설명은 4줄이 필요해서 자동 축소 하한(26pt)에
+    //   걸린 뒤 [선 택] 버튼 뒤로 넘쳐 흘렀다 (overflowMode = Overflow).
+    //   카드를 키우고 위쪽(아이콘·이름 칸)을 조금 줄여 설명에 276 을 만들었다 — 약 5줄.
+    const float CardH    =  760f;
     const float CardGap  =   18f;
 
-    const float IconSz   =  148f;
+    const float IconSz   =  124f;   // 148 에서 줄였다 — 그만큼 설명이 늘었다
     const float FooterH  =   64f;
 
     // ── 색상 (AbilityList 와 같은 보라 계열) ──────────────────
@@ -204,13 +210,36 @@ public static class AbilitySelectPopupCreator
 
     static void BuildCards(GameObject panel, SerializedObject so)
     {
-        var area = Go("CardArea", panel);
+        // ── 카드가 놓일 띠 (헤더 아래 ~ 푸터 위) ─────────────
+        //
+        //  ⚠ 화면이 16:9 보다 넓으면 캔버스 '세로' 가 1080 아래로 내려간다
+        //    팝업 캔버스는 match 0.5 라 스케일이 가로·세로 배율의 기하평균이다.
+        //      1920×1080 → 띠 825   (760 카드가 그대로 들어간다)
+        //      2160×1080 → 띠 763   (아슬아슬하게 들어간다)
+        //      2560×1080 → 띠 680   (들어가지 않는다 → 통째로 축소)
+        //    카드 높이를 그 중 가장 좁은 화면에 맞추면 대부분의 화면에서 설명이
+        //    다시 좁아진다. 넉넉히 잡아 두고, 모자란 화면에서만 줄인다.
+        var band = Go("CardBand", panel);
+        var bRt = band.GetComponent<RectTransform>();
+        bRt.anchorMin = new Vector2(0f, 0f);
+        bRt.anchorMax = new Vector2(1f, 1f);
+        bRt.offsetMin = new Vector2(0f, FooterH);
+        bRt.offsetMax = new Vector2(0f, -(HeaderH + 23f));
+
+        var area = Go("CardArea", band);
         var aRt = area.GetComponent<RectTransform>();
         aRt.anchorMin = new Vector2(0.5f, 0.5f);
         aRt.anchorMax = new Vector2(0.5f, 0.5f);
         aRt.pivot     = new Vector2(0.5f, 0.5f);
-        aRt.anchoredPosition = new Vector2(0f, -(BodyTop - HeaderH) * 0.5f);
+        aRt.anchoredPosition = Vector2.zero;
         aRt.sizeDelta        = new Vector2(MaxCards * CardW + (MaxCards - 1) * CardGap, CardH);
+
+        // 띠보다 카드가 크면 줄인다 (가운데 정렬이라 그대로 가운데에 남는다)
+        var fitter = band.AddComponent<ScaleToFitHeight>();
+        var fso = new SerializedObject(fitter);
+        fso.FindProperty("_content").objectReferenceValue = aRt;
+        fso.FindProperty("_designHeight").floatValue      = CardH;
+        fso.ApplyModifiedPropertiesWithoutUndo();
 
         var hlg = area.AddComponent<HorizontalLayoutGroup>();
         hlg.spacing                = CardGap;
@@ -279,8 +308,11 @@ public static class AbilitySelectPopupCreator
         y += IconSz + 14f + 16f;
 
         // ── 이름 ─────────────────────────────────────────────
-        //  칸 높이는 폰트 한 줄 이상 (UI 규칙 5). 길면 두 줄까지 접고 자동 축소.
-        float nameH = UIScale.Line(UIScale.FontMd) * 2f;
+        //  칸 높이는 폰트 한 줄 이상 (UI 규칙 5). 길면 접고 자동 축소한다.
+        //  ⚠ 2줄(106)에서 1.7줄(90)로 줄였다 — 남긴 16 은 설명 칸으로 간다
+        //    어빌리티 이름은 '고통의 계약'·'독수리의 눈' 처럼 6자 안쪽이라 한 줄이면
+        //    충분하고, 넘치면 AutoSize 가 먼저 줄인다. 2줄을 통으로 비워 둘 이유가 없다.
+        float nameH = UIScale.Line(UIScale.FontMd) * 1.7f;
 
         var nameTmp = TMP(body, "NameText", "어빌리티", UIScale.FontMd, FontStyles.Bold);
         nameTmp.color            = Color.white;

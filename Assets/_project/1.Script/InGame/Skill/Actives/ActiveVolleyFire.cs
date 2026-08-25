@@ -73,6 +73,7 @@ public class ActiveVolleyFire : ActiveSkillData
                 Damage         = damage,
                 Speed          = speed,
                 Team           = identity.Team,
+                DefensePierce  = stat.Final[StatType.DefensePenetration],
             });
         }
         else
@@ -85,7 +86,8 @@ public class ActiveVolleyFire : ActiveSkillData
                 Damage         = damage,
                 HitDirection   = float3.zero,
                 AttackerEntity = attacker,
-                Type = BattleGame.Units.HitType.Skill,
+                Type           = BattleGame.Units.HitType.Skill,
+                DefensePierce  = stat.Final[StatType.DefensePenetration],
             });
         }
 

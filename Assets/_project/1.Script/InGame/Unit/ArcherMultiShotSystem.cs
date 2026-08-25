@@ -57,7 +57,8 @@ namespace BattleGame.Units
             ref DynamicBuffer<ProjectileLaunchRequest> launchBuffer,
             in  LocalTransform                         transform,
             in  UnitIdentityComponent                  identity,
-            in  UnitJobComponent                       jobComp)
+            in  UnitJobComponent                       jobComp,
+            in  StatComponent                          stat)
         {
             if (!attack.AttackedThisFrame) return;
 
@@ -97,6 +98,7 @@ namespace BattleGame.Units
                 Damage         = attack.LastDamageDealt,
                 Speed          = jobComp.Job == UnitJob.Archer ? ArrowSpeed : MagicBoltSpeed,
                 Team           = identity.Team,
+                DefensePierce  = stat.Final[StatType.DefensePenetration],
             });
         }
     }

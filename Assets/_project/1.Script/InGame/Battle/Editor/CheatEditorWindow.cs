@@ -620,7 +620,7 @@ public class CheatEditorWindow : EditorWindow
         }
 
         // 유물·특성으로 열린 칸까지만 실제 슬롯이다 — 잠긴 칸에 넣으면 전투에 안 나온다
-        int activeSlots = Mathf.Min(5, RelicApplier.GetTotalActiveGeneralSlots());
+        int activeSlots = Mathf.Min(5, RelicTreeApplier.GetTotalActiveGeneralSlots());
 
         int slot = -1;
         for (int i = 0; i < activeSlots; i++)

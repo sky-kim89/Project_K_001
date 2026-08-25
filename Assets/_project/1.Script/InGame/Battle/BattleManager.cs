@@ -157,6 +157,19 @@ public class BattleManager : Singleton<BattleManager>
     // 웨이브1 아군을 즉시 스폰해 '대기' 상태를 만든다. 적은 아직 없다.
     IEnumerator PrepareRoutine()
     {
+        // ── 지난 판의 이펙트 회수 ───────────────────────────────
+        //  ⚠ 버프 이펙트가 다음 판까지 살아 넘어온다
+        //    이펙트 반납은 EffectAutoReturn 의 타이머가 하는데, 그 타이머는
+        //    Time.timeScale 을 탄다 — 일시정지·튜토리얼로 멈춘 사이에 판이 끝나면
+        //    반납이 걸린 채로 남는다. 그래서 "장군에게 버프가 없는데 버프 이펙트만
+        //    떠 있는" 상태가 됐다.
+        //    판을 여는 이 자리에서 한 번 쓸어 낸다 — 아직 아무것도 스폰되기 전이라
+        //    지워도 되는 것만 남아 있는 유일한 시점이다.
+        //    (BattleArena.Close 도 같은 일을 하지만, 판이 닫히지 않고 이어지는
+        //     경로가 있어 시작 쪽에도 문을 하나 둔다)
+        PoolController.Instance?.DespawnAll(PoolType.Effect);
+        PoolController.Instance?.DespawnAll(PoolType.Projectile);
+
         // ── 지난 스테이지 외형 캐시 회수 ────────────────────────
         // 적 외형 키는 스테이지 번호(S{n}W{w}E)를 물고 있어 스테이지가 바뀌면 전부 갈린다.
         // 로딩 팝업이 떠 있는 지금 놓아줘야 전투 중에 언로드 스파이크가 안 생긴다.

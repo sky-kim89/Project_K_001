@@ -38,7 +38,16 @@ public class DisassemblePopup : PopupBase
     readonly List<GameObject> _cells        = new();
     readonly List<string>     _cellEquipIds = new();
     readonly HashSet<string>  _bulkSelected = new();
-    string _selectedEquipId;
+
+    /// <summary>
+    /// 선택한 **칸 번호** (-1 = 없음).
+    ///
+    /// ⚠ 장비 ID 로 잡지 말 것
+    ///   인벤토리는 같은 ID 를 여러 개 들고 있다(똑같은 장비 3개 = 같은 문자열 3줄).
+    ///   ID 로 선택을 표시하면 하나를 눌러도 같은 장비 칸이 **전부** 테두리를 두른다.
+    ///   칸 번호는 _cells / _cellEquipIds 와 같은 순서라 중복이 없다.
+    /// </summary>
+    int _selectedCell = -1;
 
     // ── 라이프사이클 ──────────────────────────────────────────
 
@@ -64,6 +73,7 @@ public class DisassemblePopup : PopupBase
                 if (t != null) t.isOn = false;
         _bulkSelected.Clear();
         BuildGrid();
+        RefreshBulkBtn();
         ClearSelection();
     }
 
@@ -71,7 +81,7 @@ public class DisassemblePopup : PopupBase
     {
         ClearCells();
         _bulkSelected.Clear();
-        _selectedEquipId = null;
+        _selectedCell = -1;
     }
 
     // ── 그리드 구성 ───────────────────────────────────────────
@@ -91,14 +101,14 @@ public class DisassemblePopup : PopupBase
 
             var cell = Instantiate(_iconCellTemplate, _gridContent);
             cell.SetActive(true);
-            FillCell(cell, equip);
+            FillCell(cell, equip, _cells.Count);
             _cells.Add(cell);
             _cellEquipIds.Add(id);
         }
         RefreshCellHighlights();
     }
 
-    void FillCell(GameObject cell, EquipmentData equip)
+    void FillCell(GameObject cell, EquipmentData equip, int cellIndex)
     {
         var border = cell.transform.Find("GradeBorder")?.GetComponent<Image>();
         if (border != null) border.color = GradeStyle.GetColor(equip.Grade);
@@ -114,18 +124,20 @@ public class DisassemblePopup : PopupBase
         if (btn != null)
         {
             btn.onClick.RemoveAllListeners();
-            string capturedId = equip.EquipmentId;
-            btn.onClick.AddListener(() => SelectEquip(capturedId));
+            int captured = cellIndex;   // ID 가 아니라 칸 번호 — 중복 장비를 구분하는 유일한 키
+            btn.onClick.AddListener(() => SelectCell(captured));
         }
     }
 
     // ── 단일 선택 ─────────────────────────────────────────────
 
-    void SelectEquip(string equipId)
+    void SelectCell(int cellIndex)
     {
-        _selectedEquipId = equipId;
+        if (cellIndex < 0 || cellIndex >= _cellEquipIds.Count) { ClearSelection(); return; }
 
-        var equip = EquipmentDatabase.Current?.Get(equipId);
+        _selectedCell = cellIndex;
+
+        var equip = EquipmentDatabase.Current?.Get(_cellEquipIds[cellIndex]);
         if (equip == null) { ClearSelection(); return; }
 
         if (_selectedIcon != null)
@@ -164,7 +176,7 @@ public class DisassemblePopup : PopupBase
 
     void ClearSelection()
     {
-        _selectedEquipId = null;
+        _selectedCell = -1;
         if (_selectedNameText    != null) _selectedNameText.text    = "장비를 선택하세요";
         if (_selectedGradeText   != null) _selectedGradeText.text   = "";
         if (_selectedStatsText   != null) _selectedStatsText.text   = "";
@@ -179,20 +191,36 @@ public class DisassemblePopup : PopupBase
 
     void OnGradeToggleChanged(int gradeIdx, bool isOn)
     {
-        var grade   = (UnitGrade)gradeIdx;
+        RebuildBulkSelection();
+        RefreshCellHighlights();
+        RefreshBulkBtn();
+    }
+
+    /// <summary>
+    /// 켜져 있는 등급 토글로부터 일괄 선택 목록을 다시 만든다.
+    ///
+    /// ⚠ 토글 하나가 바뀔 때 그 등급만 넣고 빼면 안 된다
+    ///   분해로 장비가 사라진 뒤에도 목록에 ID 가 남고, 반대로 같은 ID 를 여럿
+    ///   들고 있을 때 하나만 분해하면 나머지까지 선택이 풀렸다.
+    ///   목록의 정본은 언제나 "지금 켜진 토글 + 지금 보유한 장비" 다.
+    /// </summary>
+    void RebuildBulkSelection()
+    {
+        _bulkSelected.Clear();
+
         var inv     = UserDataManager.Instance?.Get<EquipInventoryData>();
         var equipDb = EquipmentDatabase.Current;
-        if (inv == null || equipDb == null) return;
+        if (inv == null || equipDb == null || _gradeToggles == null) return;
 
         foreach (var id in inv.OwnedIds)
         {
             var equip = equipDb.Get(id);
-            if (equip == null || equip.Grade != grade) continue;
-            if (isOn) _bulkSelected.Add(id);
-            else      _bulkSelected.Remove(id);
+            if (equip == null) continue;
+
+            int gi = (int)equip.Grade;
+            if (gi < 0 || gi >= _gradeToggles.Length) continue;
+            if (_gradeToggles[gi] != null && _gradeToggles[gi].isOn) _bulkSelected.Add(id);
         }
-        RefreshCellHighlights();
-        RefreshBulkBtn();
     }
 
     void RefreshBulkBtn()
@@ -203,42 +231,41 @@ public class DisassemblePopup : PopupBase
 
     // ── 셀 하이라이트 ─────────────────────────────────────────
 
+    /// <summary>
+    /// 칸의 상태 표시. 세 가지가 서로 자리를 뺏지 않게 층을 나눠 쓴다.
+    ///
+    ///   등급          → GradeBorder (항상 등급색. 선택했다고 덮어쓰면 등급을 못 읽는다)
+    ///   단일 선택     → SelectionOutline (칸 바깥으로 8px 나가는 금색 링)
+    ///   일괄 선택     → Inner 를 호박색으로 (링과 색·자리가 겹치지 않는다)
+    ///
+    /// ⚠ 예전엔 셋 다 GradeBorder 색 하나로 표현했다
+    ///   일괄이 단일을 덮고, 둘 다 등급색을 덮어써서 무엇이 왜 켜졌는지 알 수 없었다.
+    /// </summary>
     void RefreshCellHighlights()
     {
+        var normalInner = new Color(0.13f, 0.135f, 0.21f);
+        var bulkInner   = new Color(0.34f, 0.23f, 0.09f);
+
         for (int i = 0; i < _cells.Count; i++)
         {
             if (i >= _cellEquipIds.Count) break;
             string id       = _cellEquipIds[i];
-            bool   isSingle = id == _selectedEquipId;
+            bool   isSingle = i == _selectedCell;
             bool   isBulk   = _bulkSelected.Contains(id);
 
-            // 셀 배경 (아이콘 뒤 — 단일 선택 시 약한 파란 틴트)
-            var bg = _cells[i].GetComponent<Image>();
-            if (bg != null)
-                bg.color = isSingle
-                    ? new Color(0.14f, 0.18f, 0.28f)
-                    : new Color(0.12f, 0.12f, 0.20f);
-
-            // GradeBorder: 아이콘보다 먼저 렌더 → 아이콘을 가리지 않음
-            // 선택 시 해당 색상으로 덮어쓰고, 해제 시 등급 색상 복원
             var border = _cells[i].transform.Find("GradeBorder")?.GetComponent<Image>();
             if (border != null)
             {
-                if (isBulk)
-                    border.color = new Color(1.00f, 0.85f, 0.20f);   // 황금
-                else if (isSingle)
-                    border.color = new Color(0.60f, 0.85f, 1.00f);   // 밝은 청백
-                else
-                {
-                    var equip = EquipmentDatabase.Current?.Get(id);
-                    border.color = equip != null
-                        ? GradeStyle.GetColor(equip.Grade)
-                        : new Color(0.28f, 0.28f, 0.45f);
-                }
+                var equip = EquipmentDatabase.Current?.Get(id);
+                border.color = equip != null
+                    ? GradeStyle.GetColor(equip.Grade)
+                    : new Color(0.28f, 0.28f, 0.45f);
             }
 
-            // SelectionOutline: full-stretch 오버레이가 아이콘을 가리므로 항상 비활성
-            _cells[i].transform.Find("SelectionOutline")?.gameObject.SetActive(false);
+            var inner = _cells[i].transform.Find("Inner")?.GetComponent<Image>();
+            if (inner != null) inner.color = isBulk ? bulkInner : normalInner;
+
+            _cells[i].transform.Find("SelectionOutline")?.gameObject.SetActive(isSingle);
         }
     }
 
@@ -246,22 +273,25 @@ public class DisassemblePopup : PopupBase
 
     void ConfirmDisassemble()
     {
-        if (string.IsNullOrEmpty(_selectedEquipId)) return;
+        if (_selectedCell < 0 || _selectedCell >= _cellEquipIds.Count) return;
 
         var invData  = UserDataManager.Instance?.Get<EquipInventoryData>();
         var itemData = UserDataManager.Instance?.Get<ItemData>();
         if (invData == null || itemData == null) return;
 
-        var equip = EquipmentDatabase.Current?.Get(_selectedEquipId);
+        string id    = _cellEquipIds[_selectedCell];
+        var    equip = EquipmentDatabase.Current?.Get(id);
         if (equip == null) return;
 
         itemData.Add(eItem.EquipUpgradeStone, equip.ItemLevel);
-        invData.Remove(_selectedEquipId);
+        // 같은 ID 가 여러 개면 그중 하나만 빠진다 — 사본끼리는 완전히 같은 장비라 어느 것이든 같다.
+        invData.Remove(id);
         UserDataManager.Instance.RequestSave();
 
-        _bulkSelected.Remove(_selectedEquipId);
-        _selectedEquipId = null;
+        _selectedCell = -1;
         BuildGrid();
+        RebuildBulkSelection();   // 방금 사라진 장비를 목록에서 걷어낸다
+        RefreshBulkBtn();
         ClearSelection();
     }
 
@@ -298,8 +328,9 @@ public class DisassemblePopup : PopupBase
             foreach (var t in _gradeToggles)
                 if (t != null) t.isOn = false;
         _bulkSelected.Clear();
-        _selectedEquipId = null;
+        _selectedCell = -1;
         BuildGrid();
+        RefreshBulkBtn();
         ClearSelection();
     }
 

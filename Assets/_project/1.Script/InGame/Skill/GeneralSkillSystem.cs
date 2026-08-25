@@ -336,7 +336,8 @@ namespace BattleGame.Units
                 skill.ValueRW.CooldownRemaining = skill.ValueRO.Cooldown;
 
                 // 타겟 위치를 이 시점에 스냅샷 — 이후 타겟이 사망해도 착탄 위치가 유지됨
-                Entity targetEnt = attack.ValueRO.TargetEntity;
+                // ⚠ TargetEntity 를 날것으로 쓰지 않는다 (SkillUsePolicy.ResolveTarget 주석 참고)
+                Entity targetEnt = SkillUsePolicy.ResolveTarget(attack.ValueRO);
                 float3 targetPos = _transformLookup.TryGetComponent(targetEnt, out LocalTransform lt)
                     ? lt.Position
                     : float3.zero;

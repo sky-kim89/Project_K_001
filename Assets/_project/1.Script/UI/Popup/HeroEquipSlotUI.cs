@@ -32,6 +32,12 @@ public class HeroEquipSlotUI : MonoBehaviour
     [SerializeField] TextMeshProUGUI _enhanceCostText;
     [SerializeField] Image           _enhanceCostIcon;
 
+    //  ⚠ 프레임(＋ 네모)은 장비 자리만 나타낸다 — 높이를 바꾸지 말 것
+    //    빈 칸이라고 강화 버튼 자리까지 프레임을 늘린 적이 있는데,
+    //    그러면 "장비가 비었다" 가 아니라 "강화 버튼까지가 장비 칸" 으로 읽힌다.
+    //    강화 버튼은 장비에 딸린 별개의 조작이지 장비 칸의 일부가 아니다.
+    //    세 칸의 프레임은 채워졌든 비었든 항상 같은 크기다.
+
     static readonly Color EmptyFrame = new(0.24f, 0.25f, 0.34f, 1f);
     static readonly Color EmptyIcon  = new(0.16f, 0.17f, 0.24f, 1f);
     static readonly Color CostOk     = new(0.80f, 0.90f, 1.00f, 1f);

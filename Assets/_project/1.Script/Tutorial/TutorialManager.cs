@@ -100,6 +100,7 @@ public class TutorialManager : Singleton<TutorialManager>
         BattleManager.OnVictory      += HandleVictory;
         BattleManager.OnDefeat       += HandleDefeat;
         MainPanelUI.OnShown          += HandleMainPanelShown;
+        MainPanelUI.OnHidden         += HandleMainPanelHidden;
 
         // ⚠ 매니저가 화면보다 늦게 생길 수 있다 (AutoCreate 는 씬 로드 뒤에 돈다)
         //   이미 떠 있는 메인 화면은 OnShown 을 놓친 뒤다. 지금 상태를 직접 본다.
@@ -112,10 +113,14 @@ public class TutorialManager : Singleton<TutorialManager>
         BattleManager.OnVictory      -= HandleVictory;
         BattleManager.OnDefeat       -= HandleDefeat;
         MainPanelUI.OnShown          -= HandleMainPanelShown;
+        MainPanelUI.OnHidden         -= HandleMainPanelHidden;
 
         // 씬이 갈리거나 매니저가 꺼질 때 멈춘 채로 두지 않는다.
         // 이 한 줄이 없으면 "튜토리얼 중 씬 전환 = 게임 영구 정지" 가 된다.
         SetPaused(false);
+
+        // 꺼지면 코루틴도 함께 멈춘다 — 핸들을 비워 둬야 다시 켤 때 큐가 다시 돈다.
+        _pump = null;
     }
 
     // 웨이브 개시 — 첫 인사부터 인게임 설명까지
@@ -153,6 +158,19 @@ public class TutorialManager : Singleton<TutorialManager>
         Enqueue(TutorialId.FirstRelic);
     }
 
+    /// <summary>
+    /// 메인 화면을 떠났다 — 아직 시작 못 한 유물 안내 예약을 버린다.
+    ///
+    /// ⚠ 예약은 화면을 떠나면 따라가면 안 된다
+    ///   수확 팝업이 떠 있는 동안 큐는 대기 상태로 남는다. 그 상태로 출전을 누르면
+    ///   전투에 들어가 팝업이 걷히는 순간 시작돼, 없는 유물 버튼을 30초 기다리다
+    ///   타임아웃 뒤 전투 화면에서 "여정이 끝나고 환생했습니다" 를 띄웠다.
+    ///
+    ///   재생 중인 것은 건드리지 않는다 — 튜토리얼이 스스로 팝업을 열어
+    ///   패널이 잠시 꺼지는 경우가 있어, 여기서 끊으면 제 튜토리얼이 죽는다.
+    /// </summary>
+    void HandleMainPanelHidden() => CancelQueued(TutorialId.FirstRelic);
+
     // ── 예약 큐 ──────────────────────────────────────────────
     //
     //  ⚠ 한 트리거에서 여러 개를 띄우려면 큐가 있어야 한다
@@ -165,19 +183,86 @@ public class TutorialManager : Singleton<TutorialManager>
     //    아무것도 재생되지 않고 큐만 비워진다.
 
     readonly Queue<TutorialId> _queue = new();
+    Coroutine _pump;
 
-    /// <summary>순서대로 재생을 예약한다. 이미 봤거나 시나리오가 없으면 건너뛴다.</summary>
+    /// <summary>
+    /// 순서대로 재생을 예약한다. 이미 봤거나 시나리오가 없으면 건너뛴다.
+    ///
+    /// ⚠ 같은 예약을 두 번 넣지 않는다
+    ///   화면을 오갈 때마다 트리거가 다시 도는데(MainPanelUI.OnEnable 등),
+    ///   앞엣것이 팝업 때문에 대기 중이면 큐에 같은 것이 계속 쌓였다.
+    /// </summary>
     public void Enqueue(params TutorialId[] ids)
     {
-        foreach (var id in ids) _queue.Enqueue(id);
+        foreach (var id in ids)
+            if (!_queue.Contains(id)) _queue.Enqueue(id);
         PumpQueue();
+    }
+
+    /// <summary>
+    /// 아직 시작하지 않은 예약을 큐에서 뺀다. 재생 중인 것은 건드리지 않는다
+    /// (중단은 Abort 담당).
+    /// </summary>
+    public void CancelQueued(TutorialId id)
+    {
+        if (!_queue.Contains(id)) return;
+
+        var kept = new List<TutorialId>(_queue);
+        kept.RemoveAll(q => q == id);
+        _queue.Clear();
+        foreach (var q in kept) _queue.Enqueue(q);
     }
 
     void PumpQueue()
     {
-        if (IsPlaying) return;
+        if (_pump == null && _queue.Count > 0 && isActiveAndEnabled)
+            _pump = StartCoroutine(PumpRoutine());
+    }
+
+    /// <summary>
+    /// 큐를 앞에서부터 하나씩 재생한다. 시작할 수 없으면 **버리지 않고 기다린다.**
+    ///
+    /// ⚠ 예전엔 한 번 훑고 끝이었다
+    ///   조건이 아직 안 맞으면 TryPlay 가 false 를 돌려주고 그 시나리오는
+    ///   큐에서 사라졌다. 지금은 화면이 조용해질 때까지 기다렸다가 꺼낸다.
+    ///
+    /// ⚠ 팝업 위에서 시작하지 않는다
+    ///   전투가 끝나면 어빌리티 선택 팝업이 먼저 뜨는데, 로비는 그 뒤에 이미
+    ///   서 있다(로비·인게임 동시 상주). "로비가 떴다" 만 보고 시작하면
+    ///   오버레이(sortingOrder 1000)가 팝업을 덮어 선택을 막아 버린다 —
+    ///   실제로 어빌리티 팝업 위에서 로비 튜토리얼이 뜬 적이 있다.
+    /// </summary>
+    IEnumerator PumpRoutine()
+    {
         while (_queue.Count > 0)
-            if (TryPlay(_queue.Dequeue())) return;
+        {
+            if (IsPlaying || !CanStartNow(_queue.Peek()))
+            {
+                yield return null;   // timeScale 0 이어도 프레임마다 돈다
+                continue;
+            }
+
+            TryPlay(_queue.Dequeue());
+            yield return null;
+        }
+        _pump = null;
+    }
+
+    /// <summary>
+    /// 지금 이 시나리오를 띄워도 되는 화면인가.
+    /// 등록되지 않은 시나리오는 true — 큐에서 빠져야 뒤엣것이 진행된다.
+    /// </summary>
+    bool CanStartNow(TutorialId id)
+    {
+        if (!_scenarios.TryGetValue(id, out var scenario)) return true;
+
+        var pm = PopupManager.Instance;
+        if (pm == null || !pm.HasAnyOpen) return true;
+
+        // 자기 무대 팝업 하나만 떠 있는 경우만 예외 (승리 팝업 위의 BattleResult 등)
+        return scenario.StagePopup != PopupType.None
+            && pm.OpenCount == 1
+            && pm.IsOpen(scenario.StagePopup);
     }
 
     /// <summary>
@@ -276,7 +361,12 @@ public class TutorialManager : Singleton<TutorialManager>
     public void Skip()
     {
         if (!IsPlaying) return;
-        DropQueuedAsCompleted();
+
+        // ⚠ 도움말을 건너뛴 것으로 강제 진행 큐까지 접지 않는다
+        //   버튼은 이제 도움말(i 버튼)에만 붙는다. 그걸 닫았다고 아직 보지도 않은
+        //   로비·장수 안내를 "봤다" 로 기록하면 영영 안 뜬다.
+        if (Current.Id.IsForced()) DropQueuedAsCompleted();
+
         Stop(complete: true);
     }
 
@@ -328,6 +418,14 @@ public class TutorialManager : Singleton<TutorialManager>
 
         EnsureOverlay();
         _overlay.BringToFront();
+
+        // ⚠ 강제 진행 튜토리얼에는 건너뛰기 버튼을 두지 않는다
+        //   버튼이 화면 오른쪽 위에 상주하는데 거기가 배속·오토 버튼 자리다.
+        //   인게임 시나리오는 그 두 버튼을 가리키며 설명하는데, 정작 버튼이
+        //   건너뛰기에 가려 보이지 않았다.
+        //   도움말(i 버튼)로 다시 볼 때만 남긴다 — 그쪽은 스스로 연 화면이라
+        //   빠져나갈 문이 필요하다.
+        _overlay.SetSkipVisible(!scenario.Id.IsForced());
         _overlay.ShowBlockOnly();
 
         OnStarted?.Invoke(scenario.Id);

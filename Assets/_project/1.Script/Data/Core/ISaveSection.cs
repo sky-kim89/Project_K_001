@@ -21,7 +21,8 @@ public enum SaveKey
     EquipInventory  = 4,
     DeploymentData  = 5,
     RunAbility      = 6,
-    RelicInventory  = 7,
+    // 7 = RelicInventory — 구 유물(카드 그리드). 시스템째 제거됐다.
+    //     ⚠ 번호를 재사용하지 말 것 — 옛 세이브에 남아 있어 다른 섹션으로 되살아난다.
     Reincarnation   = 8,
     RunTrait        = 9,
     RunShop         = 10,
@@ -30,6 +31,7 @@ public enum SaveKey
     BattleSettings  = 13,  // 전투 조작 설정 — 자동 스킬 / 배속 (영구, 환생 무관)
     Difficulty      = 14,  // 난이도 선택·해금 기록 (영구, 환생 무관)
     Tutorial        = 15,  // 튜토리얼 노출 기록 (영구, 환생 무관)
+    RelicTree       = 16,  // 유물 테크트리 노드 레벨 (영구, 환생 무관)
 }
 
 public interface ISaveSection

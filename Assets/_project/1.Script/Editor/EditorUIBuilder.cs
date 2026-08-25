@@ -162,6 +162,46 @@ public static class EditorUIBuilder
     }
 
     /// <summary>
+    /// 동그라미 안에 i — "눌러 보면 설명이 있다" 는 표시.
+    ///
+    /// ■ 왜 헬퍼로 두나
+    ///   로비 장수 카드(HeroPanelCreator)가 같은 그림을 직접 만들어 쓰고 있었다.
+    ///   같은 뜻의 기호는 한 곳에서 그려야 화면마다 크기·색이 갈리지 않는다.
+    ///
+    /// ■ 동그라미는 유니티 내장 Knob 스프라이트다
+    ///   ○ · ⓘ 같은 글자는 폰트에 없어서 □ 로 뜬다 (UI 규칙 2).
+    ///   원형 스프라이트를 깔고 그 위에 ASCII 'i' 를 얹는 것이 가장 싸다.
+    ///
+    /// ⚠ 이 배지 자체는 버튼이 아니다 (raycastTarget = false)
+    ///   눌리는 것은 이걸 얹은 대상이어야 한다 — 28px 짜리 점을 정확히 노리게
+    ///   만들면 모바일에서 안 눌린다. 배지는 "여기 누를 게 있다" 는 신호만 한다.
+    /// </summary>
+    public static GameObject InfoDot(GameObject parent, string name, float size, Color face)
+    {
+        var badge = Img(parent, name, face);
+        badge.raycastTarget = false;
+
+        var knob = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
+        if (knob != null) badge.sprite = knob;
+
+        var rt = badge.rectTransform;
+        rt.sizeDelta = new Vector2(size, size);
+
+        var label = TMP(badge.gameObject, "Mark", "i", size * 0.72f, FontStyles.Bold);
+        label.alignment     = TextAlignmentOptions.Center;
+        label.color         = Color.white;
+        label.raycastTarget = false;
+        var lRt = label.rectTransform;
+        lRt.anchorMin = Vector2.zero;
+        lRt.anchorMax = Vector2.one;
+        // 'i' 는 위쪽이 비어 보인다 — 1px 내려 시각적 중심을 맞춘다
+        lRt.offsetMin = new Vector2(0f, 1f);
+        lRt.offsetMax = Vector2.zero;
+
+        return badge.gameObject;
+    }
+
+    /// <summary>
     /// 헤더 오른쪽 끝에서 [도움말][닫기] 묶음이 차지하는 폭.
     ///
     /// ⚠ 헤더에 다른 위젯을 놓을 때는 반드시 이만큼 비켜선다
@@ -411,6 +451,40 @@ public static class EditorUIBuilder
         float t = Mathf.Max(3f, size * 0.13f);
         Bar(root, "A", size * 0.92f, t,  45f, Vector2.zero, color);
         Bar(root, "B", size * 0.92f, t, -45f, Vector2.zero, color);
+        return root;
+    }
+
+    /// <summary>
+    /// 당구장 표시 (※ 대체). size = 외접 정사각형 한 변.
+    ///
+    /// ⚠ ※ (U+203B) 는 이 프로젝트 폰트에 <b>없다</b> — 그려야 한다
+    ///   LiberationSans SDF 는 글리프 250자(ASCII + Latin-1 일부)뿐이고
+    ///   한글 폴백(TDS_RPG_2 SDF)은 한글 음절 11,172자 <b>만</b> 갖고 있다.
+    ///   둘 다 AtlasPopulationMode = Static 이라 런타임에 채울 수도 없다.
+    ///   그냥 쓰면 화면에 □ 가 뜬다 (UI 규칙 2).
+    ///
+    /// 획 구성: 가로 막대 2개 + 대각 막대 4개 — 원본의 '쌀 米' 꼴을 작은 크기에서
+    /// 읽히는 선까지만 줄인 근사다. 본문 글자 크기(FontSm)에서 주석 기호로 읽힌다.
+    /// </summary>
+    public static GameObject ReferenceMark(GameObject parent, string name, float size, Color color)
+    {
+        var root = Go(name, parent);
+        var rt = root.GetComponent<RectTransform>();
+        rt.sizeDelta = new Vector2(size, size);
+
+        float t    = Mathf.Max(2f, size * 0.11f);
+        float arm  = size * 0.44f;
+        float span = size * 0.30f;
+
+        // 위·아래 가로 획
+        Bar(root, "H1", size * 0.86f, t, 0f, new Vector2(0f,  span), color);
+        Bar(root, "H2", size * 0.86f, t, 0f, new Vector2(0f, -span), color);
+
+        // 네 귀퉁이 대각 획 — 중심에서 바깥으로 뻗는다
+        Bar(root, "D1", arm, t,  45f, new Vector2(-span * 0.62f,  span * 0.62f), color);
+        Bar(root, "D2", arm, t, -45f, new Vector2( span * 0.62f,  span * 0.62f), color);
+        Bar(root, "D3", arm, t, -45f, new Vector2(-span * 0.62f, -span * 0.62f), color);
+        Bar(root, "D4", arm, t,  45f, new Vector2( span * 0.62f, -span * 0.62f), color);
         return root;
     }
 

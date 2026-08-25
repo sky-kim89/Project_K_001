@@ -14,7 +14,7 @@ using UnityEngine;
 //    - Special 어빌리티를 이미 1개 이상 보유하면 Special 풀 제외
 //
 //  새로고침 횟수:
-//    AbilitySelectPopup 이 RelicApplier.GetSystemInt(AbilityRefreshCount) 로
+//    AbilitySelectPopup 이 RelicTreeApplier.GetSystemInt(AbilityRefreshCount) 로
 //    허용 횟수를 확인하고 재추첨을 요청한다. (이 클래스는 횟수 추적 불필요)
 // ============================================================
 
@@ -41,24 +41,23 @@ public static class AbilityPicker
 
     /// <summary>
     /// 어빌리티 선택지를 추첨한다.
-    /// relicInventory / relicDb 가 null 이면 유물 보너스 없이 기본값으로 동작.
+    /// 선택지 수·고급 확률 보너스는 RelicTreeApplier 가 직접 읽는다 —
+    /// 부르는 쪽이 유물 데이터를 들고 다니지 않는다.
     /// </summary>
     public static AbilityData[] Pick(
         AbilityDatabase db,
-        RunAbilityData runData,
-        RelicInventoryData relicInventory = null,
-        RelicDatabase relicDb = null)
+        RunAbilityData runData)
     {
         if (db == null) return System.Array.Empty<AbilityData>();
 
         // ── 선택지 수 결정 ──────────────────────────────────────
         int pickCount = BasePickCount
-            + RelicApplier.GetSystemInt(RelicSystemEffect.AbilityChoiceCount, relicInventory, relicDb);
+            + RelicTreeApplier.GetSystemInt(RelicSystemEffect.AbilityChoiceCount);
         pickCount = Mathf.Max(1, pickCount);
 
         // ── 등급 가중치 결정 ────────────────────────────────────
-        float advancedBonus = RelicApplier.GetSystemValue(
-            RelicSystemEffect.AbilityAdvancedChance, relicInventory, relicDb);
+        float advancedBonus = RelicTreeApplier.GetSystemValue(
+            RelicSystemEffect.AbilityAdvancedChance);
 
         float wNormal   = Mathf.Max(0f, BaseGradeWeights[0] - advancedBonus);
         float wAdvanced = BaseGradeWeights[1] + advancedBonus * 0.7f;  // 증가분의 70%를 Advanced 에

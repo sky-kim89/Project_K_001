@@ -10,8 +10,8 @@ namespace Assets.PixelFantasy.PixelHeroes.FantasyHeroes.Scripts.Editor
     [InitializeOnLoad]
     internal static class PackageFeedback
     {
-        private const string PackageId = "250116";
-        private const string PackageName = "Pixel Hero Maker";
+        private const string PackageId = "271664";
+        private const string PackageName = "Pixel Hero Maker [Megapack]";
         
         private static readonly string PrefsKeyImportTime = $"PackageFeedback.ImportTime.{PackageId}";
         private static readonly string PrefsKeyReviewTime = $"PackageFeedback.ReviewTime.{PackageId}";

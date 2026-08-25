@@ -45,7 +45,6 @@ public static class SoldierStatApplier
         Entity soldierEntity, EntityManager em,
         PassiveSkillType[] activePassives, PassiveSkillDatabase passiveDb,
         IReadOnlyList<AbilityId> heldAbilities, AbilityDatabase abilityDb,
-        RelicInventoryData relicInventory, RelicDatabase relicDb,
         UnitJob job)
     {
         if (soldierEntity == Entity.Null || !em.Exists(soldierEntity)) return;
@@ -56,7 +55,7 @@ public static class SoldierStatApplier
 
         CollectPassives(activePassives, passiveDb, ratios, flats);
         CollectAbilities(heldAbilities, abilityDb, job, ratios, flats);
-        CollectRelics(relicInventory, relicDb, job, ratios, flats);
+        RelicTreeApplier.CollectSoldier(job, ratios, flats);
 
         if (ratios.Count == 0 && flats.Count == 0) return;
 
@@ -123,26 +122,6 @@ public static class SoldierStatApplier
             if (data.HasStat2)
                 Accumulate(AbilityApplier.IsAbsoluteStat(data.Stat2) ? flats : ratios,
                            data.Stat2, data.Value2);
-        }
-    }
-
-    static void CollectRelics(
-        RelicInventoryData inventory, RelicDatabase db, UnitJob job,
-        Dictionary<StatType, float> ratios, Dictionary<StatType, float> flats)
-    {
-        if (inventory == null || db == null) return;
-
-        foreach (var (id, level) in inventory.OwnedRelics)
-        {
-            if (level <= 0) continue;
-            var data = db.Get(id);
-            if (data == null || data.EffectType != RelicEffectType.Stat) continue;
-            if (!ReachesSoldier(data.Target, job)) continue;
-
-            var bucket = data.IsAbsoluteValue ? flats : ratios;
-            Accumulate(bucket, data.Stat1, data.Value1PerLevel * level);
-            if (data.HasStat2)
-                Accumulate(bucket, data.Stat2, data.Value2PerLevel * level);
         }
     }
 

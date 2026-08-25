@@ -126,6 +126,13 @@ public static class HeroDetailPopupCreator
     static readonly Color RowLine      = new Color(0.18f,  0.19f,  0.28f,  1f);
 
     static readonly Color SkillBoxBg   = new Color(0.115f, 0.125f, 0.215f, 1f);
+
+    // ⚠ 스킬 아이콘 홈은 PitBg 를 쓰지 말 것
+    //   PitBg 는 초상화 홈(BuildLeftColumn)과 장비 타일 홈도 같이 쓴다.
+    //   그쪽까지 바꾸면 초상화 배경이 같이 밝아진다.
+    //   색의 정본은 SkillIconUI — 로비 카드·인게임과 같은 바탕을 쓴다.
+    static readonly Color ActPitBg     = SkillIconUI.ActiveSlotBg;
+    static readonly Color PassPitBg    = SkillIconUI.PassiveSlotBg;
     static readonly Color ActiveAccent = new Color(0.45f,  0.65f,  1.00f,  1f);
     static readonly Color PassAccent   = new Color(0.60f,  0.44f,  0.90f,  1f);
     // 이름 = 채도 높은 강조색(액티브 금 / 패시브 보라), 설명 = 채도 낮은 청회색.
@@ -135,6 +142,17 @@ public static class HeroDetailPopupCreator
     static readonly Color ActDescC     = new Color(0.66f,  0.72f,  0.86f,  1f);   // 청회
     static readonly Color PassNameC    = new Color(0.80f,  0.66f,  1.00f,  1f);   // 보라
     static readonly Color PassDescC    = new Color(0.60f,  0.63f,  0.76f,  1f);   // 어두운 청회
+
+    // 스킬 아이콘 테두리 — 장비 타일과 같은 Frame→Pit→Icon 구조를 쓴다.
+    //
+    // ⚠ 테두리 없이 홈(Pit)에 아이콘만 얹으면 칸으로 안 읽힌다
+    //   같은 화면의 장비 3칸은 테두리가 있어서, 스킬만 맨몸이면 아이콘이
+    //   배경에 떠 있는 것처럼 보인다. 용병 상세에서 특히 어색했다.
+    //
+    // 색은 이름 색과 같은 정체성(액티브 금 / 패시브 보라)을 쓰되 채도를 낮춘다 —
+    // 테두리가 아이콘보다 먼저 눈에 들어오면 안 된다.
+    static readonly Color ActFrameC    = new Color(0.60f,  0.48f,  0.22f,  1f);
+    static readonly Color PassFrameC   = new Color(0.40f,  0.32f,  0.58f,  1f);
 
     static readonly Color LevelUpBtnC  = new Color(0.16f,  0.34f,  0.62f,  1f);
     static readonly Color SoldierBtnC  = new Color(0.14f,  0.34f,  0.22f,  1f);
@@ -234,6 +252,46 @@ public static class HeroDetailPopupCreator
         var nameTmp   = MakeTitle(header, "NameText",   TitleColor,  0f);
         SetObj(so, "_nameText",       nameTmp);
         SetObj(so, "_nameShadowText", shadowTmp);
+
+        // ── 지휘력 안내 (이름 오른쪽 빈 자리) ────────────────
+        //
+        //  지휘력은 이 화면에서 가장 설명이 필요한 스탯이다. 숫자만 봐서는
+        //  34 라는 값이 무엇을 하는지 알 수 없다.
+        //
+        //  ⚠ 자리 계산 — 이름과 재화 바 사이에만 놓는다
+        //    이름  : x=30 부터, FontLg(56). 장수 이름은 한글 3~4자라 250 안쪽이다.
+        //    재화 바: 오른쪽에서 CloseW(204) + CurrencyW×4(704) → 왼쪽 끝이 x=932.
+        //    그래서 480 ~ 916 (436폭) 이 비어 있는 구간이다.
+        //    ⚠ 이름 칸은 900 폭으로 잡혀 있지만 NoWrap + 좌측 정렬 + Overflow 라
+        //      실제로 그리는 폭은 글자 길이만큼이다. 그 칸을 줄이면 긴 이름이 잘린다.
+        //  ⚠ 문구의 수치는 여기에 박지 않는다
+        //    GameplayConfig.SoldierRatioPerCommandPower 가 바뀌면 이 글이 거짓말이
+        //    된다. 런타임에 HeroDetailPopup 이 채운다.
+        const float HintX    = 480f;
+        const float MarkSize = 26f;
+        var  hintColor = new Color(0.62f, 0.72f, 0.88f);
+        float hintW    = PW - HintX - CurrencyW * 4f
+                       - EditorUIBuilder.HeaderRightBlock(76f, 24f) - 32f;
+
+        // 당구장 표시 — ※ 는 폰트에 없어서 도형으로 그린다 (UI 규칙 2)
+        var mark = EditorUIBuilder.ReferenceMark(header, "CommandHintMark", MarkSize, hintColor);
+        var mkRt = mark.GetComponent<RectTransform>();
+        mkRt.anchorMin = mkRt.anchorMax = new Vector2(0f, 1f);
+        mkRt.pivot     = new Vector2(0f, 1f);
+        mkRt.anchoredPosition = new Vector2(HintX, -58f - (UIScale.RowMd - MarkSize) * 0.5f);
+
+        var cmdHint = TMP(header, "CommandHintText", "", UIScale.FontSm, FontStyles.Normal);
+        cmdHint.color            = hintColor;
+        cmdHint.alignment        = TextAlignmentOptions.MidlineLeft;
+        cmdHint.raycastTarget    = false;
+        cmdHint.textWrappingMode = TextWrappingModes.NoWrap;
+        cmdHint.overflowMode     = TextOverflowModes.Ellipsis;
+        var chRt = cmdHint.rectTransform;
+        chRt.anchorMin = chRt.anchorMax = new Vector2(0f, 1f);
+        chRt.pivot     = new Vector2(0f, 1f);
+        chRt.anchoredPosition = new Vector2(HintX + MarkSize + 8f, -58f);
+        chRt.sizeDelta        = new Vector2(hintW - MarkSize - 8f, UIScale.RowMd);
+        SetObj(so, "_commandHintText", cmdHint);
 
         var accent = Go("AccentLine", panel);
         accent.AddComponent<Image>().color = AccentBlue;
@@ -437,10 +495,41 @@ public static class HeroDetailPopupCreator
         gradeTmp.raycastTarget = false;
         Stretch(gradeTmp.gameObject);
 
-        SetObj(so, "_levelText",  levelTmp);
-        SetObj(so, "_jobText",    jobTmp);
-        SetObj(so, "_gradeBadge", gradeBadge.GetComponent<Image>());
-        SetObj(so, "_gradeText",  gradeTmp);
+        // 배지를 눌러 등급·품질 설명을 본다.
+        //
+        //  ⚠ UI 규칙 1(음각 RaisedBtn)의 예외다
+        //    이 배지는 등급색으로 칠해지는 '정보 표시' 다. RaisedBtn 으로 바꾸면
+        //    눌림 색이 targetGraphic 색 기준으로 역산돼 있는데, 런타임에 등급색을
+        //    갈아끼우므로 그 계산이 통째로 어긋난다 (칸 배경을 등급색으로 칠하지
+        //    말라는 MercenaryPopupCreator 의 경고와 같은 이유).
+        var gradeBtn = gradeBadge.AddComponent<Button>();
+        gradeBtn.targetGraphic = gradeBadge.GetComponent<Image>();
+
+        // 누를 수 있다는 표시 — 배지 오른쪽 위 모서리에 걸친 작은 ⓘ.
+        //
+        //  ⚠ 라벨에 '?' 를 이어 붙이면 안 된다
+        //    배지는 120×56 인데 "영웅 5 ?" 는 그 폭을 넘겨 두 줄로 접힌다.
+        //    등급·품질이 아래위로 갈라져 하나의 값처럼 읽히지 않았다.
+        //    표시는 글자 흐름 밖(모서리)으로 빼야 라벨 길이에 영향을 주지 않는다.
+        //  ⚠ 배지 밖으로 나가는 양은 오른쪽 여백(12) 안에서 끝낸다
+        //    ⓘ 는 raycastTarget = false 라, 눌리는 것은 여전히 배지 전체다.
+        const float InfoDotSz = 28f;
+        var gradeDot = EditorUIBuilder.InfoDot(gradeBadge, "InfoDot", InfoDotSz,
+                                               new Color(0.30f, 0.44f, 0.66f, 0.98f));
+        var gdRt = gradeDot.GetComponent<RectTransform>();
+        gdRt.anchorMin = gdRt.anchorMax = new Vector2(1f, 1f);
+        gdRt.pivot     = new Vector2(0.5f, 0.5f);
+        gdRt.anchoredPosition = new Vector2(-4f, 4f);
+
+        // 툴팁 부모는 칼럼 — 배지(120×56) 안에 두면 설명이 통째로 찌그러진다
+        var gradeTip = InfoTooltipBuilder.Build(col, 460f);
+
+        SetObj(so, "_levelText",     levelTmp);
+        SetObj(so, "_jobText",       jobTmp);
+        SetObj(so, "_gradeBadge",    gradeBadge.GetComponent<Image>());
+        SetObj(so, "_gradeText",     gradeTmp);
+        SetObj(so, "_gradeInfoBtn",  gradeBtn);
+        SetObj(so, "_gradeTooltip",  gradeTip);
 
         BuildRankRow(col, so);
         BuildGrowthRow(col, so);
@@ -586,6 +675,11 @@ public static class HeroDetailPopupCreator
     }
 
     // ── 장비 칸 (아이콘만 + 강화 버튼) ───────────────────────
+    //
+    //  ⚠ Frame(장비 네모)은 아이콘 영역만 차지한다 — 강화 버튼은 그 아래 별개다
+    //    빈 칸이면 버튼이 꺼지면서 아래가 비는데, 그 자리를 프레임으로 메우지 말 것.
+    //    "장비가 비었다" 를 나타내는 네모가 강화 버튼 자리까지 덮으면
+    //    버튼까지 장비 칸의 일부로 읽힌다. 세 칸의 네모 크기는 항상 같다.
 
     static HeroEquipSlotUI BuildEquipSlot(GameObject strip, int index)
     {
@@ -857,13 +951,24 @@ public static class HeroDetailPopupCreator
         aRt.anchorMin = new Vector2(0f, 0f); aRt.anchorMax = new Vector2(0f, 1f);
         aRt.offsetMin = Vector2.zero;        aRt.offsetMax = new Vector2(6f, 0f);
 
-        var iconPit = Go("IconPit", box);
-        iconPit.AddComponent<Image>().color = PitBg;
+        // 테두리 → 홈 → 아이콘 (장비 타일과 같은 구조)
+        var iconFrame = Go("IconFrame", box);
+        var ifImg = iconFrame.AddComponent<Image>();
+        ifImg.color         = ActFrameC;
+        ifImg.raycastTarget = false;
+        var ifRt = iconFrame.GetComponent<RectTransform>();
+        ifRt.anchorMin = ifRt.anchorMax = new Vector2(0f, 1f);
+        ifRt.pivot     = new Vector2(0f, 1f);
+        ifRt.anchoredPosition = new Vector2(20f, -20f);
+        ifRt.sizeDelta        = new Vector2(IconSz, IconSz);
+
+        var iconPit = Go("IconPit", iconFrame);
+        var ipImg = iconPit.AddComponent<Image>();
+        ipImg.color         = ActPitBg;
+        ipImg.raycastTarget = false;
         var ipRt = iconPit.GetComponent<RectTransform>();
-        ipRt.anchorMin = ipRt.anchorMax = new Vector2(0f, 1f);
-        ipRt.pivot     = new Vector2(0f, 1f);
-        ipRt.anchoredPosition = new Vector2(20f, -20f);
-        ipRt.sizeDelta        = new Vector2(IconSz, IconSz);
+        ipRt.anchorMin = Vector2.zero; ipRt.anchorMax = Vector2.one;
+        ipRt.offsetMin = new Vector2(3f, 3f); ipRt.offsetMax = new Vector2(-3f, -3f);
 
         var skillIcon = Go("ActiveSkillIcon", iconPit, typeof(Image)).GetComponent<Image>();
         skillIcon.color          = new Color(0.28f, 0.32f, 0.52f);
@@ -871,7 +976,7 @@ public static class HeroDetailPopupCreator
         skillIcon.raycastTarget  = false;
         var siRt = skillIcon.rectTransform;
         siRt.anchorMin = Vector2.zero; siRt.anchorMax = Vector2.one;
-        siRt.offsetMin = new Vector2(6f, 6f); siRt.offsetMax = new Vector2(-6f, -6f);
+        siRt.offsetMin = new Vector2(5f, 5f); siRt.offsetMax = new Vector2(-5f, -5f);
         SetObj(so, "_activeSkillIcon", skillIcon);
 
         float textLeft = 20f + IconSz + 18f;
@@ -966,14 +1071,24 @@ public static class HeroDetailPopupCreator
         aRt.anchorMin = new Vector2(0f, 0f); aRt.anchorMax = new Vector2(0f, 1f);
         aRt.offsetMin = Vector2.zero;        aRt.offsetMax = new Vector2(6f, 0f);
 
-        // 아이콘 자리 — 액티브와 같은 "홈에 얹힌 카드" 형태
-        var pit = Go("IconPit", box);
-        pit.AddComponent<Image>().color = PitBg;
+        // 아이콘 자리 — 액티브와 같은 테두리 → 홈 → 아이콘 구조
+        var frame = Go("IconFrame", box);
+        var frImg = frame.AddComponent<Image>();
+        frImg.color         = PassFrameC;
+        frImg.raycastTarget = false;
+        var fRt = frame.GetComponent<RectTransform>();
+        fRt.anchorMin = fRt.anchorMax = new Vector2(0f, 0.5f);
+        fRt.pivot     = new Vector2(0f, 0.5f);
+        fRt.anchoredPosition = new Vector2(IconX, 0f);
+        fRt.sizeDelta        = new Vector2(IconSz, IconSz);
+
+        var pit = Go("IconPit", frame);
+        var pitImg = pit.AddComponent<Image>();
+        pitImg.color         = PassPitBg;
+        pitImg.raycastTarget = false;
         var pRt = pit.GetComponent<RectTransform>();
-        pRt.anchorMin = pRt.anchorMax = new Vector2(0f, 0.5f);
-        pRt.pivot     = new Vector2(0f, 0.5f);
-        pRt.anchoredPosition = new Vector2(IconX, 0f);
-        pRt.sizeDelta        = new Vector2(IconSz, IconSz);
+        pRt.anchorMin = Vector2.zero; pRt.anchorMax = Vector2.one;
+        pRt.offsetMin = new Vector2(3f, 3f); pRt.offsetMax = new Vector2(-3f, -3f);
 
         var icon = Go("PassiveIcon", pit, typeof(Image)).GetComponent<Image>();
         icon.color          = new Color(0.25f, 0.24f, 0.40f);
@@ -981,7 +1096,7 @@ public static class HeroDetailPopupCreator
         icon.raycastTarget  = false;
         var iRt = icon.rectTransform;
         iRt.anchorMin = Vector2.zero; iRt.anchorMax = Vector2.one;
-        iRt.offsetMin = new Vector2(5f, 5f); iRt.offsetMax = new Vector2(-5f, -5f);
+        iRt.offsetMin = new Vector2(4f, 4f); iRt.offsetMax = new Vector2(-4f, -4f);
 
         var nameTmp = TMP(box, "NameText", "—", UIScale.FontMd, FontStyles.Bold);
         nameTmp.color            = PassNameC;

@@ -88,11 +88,11 @@ public class AbilityTimeWarp : AbilityData
         float currentCdr = 1f - skill.Cooldown / baseCd;
         float mergedCdr  = 1f - (1f - currentCdr) * (1f - CooldownBonus);
 
-        float maxCdr = UnityEngine.Application.isPlaying && GameplayConfig.Current != null
-                     ? GameplayConfig.Current.CooldownReduceMax
-                     : 0.8f;
-
-        skill.Cooldown = baseCd * (1f - GeneralRuntimeBridge.ClampCDR(mergedCdr, maxCdr));
+        // 상한의 정본은 GameplayConfig.CooldownCap 하나다 (숫자를 여기 적지 말 것).
+        // isPlaying 검사는 뺐다 — 이 메서드는 살아 있는 EntityManager 를 받으므로
+        // 애초에 플레이 중에만 돈다.
+        skill.Cooldown = baseCd * (1f - GeneralRuntimeBridge.ClampCDR(mergedCdr,
+                                                                      GameplayConfig.CooldownCap));
 
         // 이미 돌고 있는 쿨타임이 새 값을 넘지 않게 같이 당겨준다
         if (skill.CooldownRemaining > skill.Cooldown)

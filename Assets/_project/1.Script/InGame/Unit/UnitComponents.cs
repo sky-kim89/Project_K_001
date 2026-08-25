@@ -130,6 +130,7 @@ namespace BattleGame.Units
         //   돌진이 ActiveSkillId.BossCharge 스킬로 옮겨가면서
         //   쿨다운·타겟·이동을 ActiveSkillSlot + BossChargeRunner 가 갖는다.
         //   패턴을 추가할 때마다 이 컴포넌트에 필드를 늘리던 구조를 끝냈다.
+        //   광폭화도 마찬가지다 — ActiveSkillId.BossEnrage 슬롯이 쿨다운을 갖는다.
     }
 
     // ──────────────────────────────────────────
@@ -271,6 +272,16 @@ namespace BattleGame.Units
         public float3  HitDirection;   // Normal: 방향벡터, Skill: 방향×힘(직접 사용)
         public Entity  AttackerEntity;
         public HitType Type;
+
+        /// <summary>
+        /// 이 타격이 무시하는 방어율 (0~1) — 공격자의 StatType.DefensePenetration.
+        ///
+        /// ⚠ 공격자 엔티티를 되짚어 읽지 않고 값으로 실어 보낸다
+        ///   보스 AoE 는 AttackerEntity 를 비워 보내고, 발사체는 시전자가 먼저
+        ///   죽어 풀에 반납될 수 있다. 그때마다 관통이 조용히 0 이 되면
+        ///   "가끔 피해가 다르게 들어가는" 재현 안 되는 버그가 된다.
+        /// </summary>
+        public float   DefensePierce;
     }
 
     // ──────────────────────────────────────────
@@ -488,6 +499,8 @@ namespace BattleGame.Units
         public float    Damage;
         public float    Speed;
         public TeamType Team;
+        /// <summary>공격자의 방어율 관통 — ProjectileComponent 로 그대로 넘어간다.</summary>
+        public float    DefensePierce;
     }
 
     // ──────────────────────────────────────────
@@ -537,6 +550,27 @@ namespace BattleGame.Units
     public struct MirrorArmorComponent : IComponentData
     {
         public float ReflectRatio;  // 반사 비율 (0.25 = 25%)
+    }
+
+    /// <summary>
+    /// 자기 최대 체력에 비례해 주변 적을 주기적으로 태우는 광역 오라.
+    /// (방패병 달인 D04 — DamageAuraSystem 이 굴린다)
+    ///
+    /// ⚠ 피해 기준이 '공격력' 이 아니라 '자기 최대 체력' 이다
+    ///   방패병은 공격력이 가장 낮은 직업이라 공격력 계수로 만들면 있으나 마나 한
+    ///   수치가 나온다. 대신 체력이 가장 높으니, 두꺼울수록 아프게 만들어야
+    ///   "버티는 것 자체가 공격" 이라는 직업 정체성이 선다.
+    ///
+    /// ⚠ 반경은 Radius 그대로 쓰지 않는다
+    ///   보스 AoE 처럼 몸집(UnitSizeComponent.Radius)에 비례해 넓어진다 —
+    ///   자세한 건 DamageAuraSystem 참고.
+    /// </summary>
+    public struct DamageAuraComponent : IComponentData
+    {
+        public float Radius;    // 기준 반경 (몸집 배율이 곱해진다)
+        public float HpRatio;   // 한 번에 주는 피해 = 자기 최대 체력 × 이 값
+        public float Interval;  // 발동 간격 (초)
+        public float Timer;     // 다음 발동까지 남은 시간
     }
 
     /// <summary>

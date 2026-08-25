@@ -35,7 +35,7 @@ public class NormalMode : BattleModeBase
         DeploymentData deployData = UserDataManager.Instance.Get<DeploymentData>();
         if (unitData == null || unitData.Units.Count == 0) return null;
 
-        int activeSlots = RelicApplier.GetTotalActiveGeneralSlots();
+        int activeSlots = RelicTreeApplier.GetTotalActiveGeneralSlots();
 
         // 배치 설정이 있으면 배치된 유닛만, 없으면 전체 유닛 스폰
         List<string> names;

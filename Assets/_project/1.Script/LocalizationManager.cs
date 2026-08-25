@@ -44,6 +44,7 @@ public class LocalizationManager : SingletonPure<LocalizationManager>
         { "AllStatPenalty",      "전체스텟"   },   // 값은 음수로 표시된다
         { "EquipSlotBonus",      "장비슬롯"   },
         { "ExpGainBonus",        "경험치획득" },
+        { "DefensePenetration",  "방어관통"   },
 
         // ── AbilityGrade ──────────────────────────────────────
         { "Advanced", "고급"  },
@@ -104,6 +105,11 @@ public class LocalizationManager : SingletonPure<LocalizationManager>
         { "PiercingDash",     "관통 돌진"     },
         { "WarBanner",        "군기 강림"     },
         { "Gravestone",       "비석 강림"     },
+
+        // ── 우두머리 행동 패턴 (적 전용) ───────────────────────
+        { "BossCharge",       "돌진"          },
+        { "BossSlam",         "분쇄 강타"     },
+        { "BossEnrage",       "광폭화"        },
 
         // ── UnitGrade ─────────────────────────────────────────
         { "Normal",   "일반" },

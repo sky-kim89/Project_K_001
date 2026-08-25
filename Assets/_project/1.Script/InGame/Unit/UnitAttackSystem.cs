@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Transforms;
 using Unity.Mathematics;
 using Unity.Burst;
@@ -21,6 +21,7 @@ namespace BattleGame.Units
         ComponentLookup<HealthComponent>      _healthLookup;
         ComponentLookup<DoubleStrikeTag>      _doubleStrikeLookup;
         ComponentLookup<KnightChargeComponent> _chargeLookup;
+        ComponentLookup<Disabled>              _disabledLookup;
         // 착탄 이벤트를 받을 대상은 "버퍼를 가진 유닛" 으로 판단한다.
         // 예전에는 GeneralComponent 유무로 걸렀는데, 그러면 병사는 아무리
         // 버퍼를 달아 줘도 착탄 이벤트를 못 받아 폭우 사격이 발동하지 않는다.
@@ -34,6 +35,7 @@ namespace BattleGame.Units
             _healthLookup       = state.GetComponentLookup<HealthComponent>(isReadOnly: true);
             _doubleStrikeLookup = state.GetComponentLookup<DoubleStrikeTag>(isReadOnly: true);
             _chargeLookup       = state.GetComponentLookup<KnightChargeComponent>(isReadOnly: true);
+            _disabledLookup     = state.GetComponentLookup<Disabled>(isReadOnly: true);
             _attackHitLookup    = state.GetBufferLookup<AttackHitEvent>(isReadOnly: true);
         }
 
@@ -46,6 +48,7 @@ namespace BattleGame.Units
             _healthLookup.Update(ref state);
             _doubleStrikeLookup.Update(ref state);
             _chargeLookup.Update(ref state);
+            _disabledLookup.Update(ref state);
             _attackHitLookup.Update(ref state);
 
             // ① 쿨다운 감소 (병렬, 근거리 + 원거리 + 기사 돌진)
@@ -62,6 +65,7 @@ namespace BattleGame.Units
                 HealthLookup       = _healthLookup,
                 DoubleStrikeLookup = _doubleStrikeLookup,
                 ChargeLookup       = _chargeLookup,
+                DisabledLookup     = _disabledLookup,
                 AttackHitLookup    = _attackHitLookup,
                 Ecb                = ecb,
             }.ScheduleParallel();
@@ -72,6 +76,7 @@ namespace BattleGame.Units
                 TransformLookup    = _transformLookup,
                 HealthLookup       = _healthLookup,
                 DoubleStrikeLookup = _doubleStrikeLookup,
+                DisabledLookup     = _disabledLookup,
             }.ScheduleParallel();
         }
     }
@@ -127,6 +132,7 @@ namespace BattleGame.Units
         [ReadOnly] public ComponentLookup<HealthComponent>       HealthLookup;
         [ReadOnly] public ComponentLookup<DoubleStrikeTag>       DoubleStrikeLookup;
         [ReadOnly] public ComponentLookup<KnightChargeComponent> ChargeLookup;
+        [ReadOnly] public ComponentLookup<Disabled>              DisabledLookup;
         [ReadOnly] public BufferLookup<AttackHitEvent>           AttackHitLookup;
         public EntityCommandBuffer.ParallelWriter                 Ecb;
 
@@ -149,6 +155,15 @@ namespace BattleGame.Units
             //   표식이지 내 행동을 멈추는 표식이 아니다 (아래 타겟 쪽 검사만 유지).
             if (!TransformLookup.HasComponent(attack.TargetEntity)) return;
             if (!HealthLookup.HasComponent(attack.TargetEntity))    return;
+
+            // ⚠ 풀에 반납된 유닛은 '존재' 하지만 화면에 없다
+            //   EntityLink.OnDisable 은 엔티티를 파괴하지 않고 Disabled 만 붙인다
+            //   (재사용을 위해). 그런데 Exists / HasComponent / GetComponentData 는
+            //   Disabled 엔티티에도 그대로 성립하므로, 여기서 걸러 내지 않으면
+            //   **보이지 않는 유닛을 계속 때린다** — 마지막 위치에 좌표가 굳어 있어
+            //   그쪽으로 걸어가 허공을 향해 공격 모션을 반복하게 된다.
+            //   (쿼리는 Disabled 를 자동 제외하지만 ComponentLookup 은 하지 않는다)
+            if (DisabledLookup.HasComponent(attack.TargetEntity)) { attack.HasTarget = false; return; }
 
             // 이미 죽었거나(HP 0), 날아오는 발사체로 사망이 확정된 타겟은 놓는다 — 오버킬 방지
             var targetHealth = HealthLookup[attack.TargetEntity];
@@ -200,6 +215,7 @@ namespace BattleGame.Units
                     Damage         = finalDamage,
                     HitDirection   = hitDir,
                     AttackerEntity = entity,
+                    DefensePierce  = stat.Final[StatType.DefensePenetration],
                 });
 
             // 근거리 공격 착탄 — OnAttackLanded 트리거용 (ECB → 다음 프레임)
@@ -243,6 +259,7 @@ namespace BattleGame.Units
         [ReadOnly] public ComponentLookup<LocalTransform>  TransformLookup;
         [ReadOnly] public ComponentLookup<HealthComponent> HealthLookup;
         [ReadOnly] public ComponentLookup<DoubleStrikeTag> DoubleStrikeLookup;
+        [ReadOnly] public ComponentLookup<Disabled>        DisabledLookup;
 
         const float ArrowSpeed     = 15f;
         const float MagicBoltSpeed = 10f;
@@ -263,6 +280,9 @@ namespace BattleGame.Units
             // 자기 IsDoomed 로는 멈추지 않는다 — MeleeAttackJob 의 같은 자리 주석 참고
             if (!TransformLookup.HasComponent(attack.TargetEntity)) return;
             if (!HealthLookup.HasComponent(attack.TargetEntity))    return;
+
+            // 풀에 반납된 유닛은 놓는다 — MeleeAttackJob 의 같은 자리 주석 참고
+            if (DisabledLookup.HasComponent(attack.TargetEntity)) { attack.HasTarget = false; return; }
 
             // 이미 죽었거나, 날아가는 발사체로 사망이 확정된 타겟은 놓는다.
             // 한 명에게 화살이 몰려 낭비되는 것을 막는 핵심 분기.
@@ -299,6 +319,7 @@ namespace BattleGame.Units
                     Damage         = finalDamage,
                     Speed          = jobComp.Job == UnitJob.Archer ? ArrowSpeed : MagicBoltSpeed,
                     Team           = identity.Team,
+                    DefensePierce  = stat.Final[StatType.DefensePenetration],
                 });
         }
 

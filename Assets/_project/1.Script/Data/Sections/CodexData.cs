@@ -6,7 +6,7 @@ using UnityEngine;
 //  CodexData.cs
 //  도감 — 한 번이라도 획득한 장비·어빌리티·특성·장수를 기록하는 세이브 섹션.
 //
-//  ■ 런 초기화 없음 — 영구 저장 (RelicInventoryData 와 같은 성격)
+//  ■ 런 초기화 없음 — 영구 저장 (RelicTreeData 와 같은 성격)
 //    회귀해도 지워지지 않는다. 그게 도감의 전부다 —
 //    "이번 런에 뭘 들고 있나" 가 아니라 "지금까지 뭘 만나 봤나" 를 센다.
 //
@@ -48,6 +48,31 @@ class CodexJson
 
     // 이번 여정에 적용 중인 수집 수. -1 = 잠기지 않음(실시간 값을 쓴다).
     public int lockedCount = -1;
+
+    // 아직 플레이어에게 보여 주지 않은 수확 (환생 후 메인 화면에서 한 번에 뿌린다).
+    // 세이브에 남긴다 — 여정 도중에 앱을 껐다 켜도 수확이 사라지면 안 된다.
+    public List<string> gainEquips    = new();
+    public List<int>    gainAbilities = new();
+    public List<int>    gainTraits    = new();
+    public List<string> gainGenerals  = new();
+
+    // 수확을 보여 줄 때가 됐는가 — 환생이 끝난 순간에만 켜진다.
+    // 이게 없으면 여정 도중에 쌓인 수확이 메인 화면에 들를 때마다 튀어나온다.
+    public bool gainsReady = false;
+}
+
+/// <summary>
+/// 아직 보여 주지 않은 도감 수확 한 묶음.
+/// 환생 뒤 메인 화면이 CodexData.TakeRunGains() 로 가져가 한 번에 뿌리고 비운다.
+/// </summary>
+public class CodexRunGains
+{
+    public readonly List<string>    Equips    = new();
+    public readonly List<AbilityId> Abilities = new();
+    public readonly List<TraitType> Traits    = new();
+    public readonly List<string>    Generals  = new();
+
+    public int Count => Equips.Count + Abilities.Count + Traits.Count + Generals.Count;
 }
 
 public class CodexData : ISaveSection
@@ -121,10 +146,51 @@ public class CodexData : ISaveSection
     public static void RecordEquip(string equipId)     => Current?.AddEquip(equipId);
     public static void RecordGeneral(string unitName)  => Current?.AddGeneral(unitName);
 
-    public void RecordAbility(AbilityId id)          { if (_abilities.Add(id)) Changed(); }
-    public void RecordTrait(TraitType t)             { if (_traits.Add(t))     Changed(); }
-    public void AddEquip(string equipId)             { if (!string.IsNullOrEmpty(equipId) && _equips.Add(equipId))     Changed(); }
-    public void AddGeneral(string unitName)          { if (!string.IsNullOrEmpty(unitName) && _generals.Add(unitName)) Changed(); }
+    public void RecordAbility(AbilityId id)          { if (_abilities.Add(id)) { _gains.Abilities.Add(id); Changed(); } }
+    public void RecordTrait(TraitType t)             { if (_traits.Add(t))     { _gains.Traits.Add(t);     Changed(); } }
+    public void AddEquip(string equipId)             { if (!string.IsNullOrEmpty(equipId)  && _equips.Add(equipId))    { _gains.Equips.Add(equipId);    Changed(); } }
+    public void AddGeneral(string unitName)          { if (!string.IsNullOrEmpty(unitName) && _generals.Add(unitName)) { _gains.Generals.Add(unitName); Changed(); } }
+
+    // ── 수확 (아직 안 보여 준 것) ─────────────────────────────
+    //
+    //  ⚠ 도감 버프는 여정 경계에서 한 번에 들어온다 (위 LockForRun 주석)
+    //    그런데 "무엇을 채웠고 그래서 얼마나 세졌는지" 를 알려 주는 자리가 없어서,
+    //    올라간 공격력·체력이 어디서 왔는지 알 수 없었다.
+    //    환생 뒤 메인 화면(MainPanelUI)이 이 묶음을 가져가 한 번에 뿌린다.
+
+    CodexRunGains _gains = new();
+
+    // 수확을 보여 줄 때가 됐는가. 환생이 끝나야 켜진다.
+    //
+    // ⚠ "수확이 비어 있지 않다" 를 조건으로 쓰지 말 것
+    //   수확은 여정 도중 도감에 뭔가 등록될 때마다(RecordAbility 등) 쌓이고 세이브된다.
+    //   그래서 그것만 보면 장수를 고른 직후나 여정 중 앱을 껐다 켠 직후처럼
+    //   MainPanelUI.OnEnable 이 도는 모든 자리에서 수확 화면이 튀어나왔다.
+    //   여정이 끝나고 환생한 순간에만 보여 주는 화면이므로 신호를 따로 둔다.
+    bool _gainsReady;
+
+    /// <summary>보여 줄 수확이 쌓여 있고, 보여 줄 때(환생 직후)가 됐는가.</summary>
+    public bool HasRunGains => _gainsReady && _gains.Count > 0;
+
+    /// <summary>
+    /// 환생이 끝났다 — 지금까지 쌓인 수확을 다음 메인 화면에서 보여 준다.
+    /// UserDataManager.Reincarnate() 만 부른다.
+    /// </summary>
+    public void MarkGainsReady()
+    {
+        _gainsReady = true;
+        UserDataManager.Instance?.RequestSave();
+    }
+
+    /// <summary>수확을 가져가고 비운다 — 같은 목록이 두 번 뜨지 않게 꺼내는 즉시 소비된다.</summary>
+    public CodexRunGains TakeRunGains()
+    {
+        var taken = _gains;
+        _gains = new CodexRunGains();
+        _gainsReady = false;
+        UserDataManager.Instance?.RequestSave();
+        return taken;
+    }
 
     void Changed()
     {
@@ -142,6 +208,13 @@ public class CodexData : ISaveSection
         foreach (var a in _abilities) json.abilities.Add((int)a);
         foreach (var t in _traits)    json.traits.Add((int)t);
         json.lockedCount = _lockedCount;
+
+        json.gainEquips.AddRange(_gains.Equips);
+        json.gainGenerals.AddRange(_gains.Generals);
+        foreach (var a in _gains.Abilities) json.gainAbilities.Add((int)a);
+        foreach (var t in _gains.Traits)    json.gainTraits.Add((int)t);
+        json.gainsReady = _gainsReady;
+
         return JsonUtility.ToJson(json);
     }
 
@@ -158,6 +231,15 @@ public class CodexData : ISaveSection
         foreach (var a in json.abilities) _abilities.Add((AbilityId)a);
         foreach (var t in json.traits)    _traits.Add((TraitType)t);
 
+        if (json.gainEquips    != null) _gains.Equips.AddRange(json.gainEquips);
+        if (json.gainGenerals  != null) _gains.Generals.AddRange(json.gainGenerals);
+        if (json.gainAbilities != null) foreach (var a in json.gainAbilities) _gains.Abilities.Add((AbilityId)a);
+        if (json.gainTraits    != null) foreach (var t in json.gainTraits)    _gains.Traits.Add((TraitType)t);
+
+        // 필드가 없던 옛 세이브는 false 로 들어온다 — 그게 맞는 기본값이다.
+        // (여정 도중에 쌓여 있던 수확이 업데이트 직후 한 번 튀어나오는 것을 막는다)
+        _gainsReady = json.gainsReady;
+
         // 잠금 필드가 없던 옛 세이브는 -1(미잠금)로 본다 — 진행 중이던 여정에서
         // 도감 버프가 통째로 사라지지 않게. JsonUtility 는 없는 필드를 0 으로
         // 채울 수 있으므로 필드 존재 여부를 문자열로 직접 본다.
@@ -171,5 +253,7 @@ public class CodexData : ISaveSection
         _traits.Clear();
         _generals.Clear();
         _lockedCount = -1;
+        _gains = new CodexRunGains();
+        _gainsReady = false;
     }
 }

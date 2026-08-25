@@ -187,7 +187,7 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         float baseCooldown = skillData?.Cooldown ?? 15f;
         // _stat.Get 이 이미 곱연산으로 합쳐 준다 (CombineMode.MultiplyResidual)
         float effectiveCdr = ClampCDR(_stat.Get(StatType.SkillCooldownReduce),
-                                      GameplayConfig.Current?.CooldownReduceMax ?? 0.8f);
+                                      GameplayConfig.CooldownCap);
         em.AddComponentData(entity, new GeneralActiveSkillComponent
         {
             SkillId           = (int)rolledId,
@@ -439,7 +439,7 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
         var rolledId  = RareSkillArbiter.Resolve(_unitName, _job, activeDb, _grade);
         var skillData = activeDb?.Get(rolledId);
         float effectiveCdr2 = ClampCDR(_stat.Get(StatType.SkillCooldownReduce),
-                                       GameplayConfig.Current?.CooldownReduceMax ?? 0.8f);
+                                       GameplayConfig.CooldownCap);
         em.SetComponentData(entity, new GeneralActiveSkillComponent
         {
             SkillId           = (int)rolledId,
@@ -630,8 +630,6 @@ public class GeneralRuntimeBridge : UnitRuntimeBridge
                             GetActivePassives(),        PassiveSkillDatabase.Current,
                             UserDataManager.Instance?.Get<RunAbilityData>()?.HeldAbilities,
                             AbilityDatabase.Current,
-                            UserDataManager.Instance?.Get<RelicInventoryData>(),
-                            RelicDatabase.Current,
                             _job);
                 }
             }

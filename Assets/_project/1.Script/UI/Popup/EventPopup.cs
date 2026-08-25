@@ -57,8 +57,6 @@ public class EventPopup : PopupBase
     // 어빌리티 선택 팝업 연속 처리에 필요한 리소스
     AbilityDatabase    _abilityDb;
     RunAbilityData     _runAbilityData;
-    RelicInventoryData _relicInventory;
-    RelicDatabase      _relicDb;
     ReincarnationData  _reincarnationData;
 
     int _pendingAbilityCount;
@@ -79,14 +77,10 @@ public class EventPopup : PopupBase
     public EventPopup SetupAbilityResources(
         AbilityDatabase    abilityDb,
         RunAbilityData     runAbilityData,
-        RelicInventoryData relicInventory  = null,
-        RelicDatabase      relicDb         = null,
         ReincarnationData  reincarnationData = null)
     {
         _abilityDb         = abilityDb;
         _runAbilityData    = runAbilityData;
-        _relicInventory    = relicInventory;
-        _relicDb           = relicDb;
         _reincarnationData = reincarnationData;
         return this;
     }
@@ -131,8 +125,6 @@ public class EventPopup : PopupBase
         _data              = null;
         _abilityDb         = null;
         _runAbilityData    = null;
-        _relicInventory    = null;
-        _relicDb           = null;
         _reincarnationData = null;
         _pendingAbilityCount = 0;
     }
@@ -326,7 +318,7 @@ public class EventPopup : PopupBase
         }
 
         AbilityData[] choices = (_abilityDb != null && _runAbilityData != null)
-            ? AbilityPicker.Pick(_abilityDb, _runAbilityData, _relicInventory, _relicDb)
+            ? AbilityPicker.Pick(_abilityDb, _runAbilityData)
             : null;
 
         popup.Setup(
@@ -341,42 +333,77 @@ public class EventPopup : PopupBase
                 UserDataManager.Instance?.RequestSave();
                 OpenNextAbilitySelect();  // 다음 선택 또는 완료
             },
-            _abilityDb, _runAbilityData, _relicInventory, _relicDb, _reincarnationData);
+            _abilityDb, _runAbilityData, _reincarnationData);
     }
 
     // ── 유틸 ─────────────────────────────────────────────────
 
+    // 낼 수 있는 비용은 주황, 모자라는 비용은 빨강.
+    const string CostColor = "FFAA44";
+    const string LackColor = "FF5555";
+
+    /// <summary>
+    /// 선택지 버튼 우측 소자 — <b>비용만</b> 적는다 ("골드 -320").
+    ///
+    /// ■ 보상은 미리 알려주지 않는다
+    ///   무엇을 얻을지 버튼에 적혀 있으면 고를 이유가 없어진다 — 이벤트가
+    ///   자판기가 된다. 결과는 고른 뒤 본문(ResultText)과 보상 표시로만 드러낸다.
+    ///   비용은 예외다. 내가 무엇을 내는지 모르고 누르게 하면 안 된다.
+    ///
+    /// ■ 비용은 손으로 적은 문구가 아니라 SpendItem 보상에서 뽑는다
+    ///   버튼에 적힌 숫자와 실제로 빠져나가는 숫자가 어긋나면 안 된다.
+    ///   ResolveAmount 를 거치므로 스테이지 비례(ScaleByStageReward) 비용도
+    ///   그 순간의 실제 금액으로 찍힌다.
+    ///
+    /// ⚠ CostHint 는 SpendItem 이 하나도 없을 때만 쓴다
+    ///   골드를 쓰는 선택지에 "필요: 골드 200" 이 적혀 있으면 자동 표시와 겹쳐
+    ///   같은 말이 두 번 나온다. CostHint 는 아이템이 아닌 조건
+    ///   (병사 수·특성 보유 같은 것)을 적는 자리로 남긴다.
+    ///
+    /// ⚠ EventReward.Description 은 여기서 쓰지 않는다
+    ///   그 문구는 결과 표시용이다. 버튼에 끌어다 쓰면 "특성 획득" 같은
+    ///   보상 예고가 되살아난다.
+    /// </summary>
     static string BuildChoiceHint(EventChoice choice)
     {
         var sb = new System.Text.StringBuilder();
 
-        if (!string.IsNullOrEmpty(choice.CostHint))
-            sb.Append($"<color=#FFAA44>{choice.CostHint}</color>");
+        //  ⚠ 색은 항목마다 따로 본다
+        //    골드와 강화석을 같이 내는 선택지에서 강화석만 모자라면, 빨간 건
+        //    강화석 하나여야 한다. 선택지 전체(CanApply)로 칠하면 멀쩡한 골드까지
+        //    빨개져서 무엇이 모자란지 알 수 없다.
+        var items     = UserDataManager.Instance?.Get<ItemData>();
+        int costCount = 0;
 
         if (choice.SuccessRewards != null)
             foreach (var r in choice.SuccessRewards)
             {
-                // 스테이지 비례 보상은 고정 문구를 쓸 수 없다 — 실제 수량을 그때그때 만든다
-                if (r.ScaleByStageReward && r.Item != eItem.None)
-                {
-                    int    amt   = EventRewardHandler.ResolveAmount(r);
-                    bool   spend = r.Type == EventRewardType.SpendItem;
-                    string color = spend ? "FFAA44" : "55EE88";
-                    string sign  = spend ? "-" : "+";
+                if (r.Type != EventRewardType.SpendItem) continue;   // 보상은 버튼에 적지 않는다
+                if (r.Item == eItem.None)                continue;
 
-                    if (sb.Length > 0) sb.Append("   ");
-                    sb.Append($"<color=#{color}>{r.Item.DisplayName()} {sign}{amt:N0}</color>");
-                    continue;
-                }
+                int amt = EventRewardHandler.ResolveAmount(r);
+                if (amt <= 0) continue;
 
-                if (!string.IsNullOrEmpty(r.Description))
-                {
-                    if (sb.Length > 0) sb.Append("   ");
-                    sb.Append($"<color=#55EE88>{r.Description}</color>");
-                }
+                // 판정은 CanApply 와 같은 함수를 쓴다 — 색과 버튼 활성이 갈리면 안 된다
+                bool canPay = items == null || items.CanSpend(r.Item, amt);
+
+                Append(sb, canPay ? CostColor : LackColor,
+                       $"{r.Item.DisplayName()} -{amt:N0}");
+                costCount++;
             }
 
+        // 아이템 비용이 하나도 없을 때만 손으로 적은 조건 문구를 쓴다.
+        // 문구만으로는 무엇을 얼마나 내는지 알 수 없어 충족 여부를 따질 수 없다 — 주황 고정.
+        if (costCount == 0 && !string.IsNullOrEmpty(choice.CostHint))
+            Append(sb, CostColor, choice.CostHint);
+
         return sb.ToString();
+    }
+
+    static void Append(System.Text.StringBuilder sb, string colorHex, string text)
+    {
+        if (sb.Length > 0) sb.Append("   ");
+        sb.Append($"<color=#{colorHex}>{text}</color>");
     }
 
     /// <summary>

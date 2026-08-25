@@ -6,27 +6,20 @@ using UnityEngine;
 //  환생 포인트 + 어빌리티 새로고침 누적 횟수 영구 저장 섹션.
 //
 //  ■ 환생 포인트 (ReincarnationPoints)
-//    RelicPopup 에서 유물 강화/획득 시 차감.
-//    즉시 환생(RelicPopup.Reincarnate) 시 EarnPoints() 로 적립.
+//    RelicTreePopup 에서 노드를 찍을 때 차감.
+//    즉시 환생(RelicTreePopup.OnReincarnate) 시 EarnPoints() 로 적립.
 //
 //  ■ 어빌리티 새로고침 (UsedRefreshCount)
 //    AbilitySelectPopup 에서 새로고침 시 UseRefresh() 로 증가.
 //    환생 시 ResetOnReincarnation() 으로 초기화 — 환생 전까지 누적 유지.
 //
 //  ■ 환생 포인트 획득 공식 (구간별 누적)
-//    ReincarnateMinStage(기본 2)~9구간 +1pt/스테이지, 10~14 +2pt, 15~19 +3pt,
-//    20~24 +4pt, 25+ +(stage-20)pt
-//    → 2스테이지부터 시작하면 스테이지 30 최대: 98pt 누적
+//    실제 값은 StagePointIncrement 하나가 정본이다 — 여기 숫자를 옮겨 적지 말 것.
+//    (리밸런스 전 값 'st30 = 98pt' 가 이 주석에만 남아 한동안 어긋나 있었다)
 //
 //    ⚠ 첫 환생이 너무 멀면 유물 화면이 "볼 수만 있는 화면" 이 된다
 //      예전엔 5스테이지부터였고, 거기 못 가면 한 판을 통째로 날렸다.
 //      2스테이지부터 1pt 씩 붙어 실패해도 뭔가 남는다.
-//
-//  ■ 레벨업 비용 공식 (GameplayConfig 의 지수 + 희귀도 배율)
-//    (currentLevel+1)^지수 × 희귀도 배율 → 올림.
-//    기본 지수 2 · 일반 유물 기준: 0→1: 1pt, 1→2: 4pt, 4→5: 25pt
-//    희귀도 배율(일반 1.0 / 언커먼 1.6 / 희귀 2.5 / 영웅 4 / 전설 6)이 곱해져
-//    센 유물일수록 비싸다. 진입점은 RelicData.LevelUpCost(level) 하나다.
 // ============================================================
 
 [Serializable]
@@ -54,9 +47,19 @@ public class ReincarnationData : ISaveSection
 
     /// <summary>
     /// 클리어한 일반 스테이지 수에 따른 환생 포인트 (누적).
-    /// 구간별 획득량: ~9구간 +1pt, 10~14 +2pt, 15~19 +3pt, 20~24 +4pt, 25+ +(stage-20)pt.
+    /// 구간별 획득량: ~9 +1pt, 10~15 +4pt, 16~20 +8pt, 21~25 +14pt, 26+ +30pt.
     /// 시작 지점은 ReincarnateMinStage(기본 2).
-    /// 예) st30 = 1×8 + 2×5 + 3×5 + 4×5 + 5+6+7+8+9+10 = 8+10+15+20+45 = 98pt.
+    ///
+    /// 예) st30 = 1×8 + 4×6 + 8×5 + 14×5 + 30×5 = 8+24+40+70+150 = 292pt.
+    ///
+    /// ⚠ 뒤로 갈수록 가팔라야 한다 (2026-08-25 상향)
+    ///   예전 곡선은 st30 이 98pt 로, 초반에 죽고 다시 도는 쪽이 이득이었다.
+    ///   깊이 들어간 판이 보상받아야 "한 번 더 멀리 가 보자" 가 성립한다.
+    ///
+    ///   ⚠ 9스테이지까지는 예전 값 그대로다 — 초반 반복은 손대지 않는다.
+    ///     상향은 10부터 붙고 배수가 완만하게 자란다:
+    ///     st5 ×1.0 · st10 ×1.2 · st15 ×1.5 · st20 ×2.0 · st25 ×2.5 · st30 ×3.0.
+    ///   (유물 강화 비용은 그대로다. 이 곡선만으로 후반 보상이 3배가 된다)
     /// </summary>
     public static int CalculateReincarnationPoints(int clearedNormalStage)
     {
@@ -69,39 +72,15 @@ public class ReincarnationData : ISaveSection
 
     static int StagePointIncrement(int stage)
     {
-        if (stage < 10) return 1;
-        if (stage < 15) return 2;
-        if (stage < 20) return 3;
-        if (stage < 25) return 4;
-        return stage - 20;
+        if (stage < 10) return 1;    // 예전과 동일 — 초반은 건드리지 않는다
+        if (stage < 16) return 4;
+        if (stage < 21) return 8;
+        if (stage < 26) return 14;
+        return 30;
     }
 
     public static bool CanReincarnate(int clearedNormalStage)
         => clearedNormalStage >= ReincarnateMinStage;
-
-    // ── 레벨업 비용 ───────────────────────────────────────────
-
-    /// <summary>
-    /// 현재 레벨 → 다음 레벨 강화 비용.
-    /// 공식: (currentLevel+1)^지수 × 희귀도 배율 × costWeight, 올림.
-    ///
-    /// ⚠ 이 오버로드를 직접 부르지 말고 RelicData.LevelUpCost(level) 을 쓸 것.
-    ///   희귀도·가중치를 빠뜨리면 유물이 다시 전부 같은 가격이 된다.
-    /// </summary>
-    public static int LevelUpCost(int currentLevel, RelicRarity rarity, float costWeight = 1f)
-    {
-        var cfg = GameplayConfig.Current;
-        float exp = cfg != null ? cfg.RelicLevelUpCostExponent : 2f;
-        float mul = cfg != null ? cfg.GetRarityCostMultiplier(rarity) : 1f;
-
-        // 올림이다 — 반올림하면 2.5pt 짜리가 2pt 로 깎여 희귀도 간격이 뭉개진다.
-        return Mathf.Max(1, Mathf.CeilToInt(
-            Mathf.Pow(currentLevel + 1, exp) * mul * Mathf.Max(0.1f, costWeight)));
-    }
-
-    // ⚠ AcquireCost(희귀도별 첫 획득 비용) 는 삭제됐다.
-    //   유물에 "획득" 단계는 없다 — 모든 유물이 0레벨로 존재하고 전부 강화일 뿐이다.
-    //   비용은 LevelUpCost(현재레벨) 하나로 끝난다.
 
     // ── 포인트 조작 ───────────────────────────────────────────
 

@@ -80,7 +80,14 @@ public class ReincarnationPopup : PopupBase
         int   totalWaves  = context?.TotalWaves  ?? 0;
         float elapsedSec  = context?.BattleElapsedSeconds ?? 0f;
 
-        _subText.text = $"웨이브 {currentWave} / {totalWaves}  ·  처치 {killCount}명";
+        // ⚠ 도달 스테이지가 이 화면의 첫 줄이다
+        //   패배 화면에서 플레이어가 가장 먼저 확인하는 것은 "어디까지 갔나" 인데
+        //   웨이브·처치만 있고 스테이지가 어디에도 없었다. 환생 포인트도 여기서
+        //   갈리므로(스테이지 기반) 같은 줄에 있어야 납득이 된다.
+        int stage = context?.StageLevel ?? 0;
+        _subText.text = stage > 0
+            ? $"도달 스테이지 {stage}  ·  웨이브 {currentWave} / {totalWaves}  ·  처치 {killCount}명"
+            : $"웨이브 {currentWave} / {totalWaves}  ·  처치 {killCount}명";
 
         float totalDmg = 0f;
         if (context?.CombatStats != null && context.CombatStats.Count > 0)

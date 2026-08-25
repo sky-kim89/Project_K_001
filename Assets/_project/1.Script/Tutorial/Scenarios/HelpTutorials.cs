@@ -42,34 +42,65 @@ public class RelicHelpTutorial : TutorialScenario
     protected override void Build(List<Func<IEnumerator>> steps)
     {
         steps.Add(What);
+        steps.Add(Controls);
         steps.Add(Points);
-        steps.Add(Cost);
+        steps.Add(Fog);
+        steps.Add(Branches);
+        steps.Add(Reset);
         steps.Add(Reincarnate);
     }
 
     IEnumerator What()
     {
         yield return Show(TutorialStep.Say(
-            "<b>유물</b>은 환생해도 사라지지 않는 영구 성장입니다.\n" +
-            "장수·장비·특성이 전부 초기화돼도 여기 쌓인 것은 남습니다.\n" +
+            "<b>유물 전승도</b>는 환생해도 사라지지 않는 영구 성장입니다.\n" +
+            "장수·장비·특성이 전부 초기화돼도 여기 찍은 것은 남습니다.\n" +
             "여정을 거듭할수록 출발선이 앞당겨지는 부분이 이곳입니다."));
+    }
+
+    // ⚠ 조작 안내는 여기에만 있다
+    //   헤더에 상시 표기하던 것을 걷어냈다 — 한 번 읽으면 자리만 차지한다.
+    //   대신 도움말에서 언제든 다시 꺼내 볼 수 있게 첫머리에 둔다.
+    IEnumerator Controls()
+    {
+        yield return Show(TutorialStep.Say(
+            "트리는 화면보다 큽니다.\n" +
+            "<b>빈 곳을 끌어</b> 움직이고, <b>휠 또는 두 손가락</b>으로 확대·축소합니다.\n" +
+            "노드를 누르면 무슨 효과인지 왼쪽 아래에 뜹니다."));
     }
 
     IEnumerator Points()
     {
         yield return Show(TutorialStep.Point(
-            ByName("PointGroup"),
-            "강화에 쓰는 <b>환생 포인트</b>입니다.\n" +
+            InPopup(PopupType.Relic, "PointGroup"),
+            "찍는 데 쓰는 <b>환생 포인트</b>입니다.\n" +
             "환생할 때 도달한 스테이지와 난이도에 따라 받습니다.",
             TutorialAnchor.Below));
     }
 
-    IEnumerator Cost()
+    IEnumerator Fog()
     {
         yield return Show(TutorialStep.Say(
-            "레벨이 오를수록 다음 레벨 비용이 가파르게 오릅니다.\n" +
-            "여럿을 낮게 펼칠지, 하나를 끝까지 올릴지 고르셔야 합니다.\n" +
-            "출전 슬롯처럼 <b>부대 자체를 늘리는 유물</b>은 먼저 봐 두는 편이 낫습니다."));
+            "<b>?</b> 로 보이는 자리는 아직 잠긴 노드입니다.\n" +
+            "바로 앞 노드를 1레벨 이상 찍어야 열리고, 그제서야 이름과 효과가 보입니다.\n" +
+            "무엇이 나올지 모르는 채로 길을 고르는 것이 이 화면의 규칙입니다."));
+    }
+
+    IEnumerator Branches()
+    {
+        yield return Show(TutorialStep.Say(
+            "가운데에서 네 갈래가 뻗습니다 — <b>위 공격력 · 아래 체력 · 왼쪽 병사 수 · 오른쪽 경험치</b>.\n" +
+            "각 갈래는 아래로 갈수록 다시 여러 가지로 벌어지고, 멀수록 세지만 비쌉니다.\n" +
+            "한 갈래를 깊게 팔지, 네 갈래를 얕게 펼지가 이 화면의 선택입니다."));
+    }
+
+    IEnumerator Reset()
+    {
+        yield return Show(TutorialStep.Point(
+            InPopup(PopupType.Relic, "ResetBtn"),
+            "<b>트리 초기화</b>는 찍은 것을 전부 되돌리고 <b>포인트를 전액 돌려줍니다</b>.\n" +
+            "손해가 없으니 길을 잘못 들었다 싶으면 언제든 다시 짜도 됩니다.",
+            TutorialAnchor.Above));
     }
 
     IEnumerator Reincarnate()

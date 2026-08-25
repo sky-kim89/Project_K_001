@@ -49,7 +49,7 @@ public static class AbilityApplier
         foreach (var kvp in bonuses)
         {
             // SkillCooldownReduce·CritChance·Defense 는 기본값이 0이거나 절대값 가산이므로
-            // % of base 가 아니라 직접 가산 (RelicApplier.IsAbsoluteValue=true 와 동일 처리)
+            // % of base 가 아니라 직접 가산 (RelicNodeStat.Absolute=true 와 동일 처리)
             float delta = IsAbsoluteStat(kvp.Key) ? kvp.Value : stat.Get(kvp.Key) * kvp.Value;
             stat.Add(kvp.Key, delta, "ability");
         }
@@ -125,7 +125,7 @@ public static class AbilityApplier
 
     /// <summary>
     /// 기본값이 0이거나 절대값(pp) 가산이 필요한 스탯.
-    /// RelicApplier.IsAbsoluteValue=true 케이스와 동일한 스탯 집합.
+    /// RelicNodeStat.Absolute=true 케이스와 동일한 스탯 집합.
     /// </summary>
     public static bool IsAbsoluteStat(StatType type)
         => type == StatType.SkillCooldownReduce

@@ -102,7 +102,7 @@ public class StageSelectUI : MonoBehaviour
         // 대기 부대가 통째로 다시 세워진다. 강화한 유물은 스탯에 붙으므로 다시 세운다.
         _relicBtn?.onClick.RemoveAllListeners();
         _relicBtn?.onClick.AddListener(() =>
-            PopupManager.Instance?.Open<RelicPopup>(PopupType.Relic)?.SetOnClose(RefreshAndRestand));
+            PopupManager.Instance?.Open<RelicTreePopup>(PopupType.Relic)?.SetOnClose(RefreshAndRestand));
 
         _disassembleBtn?.onClick.RemoveAllListeners();
         // 장비를 분해하면 장착 슬롯이 비므로 스탯이 내려간다 → 다시 세운다
@@ -201,7 +201,7 @@ public class StageSelectUI : MonoBehaviour
     void RefreshSlots()
     {
         if (_deploySlots == null) return;
-        int activeSlots = RelicApplier.GetTotalActiveGeneralSlots();
+        int activeSlots = RelicTreeApplier.GetTotalActiveGeneralSlots();
         for (int i = 0; i < _deploySlots.Length; i++)
         {
             _deploySlots[i]?.Setup(i,
@@ -247,8 +247,6 @@ public class StageSelectUI : MonoBehaviour
              .SetupAbilityResources(
                  AbilityDatabase.Current,
                  UserDataManager.Instance.Get<RunAbilityData>(),
-                 UserDataManager.Instance.Get<RelicInventoryData>(),
-                 RelicDatabase.Current,
                  UserDataManager.Instance.Get<ReincarnationData>());
     }
 }

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 // ============================================================
@@ -59,8 +59,15 @@ public static class CodexCatalog
         _                       => "?",
     };
 
-    /// <summary>한 분류의 전체 칸 목록. 보유 여부까지 채워서 돌려준다.</summary>
-    public static List<CodexEntry> Build(CodexCategory category)
+    /// <summary>
+    /// 한 분류의 전체 칸 목록. 보유 여부까지 채워서 돌려준다.
+    /// </summary>
+    /// <param name="onlyKeys">
+    /// 주면 그 키에 해당하는 칸만 남긴다 (장비 = EquipmentId, 어빌리티·특성 = enum 이름, 장수 = 이름).
+    /// 환생 뒤 "이번에 새로 채운 것" 만 뿌릴 때 쓴다 — 칸 만드는 코드를 두 벌로
+    /// 가르지 않으려고 필터만 얹는다.
+    /// </param>
+    public static List<CodexEntry> Build(CodexCategory category, HashSet<string> onlyKeys = null)
     {
         var codex  = UserDataManager.Instance?.Get<CodexData>();
         var result = new List<CodexEntry>();
@@ -74,6 +81,7 @@ public static class CodexCatalog
                 foreach (var e in db.Equipments)
                 {
                     if (e == null) continue;
+                    if (onlyKeys != null && !onlyKeys.Contains(e.EquipmentId)) continue;
                     result.Add(new CodexEntry
                     {
                         Name     = e.EquipmentName,
@@ -95,6 +103,7 @@ public static class CodexCatalog
                 foreach (var a in db.GetAll())
                 {
                     if (a == null) continue;
+                    if (onlyKeys != null && !onlyKeys.Contains(a.Id.ToString())) continue;
                     result.Add(new CodexEntry
                     {
                         Name     = a.AbilityName,
@@ -116,6 +125,7 @@ public static class CodexCatalog
                 foreach (var t in db.GetAll())
                 {
                     if (t == null) continue;
+                    if (onlyKeys != null && !onlyKeys.Contains(t.TraitType.ToString())) continue;
                     result.Add(new CodexEntry
                     {
                         Name     = t.TraitName,
@@ -137,6 +147,7 @@ public static class CodexCatalog
                 // 화면에 들어온 칸만 GeneralPortraitProvider 에 따로 요청한다.
                 foreach (var name in UnitData.AllNames)
                 {
+                    if (onlyKeys != null && !onlyKeys.Contains(name)) continue;
                     UnitGrade birth = UnitJobRoller.GetBirthGrade(name);
                     UnitJob   job   = UnitJobRoller.GetJob(name);
 
@@ -181,6 +192,37 @@ public static class CodexCatalog
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// 수확 묶음을 도감 칸 목록으로 편다 (장비 → 어빌리티 → 특성 → 장수 순).
+    /// 환생 뒤 "이번 여정에 새로 채운 것" 화면이 쓴다.
+    /// </summary>
+    public static List<CodexEntry> BuildGains(CodexRunGains gains)
+    {
+        var result = new List<CodexEntry>();
+        if (gains == null || gains.Count == 0) return result;
+
+        AddFiltered(result, CodexCategory.Equipment, Keys(gains.Equips));
+        AddFiltered(result, CodexCategory.Ability,   Keys(gains.Abilities));
+        AddFiltered(result, CodexCategory.Trait,     Keys(gains.Traits));
+        AddFiltered(result, CodexCategory.General,   Keys(gains.Generals));
+
+        return result;
+    }
+
+    static void AddFiltered(List<CodexEntry> into, CodexCategory category, HashSet<string> keys)
+    {
+        if (keys.Count == 0) return;
+        into.AddRange(Build(category, keys));
+    }
+
+    static HashSet<string> Keys<T>(List<T> source)
+    {
+        var set = new HashSet<string>();
+        foreach (var v in source)
+            if (v != null) set.Add(v.ToString());
+        return set;
     }
 
     /// <summary>전 분류 합계 (수집, 전체).</summary>

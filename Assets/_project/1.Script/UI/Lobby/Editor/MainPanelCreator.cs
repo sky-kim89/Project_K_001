@@ -53,10 +53,6 @@ public static class MainPanelCreator
     // ⚠ CardW 620 은 스탯 값이 두 줄로 접히지 않는 최소 폭이다 (440 에서 접혔다).
     //   MercenaryPopupCreator 도 이 카드를 그대로 쓴다 — 줄이면 양쪽이 같이 깨진다.
     public const float CardW = 620f;
-    // ⚠ 카드·조작 컬럼은 화면 '아래' 기준으로 붙인다
-    //   위 기준으로 매달아 두면 카드 높이(CardH)가 바뀔 때마다 아래 여백이 달라진다.
-    //   바닥에서 이만큼만 띄우면 카드가 커지든 작아지든 아래 간격은 그대로다.
-    const float CardBottomY = 28f;
     const int   Lp        =  16;    // 카드 내부 좌 여백 (GradeW 포함)
     const int   Rp        =  16;
 
@@ -95,6 +91,22 @@ public static class MainPanelCreator
     const float DetY      = SkRY + SkRH + 16f;       // 760
     static readonly float DetH = UIScale.BtnFor(UIScale.FontMd);   // 72 — 라벨이 안 눌리는 최소 높이
     public static readonly float CardH = DetY + DetH + 22f;   // 862
+
+    // ⚠ 카드·조작 컬럼은 화면 '아래' 기준으로 붙인다
+    //   위 기준으로 매달아 두면 카드 높이(CardH)가 바뀔 때마다 아래 여백이 달라진다.
+    //   바닥에서 이만큼만 띄우면 카드가 커지든 작아지든 아래 간격은 그대로다.
+    //
+    // ⚠ 값을 손으로 적지 않는다 (2026-08-25)
+    //   이 화면은 상단바를 숨긴다(TopBarAutoHide). 예전엔 상단바 180px 를 피하려고
+    //   바닥에서 28px 만 띄웠는데, 상단바가 사라지자 위 여백만 190px 남아
+    //   화면이 아래로 쏠려 보였다. 남는 세로를 위아래로 똑같이 나눈다.
+    //   (1080 - 862) / 2 = 109
+    //
+    // ⚠ CardH 뒤에 선언해야 한다
+    //   static 필드 초기화는 **적힌 순서대로** 돈다. 위에 두면 CardH 가 아직 0 이라
+    //   CardBottomY 가 540 이 되고 카드가 화면 위로 튀어 나간다.
+    static readonly float CardBottomY =
+        Mathf.Round((UIScale.LobbyCanvasH - CardH) * 0.5f);
 
     // 아이콘 줄 내부 x (카드 콘텐츠 폭 = CardW - Lp - Rp = 588)
     const float TraitIconSz = 96f;
@@ -497,13 +509,14 @@ public static class MainPanelCreator
         }
 
         var actIcon = BuildSkillIconUI(iconRow, "ActiveSkillIcon", skillX, ActIconSz,
-                                       SkillIconUI.ActiveFrame);
+                                       SkillIconUI.ActiveFrame, SkillIconUI.ActiveSlotBg);
         var pasIcons = new SkillIconUI[3];
         float px = skillX + ActIconSz + 14f;
         for (int i = 0; i < 3; i++)
         {
+            // 패시브는 잠김 상태로 굽는다 — 등급에 따라 런타임이 연다.
             pasIcons[i] = BuildSkillIconUI(iconRow, $"PassiveSkillIcon{i}", px, PasIconSz,
-                                           SkillIconUI.LockedFrame);
+                                           SkillIconUI.LockedFrame, SkillIconUI.LockedSlotBg);
             px += PasIconSz + 12f;
         }
 
@@ -788,7 +801,8 @@ public static class MainPanelCreator
     //  테두리 색으로 액티브(금)/패시브(파랑)/잠김(회색)을 구분한다.
     //  SkillIconUI 가 런타임에 _frame 색을 갈아 끼운다.
 
-    static SkillIconUI BuildSkillIconUI(GameObject row, string name, float x, float size, Color frame)
+    static SkillIconUI BuildSkillIconUI(GameObject row, string name, float x, float size,
+                                        Color frame, Color slotBg)
     {
         const float TipW = 420f;
 
@@ -802,12 +816,16 @@ public static class MainPanelCreator
         Stretch(frameImg.rectTransform);
         frameImg.raycastTarget = false;
 
-        var (btn, img) = BuildIconSlot(root, SlotC, inset: 3f);
+        // ⚠ 스킬 판만 계열 색 중간 톤이다 (특성 칸은 SlotC 그대로)
+        //   색의 정본은 SkillIconUI 다 — 런타임이 잠김 여부에 따라 갈아 끼우므로
+        //   여기 굽는 색과 반드시 같은 값을 써야 첫 프레임이 깜빡이지 않는다.
+        var (btn, img) = BuildIconSlot(root, slotBg, inset: 3f);
         var tooltip = InfoTooltipBuilder.Build(root, TipW);
 
         var so = new SerializedObject(skillUI);
         so.Update();
         SetRef(so, "_frame",     frameImg);
+        SetRef(so, "_slotBg",    btn.GetComponent<Image>());
         SetRef(so, "_iconImage", img);
         SetRef(so, "_iconBtn",   btn);
         SetRef(so, "_tooltip",   tooltip);

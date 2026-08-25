@@ -45,6 +45,10 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
     // 프리팹 원본 크기. 풀 재사용 시 배율이 누적되지 않도록 항상 이 값을 기준으로 다시 잡는다.
     Vector3 _baseScale;
 
+    // 이번 등장에서 확정된 크기 (_baseScale × 스폰 배율). 광폭화 성장의 기준점.
+    Vector3 _spawnScale;
+    int     _enrageStacks;
+
     void Awake() => _baseScale = transform.localScale;
 
     // ── 공개 API ─────────────────────────────────────────────
@@ -60,16 +64,14 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
 
         // 크기는 SpawnEntity() 전에 확정해야 한다 — UnitSizeComponent.Radius 가 localScale 에서 나온다
         transform.localScale = _baseScale * Mathf.Max(0.01f, scaleMultiplier);
+        _spawnScale          = transform.localScale;   // 광폭화 성장의 기준점
 
         _stat     = EnemyStatRoller.Roll(unitName, unitType, level, statMultiplier, stageBias);
 
         GetComponent<UnitAppearanceBridge>()?.ApplyEnemy(race, unitName);
 
-        // 유물 적 약화 적용 (EnemyMaxHpReduction / EnemyAttackReduction)
-        var relicDb  = RelicDatabase.Current;
-        var relicInv = UserDataManager.Instance?.Get<RelicInventoryData>();
-        if (relicDb != null && relicInv != null)
-            RelicApplier.ApplyEnemyWeaken(_stat, relicInv, relicDb);
+        // 유물 트리 적 약화 적용 (EnemyMaxHpReduction / EnemyAttackReduction)
+        RelicTreeApplier.ApplyEnemyWeaken(_stat);
 
         SpawnEntity();
     }
@@ -81,6 +83,38 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
         base.OnEnable();
         _unitType        = default;
         _knockbackImmune = false;
+        // ⚠ 반드시 0 으로 되돌린다 — 안 그러면 풀에서 다시 나온 보스가
+        //   지난 판에서 부푼 몸집을 그대로 들고 등장한다.
+        _enrageStacks    = 0;
+    }
+
+    // ── 광폭화 성장 ──────────────────────────────────────────
+
+    /// <summary>
+    /// 광폭화 1스택만큼 몸집을 키우고, 새 반경(UnitSizeComponent.Radius 용)을 돌려준다.
+    /// 호출자(ActiveBossEnrage)가 그 값을 ECS 에 써 넣는다 —
+    /// 브리지는 GameObject 크기만 책임지고 엔티티는 건드리지 않는다.
+    ///
+    /// ⚠ 누적 곱이 아니라 '등장 크기 기준 가산' 이다
+    ///   매번 ×1.1 을 하면 복리라 스택 20 에 6.7배가 된다. 무한 보스(스폰 배율 ×2)
+    ///   에서는 화면을 통째로 덮는다. 공격력 스택도 가산이므로 크기만 복리일 이유가 없다.
+    ///
+    /// ⚠ localScale.x 의 부호는 지킨다
+    ///   UnitAnimationSync 가 좌우 반전에 이 부호를 쓴다. 그냥 덮어쓰면
+    ///   스택이 오르는 프레임마다 보스가 한 번씩 홱 뒤집힌다.
+    /// </summary>
+    public float GrowEnrage(float perStack, int maxStacks)
+    {
+        _enrageStacks = maxStacks > 0
+            ? Mathf.Min(_enrageStacks + 1, maxStacks)
+            : _enrageStacks + 1;
+
+        Vector3 s = _spawnScale * (1f + perStack * _enrageStacks);
+        if (transform.localScale.x < 0f) s.x = -s.x;
+        transform.localScale = s;
+
+        // UnitRuntimeBridge 가 반경을 잡는 공식과 같아야 한다 (Max(x,y) × 0.5)
+        return Mathf.Max(Mathf.Abs(s.x), Mathf.Abs(s.y)) * 0.5f;
     }
 
     protected override TeamType GetTeam() => TeamType.Enemy;
@@ -136,6 +170,9 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
                 bossSlots.Add(PatternSlot(ActiveSkillId.BossCharge, cooldown: 9f, first: 5f));
                 if (FrenzyEnabled)
                     bossSlots.Add(PatternSlot(ActiveSkillId.BossSlam, cooldown: 13f, first: 9f));
+                // 광폭화 — 난이도와 무관하게 항상. 교착을 끝내는 장치라 빼면 안 된다.
+                bossSlots.Add(PatternSlot(ActiveSkillId.BossEnrage, cooldown: EnrageCooldown,
+                                                                    first:    EnrageCooldown));
                 break;
 
             case SpawnUnitType.Elite:
@@ -171,6 +208,15 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
     }
 
     // ── 난이도 · 패턴 슬롯 ───────────────────────────────────
+
+    /// <summary>
+    /// 광폭화 쿨다운 (초) — 1분에 1스택.
+    ///
+    /// ⚠ CooldownScale('각성' 난이도 쿨감)을 곱하지 않는다
+    ///   광폭화는 연출이 아니라 교착을 끝내는 시계다. 난이도마다 다른 속도로
+    ///   흐르면 "1분에 한 겹" 이라는 규칙을 플레이어가 읽을 수 없다.
+    /// </summary>
+    const float EnrageCooldown = 60f;
 
     /// <summary>'폭주' 디버프가 켜져 있는가 (무간 난이도).</summary>
     static bool FrenzyEnabled => DifficultyConfig.CurrentTier()?.FrenzyPatterns ?? false;
@@ -219,6 +265,10 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
         if (em.HasComponent<BossComponent>(entity))
             em.SetComponentData(entity, MakeBossComponent());
 
+        // 광폭화 스택(영구 버프)은 UnitRuntimeBridge.OnEntityReset 이 이미
+        // StatusEffectBufferElement 를 통째로 비우면서 함께 사라진다.
+        // 아래 슬롯 재구성이 쿨다운도 60초로 되돌리므로 여기서 따로 할 일이 없다.
+
         // 스킬 쿨다운도 되돌린다. 안 그러면 풀에서 나온 보스가
         // 지난 판의 남은 쿨다운을 그대로 들고 나와 등장하자마자 스킬을 쏜다.
         if (em.HasComponent<GeneralActiveSkillComponent>(entity))
@@ -239,6 +289,8 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
             slots.Add(PatternSlot(ActiveSkillId.BossCharge, cooldown: 9f, first: 5f));
             if (FrenzyEnabled)
                 slots.Add(PatternSlot(ActiveSkillId.BossSlam, cooldown: 13f, first: 9f));
+            slots.Add(PatternSlot(ActiveSkillId.BossEnrage, cooldown: EnrageCooldown,
+                                                            first:    EnrageCooldown));
         }
 
         ClearCastLock(em, entity);

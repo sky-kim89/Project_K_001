@@ -273,8 +273,13 @@ public static class UISetupTool
         var skillSlotGo = MakeRect(root, "SkillSlot");
         SetTL(skillSlotGo, innerL + (GpPortSz - GpSkillSz) * 0.5f, skillY, GpSkillSz, GpSkillSz);
         var skillSlot = skillSlotGo.AddComponent<SkillSlotUI>();
+        // ⚠ 판을 중간 톤으로 깐다 — 색의 정본은 SkillIconUI.ActiveSlotBg
+        //   (로비 카드·장수 상세와 같은 바탕. 이 칸은 액티브 스킬이라 금 계열이다)
+        //   짙은 남색 판에서는 어두운 그림의 형태가 안 읽혔고, 흰 판에서는 반대로
+        //   밝은 하이라이트가 묻혔다. 중간 톤이라야 양쪽이 다 산다.
+        //   RaisedBtn 의 눌림 색은 TintFor 가 이 면색에서 역산하므로 따로 손댈 것이 없다.
         var skillBtn  = EditorUIBuilder.RaisedBtnOn(skillSlotGo,
-                                                    new Color(0.16f, 0.18f, 0.28f), out var skillBody);
+                                                    SkillIconUI.ActiveSlotBg, out var skillBody);
 
         // 아이콘 — 위아래 테두리(TopEdge/BottomEdge)가 보이도록 4px 안쪽으로 넣는다
         var skillIcon = MakeImg(skillBody, "Icon", Color.white);
@@ -659,14 +664,39 @@ public static class UISetupTool
         bossHpText.outlineWidth = 0.22f;
         bossHpText.outlineColor = Color.black;
 
+        // 광폭화 스택 — 바 오른쪽 끝. 스택이 0 이면 숨는다.
+        //
+        //  ⚠ 가운데 HP 숫자와 같은 칸을 쓰면 안 된다
+        //    BossHpText 는 Stretch 라 폭 전체를 먹는다. 여기에 스택을 이어 붙이면
+        //    글자가 늘어나면서 "1000 / 1000" 이 중앙에서 밀린다 — 체력이 줄 때마다
+        //    숫자가 좌우로 흔들려 읽기 나쁘다. 오른쪽에 자기 칸을 따로 준다.
+        var bossEnrageText = MakeTMP(bossHpRoot, "BossEnrageText", "광폭화 × 1",
+                                     (int)UIScale.FontSm, FontStyle.Bold);
+        SetRT(bossEnrageText.gameObject,
+              new Vector2(1f, 0.5f), new Vector2(1f, 0.5f),
+              new Vector2(-12f, 0f), new Vector2(190f, UIScale.RowSm));
+        bossEnrageText.alignment     = TextAlignmentOptions.MidlineRight;
+        bossEnrageText.color         = new Color(1.00f, 0.62f, 0.20f);   // 달아오른 주황
+        bossEnrageText.outlineWidth  = 0.24f;
+        bossEnrageText.outlineColor  = Color.black;
+        bossEnrageText.raycastTarget = false;
+        bossEnrageText.gameObject.SetActive(false);
+
         // ── 보스 스킬 쿨다운 아이콘 (HP 바 바로 아래) ──────────
         //  보스가 뭘 들고 있고 언제 터지는지 보이면 "갑자기 죽었다" 가 줄어든다.
-        //  대표 스킬 1 + 패턴 2(돌진·분쇄 강타) = 3칸이면 충분하다.
-        const int   BossSkillSlots = 3;
+        //  누르면 그 스킬 설명이 툴팁으로 뜬다.
+        //
+        //  칸 수 = 대표 스킬 1 + 패턴 3(돌진 · 분쇄 강타 · 광폭화).
+        //  ⚠ 무간(폭주) 난이도 기준으로 잡아야 한다
+        //    낮은 난이도는 대표 스킬도 분쇄 강타도 없어 2칸만 쓴다. 그 숫자에 맞춰
+        //    두면 정작 다 갖춘 무간에서 마지막 칸(광폭화)이 통째로 잘려 나간다.
+        //    TopBarUI 는 넘치면 조용히 버리므로 화면에서는 티도 안 난다.
+        const int   BossSkillSlots = 4;
         const float BsSz = 46f, BsGap = 8f;
         var bossSkillIcons = new Image[BossSkillSlots];
         var bossSkillCds   = new Image[BossSkillSlots];
         var bossSkillTimers= new TextMeshProUGUI[BossSkillSlots];
+        var bossSkillBtns  = new Button[BossSkillSlots];
 
         for (int i = 0; i < BossSkillSlots; i++)
         {
@@ -682,13 +712,26 @@ public static class UISetupTool
                 rt.sizeDelta        = new Vector2(BsSz, BsSz);
             }
 
+            // 눌러서 설명을 보는 칸이다.
+            //
+            //  ⚠ UI 규칙 1(음각 RaisedBtn)의 예외다
+            //    그 규칙은 "평평한 사각형이 버튼인지 라벨인지 구분이 안 된다" 를 막으려는
+            //    것이다. 여기는 스킬 아이콘 타일이라 이미 눌러 볼 것처럼 생겼고,
+            //    특성 아이콘(TraitIconUI)도 같은 방식으로 툴팁을 연다. 46px 칸에
+            //    그림자·모서리를 넣으면 아이콘이 가려져 정보량이 오히려 준다.
+            bossSkillBtns[i] = slot.gameObject.AddComponent<Button>();
+            bossSkillBtns[i].targetGraphic = slot;
+
             var ic = MakeImg(slot.gameObject, "Icon", Color.white);
             Stretch(ic.gameObject);
             ic.preserveAspect = true;
+            // 클릭은 칸(slot)이 받는다 — 자식이 가로채면 Button 이 안 눌린다
+            ic.raycastTarget  = false;
             bossSkillIcons[i] = ic;
 
             var cd = MakeImg(slot.gameObject, "Cooldown", new Color(0f, 0f, 0f, 0.78f));
             Stretch(cd.gameObject);
+            cd.raycastTarget = false;   // 위와 같은 이유 — 클릭은 칸이 받는다
             {
                 var so2 = new SerializedObject(cd);
                 so2.FindProperty("m_Type").intValue           = (int)Image.Type.Filled;
@@ -710,6 +753,14 @@ public static class UISetupTool
 
             slot.gameObject.SetActive(false);
         }
+
+        // 스킬 설명 툴팁 — 부모는 HUD 루트다.
+        //
+        //  ⚠ BossHpRoot 아래에 두면 안 된다
+        //    ShowAnchored 는 부모 사각형 안으로 툴팁을 밀어 넣는다. BossHpRoot 는
+        //    높이가 60px 남짓이라 설명이 통째로 찌그러진다. 전체 화면인 HUD 를
+        //    부모로 삼아야 아이콘 아래로 제대로 펼쳐진다.
+        var bossSkillTip = InfoTooltipBuilder.Build(hudGo, 460f);
 
         bossHpRoot.SetActive(false);
 
@@ -792,16 +843,20 @@ public static class UISetupTool
         tso.FindProperty("_bossHpRoot").objectReferenceValue       = bossHpRoot;
         tso.FindProperty("_bossHpFill").objectReferenceValue       = bossHpFill;
         tso.FindProperty("_bossHpText").objectReferenceValue       = bossHpText;
+        tso.FindProperty("_bossEnrageText").objectReferenceValue   = bossEnrageText;
+        tso.FindProperty("_bossSkillTooltip").objectReferenceValue = bossSkillTip;
 
         var bsi = tso.FindProperty("_bossSkillIcons");
         var bsc = tso.FindProperty("_bossSkillCooldowns");
         var bst = tso.FindProperty("_bossSkillTimers");
-        bsi.arraySize = bsc.arraySize = bst.arraySize = BossSkillSlots;
+        var bsb = tso.FindProperty("_bossSkillButtons");
+        bsi.arraySize = bsc.arraySize = bst.arraySize = bsb.arraySize = BossSkillSlots;
         for (int i = 0; i < BossSkillSlots; i++)
         {
             bsi.GetArrayElementAtIndex(i).objectReferenceValue = bossSkillIcons[i];
             bsc.GetArrayElementAtIndex(i).objectReferenceValue = bossSkillCds[i];
             bst.GetArrayElementAtIndex(i).objectReferenceValue = bossSkillTimers[i];
+            bsb.GetArrayElementAtIndex(i).objectReferenceValue = bossSkillBtns[i];
         }
 
         tso.FindProperty("_killCountText").objectReferenceValue    = killCountText;

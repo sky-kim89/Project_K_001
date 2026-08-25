@@ -59,7 +59,6 @@ public static class ProjectKBatch
         GameAssetCreator.CreateAllPassiveSkills();
         TraitCreator.CreateAllTraits();
         AbilityCreator.Create();
-        RelicCreator.CreateAll();
         EquipmentCreator.CreateAllEquipments();
         EventDatabaseCreator.CreateAll();
         GameAssetCreator.CreateStageConfig();
@@ -81,7 +80,6 @@ public static class ProjectKBatch
         IconGenerator.GenerateTraitIcons();
         IconGenerator.GenerateAbilityIcons();
         PassiveIconGenerator.GeneratePassiveIcons();
-        RelicIconGenerator.GenerateAll();
         ItemIconGenerator.GenerateAll();
         EquipmentIconGenerator.GenerateEquipmentIcons();
         IconGenerator.GenerateStageNodeIcons();
@@ -97,4 +95,5 @@ public static class ProjectKBatch
         AssetDatabase.Refresh();
         Debug.Log("[ProjectKBatch] ✓ 아이콘·텍스처 전체 생성 완료");
     }
+
 }

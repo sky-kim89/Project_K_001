@@ -1,4 +1,4 @@
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -64,7 +64,7 @@ public static class PopupPrefabCreator
         MercenaryPopupCreator.Create();
         EventPopupCreator.Create();
         CodexPopupCreator.Run();
-        RelicPopupCreator.Create();
+        RelicTreePopupCreator.Create();
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
@@ -93,7 +93,10 @@ public static class PopupPrefabCreator
         const float expX      = nameX + lvW + 10f;   // 218
         const float expW      = 172f;                // "Exp 1040" — 네 자리까지
         const float leftEnd   = 400f;   // 막대·범례가 시작하는 x (Exp 끝 390 보다 뒤)
-        const float rightSize = 186f;   // 우측 총량 영역 ("DPS 4,154" + 여백)
+        // 우측 총량 영역 ("DPS 4,154" + 여백)
+        // ⚠ 186 은 모자랐다 — 여백을 빼면 162px 인데 "DPS 4,154" 는 FontSm 에서
+        //   167px 이라 두 줄로 접혔다. 폭을 늘리고 줄바꿈도 끈다.
+        const float rightSize = 214f;
         float stretchX = (leftEnd - rightSize) / 2f;
 
         var root    = new GameObject("ExpRow", typeof(RectTransform));
@@ -225,7 +228,9 @@ public static class PopupPrefabCreator
         // ── TotalText (우측 상단, 우측정렬) ──────────────────────
         var totalText = AddTMP(root, "TotalText", "", UIScale.FontSm, FontStyles.Bold);
         totalText.alignment          = TextAlignmentOptions.MidlineRight;
-        totalText.enableWordWrapping = false;
+        // enableWordWrapping 은 구 API 라 버전에 따라 먹지 않는다 — 새 API 로 명시한다
+        totalText.textWrappingMode   = TextWrappingModes.NoWrap;
+        totalText.overflowMode       = TextOverflowModes.Overflow;
         totalText.color              = new Color(0.78f, 0.82f, 1.00f, 1f);
         var totalRt = totalText.rectTransform;
         totalRt.anchorMin = new Vector2(1f, 0.5f); totalRt.anchorMax = new Vector2(1f, 0.5f);
@@ -236,7 +241,9 @@ public static class PopupPrefabCreator
         // ── DPS 텍스트 (우측 하단, 딜탭만 표시) ──────────────────
         var dpsText = AddTMP(root, "DPSText", "", UIScale.FontSm - 2f, FontStyles.Normal);
         dpsText.alignment          = TextAlignmentOptions.MidlineRight;
-        dpsText.enableWordWrapping = false;
+        // ⚠ "DPS 4,154" 는 한 덩어리다 — 접히면 "DPS" 와 숫자가 위아래로 갈린다
+        dpsText.textWrappingMode   = TextWrappingModes.NoWrap;
+        dpsText.overflowMode       = TextOverflowModes.Overflow;
         dpsText.color              = new Color(0.55f, 0.65f, 0.85f);
         var dpsRt = dpsText.rectTransform;
         dpsRt.anchorMin = new Vector2(1f, 0.5f); dpsRt.anchorMax = new Vector2(1f, 0.5f);

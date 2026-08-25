@@ -50,10 +50,17 @@ public class TopBarUI : MonoBehaviour
     [SerializeField] Image           _bossHpFill;
     [SerializeField] TextMeshProUGUI _bossHpText;
 
+    [Tooltip("보스 HP 바 오른쪽 끝의 광폭화 스택. 스택이 0 이면 숨는다.")]
+    [SerializeField] TextMeshProUGUI _bossEnrageText;
+
     [Header("보스 스킬 쿨다운 (HP 바 아래 작은 아이콘)")]
     [SerializeField] Image[]           _bossSkillIcons;     // 아이콘
     [SerializeField] Image[]           _bossSkillCooldowns; // Radial360 오버레이
     [SerializeField] TextMeshProUGUI[] _bossSkillTimers;    // 남은 초 숫자
+    [SerializeField] Button[]          _bossSkillButtons;   // 누르면 설명 툴팁
+
+    [Tooltip("보스 스킬 아이콘을 눌렀을 때 뜨는 설명. 아이콘 아래로 펼쳐진다.")]
+    [SerializeField] InfoTooltipUI     _bossSkillTooltip;
 
     [Header("킬 카운터")]
     [SerializeField] TextMeshProUGUI _killCountText;
@@ -85,7 +92,7 @@ public class TopBarUI : MonoBehaviour
     //   0레벨이면 1× 고정이라 버튼이 아예 안 눌리고, Lv1 이면 1×↔2×, Lv2 라야 3× 까지 간다.
     //   SpeedSteps 를 직접 세지 말 것. 유물을 빼먹으면 잠금이 통째로 풀린다.
     static int UnlockedSpeedCount
-        => Mathf.Clamp(RelicApplier.GetBattleSpeedStepCount(), 1, SpeedSteps.Length);
+        => Mathf.Clamp(RelicTreeApplier.GetBattleSpeedStepCount(), 1, SpeedSteps.Length);
 
     // 잠겨 있을 때 눌렀을 때의 안내. 유물 이름을 직접 박아 두지 않는다 —
     // 유물 이름이 바뀌면 여기도 같이 틀려지므로 DB 에서 읽어 온다.
@@ -117,6 +124,11 @@ public class TopBarUI : MonoBehaviour
     EntityManager _em;
     EntityQuery   _bossQuery;
 
+    // 각 칸이 지금 무슨 스킬을 그리고 있는지. 툴팁이 이 값을 읽는다.
+    // ⚠ 칸 번호로 스킬을 되짚을 수 없다 — 보스마다 대표 스킬 유무·난이도별
+    //   패턴 구성이 달라 같은 칸에 매번 다른 스킬이 들어온다.
+    ActiveSkillId[] _bossSkillShown;
+
     // ── 초기화 ──────────────────────────────────────────────────
 
     void Awake()
@@ -124,6 +136,18 @@ public class TopBarUI : MonoBehaviour
         _speedButton?.onClick.AddListener(CycleSpeed);
         _autoButton?.onClick.AddListener(ToggleAuto);
         _pauseButton?.onClick.AddListener(OpenPausePopup);
+
+        // 보스 스킬 칸 — 누르면 설명 툴팁
+        // ⚠ 람다에 i 를 그대로 넘기면 안 된다 (클로저가 마지막 값을 잡는다)
+        if (_bossSkillButtons != null)
+        {
+            _bossSkillShown = new ActiveSkillId[_bossSkillButtons.Length];
+            for (int i = 0; i < _bossSkillButtons.Length; i++)
+            {
+                int slot = i;
+                _bossSkillButtons[i]?.onClick.AddListener(() => ShowBossSkillTooltip(slot));
+            }
+        }
 
         // 저장된 조작 설정 복원 (배속 · 자동 스킬)
         var settings = UserDataManager.Instance.Get<BattleSettingsData>();
@@ -228,7 +252,61 @@ public class TopBarUI : MonoBehaviour
         if (_bossHpFill != null) _bossHpFill.fillAmount = ratio;
         if (_bossHpText != null) _bossHpText.text       = $"보스   {Mathf.CeilToInt(cur):N0} / {Mathf.RoundToInt(maxHp):N0}";
 
+        RefreshBossEnrage(boss);
         RefreshBossSkills(boss);
+    }
+
+    // ── 광폭화 스택 ───────────────────────────────────────────
+    //
+    //  ActiveBossEnrage 가 시전할 때마다 영구 버프를 두 장(공격력·방어관통) 남긴다.
+    //  스택 수를 따로 어딘가에 세어 두지 않고 그 흔적을 그대로 센다 —
+    //  숫자를 두 곳에 두면 반드시 갈라지고, 갈라진 쪽이 화면에 뜬다.
+    //
+    //  ⚠ 관통 항목만 센다
+    //    한 번 시전에 두 장이 붙으므로 전부 세면 스택이 두 배로 보인다.
+    void RefreshBossEnrage(Entity boss)
+    {
+        if (_bossEnrageText == null) return;
+
+        int stacks = 0;
+        if (_em.HasBuffer<StatusEffectBufferElement>(boss))
+        {
+            var buffs = _em.GetBuffer<StatusEffectBufferElement>(boss, true);
+            for (int i = 0; i < buffs.Length; i++)
+                if (buffs[i].SourceType == BuffSourceType.ActiveSkill
+                 && buffs[i].SourceId   == (int)ActiveSkillId.BossEnrage
+                 && buffs[i].Stat       == StatType.DefensePenetration)
+                    stacks++;
+        }
+
+        _bossEnrageText.gameObject.SetActive(stacks > 0);
+        if (stacks > 0)
+            _bossEnrageText.text = $"광폭화 × {stacks}";
+    }
+
+    // ── 보스 스킬 설명 툴팁 ───────────────────────────────────
+    //
+    //  오토배틀이라 플레이어가 할 수 있는 건 "무슨 일이 벌어지는지 아는 것" 뿐이다.
+    //  쿨다운 링만으로는 그 스킬이 뭘 하는지 알 수 없어서, 눌러 보면 설명이 뜬다.
+    void ShowBossSkillTooltip(int slot)
+    {
+        if (_bossSkillTooltip == null || _bossSkillShown == null)   return;
+        if (slot < 0 || slot >= _bossSkillShown.Length)             return;
+
+        var id = _bossSkillShown[slot];
+        if (id == ActiveSkillId.None) return;
+
+        // 이름·설명의 정본은 SO 다. 여기서 문자열을 따로 갖고 있으면
+        // 밸런스 수정 때 SO 만 바뀌고 화면은 옛 설명을 계속 띄운다.
+        var data = ActiveSkillDatabase.Current?.Get(id);
+
+        string title = data != null && !string.IsNullOrEmpty(data.SkillName)
+            ? data.SkillName
+            : LocalizationManager.Instance.Get(id.ToString());
+        string desc  = data != null ? data.Description : "";
+
+        _bossSkillTooltip.ShowAnchored(
+            _bossSkillButtons[slot].transform as RectTransform, title, desc, "");
     }
 
     // ── 보스 스킬 쿨다운 ──────────────────────────────────────
@@ -260,13 +338,21 @@ public class TopBarUI : MonoBehaviour
         }
 
         for (; idx < _bossSkillIcons.Length; idx++)
+        {
+            if (_bossSkillShown != null && idx < _bossSkillShown.Length)
+                _bossSkillShown[idx] = ActiveSkillId.None;
             if (_bossSkillIcons[idx] != null)
                 _bossSkillIcons[idx].transform.parent.gameObject.SetActive(false);
+        }
     }
 
     void ShowBossSkill(int i, ActiveSkillId id, float remaining, float total, SpriteManager sprites)
     {
         if (i >= _bossSkillIcons.Length || _bossSkillIcons[i] == null) return;
+
+        // 툴팁이 읽을 값 — 칸마다 들어오는 스킬이 매번 달라서 여기서 기록해 둔다
+        if (_bossSkillShown != null && i < _bossSkillShown.Length)
+            _bossSkillShown[i] = id;
 
         var icon = _bossSkillIcons[i];
         icon.transform.parent.gameObject.SetActive(true);
@@ -397,13 +483,12 @@ public class TopBarUI : MonoBehaviour
     {
         if (_speedLockTooltip == null) return;
 
-        string relicName = RelicDatabase.Current != null
-            ? RelicDatabase.Current.NameOfSystemEffect(RelicSystemEffect.BattleSpeedUnlock)
-            : null;
+        // 배속 해금 노드가 둘이라(시간의 고삐 → 찰나의 지배) '다음에 찍을 것' 을 짚어 준다
+        string relicName = RelicTreeApplier.NextNodeNameFor(RelicSystemEffect.BattleSpeedUnlock);
 
         string desc = string.IsNullOrEmpty(relicName)
             ? SpeedLockDesc
-            : $"'{relicName}' 유물을 습득한 뒤 시도해 주세요.";
+            : $"유물 전승도에서 '{relicName}' 을(를) 찍은 뒤 시도해 주세요.";
 
         _speedLockTooltip.ShowAnchored(
             _speedButton.transform as RectTransform, SpeedLockTitle, desc, "");

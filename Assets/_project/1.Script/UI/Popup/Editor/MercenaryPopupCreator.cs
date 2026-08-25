@@ -64,6 +64,10 @@ public static class MercenaryPopupCreator
     const float SquadRowH =  124f;                      // 이름 한 줄 + Lv 한 줄
     const float SquadGap  =    6f;                      // 칸 사이 좌우 여백
 
+    // 부대 칸 바로 아래 [해고] 줄. 라벨이 눌리지 않는 최소 높이로 잡는다 (UI 규칙 5)
+    static readonly float FireBtnH = UIScale.BtnFor(UIScale.FontSm);   // 58
+    const float SquadFireGap = 6f;                      // 칸 ↔ 해고 버튼 세로 간격
+
     // ── 색상 (EventPopup 톤 — 용병은 청록 계열로 구분) ────────
     static readonly Color BgOverlay    = new Color(0f,     0f,     0f,     0.78f);
     static readonly Color PanelBg      = new Color(0.07f,  0.075f, 0.13f,  1f);
@@ -82,6 +86,10 @@ public static class MercenaryPopupCreator
     static readonly Color PassBtnC     = new Color(0.26f,  0.28f,  0.36f,  1f);
     static readonly Color SquadSlotC   = new Color(0.17f,  0.20f,  0.28f,  1f);
     static readonly Color SquadLblC    = new Color(0.64f,  0.76f,  0.82f,  1f);
+    // 해고는 되돌릴 수 없는 조작이다 — 칸(청회색)과 확실히 다른 붉은 계열로 세운다.
+    // 다만 [고용]보다 눈에 띄면 안 되므로 채도를 낮춘 팥죽색으로 잡았다.
+    static readonly Color FireBtnC     = new Color(0.34f,  0.16f,  0.18f,  1f);
+    static readonly Color FireLblC     = new Color(0.96f,  0.72f,  0.72f,  1f);
     static readonly Color CloseBtnC    = new Color(0.50f,  0.14f,  0.14f,  1f);
     static readonly Color LabelWhite   = new Color(0.98f,  0.99f,  1.00f,  1f);
     static readonly Color HintGreen    = new Color(0.50f,  0.94f,  0.66f,  1f);
@@ -295,6 +303,18 @@ public static class MercenaryPopupCreator
             a.sizeDelta = new Vector2(MainPanelCreator.ArrSize, MainPanelCreator.ArrSize);
         }
 
+        // ⚠ 16:9 보다 넓은 화면에서는 캔버스 '세로' 가 1080 아래로 내려간다
+        //   match 0.5 라 스케일이 가로·세로 배율의 기하평균이다.
+        //     2160×1080 → 캔버스 2036×1018 → Body 804  (862 짜리 카드가 58 넘침)
+        //     2560×1080 → 캔버스 2217× 935 → Body 721  (141 넘침)
+        //   폭은 앵커로 잡혀 있어 멀쩡한데 카드 아래(자세히 보기 버튼)만 잘려 나간다.
+        //   칸에 안 들어가면 통째로 줄인다 — 카드 내부 비율은 그대로 유지된다.
+        var fitter = col.AddComponent<ScaleToFitHeight>();
+        var fso = new SerializedObject(fitter);
+        fso.FindProperty("_content").objectReferenceValue = cardRt;
+        fso.FindProperty("_designHeight").floatValue      = MainPanelCreator.CardH;
+        fso.ApplyModifiedPropertiesWithoutUndo();
+
         SetObj(so, "_card",    cardUI);
         SetObj(so, "_prevBtn", arrL.GetComponent<Button>());
         SetObj(so, "_nextBtn", arrR.GetComponent<Button>());
@@ -362,20 +382,23 @@ public static class MercenaryPopupCreator
 
         var hireBtn = BuildChoiceButton(col, "HireButton", "고     용", HireBtnC,
                                         bottomY: BtnH + BtnGap,
-                                        out var hireCost, out var hireIcon);
+                                        out var hireCost, out var hireIcon, out var hireLabel);
         SetObj(so, "_hireBtn",      hireBtn);
         SetObj(so, "_hireCostText", hireCost);
         SetObj(so, "_hireCostIcon", hireIcon);
+        SetObj(so, "_hireBtnLabel", hireLabel);
     }
 
     // ══════════════════════════════════════════════════════════
     //  현재 부대 (5칸) — 해고 진입점
     // ══════════════════════════════════════════════════════════
     //
-    //  ⚠ 해고 UI 를 여기에 만들지 않는다
-    //    칸을 누르면 HeroDetailPopup 이 정식 모드로 열리고, [해고] 버튼과
-    //    "마지막 1명은 해고 불가" 규칙이 거기 이미 있다.
-    //    두 곳에 두면 보호 규칙이 갈라진다 — 여기는 진입점일 뿐이다.
+    //  ⚠ 해고 '규칙' 은 여기 있지 않다 — 버튼만 있다
+    //    칸을 누르면 지금도 HeroDetailPopup 이 열린다(상세 확인용). 다만 슬롯이
+    //    꽉 찼을 때 팝업을 한 번 더 거치는 건 너무 멀어서, 칸 아래에 [해고] 를
+    //    바로 붙였다.
+    //    처리와 "마지막 1명은 해고 불가" 보호는 GeneralRoster 가 소유한다 —
+    //    HeroDetailPopup 도 같은 문을 쓴다. 여기서 다시 구현하지 말 것.
     //
     //  ⚠ 칸 배경을 등급색으로 칠하지 않는다
     //    RaisedBtn 의 눌림·비활성 색은 targetGraphic(Body) 색에 곱해지는 값을
@@ -384,7 +407,7 @@ public static class MercenaryPopupCreator
 
     static void BuildSquadSection(GameObject col, SerializedObject so)
     {
-        var lbl = TMP(col, "SquadLabel", "현재 부대 — 칸을 누르면 상세·해고", UIScale.FontSm, FontStyles.Bold);
+        var lbl = TMP(col, "SquadLabel", "현재 부대 — 칸을 누르면 상세", UIScale.FontSm, FontStyles.Bold);
         lbl.color            = SquadLblC;
         lbl.alignment        = TextAlignmentOptions.MidlineLeft;
         lbl.raycastTarget    = false;
@@ -441,9 +464,41 @@ public static class MercenaryPopupCreator
             levels[i] = lvTmp;
         }
 
-        SetArray(so, "_squadBtns",   btns);
-        SetArray(so, "_squadNames",  names);
-        SetArray(so, "_squadLevels", levels);
+        // ── 해고 버튼 줄 (부대 칸 바로 아래, 같은 5등분) ──────
+        //  칸과 같은 앵커를 쓰므로 패널 폭이 바뀌어도 세로로 정확히 붙어 있다.
+        var fireRow = Go("SquadFireRow", col);
+        EditorUIBuilder.AnchorTop(fireRow.GetComponent<RectTransform>(),
+                                  SquadTop + UIScale.RowSm + 8f + SquadRowH + SquadFireGap,
+                                  FireBtnH, padH: 8f);
+
+        var fireBtns = new Button[SlotCount];
+        for (int i = 0; i < SlotCount; i++)
+        {
+            var fb = EditorUIBuilder.RaisedBtn(fireRow, $"Fire{i}", FireBtnC, out var fbody);
+
+            var rt = fb.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(i       / (float)SlotCount, 0f);
+            rt.anchorMax = new Vector2((i + 1) / (float)SlotCount, 1f);
+            rt.offsetMin = new Vector2(SquadGap,  0f);
+            rt.offsetMax = new Vector2(-SquadGap, 0f);
+
+            // ⚠ 라벨은 body 아래 (UI 규칙 1)
+            var t = TMP(fbody, "Label", "해 고", UIScale.FontSm, FontStyles.Bold);
+            t.alignment        = TextAlignmentOptions.Center;
+            t.raycastTarget    = false;
+            t.textWrappingMode = TextWrappingModes.NoWrap;
+            t.color            = FireLblC;
+            var tRt = t.rectTransform;
+            tRt.anchorMin = Vector2.zero; tRt.anchorMax = Vector2.one;
+            tRt.offsetMin = Vector2.zero; tRt.offsetMax = Vector2.zero;
+
+            fireBtns[i] = fb;
+        }
+
+        SetArray(so, "_squadBtns",     btns);
+        SetArray(so, "_squadNames",    names);
+        SetArray(so, "_squadLevels",   levels);
+        SetArray(so, "_squadFireBtns", fireBtns);
     }
 
     static void SetArray(SerializedObject so, string field, Object[] items)
@@ -465,6 +520,11 @@ public static class MercenaryPopupCreator
     /// </summary>
     static Button BuildChoiceButton(GameObject parent, string name, string label, Color face,
                                     float bottomY, out TextMeshProUGUI hintTmp, out Image hintIcon)
+        => BuildChoiceButton(parent, name, label, face, bottomY, out hintTmp, out hintIcon, out _);
+
+    static Button BuildChoiceButton(GameObject parent, string name, string label, Color face,
+                                    float bottomY, out TextMeshProUGUI hintTmp, out Image hintIcon,
+                                    out TextMeshProUGUI labelTmp)
     {
         var btn = EditorUIBuilder.RaisedBtn(parent, name, face, out var body);
         var rt = btn.GetComponent<RectTransform>();
@@ -484,6 +544,7 @@ public static class MercenaryPopupCreator
         lRt.anchorMin = Vector2.zero; lRt.anchorMax = Vector2.one;
         lRt.offsetMin = new Vector2(28f, 0f);
         lRt.offsetMax = new Vector2(-200f, 0f);
+        labelTmp = lbl;   // 모드마다 문구가 달라진다 (고용 / 골드 주고 구매하기)
 
         // 우측 [아이콘][수량] — 고용은 골드 비용, 돌려보내기는 획득 조각 수
         var hintRoot = Go("Hint", body);

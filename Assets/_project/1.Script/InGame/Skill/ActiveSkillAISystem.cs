@@ -45,6 +45,20 @@ namespace BattleGame.Units
 
         public void OnUpdate(ref SystemState state)
         {
+            // ⚠ 웨이브가 돌기 전에는 어떤 스킬도 나가지 않는다
+            //   Lobby·InGame 두 씬이 동시에 상주하고(SceneDirector) 출전 대기 화면과
+            //   로비 배경 데모에도 진짜 유닛이 서 있다. 그래서 이 시스템은 로비에서도
+            //   계속 돈다 — 전투가 시작됐는지는 여기서 직접 물어봐야 한다.
+            //
+            //   예전엔 SkillUsePolicy 의 "타겟이 있어야 한다" 가 우연히 문 노릇을 했다.
+            //   버프·소환이 타겟 없이도 나가게 되면서 그 문이 사라졌고, 전투 시작을
+            //   누르지도 않은 대기 화면에서 장수들이 쿨마다 버프를 뿌렸다.
+            //
+            //   IsWaveRunning 은 '적이 나오는 구간' 을 뜻한다 (BattleManager 소유).
+            //   웨이브 사이(Preparing·WaveClear)에는 켜진 채라 스킬이 끊기지 않고,
+            //   승패가 갈리거나 판을 닫으면 내려간다.
+            if (BattleManager.Instance == null || !BattleManager.Instance.IsWaveRunning) return;
+
             _transformLookup.Update(ref state);
 
             bool autoAlly = BattleSettingsData.AutoSkillEnabled;
@@ -153,7 +167,8 @@ namespace BattleGame.Units
                                                _transformLookup))
                         continue;
 
-                    Entity target    = attack.ValueRO.TargetEntity;
+                    // ⚠ TargetEntity 날것 금지 (SkillUsePolicy.ResolveTarget 주석 참고)
+                    Entity target    = SkillUsePolicy.ResolveTarget(attack.ValueRO);
                     float3 targetPos = _transformLookup.TryGetComponent(target, out LocalTransform lt)
                         ? lt.Position
                         : transform.ValueRO.Position;

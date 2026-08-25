@@ -1,4 +1,4 @@
-#if UNITY_EDITOR
+﻿#if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
 
@@ -247,7 +247,7 @@ public static class AbilityCreator
         c06.ReflectRatio = 0.25f;
         EditorUtility.SetDirty(c06);
 
-        // C07 — 혼령 집결 (OnBattleStart)
+        // C07 — 혼령 집결 (OnSoldierDeath — 런 누적에서 전투 내 누적으로 바뀌었다)
         var c07 = MakeSpecial<AbilityGhostRally>(AbilityId.C07, "Ability_C07", "혼령 집결");
         c07.BonusPerDeath = 0.05f;
         EditorUtility.SetDirty(c07);
@@ -290,8 +290,12 @@ public static class AbilityCreator
         MakeMastery<AbilityMageSkillProc>(AbilityId.D03, "Ability_D03", "마법사 달인");
 
         // D04 — 방패병 달인 (OnBattleStart)
+        //  피해 반사에서 광역 오라로 바뀌었다 — 반사는 '맞아야만' 값이 나와서
+        //  정작 잘 안 맞는 방패병에게 어울리지 않았다.
         var d04 = MakeMastery<AbilityShieldMastery>(AbilityId.D04, "Ability_D04", "방패병 달인");
-        d04.ReflectRatio = 0.25f;
+        d04.AuraHpRatio  = 0.02f;   // 최대 체력 2% — 체력 3,000 이면 1초에 60
+        d04.AuraRadius   = 2.0f;
+        d04.AuraInterval = 1.0f;
         EditorUtility.SetDirty(d04);
     }
 

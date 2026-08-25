@@ -202,6 +202,13 @@ public abstract class UnitRuntimeBridge : MonoBehaviour
         if (em.HasComponent<SpawnProtection>(entity))
             em.RemoveComponent<SpawnProtection>(entity);
 
+        // 광역 오라(방패병 달인 D04)는 어빌리티가 매 전투 시작에 다시 붙여 준다.
+        // ⚠ 여기서 떼지 않으면 풀에서 물려받은 다음 유닛이 그대로 들고 나온다
+        //   씬이 상주하고 엔티티도 풀에 남으므로, 그 어빌리티가 없는 다음 런의
+        //   유닛까지 주변을 태운다.
+        if (em.HasComponent<BattleGame.Units.DamageAuraComponent>(entity))
+            em.RemoveComponent<BattleGame.Units.DamageAuraComponent>(entity);
+
         // 풀 링크 갱신 — 사망 처리 시 UnitDeathDespawnSystem 이 제거하므로 없으면 재추가
         if (em.HasComponent<BattleGame.Units.UnitPoolLinkComponent>(entity))
         {

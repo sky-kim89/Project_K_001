@@ -36,13 +36,17 @@ public class MercenaryShopPopup : PopupBase
     [SerializeField] Button                 _nextBtn;
     [SerializeField] Image[]                _pageDots;      // 후보 수만큼만 켠다
 
-    [Header("현재 부대 (칸 클릭 → HeroDetailPopup — 해고는 거기서 한다)")]
+    [Header("현재 부대 (칸 클릭 → HeroDetailPopup 상세)")]
     [SerializeField] Button[]          _squadBtns;
     [SerializeField] TextMeshProUGUI[] _squadNames;
     [SerializeField] TextMeshProUGUI[] _squadLevels;
 
+    [Tooltip("칸 바로 아래 [해고]. 처리·보호 규칙은 GeneralRoster 가 소유한다.")]
+    [SerializeField] Button[]          _squadFireBtns;
+
     [Header("액션")]
     [SerializeField] Button          _hireBtn;
+    [SerializeField] TextMeshProUGUI _hireBtnLabel;   // 모드마다 문구가 다르다
     [SerializeField] TextMeshProUGUI _hireCostText;
     [SerializeField] Image           _hireCostIcon;
     [SerializeField] Button          _passBtn;
@@ -63,7 +67,18 @@ public class MercenaryShopPopup : PopupBase
     bool _hired;       // 이번 오픈에서 실제로 고용했는가
     int  _hiredCost;   // 고용 확정 시점의 가격 — 차감은 팝업이 닫힐 때 일어난다
 
+    // ── 상점 재확인 모드 ─────────────────────────────────────
+    //  런 상점(RunShopPopup)에서 고른 매물 한 명만 띄우고 "정말 살 것인가" 를 묻는다.
+    //  후보 추첨도, 돌려보내기도 없다.
+    UnitEntry     _shopEntry;
+    System.Action _onShopHired;
+
+    bool IsShopConfirm => _shopEntry != null;
+
     const int CandidateCount = 3;
+
+    const string HireLabel     = "고     용";
+    const string ShopBuyLabel  = "골드 주고 구매하기";
 
     UnitEntry Current => (_pageIndex >= 0 && _pageIndex < _candidates.Count)
         ? _candidates[_pageIndex] : null;
@@ -84,6 +99,13 @@ public class MercenaryShopPopup : PopupBase
             int slot = i;
             _squadBtns[i].onClick.AddListener(() => OnSquadSlotClick(slot));
         }
+
+        if (_squadFireBtns != null)
+            for (int i = 0; i < _squadFireBtns.Length; i++)
+            {
+                int slot = i;
+                _squadFireBtns[i]?.onClick.AddListener(() => OnSquadFireClick(slot));
+            }
     }
 
     /// <summary>유료 고용 — 지정 슬롯에 배치한다. 고용을 확정해야 골드가 빠진다.</summary>
@@ -91,6 +113,7 @@ public class MercenaryShopPopup : PopupBase
     {
         _targetSlot = targetSlot;
         _isFree     = false;
+        ClearShopMode();
         return this;
     }
 
@@ -102,7 +125,42 @@ public class MercenaryShopPopup : PopupBase
     {
         _targetSlot = -1;
         _isFree     = true;
+        ClearShopMode();
         return this;
+    }
+
+    /// <summary>
+    /// 런 상점 매물 재확인 — 상점에서 고른 <b>그 한 명</b>만 띄우고 살지 묻는다.
+    ///
+    /// ■ 왜 상점에서 바로 고용하지 않고 한 단계를 더 두나
+    ///   배치 슬롯이 꽉 찬 상태에서 상점이 직접 고용하면 "슬롯 없음" 으로
+    ///   조용히 실패하는 것 말고 할 수 있는 게 없었다. 이 팝업에는 현재 부대
+    ///   5칸이 있어, 누굴 내보낼지 그 자리에서 정하고(→ HeroDetailPopup 해고)
+    ///   곧바로 구매까지 이어갈 수 있다.
+    ///
+    /// ■ 이 모드에서만 다른 것
+    ///   · 후보 추첨을 하지 않는다 — 상점에서 본 매물이 그대로 나와야 한다.
+    ///   · [돌려보내기] 를 감춘다 — 공짜로 받은 후보가 아니라 조각으로 바꿀 게 없다.
+    ///   · 버튼 문구가 "골드 주고 구매하기" 가 된다.
+    ///
+    /// <paramref name="onHired"/> 는 <b>골드 차감까지 끝난 뒤</b> 불린다
+    /// (차감은 닫기 애니메이션이 끝나는 OnAfterClose 에서 일어난다).
+    /// </summary>
+    public MercenaryShopPopup SetupFromShop(UnitEntry entry, System.Action onHired)
+    {
+        _targetSlot  = -1;
+        _isFree      = false;
+        _shopEntry   = entry;
+        _onShopHired = onHired;
+        return this;
+    }
+
+    // ⚠ 팝업 인스턴스는 재사용된다 — 다른 모드로 열 때 반드시 지운다.
+    //   안 지우면 엘리트 보상 고용이 지난번 상점 매물을 그대로 띄운다.
+    void ClearShopMode()
+    {
+        _shopEntry   = null;
+        _onShopHired = null;
     }
 
     protected override void OnAfterOpen()
@@ -129,6 +187,10 @@ public class MercenaryShopPopup : PopupBase
         if (!_isFree && _hired)
             UserDataManager.Instance?.Get<ItemData>()?.Spend(eItem.Gold, _hiredCost);
         UserDataManager.Instance?.RequestSave();
+
+        // 상점에 결과를 알린다 — 차감이 끝난 뒤라야 상점 헤더의 보유 골드가 맞다.
+        if (_hired) _onShopHired?.Invoke();
+        ClearShopMode();
     }
 
     static void ApplyIcon(Image img, eItem item, Color fallback)
@@ -145,6 +207,13 @@ public class MercenaryShopPopup : PopupBase
     {
         _candidates.Clear();
         _totalCandidateShards = 0;
+
+        // 상점 재확인 — 추첨하지 않는다. 상점에서 본 매물이 그대로 나와야 한다.
+        if (IsShopConfirm)
+        {
+            _candidates.Add(_shopEntry);
+            return;   // 조각 합계는 0 — 이 모드엔 돌려보내기가 없다
+        }
 
         var unitData = UserDataManager.Instance?.Get<UnitData>();
         if (unitData == null) return;
@@ -239,12 +308,24 @@ public class MercenaryShopPopup : PopupBase
         }
         _hireCostIcon?.gameObject.SetActive(!_isFree);
 
+        // 버튼 문구 — 상점 재확인은 "산다" 는 뜻이 분명해야 한다
+        if (_hireBtnLabel != null)
+            _hireBtnLabel.text = IsShopConfirm ? ShopBuyLabel : HireLabel;
+
+        // 돌려보내기 — 상점 재확인 모드엔 없다.
+        //
+        // ⚠ 회색으로 남겨 두지 않고 감춘다
+        //   이 버튼의 뜻은 "받은 후보를 전부 조각으로 바꾼다" 다. 상점 매물은 아직
+        //   받은 게 아니라서 바꿀 것이 없고, 남겨 두면 "+0" 이 붙은 죽은 버튼이 된다.
+        //   할 수 없는 일을 자리만 차지한 채 보여 주는 쪽이 더 헷갈린다.
         if (_passBtnLabel != null) _passBtnLabel.text = $"+{_totalCandidateShards}";
-        _passBtn?.gameObject.SetActive(true);
+        _passBtn?.gameObject.SetActive(!IsShopConfirm);
 
         if (_hintText != null)
             _hintText.text = hasSlot
-                ? "한 명을 고용하거나, 전부 돌려보내 용병 조각을 받는다."
+                ? (IsShopConfirm
+                    ? "이 용병을 고용한다. 골드는 구매를 확정할 때 빠진다."
+                    : "한 명을 고용하거나, 전부 돌려보내 용병 조각을 받는다.")
                 : "배치 슬롯이 가득 찼다 — 아래 부대에서 한 명을 해고하면 고용할 수 있다.";
     }
 
@@ -267,7 +348,7 @@ public class MercenaryShopPopup : PopupBase
         var units  = UserDataManager.Instance?.Get<UnitData>();
 
         // 유물·특성으로 열린 칸까지만 실제 슬롯이다 — 잠긴 칸에 넣으면 전투에 안 나온다
-        int activeSlots = RelicApplier.GetTotalActiveGeneralSlots();
+        int activeSlots = RelicTreeApplier.GetTotalActiveGeneralSlots();
 
         for (int i = 0; i < _squadBtns.Length; i++)
         {
@@ -285,6 +366,14 @@ public class MercenaryShopPopup : PopupBase
 
             _squadLevels[i].text  = entry != null ? $"Lv.{entry.Level}" : "—";
             _squadLevels[i].color = entry != null ? SquadLvText : SquadDimText;
+
+            // 해고 — 사람이 서 있고, 마지막 1명이 아닐 때만 누를 수 있다.
+            // ⚠ 보호 규칙을 여기서 다시 세지 않는다 (GeneralRoster 가 정본)
+            if (_squadFireBtns != null && i < _squadFireBtns.Length && _squadFireBtns[i] != null)
+            {
+                _squadFireBtns[i].gameObject.SetActive(entry != null);
+                _squadFireBtns[i].interactable = entry != null && GeneralRoster.CanFire();
+            }
         }
     }
 
@@ -305,6 +394,30 @@ public class MercenaryShopPopup : PopupBase
     // 등급업·레벨업만 했어도 부대 표시가 달라진다 → 통째로 갱신한다.
     void OnSquadDetailClosed()
     {
+        RefreshSquad();
+        RefreshActionBar();
+    }
+
+    /// <summary>
+    /// 칸 아래 [해고] — 슬롯이 꽉 찼을 때 여기서 바로 자리를 비운다.
+    ///
+    /// ■ 왜 상세 팝업을 거치지 않나
+    ///   "좋은 용병이 떴는데 자리가 없다" 는 이 화면의 핵심 상황이다.
+    ///   그때마다 칸 → 상세 팝업 → 해고 → 닫기까지 네 번을 눌러야 했다.
+    ///
+    /// ⚠ 확인 창을 띄우지 않는다
+    ///   버튼이 부대 칸 아래에 붙어 있어 누가 지워지는지 눈으로 보이고,
+    ///   마지막 1명은 애초에 눌리지 않는다. 되돌리기가 필요한 만큼
+    ///   위험한 조작이면 그건 GeneralRoster 에서 막을 일이다.
+    /// </summary>
+    void OnSquadFireClick(int slot)
+    {
+        var deploy = UserDataManager.Instance.Get<DeploymentData>();
+        string occupant = deploy.GetUnitAt(slot);
+
+        // 빈 칸 버튼은 꺼져 있어 여기까지 오지 않는다
+        if (!GeneralRoster.Fire(occupant)) return;
+
         RefreshSquad();
         RefreshActionBar();
     }
@@ -346,7 +459,12 @@ public class MercenaryShopPopup : PopupBase
 
         var unitData   = UserDataManager.Instance?.Get<UnitData>();
         var deployData = UserDataManager.Instance?.Get<DeploymentData>();
-        unitData?.AddUnit(entry);
+
+        // ⚠ AddUnit 은 중복을 걸러 주지 않는다 (그냥 리스트에 Add 한다)
+        //   후보 목록은 팝업을 열 때 뽑히므로, 그 사이 같은 이름을 다른 경로로
+        //   얻었으면 부대에 같은 장수가 둘 생긴다.
+        if (unitData != null && !unitData.HasUnit(entry.UnitName))
+            unitData.AddUnit(entry);
         deployData?.Deploy(entry.UnitName, slot);
         JobSynergyEvaluator.Recalculate();
         _hired     = true;
@@ -380,7 +498,7 @@ public class MercenaryShopPopup : PopupBase
         var deployData = UserDataManager.Instance?.Get<DeploymentData>();
         if (deployData == null) return -1;
 
-        int activeSlots = Mathf.Min(5, RelicApplier.GetTotalActiveGeneralSlots());
+        int activeSlots = Mathf.Min(5, RelicTreeApplier.GetTotalActiveGeneralSlots());
         for (int i = 0; i < activeSlots; i++)
             if (string.IsNullOrEmpty(deployData.GetUnitAt(i))) return i;
         return -1;

@@ -53,6 +53,18 @@ public abstract class TutorialScenario
     /// </summary>
     public virtual bool CompleteOnAbort => false;
 
+    /// <summary>
+    /// 이 시나리오가 자기 무대로 삼는 팝업. 기본 None = 팝업이 하나도 없을 때만 시작한다.
+    ///
+    /// ⚠ 강제 진행 튜토리얼은 남의 팝업 위에서 시작하면 안 된다
+    ///   튜토리얼 오버레이는 sortingOrder 1000 이라 팝업(200)을 통째로 덮고
+    ///   입력까지 막는다. 로비·인게임이 동시에 상주하는 구조라 "로비가 떴다" 는
+    ///   조건은 어빌리티 선택 팝업이 떠 있는 동안에도 참이 된다 —
+    ///   실제로 그 팝업 위에서 로비 튜토리얼이 시작돼 선택을 못 하게 막았다.
+    ///   TutorialManager 가 이 값을 보고 화면이 조용해질 때까지 재생을 미룬다.
+    /// </summary>
+    public virtual PopupType StagePopup => PopupType.None;
+
     /// <summary>말풍선 오른쪽 아래에 띄울 안내. 스텝 종류에 따라 갈린다.</summary>
     public virtual string HintFor(TutorialStep step) => step.Advance switch
     {

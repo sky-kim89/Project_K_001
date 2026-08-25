@@ -159,6 +159,10 @@ public class UserDataManager : PureSingleton<UserDataManager>
         // 다음 여정을 시작(RunStarter.BeginRun)할 때 이번 회차에 모은 것까지 얹혀 잠긴다.
         Get<CodexData>()?.UnlockForNextRun();
 
+        // 이번 여정에 채운 도감을 다음 메인 화면에서 한 번 보여 준다.
+        // ⚠ 수확 화면의 유일한 트리거다 — 여정이 실제로 끝난 이 자리 말고 다른 데서 켜지 말 것.
+        Get<CodexData>()?.MarkGainsReady();
+
         // 이번이 몇 번째 환생인지 — 첫 환생 직후에만 뜨는 안내가 이 값을 본다.
         reincData?.CountReincarnation();
 
@@ -184,7 +188,7 @@ public class UserDataManager : PureSingleton<UserDataManager>
         RegisterSection(new RunTraitData());
         RegisterSection(new RunShopData());
         RegisterSection(new RunEventBonusData());
-        RegisterSection(new RelicInventoryData());
+        RegisterSection(new RelicTreeData());
         RegisterSection(new ReincarnationData());
         RegisterSection(new CodexData());
         RegisterSection(new BattleSettingsData());

@@ -275,7 +275,9 @@ public static class EventRewardHandler
 
     static void TryHealCurrentGeneral(float percent)
     {
-        // 인게임(전투 중) 상태에서만 유효.
-        // TODO: InGameManager.Instance?.HealActiveGeneral(percent)
+        // 이벤트 팝업은 로비(StageSelectUI)에서만 열린다 — 회복시킬 전투 중 장수가 없다.
+        // 지금 조용히 넘기면 "체력 회복" 보상이 카드도 없이 사라지므로 로그는 남긴다.
+        // 쓰려면 인게임 이벤트 진입점부터 만들어야 한다.
+        Debug.LogWarning($"[EventRewardHandler] HealHpPercent({percent:P0}) — 지급 경로가 없다(이벤트는 로비 전용).");
     }
 }

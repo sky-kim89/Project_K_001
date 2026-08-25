@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Unity.Entities;
+using Unity.Mathematics;
 using UnityEngine;
 using BattleGame.Units;
 
@@ -161,4 +162,13 @@ public struct PassiveTriggerContext
     public HealthComponent Health;             // OnHit: 피격 시점 체력 스냅샷
     public int             SoldierDeathCount;  // OnSoldierDeath: 이번 프레임 사망 병사 수
     public float           DamageDealt;        // OnAttack: 이번 공격으로 가한 피해 (흡혈 등에 사용)
+
+    // ── 사건이 일어난 자리 ────────────────────────────────────
+    //  소환처럼 "그 자리에" 무언가를 세우는 효과가 쓴다.
+    //  장군 발밑에서 나오면 무엇이 왜 나왔는지 읽히지 않는다 —
+    //  쓰러진 적 위에서 일어나야 "이 녀석이 내 병사가 됐다" 가 보인다.
+    public bool            HasKillPosition;
+    public float3          KillPosition;          // OnEnemyKill: 마지막으로 쓰러뜨린 적의 자리
+    public bool            HasSoldierDeathPosition;
+    public float3          SoldierDeathPosition;  // OnSoldierDeath: 병사가 쓰러진 자리
 }

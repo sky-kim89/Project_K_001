@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -22,16 +22,15 @@ class RunAbilityDataJson
 {
     public List<AbilityLevelEntry> levels       = new();
     public List<int>               ids          = new();   // v1 마이그레이션용
-    public int                     soldierDeaths = 0;
+    // soldierDeaths 필드는 없앴다 — 혼령 집결이 '전투 내 누적' 으로 바뀌며 읽는 곳이 사라졌다.
+    // 옛 세이브에 남아 있어도 JsonUtility 가 모르는 필드는 그냥 무시한다.
 }
 
 public class RunAbilityData : ISaveSection
 {
     readonly Dictionary<AbilityId, int> _levels = new();
-    int _totalSoldierDeaths;
 
-    public SaveKey SaveKey            => SaveKey.RunAbility;
-    public int     TotalSoldierDeaths => _totalSoldierDeaths;
+    public SaveKey SaveKey => SaveKey.RunAbility;
 
     /// 해당 어빌리티의 현재 레벨 (0 = 미보유)
     public int  GetLevel(AbilityId id)   => _levels.GetValueOrDefault(id, 0);
@@ -59,12 +58,11 @@ public class RunAbilityData : ISaveSection
         }
     }
 
-    public void Clear()                  => _levels.Clear();
-    public void IncrementSoldierDeaths() => _totalSoldierDeaths++;
+    public void Clear() => _levels.Clear();
 
     public string Serialize()
     {
-        var dto = new RunAbilityDataJson { soldierDeaths = _totalSoldierDeaths };
+        var dto = new RunAbilityDataJson();
         foreach (var (id, lv) in _levels)
             dto.levels.Add(new AbilityLevelEntry { id = (int)id, lv = lv });
         return JsonUtility.ToJson(dto);
@@ -73,13 +71,10 @@ public class RunAbilityData : ISaveSection
     public void Deserialize(string json)
     {
         _levels.Clear();
-        _totalSoldierDeaths = 0;
         if (string.IsNullOrEmpty(json)) return;
 
         var dto = JsonUtility.FromJson<RunAbilityDataJson>(json);
         if (dto == null) return;
-
-        _totalSoldierDeaths = dto.soldierDeaths;
 
         if (dto.levels?.Count > 0)
         {
@@ -94,5 +89,5 @@ public class RunAbilityData : ISaveSection
         }
     }
 
-    public void SetDefaults() { _levels.Clear(); _totalSoldierDeaths = 0; }
+    public void SetDefaults() => _levels.Clear();
 }

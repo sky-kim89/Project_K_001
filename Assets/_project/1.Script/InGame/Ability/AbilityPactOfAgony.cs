@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.Entities;
 using UnityEngine;
 using BattleGame.Units;
@@ -36,6 +37,28 @@ public class AbilityPactOfAgony : AbilityData
            $"공격력 +{AttackBonus * 100f:0}%  공격속도 +{AtkSpdBonus * 100f:0}%  방어율 +{DefenseBonus * 100f:0}%p";
 
     public override PassiveTrigger GetTriggerType() => PassiveTrigger.OnBattleStart;
+
+    /// <summary>
+    /// 전투 시작 시 <b>반드시</b> 걸리는 효과라 플레이어에겐 상시 강화다 — 합산 화면에 신고한다.
+    ///
+    /// ⚠ 체력 손실(AgonyCostRatio)은 신고하지 않는다
+    ///   깎는 것은 최대 체력이 아니라 현재 체력이다. MaxHp 를 줄이는 것처럼 적으면
+    ///   "체력 -70%" 가 총합에 섞여 장수 상세의 체력 줄과 어긋난다.
+    ///   그 대가는 Description 이 글로 설명한다.
+    ///
+    /// ⚠ 방어율은 비율이 아니라 그대로 더한다
+    ///   Defense 는 AbilityApplier.IsAbsoluteStat 목록에 있는 절대 가산 스탯이다
+    ///   (0~1 자체가 값). 0.20 을 넣으면 화면에 +20%p 로 뜬다.
+    /// </summary>
+    public override void CollectPreviewStats(Dictionary<StatType, float> ratios)
+    {
+        ratios[StatType.Attack] =
+            ratios.GetValueOrDefault(StatType.Attack) + AttackBonus;
+        ratios[StatType.AttackSpeed] =
+            ratios.GetValueOrDefault(StatType.AttackSpeed) + AtkSpdBonus;
+        ratios[StatType.Defense] =
+            ratios.GetValueOrDefault(StatType.Defense) + DefenseBonus;
+    }
 
     public override void OnTrigger(PassiveTriggerContext ctx)
         => Apply(ctx.GeneralEntity, ctx.EntityManager);

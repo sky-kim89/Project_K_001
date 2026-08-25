@@ -88,9 +88,72 @@ public class CodexPopup : PopupBase
 
     }
 
-    protected override void OnAfterOpen() => SelectTab(_tab);
+    protected override void OnBeforeOpen()
+    {
+        // 지난번에 수확 모드로 열렸을 수 있다 — 팝업은 풀에서 재사용된다.
+        _gainEntries = null;
+
+        if (_tabButtons != null)
+            foreach (var b in _tabButtons)
+                if (b != null) b.gameObject.SetActive(true);
+    }
+
+    protected override void OnAfterOpen()
+    {
+        // ⚠ 수확 모드면 탭 화면으로 되돌리지 않는다
+        //   OpenRoutine 이 열기 애니메이션 뒤에 이걸 부르는데, SetupRunGains 는
+        //   Open() 이 돌아온 직후(=애니메이션 전)에 불린다. 여기서 SelectTab 을
+        //   그냥 부르면 방금 깔아 둔 수확 목록이 평소 도감으로 덮인다.
+        if (_gainEntries != null) { ShowGains(); return; }
+
+        SelectTab(_tab);
+    }
 
     protected override void OnAfterClose() => CloseTooltip();
+
+    // ── 이번 여정 수확 모드 ──────────────────────────────────
+    //
+    //  ⚠ 도감 버프는 여정 경계에서 한 번에 들어온다 (CodexData.LockForRun)
+    //    그래서 환생 직후 장수가 갑자기 세져 있는데 이유가 화면 어디에도 없었다.
+    //    "이번 여정에 새로 채운 것 + 그래서 오른 공격력·체력" 을 한 화면에 편다.
+    //
+    //  도감 화면을 그대로 쓴다 — 칸·아이콘·툴팁이 이미 여기 다 있고,
+    //  목록만 갈아 끼우면 되는 일에 화면을 하나 더 만들 이유가 없다.
+
+    List<CodexEntry> _gainEntries;   // null = 평소 도감
+
+    /// <summary>환생 뒤 "이번 여정에 새로 채운 것" 만 한 번에 뿌린다.</summary>
+    public void SetupRunGains(CodexRunGains gains)
+    {
+        _gainEntries = CodexCatalog.BuildGains(gains);
+        ShowGains();
+    }
+
+    void ShowGains()
+    {
+        if (_tooltip != null && _tooltip.IsOpen) _tooltip.Close();
+
+        // 탭은 끈다 — 지금 화면은 "이번에 채운 것" 하나뿐이라 고를 것이 없다.
+        if (_tabButtons != null)
+            foreach (var b in _tabButtons)
+                if (b != null) b.gameObject.SetActive(false);
+
+        int   count = _gainEntries.Count;
+        float after = CodexApplier.BonusRatio * 100f;
+        float delta = count * CodexData.BonusPerEntry * 100f;
+
+        if (_progressTmp != null)
+            _progressTmp.text = $"이번 여정 수확 <color=#{StatBonusColors.Codex}>{count}</color>종";
+
+        if (_bonusTmp != null)
+            _bonusTmp.text = $"공격력·체력 +{after - delta:F1}% → " +
+                             $"<color=#{StatBonusColors.Codex}>+{after:F1}%</color>";
+
+        _entries.Clear();
+        _entries.AddRange(_gainEntries);
+        _grid?.Bind(_entries.Count, BindCell);
+        _grid?.ScrollToTop();
+    }
 
     // ── 탭 ───────────────────────────────────────────────────
 

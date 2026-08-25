@@ -121,6 +121,17 @@ public class UIJuiceLayer : MonoBehaviour
 
     static readonly Dictionary<Transform, Vector3> s_baseScale = new();
 
+    // 지금 그 대상에서 돌고 있는 펀치 수.
+    //
+    //  ⚠ 먼저 끝난 연출이 원본 기록을 지우면 안 된다
+    //    예전에는 코루틴이 끝날 때마다 s_baseScale 에서 키를 지웠다. 연타하면
+    //    A 가 먼저 끝나면서 키를 지우는데 B 는 아직 커진 상태로 돌고 있어서,
+    //    그때 들어온 C 가 **부풀어 있는 값**을 원본으로 기록했다.
+    //    C 가 끝나며 그 값으로 되돌리므로 대상이 영구히 커진 채로 남고,
+    //    누를수록 조금씩 더 커졌다 (레벨업 버튼이 커지던 원인).
+    //    마지막 하나가 끝날 때만 되돌리고 지운다.
+    static readonly Dictionary<Transform, int> s_punchCount = new();
+
     static IEnumerator PunchRoutine(RectTransform target, float peak, float dur)
     {
         if (!s_baseScale.TryGetValue(target, out var baseScale))
@@ -129,10 +140,15 @@ public class UIJuiceLayer : MonoBehaviour
             s_baseScale[target] = baseScale;
         }
 
+        s_punchCount.TryGetValue(target, out int running);
+        s_punchCount[target] = running + 1;
+
         float t = 0f;
         while (t < dur)
         {
-            if (target == null) { s_baseScale.Remove(target); yield break; }
+            // 대상이 파괴됐거나 꺼졌다 — 되돌릴 대상이 없다.
+            // 풀에 반납된 팝업이 다음에 열릴 때 커진 채로 나오지 않게 기록도 지운다.
+            if (target == null || !target.gameObject.activeInHierarchy) break;
 
             t += Time.unscaledDeltaTime;
             float k = Punch01(Mathf.Clamp01(t / dur));
@@ -140,8 +156,14 @@ public class UIJuiceLayer : MonoBehaviour
             yield return null;
         }
 
-        if (target != null) target.localScale = baseScale;
+        if (target == null) { s_baseScale.Remove(target); s_punchCount.Remove(target); yield break; }
+
+        int left = s_punchCount[target] - 1;
+        if (left > 0) { s_punchCount[target] = left; yield break; }
+
+        target.localScale = baseScale;
         s_baseScale.Remove(target);
+        s_punchCount.Remove(target);
     }
 
     // ── 스파크 ───────────────────────────────────────────────

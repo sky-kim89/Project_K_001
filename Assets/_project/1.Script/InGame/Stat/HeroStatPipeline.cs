@@ -106,11 +106,8 @@ public static class HeroStatPipeline
         if (abilityDb != null && held != null)
             AbilityApplier.ApplyToGeneralStat(stat, job, held, abilityDb);
 
-        // ── 4. 유물 (공용) ───────────────────────────────────
-        var relicDb  = RelicDatabase.Current;
-        var relicInv = UserDataManager.Instance?.Get<RelicInventoryData>();
-        if (relicDb != null && relicInv != null)
-            RelicApplier.ApplyToGeneralStat(stat, job, relicInv, relicDb);
+        // ── 4. 유물 트리 (공용) ──────────────────────────────
+        RelicTreeApplier.ApplyToGeneralStat(stat, job);
 
         // ── 5. 특성 (고정 → 전환 → 전체 감산) ────────────────
         TraitApplier.ApplyToGeneralStat(
@@ -136,8 +133,7 @@ public static class HeroStatPipeline
         if (abilityDb != null && held != null)
             AbilityApplier.ApplyGeneralOnly(stat, held, abilityDb);
 
-        if (relicDb != null && relicInv != null)
-            RelicApplier.ApplyGeneralOnly(stat, job, relicInv, relicDb);
+        RelicTreeApplier.ApplyGeneralOnly(stat, job);
 
         // ── 8. 표시 전용 예상치 ──────────────────────────────
         //  전투에서는 스탯이 아니라 트리거·시스템이 직접 거는 것들이다.

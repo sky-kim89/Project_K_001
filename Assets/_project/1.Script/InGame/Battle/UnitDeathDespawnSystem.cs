@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
@@ -55,7 +55,7 @@ namespace BattleGame.Units
 
         // 이번 프레임에 쓰러진 적 — 순회가 끝난 뒤 처치자를 되짚는다
         //  ⚠ ForEach 람다 안에서 시스템 메서드를 부르지 않는다 (this 캡처 제약)
-        readonly System.Collections.Generic.List<Entity> _deadEnemies = new();
+        readonly System.Collections.Generic.List<(Entity Victim, float3 Position)> _deadEnemies = new();
 
         protected override void OnUpdate()
         {
@@ -89,7 +89,7 @@ namespace BattleGame.Units
                     ecb.RemoveComponent<UnitPoolLinkComponent>(entity);
 
                     if (identity.Team == TeamType.Enemy)
-                        _deadEnemies.Add(entity);
+                        _deadEnemies.Add((entity, xform.Position));
                 })
                 .Run();
 
@@ -104,7 +104,7 @@ namespace BattleGame.Units
             //    처치 스택 패시브도 자기 부대가 한 일이 아닌 것까지 셌다.
             //    지금은 마지막 일격을 넣은 유닛의 주인 부대에만 들어간다
             //    (장군 본인이 벴든, 그 장군의 병사·소환수가 벴든 그 부대의 전과다).
-            foreach (Entity victim in _deadEnemies)
+            foreach (var (victim, victimPos) in _deadEnemies)
             {
                 Entity general = ResolveKillCredit(victim);
                 if (general == Entity.Null) continue;
@@ -112,7 +112,10 @@ namespace BattleGame.Units
                 if (!EntityManager.HasBuffer<EnemyKillEvent>(general)) continue;
                 if (EntityManager.HasComponent<DeadTag>(general)) continue;
 
-                EntityManager.GetBuffer<EnemyKillEvent>(general).Add(default);
+                // 쓰러진 자리를 같이 넘긴다 — '처형자의 낙인' 같은 처치 소환이
+                // 장군 발밑이 아니라 시체 위에서 일어나야 무엇이 일어났는지 보인다.
+                EntityManager.GetBuffer<EnemyKillEvent>(general)
+                    .Add(new EnemyKillEvent { Position = victimPos });
             }
 
             // ── ③ 병사 사망 이벤트 → 소속 장군에게 알림 ─────────
@@ -131,9 +134,10 @@ namespace BattleGame.Units
             // ── ④ ForEach 완료 후 GO 반납 (이 시점은 Entity 순회 밖이므로 안전) ──
             foreach (var (obj, team, generalEntity, _) in _pending)
             {
-                // 아군 병사 사망 시 런 내 누적 카운터 갱신 (혼령 집결 어빌리티 참조)
-                if (generalEntity != Entity.Null && team == TeamType.Ally)
-                    UserDataManager.Instance?.Get<RunAbilityData>()?.IncrementSoldierDeaths();
+                // ⚠ 예전엔 여기서 런 누적 사망자 수를 셌다 (혼령 집결이 읽던 값)
+                //   혼령 집결이 '전투 내 누적' 으로 바뀌면서 읽는 곳이 없어졌다.
+                //   병사 사망은 바로 아래 SoldierDeathEvent 로 이미 알려지고 있으니
+                //   (OnSoldierDeath 트리거) 세이브에 카운터를 따로 둘 이유가 없다.
 
                 // 생존 카운트 즉시 갱신 (승패 판정은 연출과 무관하게 바로 처리)
                 BattleManager.Instance?.OnUnitDead(team);

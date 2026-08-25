@@ -39,8 +39,16 @@ public class RunEventBonusData : ISaveSection
     public void AddSoldiers(int count)
         => _raw.ExtraSoldiers += count;
 
+    /// <summary>
+    /// 병사 감소. 누계는 음수로 내려간다.
+    ///
+    /// ⚠ 여기서 0 으로 막지 말 것
+    ///   이벤트의 "병사 -1 (영구)" 는 대가로 붙는 항목인데, 0 에서 잘라 버리면
+    ///   보너스를 받은 적 없는 플레이어에게는 아무 일도 일어나지 않아 공짜가 된다.
+    ///   실제 병사 수 하한은 스폰 시점이 잡는다 (GeneralSkillSystem: max(0, SoldierCount)).
+    /// </summary>
     public void RemoveSoldiers(int count)
-        => _raw.ExtraSoldiers = Mathf.Max(0, _raw.ExtraSoldiers - count);
+        => _raw.ExtraSoldiers -= Mathf.Max(0, count);
 
     // ── 스탯 보너스 ───────────────────────────────────────────
 

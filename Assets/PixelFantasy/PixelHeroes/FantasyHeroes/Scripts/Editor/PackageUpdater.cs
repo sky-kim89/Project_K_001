@@ -10,8 +10,8 @@ namespace Assets.PixelFantasy.PixelHeroes.FantasyHeroes.Scripts.Editor
     [InitializeOnLoad]
     internal static class PackageUpdater
     {
-        private const string PackageId = "250116";
-        private const string CurrentVersion = "3.9";
+        private const string PackageId = "271664";
+        private const string CurrentVersion = "4.0";
 
         private static readonly string PrefsKeyTime = $"PackageUpdater.Time.{PackageId}";
         private static readonly string PrefsKeySkip = $"PackageUpdater.Skip.{PackageId}";

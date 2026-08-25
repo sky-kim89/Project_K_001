@@ -23,6 +23,9 @@ public class BattleResultTutorial : TutorialScenario
 {
     public override TutorialId Id => TutorialId.BattleResult;
 
+    // 이 시나리오만은 팝업 위가 무대다 — 결과 팝업이 떠 있어도 시작한다.
+    public override PopupType StagePopup => PopupType.BattleResult;
+
     protected override void Build(List<Func<IEnumerator>> steps)
     {
         steps.Add(WaitForPopupOpen);

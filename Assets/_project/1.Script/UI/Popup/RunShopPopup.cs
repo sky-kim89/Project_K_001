@@ -65,6 +65,10 @@ public class RunShopPopup : PopupBase
     /// <summary>상점 장비 등급 하한 — 일반·고급은 전투 보상으로만 나온다.</summary>
     const UnitGrade MinEquipGrade = UnitGrade.Rare;
 
+    // 이번 상점이 뽑아 둔 용병 매물. 배치 슬롯이 늘어나면 이 목록을 그대로
+    // 다시 그린다 — 다시 뽑으면 공짜 새로고침이 된다 (SetupGeneralSlots 주석 참고).
+    UnitEntry[] _generalPicks;
+
     // ── 생명주기 ──────────────────────────────────────────────
 
     protected override void Awake()
@@ -170,39 +174,67 @@ public class RunShopPopup : PopupBase
         }
     }
 
+    /// <summary>
+    /// 용병 매물을 뽑아 두고 화면에 올린다. 뽑기는 팝업을 열 때(+새로고침) 한 번뿐이다.
+    ///
+    /// ⚠ 배치 슬롯이 꽉 찼어도 뽑기는 그대로 한다
+    ///   예전엔 꽉 차 있으면 아예 안 뽑았다. 그러면 장수 슬롯이 늘어난 순간
+    ///   (특성 구매) 보여 줄 매물이 없어서 다시 뽑아야 하고, 그 재추첨은
+    ///   rng 를 소모한 뒤라 처음과 다른 얼굴이 나온다 — 사실상 공짜 새로고침이다.
+    ///   뽑아만 두고 '보여 줄지' 는 RenderGeneralSlots 가 정한다.
+    /// </summary>
     void SetupGeneralSlots(System.Random rng, RunShopData shopData)
     {
-        int activeSlots = RelicApplier.GetTotalActiveGeneralSlots();
-        int deployed    = UserDataManager.Instance.Get<DeploymentData>().GetDeployedUnits().Count;
-        bool slotsFull  = deployed >= activeSlots;
-
         var allNames = UserDataManager.Instance.Get<UnitData>().GetAvailableNames();
         var used     = new HashSet<string>();
 
+        _generalPicks = new UnitEntry[_generalSlots.Length];
+
         for (int i = 0; i < _generalSlots.Length; i++)
         {
-            UnitEntry entry = null;
-            if (!slotsFull && allNames.Count > 0)
-            {
-                string chosen = null;
-                for (int retry = 0; retry < 20; retry++)
-                {
-                    string nm = allNames[rng.Next(allNames.Count)];
-                    if (used.Add(nm)) { chosen = nm; break; }
-                }
-                chosen ??= allNames[i % allNames.Count];
+            if (allNames.Count == 0) continue;
 
-                // 등급은 이름 시드가 정한 태생 등급 그대로 — 즉 매물마다 랜덤이다.
-                // ⚠ 예전엔 GradeUpCount 로 Epic 까지 끌어올려 전 매물이 에픽이었다.
-                //   그러면 등급업(HeroDetailPopup)이 항상 MAX 라 존재 의미가 없어진다.
-                entry = new UnitEntry
-                {
-                    UnitName     = chosen,
-                    Level        = 1,
-                    Exp          = 0,
-                    GradeUpCount = 0,
-                };
+            string chosen = null;
+            for (int retry = 0; retry < 20; retry++)
+            {
+                string nm = allNames[rng.Next(allNames.Count)];
+                if (used.Add(nm)) { chosen = nm; break; }
             }
+            chosen ??= allNames[i % allNames.Count];
+
+            // 등급은 이름 시드가 정한 태생 등급 그대로 — 즉 매물마다 랜덤이다.
+            // ⚠ 예전엔 GradeUpCount 로 Epic 까지 끌어올려 전 매물이 에픽이었다.
+            //   그러면 등급업(HeroDetailPopup)이 항상 MAX 라 존재 의미가 없어진다.
+            _generalPicks[i] = new UnitEntry
+            {
+                UnitName     = chosen,
+                Level        = 1,
+                Exp          = 0,
+                GradeUpCount = 0,
+            };
+        }
+
+        RenderGeneralSlots(shopData);
+    }
+
+    /// <summary>
+    /// 뽑아 둔 매물을 현재 배치 상황에 맞춰 다시 그린다. <b>추첨은 하지 않는다.</b>
+    ///
+    /// 장수 배치 슬롯이 늘어나는 특성을 사면 그 자리에서 고용이 열려야 한다.
+    /// 이때 GenerateShop() 을 다시 부르면 상품 6칸까지 새 시드로 갈려 버린다 —
+    /// 여기서는 하단 용병 줄만 손댄다.
+    /// </summary>
+    void RenderGeneralSlots(RunShopData shopData)
+    {
+        if (_generalPicks == null) return;
+
+        int  activeSlots = RelicTreeApplier.GetTotalActiveGeneralSlots();
+        int  deployed    = UserDataManager.Instance.Get<DeploymentData>().GetDeployedUnits().Count;
+        bool slotsFull   = deployed >= activeSlots;
+
+        for (int i = 0; i < _generalSlots.Length; i++)
+        {
+            UnitEntry entry = slotsFull ? null : _generalPicks[i];
 
             // 고용가는 매물 등급에 따라 다르다 (빈 슬롯이면 표시용 기본값)
             int idx  = i;
@@ -262,9 +294,21 @@ public class RunShopPopup : PopupBase
         var items = UserDataManager.Instance.Get<ItemData>();
         if (!items.Spend(eItem.Gold, cost)) return false;
 
+        var shopData = UserDataManager.Instance.Get<RunShopData>();
+
         UserDataManager.Instance.Get<RunTraitData>().AddTrait(data.TraitType);
-        UserDataManager.Instance.Get<RunShopData>().SetPurchasedTrait(slotIdx, data.TraitType);
+        shopData.SetPurchasedTrait(slotIdx, data.TraitType);
         UserDataManager.Instance.RequestSave();
+
+        // 장수 배치 슬롯이 늘어나는 특성(TraitEffect: GeneralSlotBonus)이면
+        // 방금 그 자리에서 고용이 열려야 한다. 하단 줄만 다시 그린다 —
+        // GenerateShop() 을 다시 부르면 상품 6칸까지 새로 갈린다.
+        //
+        // ⚠ 어떤 특성인지 따로 가려내지 않는다
+        //   RelicTreeApplier.GetTotalActiveGeneralSlots() 가 유물·특성을 합쳐 계산하므로
+        //   조건을 여기서 또 적으면 슬롯 공식이 두 벌이 된다. 슬롯 수가 그대로면
+        //   RenderGeneralSlots 는 같은 그림을 다시 그릴 뿐이라 손해가 없다.
+        RenderGeneralSlots(shopData);
 
         // ⚠ 특성 값은 보유 개수에 비례한다 — 하나 사면 옆 칸도 그만큼 올라야 한다
         //   예전엔 여기서 RefreshHeader() 만 불렀다. 가격표는 슬롯을 세울 때
@@ -283,30 +327,43 @@ public class RunShopPopup : PopupBase
             _goodsSlots[EquipSlots + i].SetCost(cost);
     }
 
+    /// <summary>
+    /// 상점의 [고용] — <b>여기서 사지 않는다.</b>
+    /// 고른 매물을 들고 용병 고용 팝업을 열 뿐이고, 구매·배치·차감은 전부 거기서 한다.
+    ///
+    /// ■ 왜 한 단계를 더 두나
+    ///   예전엔 이 자리에서 바로 고용했다. 그런데 배치 슬롯이 꽉 차 있으면
+    ///   빈 칸을 못 찾고 `return false` — 눌러도 아무 일이 안 일어났다.
+    ///   좋은 매물이 떴는데 플레이어가 할 수 있는 게 없었다.
+    ///   고용 팝업에는 현재 부대 5칸이 있어 누굴 내보낼지 그 자리에서 정하고
+    ///   (칸 클릭 → HeroDetailPopup 해고) 곧바로 구매까지 이어갈 수 있다.
+    ///
+    /// ■ 구매 로직을 옮긴 것이지 복제한 게 아니다
+    ///   골드 차감·중복 방지·JobSynergy 재계산은 MercenaryShopPopup 이 이미
+    ///   전부 갖고 있다. 여기 남겨 두면 같은 규칙이 두 벌이 된다.
+    ///
+    /// 항상 false 를 돌려준다 — 이 시점엔 아직 아무 일도 일어나지 않았으므로
+    /// 칸을 품절로 덮으면 안 된다. 품절 처리는 OnShopGeneralHired 가 한다.
+    /// </summary>
     bool OnHireGeneral(UnitEntry entry, int cost, int slotIdx)
     {
-        var items  = UserDataManager.Instance.Get<ItemData>();
-        var deploy = UserDataManager.Instance.Get<DeploymentData>();
-        var units  = UserDataManager.Instance.Get<UnitData>();
+        PopupManager.Instance
+            .Open<MercenaryShopPopup>(PopupType.MercenaryShop)
+            .SetupFromShop(entry, () => OnShopGeneralHired(slotIdx));
+        return false;
+    }
 
-        int slot = -1;
-        for (int i = 0; i < RunShopData.GeneralSlots; i++)
-        {
-            if (string.IsNullOrEmpty(deploy.GetUnitAt(i))) { slot = i; break; }
-        }
-        if (slot < 0) return false;
-
-        // 빈 슬롯을 확인한 뒤에 차감한다 — 순서를 바꾸면 배치 실패 시 골드만 날아간다
-        if (!items.Spend(eItem.Gold, cost)) return false;
-
-        if (!units.HasUnit(entry.UnitName))
-            units.AddUnit(new UnitEntry { UnitName = entry.UnitName, Level = 1, GradeUpCount = entry.GradeUpCount });
-        deploy.Deploy(entry.UnitName, slot);
-        UserDataManager.Instance.Get<RunShopData>().SetPurchasedGeneral(slotIdx);
-        JobSynergyEvaluator.Recalculate();
+    /// <summary>고용 팝업이 구매를 확정하고 닫힌 뒤 호출된다 (골드 차감까지 끝난 시점).</summary>
+    void OnShopGeneralHired(int slotIdx)
+    {
+        var shopData = UserDataManager.Instance.Get<RunShopData>();
+        shopData.SetPurchasedGeneral(slotIdx);
         UserDataManager.Instance.RequestSave();
+
+        // 산 칸은 품절로, 나머지는 남은 배치 슬롯 기준으로 다시 그린다
+        // (방금 고용으로 슬롯이 꽉 찼으면 다른 칸은 '고용 불가' 가 된다)
+        RenderGeneralSlots(shopData);
         RefreshHeader();
-        return true;
     }
 
     void OnRefresh()

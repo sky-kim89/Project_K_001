@@ -348,10 +348,27 @@ public static class AbilityListPopupCreator
         // ── 상단 카드: 아이콘 + 이름/등급/대상 ────────────────
         // ⚠ 칸 높이는 폰트 한 줄(UIScale.Line)보다 작으면 안 된다 (UI 규칙 5)
         //   예전엔 이름 칸이 65px 인데 FontLg 한 줄이 70px 이라 통째로 잘려 안 보였다.
-        const float NameH  = 78f;                      // FontLg 한 줄(70) + 여유
-        const float SubH   = 56f;                      // 등급·대상 한 줄
-        const float IconSz = 132f;
-        const float CardH  = NameH + SubH + 44f;       // 178 + 여백
+        // ── 상세 카드 높이는 '효과' 칸에서 빌려 온 것이다 ─────
+        //
+        //  ⚠ 효과 설명이 잘려 있었다 (2026-08-21)
+        //    설명 칸(DescBg)이 204 뿐이라 "발동 조건" 한 줄을 쓰고 나면
+        //    설명에 121 — 2.3줄밖에 안 남았다. 두 줄짜리 설명이 문장 중간에서
+        //    끊겨, 화면에는 마치 효과가 아예 없는 것처럼 보였다.
+        //
+        //  ── 필요한 높이 계산 (RowMd = 53) ──
+        //    발동 조건 1줄 53 + 줄간격 6 + 설명 4줄 212 = 271
+        //    + Viewport 위아래 여백 24                   = 295
+        //
+        //  그래서 ① 카드 178 → 158 (아이콘 132 → 96)
+        //         ② 카드·구분선 사이 여백 16 → 10, 구분선·설명칸 46 → 40
+        //         ③ 하단 합산 칸 360 → 294
+        //  로 296 을 만들었다. ③ 은 스크롤 목록이라 한 행쯤 덜 보여도 되지만,
+        //  설명은 짧고 고정이라 잘리면 정보가 통째로 사라진다 — 그쪽을 살렸다.
+        const float NameH   = 74f;                      // FontLg 한 줄(70) + 여유
+        const float SubH    = 56f;                      // 등급·대상 한 줄 (RowMd 53 이상)
+        const float IconSz  = 96f;                      // UIScale.IconMd — 132 에서 줄였다
+        const float CardPad = 12f;                      // 카드 위·아래 여백
+        const float CardH   = CardPad * 2f + NameH + 4f + SubH;   // 158
 
         var card = Go("DetailCard", col);
         card.AddComponent<Image>().color = CardBg;
@@ -398,7 +415,7 @@ public static class AbilityListPopupCreator
         var nRt = nameTmp.rectTransform;
         nRt.anchorMin = new Vector2(0f, 1f); nRt.anchorMax = new Vector2(1f, 1f);
         nRt.pivot     = new Vector2(0f, 1f);
-        nRt.anchoredPosition = new Vector2(tx, -20f);
+        nRt.anchoredPosition = new Vector2(tx, -CardPad);
         nRt.sizeDelta        = new Vector2(-(tx + 24f), NameH);
         SetObj(so, "_infoNameTmp", nameTmp);
 
@@ -409,7 +426,7 @@ public static class AbilityListPopupCreator
         var grRt = gradeTmp.rectTransform;
         grRt.anchorMin = grRt.anchorMax = new Vector2(0f, 1f);
         grRt.pivot     = new Vector2(0f, 1f);
-        grRt.anchoredPosition = new Vector2(tx, -(20f + NameH + 4f));
+        grRt.anchoredPosition = new Vector2(tx, -(CardPad + NameH + 4f));
         grRt.sizeDelta        = new Vector2(160f, SubH);
         SetObj(so, "_infoGradeTmp", gradeTmp);
 
@@ -420,12 +437,13 @@ public static class AbilityListPopupCreator
         var tgRt = targetTmp.rectTransform;
         tgRt.anchorMin = tgRt.anchorMax = new Vector2(0f, 1f);
         tgRt.pivot     = new Vector2(0f, 1f);
-        tgRt.anchoredPosition = new Vector2(tx + 170f, -(20f + NameH + 4f));
+        tgRt.anchoredPosition = new Vector2(tx + 170f, -(CardPad + NameH + 4f));
         tgRt.sizeDelta        = new Vector2(340f, SubH);
         SetObj(so, "_infoTargetTmp", targetTmp);
 
         // ── 설명·효과 (스크롤) ───────────────────────────────
-        float descTop = 46f + CardH + 16f;
+        // 카드 아래 여백 16 → 10, 구분선 아래 여백 46 → 40 (카드 상수 주석의 계산 참고)
+        float descTop = 46f + CardH + 10f;
         Divider(col, "EffectDivider", descTop, "효  과");
 
         var descBg = Go("DescBg", col);
@@ -433,8 +451,11 @@ public static class AbilityListPopupCreator
         var dbRt = descBg.GetComponent<RectTransform>();
         dbRt.anchorMin = new Vector2(0f, 0f); dbRt.anchorMax = new Vector2(1f, 1f);
         dbRt.pivot     = new Vector2(0.5f, 1f);
-        dbRt.offsetMin = new Vector2(4f, 376f);           // 아래 합산 스탯 자리를 남긴다
-        dbRt.offsetMax = new Vector2(-4f, -(descTop + 46f));
+        // 866(칼럼) - 254(위) - 310(아래) = 302 → Viewport 278
+        //   발동 조건 53 + 간격 6 + 설명 4줄 212 = 271 ≤ 278 ✓ (여유 7)
+        // ⚠ 이 세 숫자를 따로 만지지 말 것 — 하나만 바꾸면 설명이 다시 잘린다
+        dbRt.offsetMin = new Vector2(4f, 310f);           // 아래 합산 스탯 자리를 남긴다
+        dbRt.offsetMax = new Vector2(-4f, -(descTop + 40f));
 
         var descScroll = MakeScroll(descBg, out var descContent);
         SetObj(so, "_infoStatContent", descContent.transform);
@@ -447,7 +468,10 @@ public static class AbilityListPopupCreator
         tbRt.anchorMin = new Vector2(0f, 0f); tbRt.anchorMax = new Vector2(1f, 0f);
         tbRt.pivot     = new Vector2(0.5f, 0f);
         tbRt.offsetMin = new Vector2(4f, 0f);
-        tbRt.offsetMax = new Vector2(-4f, 360f);
+        // 360 → 294. 설명 칸에 66 을 넘겼다 — 여기는 스크롤 목록이라 한 행쯤
+        // 덜 보여도 굴리면 되지만, 설명은 짧고 고정이라 잘리면 정보가 통째로 사라진다.
+        // (DescBg 의 아래 여백 310 과 16 만큼 벌어진다)
+        tbRt.offsetMax = new Vector2(-4f, 294f);
 
         var totalLbl = TMP(totalBg, "TotalLabel", "보유 어빌리티 합산 효과", UIScale.FontMd, FontStyles.Bold);
         totalLbl.color         = TotalLblColor;

@@ -29,6 +29,18 @@ public static class SkeletonSpawner
     /// </summary>
     public const float RiseDuration = 0.3f;
 
+    /// <summary>
+    /// 소환진 이펙트 — 스켈레톤이 나오는 자리에 항상 깔린다.
+    ///
+    /// ⚠ 소환은 이펙트가 없으면 "일어나지 않은 일" 이 된다
+    ///   장비 트리거(망자의 소환서·처형자의 낙인)로 나오는 한 기는 병사 떼 사이에
+    ///   섞여 버려서, 실제로는 소환되고 있는데도 효과가 없는 것처럼 보였다.
+    ///   스킬·비석·장비가 전부 이 함수를 지나므로 여기 한 곳에서 깐다 —
+    ///   부르는 쪽마다 따로 깔면 또 빠뜨리는 곳이 생긴다.
+    /// </summary>
+    public const string SummonEffectKey     = "FX_Summon_Circle";
+    const        float  SummonEffectDespawn = 1.0f;
+
     /// <summary>지정 위치에 스켈레톤 1기를 소환한다. 실패하면 null.</summary>
     public static GameObject Spawn(EntityManager em, string poolKey, Vector3 position,
                                    UnitStat generalStat, float statRatio,
@@ -44,6 +56,10 @@ public static class SkeletonSpawner
             Debug.LogWarning($"[SkeletonSpawner] 풀 스폰 실패: '{poolKey}'");
             return null;
         }
+
+        // 실제로 한 기가 나온 것이 확정된 뒤에 깐다 — 스폰이 실패했는데 소환진만
+        // 도는 것은 거짓말이고, 소환이 도는지 안 도는지 판단할 근거도 사라진다.
+        SkillEffectHelper.Spawn(SummonEffectKey, position, SummonEffectDespawn);
 
         BattleManager.Instance?.OnUnitSpawned(TeamType.Ally);
 

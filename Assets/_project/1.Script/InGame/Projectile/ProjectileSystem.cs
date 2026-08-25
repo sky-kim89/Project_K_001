@@ -314,6 +314,7 @@ namespace BattleGame.Projectiles
                     Damage         = proj.Damage,
                     HitDirection   = hitDir,
                     AttackerEntity = proj.AttackerEntity,
+                    DefensePierce  = proj.DefensePierce,
                 });
             }
 
@@ -425,6 +426,7 @@ namespace BattleGame.Projectiles
             health.IncomingDamage += DamageMath.AfterDefense(
                 proj.Damage,
                 StatLookup[target].Final[StatType.Defense],
+                proj.DefensePierce,
                 DefenseSoftCap, DefenseOverflowRate, DefenseEffectiveCap);
 
             HealthLookup[target] = health;

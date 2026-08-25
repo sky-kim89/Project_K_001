@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Transforms;
 using Unity.Mathematics;
 using Unity.Collections;
@@ -52,6 +52,7 @@ namespace BattleGame.Units
             public float    KnockbackForce;
             public float    KnockbackDuration;
             public TeamType AttackerTeam;
+            public float    DefensePierce;        // 광폭화 스택으로 오른다
         }
 
         // AoE 대상 후보 (ForEach 밖에서 미리 수집)
@@ -116,6 +117,16 @@ namespace BattleGame.Units
                     //   보스가 영영 따라붙지 못하는 그 증상이다.
                     if (!attack.HasTarget) return;
                     if (!EntityManager.Exists(attack.TargetEntity)) { attack.HasTarget = false; return; }
+
+                    // ⚠ 풀에 반납된 유닛은 '존재' 하지만 화면에 없다
+                    //   EntityLink.OnDisable 은 엔티티를 파괴하지 않고 Disabled 만 붙인다
+                    //   (재사용을 위해). Exists / HasComponent / GetComponentData 는
+                    //   Disabled 엔티티에도 그대로 성립하므로 여기서 직접 걸러야 한다.
+                    //   안 그러면 보이지 않는 유닛의 굳은 좌표로 걸어가 **허공을 때린다.**
+                    //   (병사 희생·자폭 병사처럼 죽지 않고 사라지는 경로가 이 유령을 만든다)
+                    if (EntityManager.HasComponent<Disabled>(attack.TargetEntity))
+                    { attack.HasTarget = false; return; }
+
                     if (!EntityManager.HasComponent<HealthComponent>(attack.TargetEntity)) return;
                     if (EntityManager.GetComponentData<HealthComponent>(attack.TargetEntity).CurrentHp <= 0f)
                     { attack.HasTarget = false; return; }
@@ -172,6 +183,7 @@ namespace BattleGame.Units
                         KnockbackForce      = boss.AttackKnockbackForce,
                         KnockbackDuration   = boss.AttackKnockbackDuration,
                         AttackerTeam        = identity.Team,
+                        DefensePierce       = stat.Final[StatType.DefensePenetration],
                     });
                 })
                 .Run();
@@ -183,7 +195,7 @@ namespace BattleGame.Units
 
                 // 타겟 직접 피해
                 ApplyHit(info.TargetEntity, info.Damage, info.BossPosition, info.TargetPosition,
-                         info.KnockbackForce, info.KnockbackDuration);
+                         info.KnockbackForce, info.KnockbackDuration, info.DefensePierce);
 
                 // AoE 부채꼴 — 보스 기준 반경 + 전방 120° 이내 적 타격
                 if (info.EffectiveAoeRadius > 0f)
@@ -205,7 +217,8 @@ namespace BattleGame.Units
                         if (math.dot(toC, info.FacingDir) < ConeCosHalfAngle) continue;
 
                         ApplyHit(c.Entity, aoeDamage, info.BossPosition, c.Position,
-                                 info.KnockbackForce * 0.7f, info.KnockbackDuration * 0.7f);
+                                 info.KnockbackForce * 0.7f, info.KnockbackDuration * 0.7f,
+                                 info.DefensePierce);
                     }
                 }
             }
@@ -217,7 +230,7 @@ namespace BattleGame.Units
         // ── 내부 헬퍼 ─────────────────────────────────────────
 
         void ApplyHit(Entity target, float damage, float3 attackerPos, float3 targetPos,
-                      float knockbackForce, float knockbackDuration)
+                      float knockbackForce, float knockbackDuration, float defensePierce)
         {
             if (!EntityManager.Exists(target)) return;
             if (!EntityManager.HasComponent<HitEventBufferElement>(target)) return;
@@ -229,6 +242,7 @@ namespace BattleGame.Units
                 Damage         = damage,
                 HitDirection   = dir,
                 AttackerEntity = Entity.Null,
+                DefensePierce  = defensePierce,
             });
 
             if (knockbackForce <= 0f) return;

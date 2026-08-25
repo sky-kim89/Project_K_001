@@ -163,13 +163,11 @@ public class InGameManager : MonoBehaviour
     {
         var db                = AbilityDatabase.Current;
         var runAbility        = UserDataManager.Instance?.Get<RunAbilityData>();
-        var relicInventory    = UserDataManager.Instance?.Get<RelicInventoryData>();
-        var relicDb           = RelicDatabase.Current;
         var reincarnationData = UserDataManager.Instance?.Get<ReincarnationData>();
 
         if (db != null && runAbility != null && PopupManager.Instance != null)
         {
-            var choices = AbilityPicker.Pick(db, runAbility, relicInventory, relicDb);
+            var choices = AbilityPicker.Pick(db, runAbility);
             if (choices.Length > 0)
             {
                 var abilityPopup = PopupManager.Instance.Open<AbilitySelectPopup>(PopupType.AbilitySelect);
@@ -177,7 +175,7 @@ public class InGameManager : MonoBehaviour
                 {
                     runAbility.AddAbility(chosen.Id);
                     FinishStageClear();
-                }, db, runAbility, relicInventory, relicDb, reincarnationData);
+                }, db, runAbility, reincarnationData);
                 return;
             }
         }

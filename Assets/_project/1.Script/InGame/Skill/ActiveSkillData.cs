@@ -227,6 +227,7 @@ public enum ActiveSkillId : int
     //  ⚠ 아군 스킬 추첨 풀에 절대 넣지 말 것 — ActiveSkillRoller 가 걸러야 한다.
     BossCharge       = 31,  // 돌진          — 적을 관통하며 몸통박치기      (보스/엘리트)
     BossSlam         = 32,  // 분쇄 강타      — 예고 후 제자리 대반경 강타     (보스)
+    BossEnrage       = 33,  // 광폭화         — 1분마다 공격력·방어관통·몸집 영구 중첩 (보스)
 }
 
 public static class ActiveSkillIdExtensions
@@ -265,6 +266,9 @@ public static class ActiveSkillIdExtensions
         ActiveSkillId.Gravestone       => "skill_gravestone",
         ActiveSkillId.BossCharge       => "skill_boss_charge",
         ActiveSkillId.BossSlam         => "skill_boss_slam",
+        // 광폭화는 전용 아이콘을 따로 그리지 않고 광전사 아이콘을 빌린다 —
+        // 같은 뜻의 기호가 이미 있는데 하나 더 만들 이유가 없다.
+        ActiveSkillId.BossEnrage       => "skill_berserker",
         _                              => null,
     };
 
@@ -273,7 +277,9 @@ public static class ActiveSkillIdExtensions
     /// 아군 스킬 추첨·상점·도감에서 제외하는 기준이다.
     /// </summary>
     public static bool IsBossPattern(this ActiveSkillId id)
-        => id == ActiveSkillId.BossCharge || id == ActiveSkillId.BossSlam;
+        => id == ActiveSkillId.BossCharge
+        || id == ActiveSkillId.BossSlam
+        || id == ActiveSkillId.BossEnrage;
 
     /// <summary>
     /// 버프·치유·소환 계열인가.
@@ -303,6 +309,9 @@ public static class ActiveSkillIdExtensions
         ActiveSkillId.SummonElite      => true,   // 소환
         ActiveSkillId.Bulwark          => true,   // 보호막 + 치유
         ActiveSkillId.WarBanner        => true,   // 버프
+        // 광폭화는 자기 강화다. 적이 사거리 안에 있는지 따지면 안 된다 —
+        // 아군이 도망치거나 원거리로만 때리는 동안 60초 쿨이 통째로 날아간다.
+        ActiveSkillId.BossEnrage       => true,   // 버프 (자기 강화)
         _                              => false,
     };
 

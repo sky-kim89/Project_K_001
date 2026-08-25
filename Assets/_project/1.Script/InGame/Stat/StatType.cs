@@ -20,12 +20,28 @@ public enum StatType
     SoldierCount         = 8,   // 장군이 지휘하는 병사 수
     CommandPower         = 9,   // 병사 지휘력 — 1포인트당 병사 스텟 1% 증가
     SkillCooldownReduce  = 10,  // 스킬 쿨다운 감소율 (0~1, 예: 0.1 = 10% 감소)
+    // 전투 스텟이지만 번호는 15 — 아래 '시스템 전용' 뒤에 있다. DefensePenetration 참고.
 
     // ── 시스템 전용 스탯 (TraitData.Effects 에서만 사용) ──────
     GeneralSlotBonus     = 11,  // 장수 배치 슬롯 추가 수 (NormalMode 에서 집계)
     AllStatPenalty       = 12,  // 전체 능력치 패널티 비율 (TraitApplier 에서 집계 후 적용)
     EquipSlotBonus       = 13,  // 장비 슬롯 추가 수 (TraitApplier 에서 집계)
     ExpGainBonus         = 14,  // 경험치 획득 비율 가산 (InGameManager 전투 보상에서 집계)
+
+    /// <summary>
+    /// 방어율 관통 (0~1). 공격자가 가진 값만큼 <b>대상의 최종 방어율에서 그대로 뺀다.</b>
+    ///   대상 방어율 0.70, 관통 0.10 → 실효 방어율 0.60 (피해 0.30 → 0.40)
+    ///
+    /// ⚠ 곱연산(방어율 × (1-관통))이 아니다
+    ///   Defense 는 이 게임에서 "깎이는 비율" 자체다. 곱연산으로 하면 방어율이
+    ///   높을수록 관통 1%p 의 값어치가 폭증해(0.9 → 0.81 은 피해 90% 증가) 후반
+    ///   보스가 한 스택만 쌓여도 아군이 즉사한다. 뺄셈은 스택 수에 비례해
+    ///   선형으로 오르므로 광폭화 스택 설계와 맞는다.
+    ///
+    /// 실제 적용은 DamageMath.AfterDefense 한 곳뿐이다. 공격자 → HitEvent(발사체면
+    /// ProjectileComponent) → 피격 계산 순서로 값이 실려 간다.
+    /// </summary>
+    DefensePenetration   = 15,
 
     // 새 스텟은 여기에 순서대로 추가 — 다른 코드 수정 불필요 (최대 127개)
 }

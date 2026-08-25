@@ -110,7 +110,11 @@ namespace BattleGame.Units
     /// PassiveSkillRuntimeSystem 이 처리 후 Clear.
     /// </summary>
     [InternalBufferCapacity(4)]
-    public struct EnemyKillEvent : IBufferElementData { }
+    public struct EnemyKillEvent : IBufferElementData
+    {
+        /// <summary>쓰러진 적의 자리 — 처치 시 소환이 그 자리에서 일어나도록.</summary>
+        public float3 Position;
+    }
 
     // ── 스택형 패시브 공용 버퍼 ───────────────────────────────
 

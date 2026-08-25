@@ -48,7 +48,11 @@ public static class ReincarnationPopupCreator
         // 우측 고정 영역 — 위 총량 / 아래 DPS 가 세로로 쌓인다.
         // ⚠ 110 으로는 "DPS 4,154" 가 안 들어가 막대 위로 삐져나왔다.
         //   가장 긴 문자열을 기준으로 잡는다.
-        const float rightSize = 186f;
+        // ⚠ 186 도 모자랐다 — "DPS 4,154" 가 FontSm 에서 167px 이라
+        //   여백(24)을 빼면 162px 뿐이라 **두 줄로 접혔다**. 폭을 늘리고
+        //   아래에서 줄바꿈 자체를 끈다(둘 다 해야 한다 — 폭만 늘리면
+        //   자릿수가 하나 더 늘었을 때 같은 일이 다시 난다).
+        const float rightSize = 214f;
         float stretchX = (leftEnd - rightSize) / 2f;
 
         var root    = new GameObject("GeneralStatRow", typeof(RectTransform));
@@ -139,8 +143,10 @@ public static class ReincarnationPopupCreator
 
         // ── TotalText (우측 고정) ───────────────────────────────
         var totalText = AddTMP(root, "TotalText", "", UIScale.FontSm, FontStyles.Normal);
-        totalText.alignment = TextAlignmentOptions.MidlineRight;
-        totalText.color     = new Color(0.75f, 0.80f, 1.00f, 1f);
+        totalText.alignment        = TextAlignmentOptions.MidlineRight;
+        totalText.color            = new Color(0.75f, 0.80f, 1.00f, 1f);
+        totalText.textWrappingMode = TextWrappingModes.NoWrap;
+        totalText.overflowMode     = TextOverflowModes.Overflow;
         var totalRt = totalText.rectTransform;
         totalRt.anchorMin = new Vector2(1f, 0.5f); totalRt.anchorMax = new Vector2(1f, 0.5f);
         totalRt.pivot = new Vector2(1f, 0.5f);
@@ -151,6 +157,9 @@ public static class ReincarnationPopupCreator
         var dpsText = AddTMP(root, "DPSText", "", UIScale.FontSm, FontStyles.Normal);
         dpsText.alignment = TextAlignmentOptions.MidlineRight;
         dpsText.color     = new Color(0.55f, 0.65f, 0.85f);
+        // ⚠ "DPS 4,154" 는 한 덩어리다 — 접히면 "DPS" 와 숫자가 위아래로 갈린다
+        dpsText.textWrappingMode = TextWrappingModes.NoWrap;
+        dpsText.overflowMode     = TextOverflowModes.Overflow;
         var dpsRt = dpsText.rectTransform;
         dpsRt.anchorMin = new Vector2(1f, 0.5f); dpsRt.anchorMax = new Vector2(1f, 0.5f);
         dpsRt.pivot = new Vector2(1f, 0.5f);
@@ -246,16 +255,22 @@ public static class ReincarnationPopupCreator
         SetRect(titleText.rectTransform, new Vector2(0f, 7.5f), new Vector2(ContentW, 95f));
 
         // 웨이브·처치(좌) / 총 피해·DPS(우) — 같은 줄 양끝. 줄 148~191 → 중심 169.5
-        var subText = AddTMP(header, "SubText", "웨이브 0 / 0  ·  처치 0명", UIScale.FontSm, FontStyles.Normal);
+        var subText = AddTMP(header, "SubText", "도달 스테이지 0  ·  웨이브 0 / 0  ·  처치 0명",
+                             UIScale.FontSm, FontStyles.Normal);
         subText.alignment     = TextAlignmentOptions.MidlineLeft;
         subText.color         = EditorUIBuilder.Pop.SubText;
         subText.raycastTarget = false;
+        // 우측 StatsText 와 같은 줄을 나눠 쓴다 — 접히면 아래로 흘러 겹친다
+        subText.textWrappingMode = TextWrappingModes.NoWrap;
+        subText.overflowMode     = TextOverflowModes.Overflow;
         SetRect(subText.rectTransform, new Vector2(0f, -69.5f), new Vector2(ContentW, UIScale.RowSm));
 
         var statsText = AddTMP(header, "StatsText", "총 피해  0  |  DPS  0", UIScale.FontSm, FontStyles.Bold);
-        statsText.alignment     = TextAlignmentOptions.MidlineRight;
-        statsText.color         = new Color(0.85f, 0.88f, 1f);
-        statsText.raycastTarget = false;
+        statsText.alignment        = TextAlignmentOptions.MidlineRight;
+        statsText.color            = new Color(0.85f, 0.88f, 1f);
+        statsText.raycastTarget    = false;
+        statsText.textWrappingMode = TextWrappingModes.NoWrap;
+        statsText.overflowMode     = TextOverflowModes.Overflow;
         SetRect(statsText.rectTransform, new Vector2(0f, -69.5f), new Vector2(ContentW, UIScale.RowSm));
 
         // 헤더 아래 강조선

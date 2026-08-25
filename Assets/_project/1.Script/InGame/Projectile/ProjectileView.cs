@@ -94,6 +94,7 @@ public class ProjectileView : MonoBehaviour
             Speed          = req.Speed,
             Lifetime       = Lifetime,
             Team           = req.Team,
+            DefensePierce  = req.DefensePierce,
             StartPos       = req.AttackerPos,
             ArcHeight      = arcHeight,
             TotalTime      = totalTime,

@@ -621,6 +621,27 @@ public static class ActiveSkillCreator
         bossSlam.KnockbackMult    = 9f;
         EditorUtility.SetDirty(bossSlam);
 
+        // ── ㉝ 광폭화 (보스 전용 패턴) ───────────────────────
+        //  피해가 0 인 유일한 보스 패턴이다. 때리는 게 아니라 '시계' 다 —
+        //  1분마다 한 겹씩, 교착을 끝내는 쪽으로 저울을 기울인다.
+        var bossEnrage = Make<ActiveBossEnrage>(db,
+            id          : ActiveSkillId.BossEnrage,
+            fileName    : "Active_BossEnrage",
+            skillName   : "광폭화",
+            description : "1분마다 광폭화가 한 겹씩 영구히 쌓인다. 겹당 공격력 +50%, " +
+                          "방어율 관통 +10%, 몸집 +10%. 오래 끌수록 손쓸 수 없어진다.",
+            cooldown    : 60f,
+            effectValue : 1f,
+            radius      : 0f,
+            duration    : 0f,
+            jobs        : new UnitJob[0]);
+        bossEnrage.AttackPerStack   = 0.5f;
+        bossEnrage.PiercePerStack   = 0.1f;
+        bossEnrage.SizePerStack     = 0.1f;
+        bossEnrage.MaxSizeStacks    = 10;    // 몸집만 2배에서 멈춘다 (공격력·관통은 계속)
+        bossEnrage.CasterEffectKey  = "FX_Berserk";
+        EditorUtility.SetDirty(bossEnrage);
+
         // ── 저장 ─────────────────────────────────────────────
         EditorUtility.SetDirty(db);
         AssetDatabase.SaveAssets();

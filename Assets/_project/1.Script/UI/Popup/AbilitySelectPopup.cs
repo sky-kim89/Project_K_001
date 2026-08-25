@@ -9,14 +9,14 @@ using UnityEngine.UI;
 //  스테이지 클리어 후 어빌리티 3택 선택 팝업.
 //
 //  새로고침 기능:
-//    - 가용 횟수 = RelicApplier.GetSystemInt(AbilityRefreshCount, ...)
+//    - 가용 횟수 = RelicTreeApplier.GetSystemInt(AbilityRefreshCount)
 //    - 누적 사용 = ReincarnationData.UsedRefreshCount (환생 전까지 초기화 안 됨)
 //    - 남은 횟수 = 가용 - 누적
 //
 //  사용법:
 //    var popup = PopupManager.Instance.Open<AbilitySelectPopup>(PopupType.AbilitySelect);
 //    popup.Setup(choices, chosen => { runData.AddAbility(chosen.Id); },
-//                db, runData, relicInventory, relicDb, reincarnationData);
+//                db, runData, reincarnationData);
 // ============================================================
 
 public class AbilitySelectPopup : PopupBase
@@ -39,8 +39,6 @@ public class AbilitySelectPopup : PopupBase
 
     AbilityDatabase    _abilityDb;
     RunAbilityData     _runData;
-    RelicInventoryData _relicInventory;
-    RelicDatabase      _relicDb;
     ReincarnationData  _reincarnationData;
 
     // ── 공개 API ─────────────────────────────────────────────
@@ -49,18 +47,14 @@ public class AbilitySelectPopup : PopupBase
     public void Setup(
         AbilityData[] choices,
         Action<AbilityData> onSelected,
-        AbilityDatabase abilityDb         = null,
-        RunAbilityData runData            = null,
-        RelicInventoryData relicInventory = null,
-        RelicDatabase relicDb             = null,
+        AbilityDatabase abilityDb           = null,
+        RunAbilityData runData              = null,
         ReincarnationData reincarnationData = null)
     {
         _choices           = choices;
         _onSelected        = onSelected;
         _abilityDb         = abilityDb;
         _runData           = runData;
-        _relicInventory    = relicInventory;
-        _relicDb           = relicDb;
         _reincarnationData = reincarnationData;
     }
 
@@ -87,8 +81,6 @@ public class AbilitySelectPopup : PopupBase
         _onSelected        = null;
         _abilityDb         = null;
         _runData           = null;
-        _relicInventory    = null;
-        _relicDb           = null;
         _reincarnationData = null;
     }
 
@@ -105,9 +97,7 @@ public class AbilitySelectPopup : PopupBase
     {
         if (_refreshBtn == null) return;
 
-        int available = (_relicInventory != null && _relicDb != null)
-            ? RelicApplier.GetSystemInt(RelicSystemEffect.AbilityRefreshCount, _relicInventory, _relicDb)
-            : 0;
+        int available = RelicTreeApplier.GetSystemInt(RelicSystemEffect.AbilityRefreshCount);
         int used      = _reincarnationData?.UsedRefreshCount ?? 0;
         int remaining = Mathf.Max(0, available - used);
 
@@ -120,16 +110,14 @@ public class AbilitySelectPopup : PopupBase
     {
         if (_abilityDb == null || _runData == null) return;
 
-        int available = (_relicInventory != null && _relicDb != null)
-            ? RelicApplier.GetSystemInt(RelicSystemEffect.AbilityRefreshCount, _relicInventory, _relicDb)
-            : 0;
+        int available = RelicTreeApplier.GetSystemInt(RelicSystemEffect.AbilityRefreshCount);
         int remaining = Mathf.Max(0, available - (_reincarnationData?.UsedRefreshCount ?? 0));
         if (remaining <= 0) return;
 
         _reincarnationData?.UseRefresh();
         UserDataManager.Instance?.RequestSave();
 
-        _choices = AbilityPicker.Pick(_abilityDb, _runData, _relicInventory, _relicDb);
+        _choices = AbilityPicker.Pick(_abilityDb, _runData);
         RefreshCards();
         RefreshButton();
     }

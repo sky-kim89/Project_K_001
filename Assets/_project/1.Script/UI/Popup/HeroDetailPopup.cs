@@ -53,6 +53,13 @@ public class HeroDetailPopup : PopupBase
     [SerializeField] Image           _gradeBadge;
     [SerializeField] TextMeshProUGUI _gradeText;
 
+    [Tooltip("등급 배지를 눌렀을 때 뜨는 등급·품질 설명. 배지 아래로 펼쳐진다.")]
+    [SerializeField] Button          _gradeInfoBtn;
+    [SerializeField] InfoTooltipUI   _gradeTooltip;
+
+    [Tooltip("헤더 이름 옆 지휘력 안내. 수치는 GameplayConfig 에서 읽어 채운다.")]
+    [SerializeField] TextMeshProUGUI _commandHintText;
+
     [Header("장비 (아이콘만 — 누르면 EquipComparePopup)")]
     [SerializeField] GameObject       _equipRoot;    // 프리뷰 모드에서 통째로 숨김
     [SerializeField] HeroEquipSlotUI[] _equipSlots;  // 3칸 — 2번 칸은 특성으로 해금
@@ -156,6 +163,7 @@ public class HeroDetailPopup : PopupBase
         _soldierUpBtn.onClick.AddListener(OnSoldierUpClick);
         _gradeUpBtn.onClick.AddListener(OnGradeUpClick);
         _fireBtn.onClick.AddListener(OnFireClick);
+        _gradeInfoBtn?.onClick.AddListener(ShowGradeTooltip);
 
         _generalTabBtn.onClick.AddListener(() => SetStatTarget(soldier: false));
         _soldierTabBtn.onClick.AddListener(() => SetStatTarget(soldier: true));
@@ -198,8 +206,13 @@ public class HeroDetailPopup : PopupBase
 
         _gradeBorder.color = gc;
         _gradeBadge.color  = gc;
+        // ⚠ '?' 같은 표시를 라벨에 이어 붙이지 않는다
+        //   배지가 120×56 뿐이라 글자가 늘면 두 줄로 접히고, 등급과 품질이
+        //   아래위로 갈라져 하나의 값으로 안 읽힌다.
+        //   "누를 수 있다" 는 신호는 배지 모서리의 ⓘ 배지가 맡는다 (Creator 참고).
         _gradeText.text    = GradeStyle.GetLabelWithQuality(_entry.Grade, _entry.UnitName);
         _gradeText.color   = Color.white;
+        RefreshCommandHint();
         _nameText.text     = CodexMark.ForGeneral(_entry.UnitName);
         if (_nameShadowText != null) _nameShadowText.text = _entry.UnitName;
         _levelText.text    = $"Lv.{_entry.Level}";
@@ -225,9 +238,13 @@ public class HeroDetailPopup : PopupBase
         _activeSkillText.text     = activeData?.SkillName   ?? "-";
         _activeSkillDescText.text = activeData?.Description ?? "";
 
+        // ⚠ 그림이 없을 때 어두운 색을 칠하지 않는다 (2026-08-26)
+        //   아이콘 홈이 흰색 계열로 바뀌면서 그 색이 '어두운 사각형' 으로 또렷하게 보인다.
+        //   빈 칸은 홈만 남아야 빈 칸으로 읽힌다.
         var sp = SpriteManager.Instance?.Get(activeId.IconKey());
-        _activeSkillIcon.sprite = sp;
-        _activeSkillIcon.color  = sp != null ? Color.white : new Color(0.25f, 0.30f, 0.48f);
+        _activeSkillIcon.sprite  = sp;
+        _activeSkillIcon.color   = Color.white;
+        _activeSkillIcon.enabled = sp != null;
 
         var (s0, s1, s2)          = PassiveSkillRoller.Roll(entry.UnitName);
         int slotCount             = PassiveSkillRoller.GetActiveSlotCount(entry.Grade);
@@ -251,8 +268,9 @@ public class HeroDetailPopup : PopupBase
             if (_passiveIcons != null && i < _passiveIcons.Length && _passiveIcons[i] != null)
             {
                 var pic = pd?.Icon;
-                _passiveIcons[i].sprite = pic;
-                _passiveIcons[i].color  = pic != null ? Color.white : new Color(0.25f, 0.24f, 0.40f);
+                _passiveIcons[i].sprite  = pic;
+                _passiveIcons[i].color   = Color.white;
+                _passiveIcons[i].enabled = pic != null;   // 위 액티브와 같은 이유
             }
         }
     }
@@ -395,27 +413,69 @@ public class HeroDetailPopup : PopupBase
         UIJuice.GradeUp(_gradeUpBtn.transform as RectTransform, GradeStyle.GetLabel(_entry.Grade));
     }
 
-    /// <summary>배치 장수를 해고한다 — 마지막 1명은 해고할 수 없다(전투 불가).</summary>
-    void OnFireClick()
+    // ── 등급·품질 설명 ───────────────────────────────────────
+    //
+    //  배지에 뜨는 "영웅 5" 는 서로 다른 두 값이 붙어 있는 것이다.
+    //    영웅 : 등급 (UnitGrade) — 뽑을 때 정해지고 등급업으로 올린다
+    //    5    : 품질 (0~10)      — 이름 시드가 정한 굴림, 영영 바뀌지 않는다
+    //  둘 다 "높을수록 세다" 인데 한 칸에 붙어 있어 하나의 값처럼 읽힌다.
+
+    void ShowGradeTooltip()
     {
-        if (!CanFire()) return;
+        if (_gradeTooltip == null || _gradeInfoBtn == null) return;
 
-        var unitData   = UserDataManager.Instance.Get<UnitData>();
-        var deployData = UserDataManager.Instance.Get<DeploymentData>();
+        // ⚠ 등급 이름·색을 여기 문자열로 적지 않는다
+        //   GradeStyle 이 정본이다. 손으로 적으면 이 툴팁만 다른 이름·색을 쓰게 되고,
+        //   화면마다 같은 등급이 다른 말과 다른 색으로 불린다.
+        //   구분자 '>' 는 ASCII 라 폰트에 있다 (UI 규칙 2).
+        var sb    = new System.Text.StringBuilder();
+        var order = (UnitGrade[])System.Enum.GetValues(typeof(UnitGrade));
+        for (int i = 0; i < order.Length; i++)
+        {
+            if (i > 0) sb.Append("<color=#808080> > </color>");
 
-        deployData.Undeploy(_entry.UnitName);
-        unitData.RemoveUnit(_entry.UnitName);
-        JobSynergyEvaluator.Recalculate();
-        UserDataManager.Instance.RequestSave();
+            string hex = ColorUtility.ToHtmlStringRGB(GradeStyle.GetColor(order[i]));
+            sb.Append($"<color=#{hex}>{GradeStyle.GetLabel(order[i])}</color>");
+        }
 
-        Close();   // 해고한 장수의 상세를 계속 띄워 둘 수 없다
+        _gradeTooltip.ShowAnchored(
+            _gradeInfoBtn.transform as RectTransform,
+            "등급과 품질",
+            $"{sb}\n오른쪽으로 갈수록 기본 스탯이 높다.",
+            "옆의 숫자는 품질(1~9)이다.\n같은 등급이라도 숫자가 클수록 스탯이 높다.");
     }
 
-    /// <summary>배치된 장수가 2명 이상이어야 해고 가능.</summary>
-    static bool CanFire()
+    // ── 지휘력 안내 (헤더) ───────────────────────────────────
+
+    /// <summary>
+    /// "지휘력 +1 › 용병 스탯 +N%" (앞의 ※ 는 창을 만들 때 도형으로 그려 둔다).
+    ///
+    /// ⚠ 수치를 문자열에 박지 않는다
+    ///   환산율의 정본은 SoldierRuntimeBridge.StatRatio 이고 계수는
+    ///   GameplayConfig.SoldierRatioPerCommandPower 다. 여기에 1% 를 적어 두면
+    ///   기획이 그 값을 만지는 순간 이 문장만 거짓말이 된다.
+    /// </summary>
+    void RefreshCommandHint()
     {
-        var deployData = UserDataManager.Instance.Get<DeploymentData>();
-        return deployData.GetDeployedUnits().Count > 1;
+        if (_commandHintText == null) return;
+
+        var   cfg    = GameplayConfig.Current;
+        float perCmd = cfg != null ? cfg.SoldierRatioPerCommandPower : 0.01f;
+
+        // ⚠ 화살표(→ U+2192)를 쓰지 않는다 — 폰트에 없어서 □ 로 뜬다 (UI 규칙 2)
+        //   폰트에 있는 › (U+203A) 로 대신한다. 앞의 ※ 는 도형으로 그려 뒀다.
+        _commandHintText.text = $"지휘력 +1 › 용병 스탯 +{perCmd * 100f:0.#}%";
+    }
+
+    /// <summary>
+    /// 배치 장수를 해고한다 — 마지막 1명은 해고할 수 없다(전투 불가).
+    /// 실제 처리는 GeneralRoster 가 소유한다 (용병 고용 팝업도 같은 문을 쓴다).
+    /// </summary>
+    void OnFireClick()
+    {
+        if (!GeneralRoster.Fire(_entry.UnitName)) return;
+
+        Close();   // 해고한 장수의 상세를 계속 띄워 둘 수 없다
     }
 
     void RefreshRankRow()
@@ -432,7 +492,7 @@ public class HeroDetailPopup : PopupBase
         // MAX 면 강화석 아이콘은 의미가 없다
         _gradeUpCostIcon.gameObject.SetActive(!isMax);
 
-        _fireBtn.interactable = CanFire();
+        _fireBtn.interactable = GeneralRoster.CanFire();
     }
 
     void RefreshGrowthDisplay()

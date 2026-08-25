@@ -11,7 +11,7 @@
 - **엔진**: Unity 6 (URP 17.0.4) + **Unity ECS (Entities 1.4.5)**
 - **언어**: C# — 네임스페이스 `BattleGame.*`
 - **작업 디렉터리**: `d:\project\Project_K_001`
-- **스크립트 루트**: `Assets/_project/1.Skript/`
+- **스크립트 루트**: `Assets/_project/1.Script/`
 
 ---
 
@@ -64,33 +64,16 @@ ShieldBearer = 3  // 방어율·체력 최고
 ## 스킬 시스템
 
 ### 액티브 스킬 (ActiveSkillId)
-총 20종 — `ActiveSkillData` ScriptableObject + 각 `Active*.cs` 구현체
+**총 33종** — 1~30 일반 · 31~33 보스/엘리트 전용.
+`ActiveSkillData` SO + 각 `InGame/Skill/Actives/Active*.cs` 구현체.
 
-| ID | 이름 | 직업 |
-|----|------|------|
-| 1 | HeavyStrike 강타 | 방패·전사 |
-| 2 | VolleyFire 일제사격 | 궁수·법사 |
-| 3 | LeapStrike 도약강타 | 방패·전사 |
-| 4 | HealAura 치유오라 | 공통 |
-| 5 | TargetHeal 집중치유 | 공통 |
-| 6 | ChargeSoldier 돌격병사 | 방패 |
-| 7 | SummonSkeleton 스켈레톤소환 | 공통 |
-| 8 | PoisonZone 독성지대 | 법사·궁수 |
-| 9 | Meteor 메테오 | 법사 |
-| 10 | Blizzard 블리자드 | 법사 |
-| 11 | SacrificeSoldier 병사희생 | 공통 |
-| 12 | Bind 속박 | 공통 |
-| 13 | SuicideSoldier 자폭병사 | 법사 |
-| 14 | Berserker 광전사 | 전사 |
-| 15 | IronShield 철벽방어 | 방패 |
-| 16 | ArrowRain 화살비 | 궁수 |
-| 17 | BattleCry 전투함성 | 전사·방패 |
-| 18 | Shockwave 충격파 | 전사 |
-| 19 | SwiftStrike 신속연격 | 궁수 |
-| 20 | SummonElite 정예소환 | 법사 |
+> **⚠ enum 은 `InGame/Skill/ActiveSkillData.cs` 에 있다** (GameEnums.cs 아님).
+> 번호·이름·직업 목록은 그 enum 의 줄 주석이 정본이다 — 여기에 표로 복사해 두지 말 것.
+> (예전에 20종짜리 표가 남아 있어 실제와 13종 어긋났다)
 
 ### 패시브 스킬 (PassiveSkillType)
-18종 — `PassiveSkillData` SO + `PassiveSkillRuntimeSystem`  
+**40종** — `PassiveSkillData` SO + `PassiveSkillRuntimeSystem`.
+목록은 `InGame/Skill/PassiveSkillType.cs` 가 정본.
 등급별 슬롯: Normal/Uncommon=1, Rare/Unique=2, Epic=3
 
 ---
@@ -99,12 +82,12 @@ ShieldBearer = 3  // 방어율·체력 최고
 
 ```
 Assets/_project/
-├── 1.Skript/
+├── 1.Script/
 │   ├── GameEnums.cs                         # GameState, PopupType, PoolType 등
 │   ├── Data/
 │   │   ├── Core/  UserDataManager, SaveCoordinator, ISaveSection
 │   │   └── Sections/  UserData.cs, UnitData.cs
-│   └── InGame/
+│   ├── InGame/
 │       ├── Authoring/   *Authoring.cs + Baker (ECS 씬 설정)
 │       ├── Battle/
 │       │   ├── BattleManager.cs             # 전투 총괄
@@ -117,8 +100,8 @@ Assets/_project/
 │       │   ├── ActiveSkillExecuteSystem.cs  # Execute() 호출 (managed)
 │       │   ├── ActiveSkillAISystem.cs       # 쿨다운·AI 판단 (ECS)
 │       │   ├── ActiveSkillDatabase.cs       # SO 컬렉션
-│       │   ├── Actives/  Active*.cs (20종)
-│       │   ├── PassiveSkillType.cs          # enum 18종
+│       │   ├── Actives/  Active*.cs (스킬 구현체)
+│       │   ├── PassiveSkillType.cs          # 패시브 enum
 │       │   ├── PassiveSkillRuntimeSystem.cs # ECS 패시브 적용
 │       │   └── Editor/  EffectTextureGenerator, EffectPrefabGenerator, EffectKeyLinker
 │       ├── Unit/
@@ -132,18 +115,38 @@ Assets/_project/
 │       │   └── *RuntimeBridge.cs (General/Soldier/Enemy)
 │       ├── Projectile/  ProjectileSystem.cs, ProjectileView.cs
 │       ├── Appearance/  UnitAppearanceBridge, UnitAnimationSync
-│       ├── Stat/  StatType.cs, UnitStat.cs
+│       ├── Stat/  StatType.cs, UnitStat.cs, HeroStatPipeline.cs, CodexApplier.cs
+│       ├── Equipment/  EquipmentData/Database/Applier
+│       ├── Ability/  Ability*.cs (특수 어빌리티 구현체)
+│       ├── Trait/  특성 런타임
+│       ├── Codex/  CodexCatalog.cs
+│       ├── Event/  EventData, EventDatabase, EventRewardHandler
+│       ├── Difficulty/  DifficultyConfig.cs
+│       ├── UI/  InGameHUD, TopBarUI, GeneralPanelUI, RewardCardUI,
+│       │        BattleResultPopup, ReincarnationPopup
 │       └── GameplayConfig.cs
+│   ├── Tutorial/  TutorialManager, TutorialOverlay, Scenarios/
+│   ├── Relic/     RelicData, RelicDatabase
+│   ├── Lobby/     LobbyManager, RunStarter, SceneDirector, LobbyDemoBattle
+│   └── UI/
+│       ├── Popup/   PopupBase·PopupManager + 팝업 구현 + Editor/ 각 Creator
+│       ├── Lobby/   BattlePanel·MainPanel·TopBar UI + Editor/ 각 Creator
+│       ├── Battle/  StageNodeUI, StageProgressBarUI
+│       ├── Common/  RewardView, InfoTooltipUI, GeneralPortraitProvider
+│       └── Juice/   UIJuice, UIJuiceLayer (성장 연출)
 ├── 2.Prefabs/
-│   └── Effect/  FX_*.prefab (22개 — 이펙트 프리팹)
+│   ├── Effect/  FX_*.prefab (이펙트 프리팹)
+│   └── UI/      팝업·로비 프리팹 (Creator 산출물, 직접 편집 금지)
 ├── 3.Textures/
 │   ├── FX/     이펙트 텍스처
-│   └── Icons/  Classes/(4종), Skills/(20종) PNG 스프라이트
+│   └── Icons/  Classes·Skills·Equipments·Items·Relics·Traits·StageNodes (+ SpriteAtlas)
 ├── 4.Materials/
-│   └── FX/     MAT_FX_*.mat (15종 URP Add머티리얼)
-├── ActiveSkillDatabase.asset
-├── PassiveSkillDatabase.asset
-└── GameplayConfig.asset
+│   └── FX/     MAT_FX_*.mat (URP Add 머티리얼)
+├── 5.Audio/    SFX·BGM (키 = 파일명)
+└── Data/       Equipments/ · Relics/ · Events/ … SO 에셋
+
+Assets/Resources/   *Database.asset · GameplayConfig · StageConfig · SpriteManager
+Assets/PixelFantasy/  벤더 에셋 (외형 합성 — 우리 패치가 들어가 있다, 위 '공통' 항목 참고)
 ```
 
 ---
@@ -164,7 +167,7 @@ Tools/Project K/
 │   │                AbilityList · EquipCompare · Disassemble · HeroDetail
 │   │                RunShop · Reincarnation · Mercenary · Event · Codex · Relic
 │   ├─ 인게임/       GeneralPanel · RewardCard
-│   └─ 이펙트/       Effect 프리팹 (22종)
+│   └─ 이펙트/       Effect 프리팹 · 희귀·보스 스킬 이펙트
 ├─ 데이터 생성/      ▶ 전체 생성 · 액티브/패시브 스킬 · 특성 · 어빌리티 · 유물
 │                    장비 · 이벤트 · StageConfig · SpriteManager
 ├─ 아이콘·텍스처/    ▶ 전체 생성 · 직업·스킬/특성/어빌리티/유물/아이템/장비/
@@ -260,6 +263,20 @@ UI=0, Unit=1, Effect=2, Projectile=3
 ## 작업 유형별 관련 파일
 
 > 세션 시작 시 아래 목록만 읽으면 탐색 없이 바로 작업 가능.
+> **경로는 전부 `Assets/_project/1.Script/` 기준**이다. 여기 없는 영역을 만나면
+> 작업이 끝난 뒤 이 표에 3~4줄 추가할 것 — 다음 세션의 탐색이 그만큼 줄어든다.
+
+### 공통 — 고치기 전에 알아야 할 것
+
+- **컴파일 검증**: 유니티를 켜지 않고 확인한다.
+  `dotnet build Assembly-CSharp.csproj -v:q -nologo` (에디터 코드는 `Assembly-CSharp-Editor.csproj`).
+  출력이 기니 `| grep -E " error CS|Build succeeded"` 로 자른다.
+- **⚠ Creator 를 고쳤으면 프리팹은 따로 구워야 한다**
+  `Tools > Project K > 프리팹 생성 > …` 실행 → 팝업이면 `PopupManager > Load Popup Prefabs` 까지.
+  런타임 스크립트만 고친 경우는 필요 없다 (동작은 바뀌고 겉모습만 옛날 것이 남는다).
+- **벤더 에셋(PixelFantasy)을 업데이트한 직후**: 우리 패치 3개가 통째로 날아간다 —
+  `CharacterBuilder.cs`(외형 공유 캐시) · `TextureHelper.cs`(머지 버퍼) · `Layer.cs`(mask 해시).
+  `git diff -- Assets/PixelFantasy/**/*.cs` 로 사라진 부분을 확인해 새 코드 위에 다시 얹는다.
 
 ### 액티브 스킬 추가
 1. `GameEnums.cs` — `ActiveSkillId` enum 값 추가
@@ -274,11 +291,16 @@ UI=0, Unit=1, Effect=2, Projectile=3
 2. `InGame/Skill/PassiveSkillRuntimeSystem.cs` — 효과 로직 추가
 3. `Assets/Resources/PassiveSkillDatabase.asset` — 등록 (에디터)
 
-### 로비 UI — 영웅 패널 수정
-- **로직**: `UI/Lobby/HeroPanelUI.cs`
-- **프리팹 재생성**: `UI/Lobby/Editor/HeroPanelCreator.cs` → `Tools > Project K > 로비 UI > Create HeroPanel Prefab`
-- **카드 UI**: `UI/Lobby/HeroCardUI.cs`
-- **장비 카드**: `UI/Lobby/EquipCardUI.cs`
+### 로비 UI 수정
+> **⚠ "로비 UI" = BattlePanel 이다.** `HeroPanelUI.cs` 는 더 이상 쓰지 않는다 — 고치지 말 것.
+
+- **출전 화면(로비 본체)**: `UI/Lobby/Editor/BattlePanelCreator.cs` → `프리팹 생성 > 로비 > BattlePanel`
+  - 스테이지 진행바 노드도 여기서 만든다 (`BuildStageNodePrefab` → `UI/Battle/StageNodeUI.cs`,
+    배치·갱신은 `UI/Battle/StageProgressBarUI.cs`)
+- **장수 선택 화면**: `UI/Lobby/MainPanelUI.cs` (+ `Editor/MainPanelCreator.cs`)
+- **상단바·특성 스트립**: `UI/Lobby/Editor/TopBarCreator.cs`
+- **카드 팩토리**: `UI/Lobby/Editor/HeroPanelCreator.cs` 의 `BuildCardPrefab()`
+  — BattlePanel·Mercenary·RunShop 이 공유하므로 `public` 유지 필수
 - **텍스트 상수**: `UIConstants.cs`, `LocalizationManager.cs`
 
 ### 팝업 추가/수정
@@ -290,9 +312,53 @@ UI=0, Unit=1, Effect=2, Projectile=3
 
 ### 장비 시스템
 - **데이터**: `InGame/Equipment/EquipmentData.cs`, `InGame/Equipment/EquipmentDatabase.cs`
-- **UI**: `UI/Lobby/EquipComparePopup.cs`, `UI/Lobby/EquipCardUI.cs`
-- **영웅 슬롯 표시**: `UI/Lobby/HeroPanelUI.cs` (`RefreshEquipSlot`)
-- **세이브**: `Data/Sections/UnitData.cs` (`RunEquipSlots`, `RunEquipEnhance`)
+- **SO 생성**: `InGame/Battle/Editor/EquipmentCreator.cs` → `데이터 생성 > 장비`
+- **스탯 적용**: `InGame/Equipment/EquipmentApplier.cs`
+  — 열린 슬롯 수(`ActiveSlotCount`)의 정본. 로비 표시·전투 적용이 반드시 이 값을 쓴다
+- **UI**: `UI/Lobby/EquipComparePopup.cs`, `UI/Popup/HeroEquipSlotUI.cs`(장수 상세의 장비 칸)
+- **분해**: `UI/Popup/DisassemblePopup.cs` + `Editor/DisassemblePopupCreator.cs`
+  — 선택은 **칸 번호**로 잡는다. 같은 ID 를 여러 개 들고 있어 ID 로 잡으면 사본이 전부 선택된다
+- **세이브**: `Data/Sections/UnitData.cs` (`RunEquipSlots`, `RunEquipEnhance`),
+  보유 목록은 `Data/Sections/EquipInventoryData.cs`
+
+### 전투 트리거 (장비·어빌리티·특성 발동 효과)
+- **디스패치**: `InGame/Skill/CombatTriggerSystem.cs` — 적 처치·병사 사망·피격·스킬 사용
+- **이벤트 버퍼**: `InGame/Skill/PassiveSkillComponents.cs` (`EnemyKillEvent`·`SoldierDeathEvent` …)
+  — 버퍼를 비우는 것은 **CombatTriggerSystem 뿐**이다. 먼저 도는 시스템이 지우면 트리거가 통째로 죽는다
+- **이벤트 발행**: `InGame/Battle/UnitDeathDespawnSystem.cs` (처치 판정·사망 위치)
+- **소환 효과**: `InGame/Skill/SkeletonSpawner.cs` — 스킬·비석·장비가 공유하는 단일 진입점
+
+### 이벤트 / 보상 지급
+- **SO·DB**: `InGame/Event/EventData.cs`, `EventDatabase.cs`, `Editor/EventDatabaseCreator.cs`
+- **지급 로직**: `InGame/Event/EventRewardHandler.cs` — `EventRewardType` 별 분기가 전부 여기
+- **UI**: `UI/Popup/EventPopup.cs` (+ `Editor/EventPopupCreator.cs`)
+- **보상 표시 공용**: `UI/Common/RewardView.cs` → `InGame/UI/RewardCardUI.cs`
+- **⚠ 재화별 저장 위치를 먼저 볼 것** — 환생 포인트는 `ItemData` 가 아니라
+  `Data/Sections/ReincarnationData.cs` 가 정본이다 (`ItemData` 가 그 항목만 위임한다)
+
+### 도감 (Codex)
+- **세이브**: `Data/Sections/CodexData.cs` — 버프는 여정 시작에 고정(`LockForRun`), 환생에 해제
+- **목록 조립**: `InGame/Codex/CodexCatalog.cs` (`Build(category, onlyKeys)`)
+- **스탯 적용**: `InGame/Stat/CodexApplier.cs`
+- **UI**: `UI/Popup/CodexPopup.cs` — 평소 도감 + "이번 여정 수확" 모드 두 가지
+- **수확 표시**: `UI/Lobby/MainPanelUI.cs` 가 환생 후 한 번 열고 소비한다
+
+### 환생 / 유물
+- **포인트·공식**: `Data/Sections/ReincarnationData.cs` (획득 곡선 · 강화 비용)
+- **초기화 범위**: `Data/Core/UserDataManager.cs` 의 `Reincarnate()` — 여기 목록이 정본
+- **유물 데이터**: `Relic/RelicData.cs`, `Relic/RelicDatabase.cs`, `Data/Sections/RelicInventoryData.cs`
+- **UI**: `UI/Popup/RelicPopup.cs`, 패배 화면은 `InGame/UI/ReincarnationPopup.cs`
+
+### 튜토리얼
+- **총괄·노출 시점**: `Tutorial/TutorialManager.cs` — 트리거는 전부 여기 (각 UI 에서 부르지 않는다)
+- **시나리오**: `Tutorial/Scenarios/*.cs`, 스텝 정의는 `Tutorial/TutorialStep.cs`
+- **화면**: `Tutorial/TutorialOverlay.cs` (sortingOrder 1000)
+- **⚠ 강제 튜토리얼은 팝업 위에서 시작하지 않는다** — `TutorialScenario.StagePopup` 참고
+- **기록**: `Data/Sections/TutorialData.cs` (환생으로 초기화하지 않는다)
+
+### 성장 연출 (레벨업·강화 이펙트)
+- `UI/Juice/UIJuice.cs` (프리셋) + `UI/Juice/UIJuiceLayer.cs` (실행)
+- **⚠ 대상의 `localScale` 을 직접 만진다.** 버튼이 커져 보이면 레이아웃보다 여기를 먼저 본다
 
 ### 세이브 데이터 수정
 - **매니저**: `Data/Core/UserDataManager.cs`
@@ -307,21 +373,27 @@ UI=0, Unit=1, Effect=2, Projectile=3
 - **직업·등급 배율**: `InGame/Unit/UnitJob.cs`
 
 ### 인게임 UI 수정
-- **HUD 매니저**: `UI/InGame/InGameUIManager.cs` (또는 `InGameManager.cs`)
-- **전투 흐름**: `InGame/Battle/BattleManager.cs`
-- **상태 관리**: `InGame/Battle/InGameManager.cs`
+- **HUD**: `InGame/UI/InGameHUD.cs` — 장군 카드·초상화 (`InGameUIManager` 는 없다)
+- **상단바(배속·오토·일시정지)**: `InGame/UI/TopBarUI.cs`
+- **장군 패널**: `InGame/UI/GeneralPanelUI.cs` (버프 아이콘 스트립 포함)
+- **전투 흐름**: `InGame/Battle/BattleManager.cs` — 준비·웨이브·승패 이벤트
+- **상태 관리 / 결과 팝업 열기**: `InGame/Battle/InGameManager.cs`
+- **전장 정리**: `InGame/Battle/BattleArena.cs` — 판을 닫을 때 유닛·이펙트·발사체 회수
 
 ### 이펙트 추가
-1. `BattleGame > Generate Effect Textures` — 텍스처·머티리얼 생성
-2. `BattleGame > Generate Effect Prefabs` — 프리팹 생성
-3. `BattleGame > Link Effect Keys to Skills` — SO에 키 연결
+1. `아이콘·텍스처 > 이펙트 텍스처·머티리얼`
+2. `프리팹 생성 > 이펙트 > Effect 프리팹` (희귀·보스는 `희귀·보스 스킬 이펙트`)
+3. `도구 > 스킬 SO 에 이펙트 키 연결`
+   (구현: `InGame/Skill/Editor/EffectTextureGenerator.cs` · `EffectPrefabGenerator.cs` · `EffectKeyLinker.cs`)
 - 키 형식: `"FX_스킬이름"` (예: `FX_Meteor_Explosion`)
 - 프리팹 위치: `Assets/_project/2.Prefabs/Effect/`
+- 스폰: `SkillEffectHelper.Spawn(key, pos, despawnDelay)` — 반납은 `EffectAutoReturn` 타이머
+  (⚠ `Time.timeScale` 을 탄다. 멈춘 사이 판이 끝나면 다음 판까지 남는다)
 
 ### 싱글톤 생성
 - **MonoBehaviour 싱글톤** (씬에 배치 필요): `Singleton<T>` 상속
 - **순수 C# 싱글톤** (씬 독립, 자동 생성): `SingletonPure<T>` 상속
-- 위치: `Assets/_project/1.Skript/Singleton.cs`
+- 위치: `Assets/_project/1.Script/Singleton.cs`
 
 ---
 
@@ -341,16 +413,17 @@ UI=0, Unit=1, Effect=2, Projectile=3
 
 ---
 
-## 현재 완료된 주요 작업 (2026-04)
+## 구현된 시스템 (2026-08 기준)
 
-- [x] ECS 배틀 시스템 기본 구조 (공격·이동·타겟팅·피격)
-- [x] 액티브 스킬 20종 + 이펙트 22종 + 이펙트 파이프라인
-- [x] 패시브 스킬 18종 ECS 구현
-- [x] 발사체(Projectile) 포물선 비행 + 넉백 시스템
-- [x] 유닛 외형·애니메이션 Managed Bridge
-- [x] 직업·등급 아이콘 PNG 24장 (IconGenerator)
-- [x] 세이브 시스템 (UserDataManager + ISaveSection)
-- [x] 인게임 UI HTML 목업 (UI_Mockup.html)
+> 없는 기능을 새로 만들기 전에 여기부터 볼 것 — 대부분 이미 있다.
+
+- **전투**: ECS 공격·이동·타겟팅·피격 / 발사체 포물선 + 넉백 / 보스·엘리트 패턴
+- **스킬**: 액티브 33종 + 패시브 40종 + 이펙트 파이프라인
+- **성장**: 레벨업 · 등급업 · 용병 수 · 장비 강화/분해 · 어빌리티 · 특성 · 유물(영구)
+- **런 구조**: 스테이지 시퀀스(일반/엘리트/상점/이벤트) · 이벤트 팝업 · 런 상점 · 용병 고용
+- **메타**: 환생(포인트→유물) · 도감(수집 버프, 여정 경계에 반영) · 난이도
+- **UI**: 로비(BattlePanel/MainPanel) · 팝업 15종(전부 Creator 생성) · 인게임 HUD · 성장 연출
+- **기반**: 세이브 섹션 · 오브젝트 풀 · 사운드 · 튜토리얼 · 전투 통계 · 씬 상주 모델
 
 ---
 
@@ -360,3 +433,6 @@ UI=0, Unit=1, Effect=2, Projectile=3
 - `com.unity.vectorgraphics` 패키지 없음 — SVG 직접 임포트 불가, PNG 필요
 - 오브젝트 풀은 항상 사용 — `new` 대신 `PoolController.Get()`
 - 스킬 Execute()는 메인 스레드에서 실행됨 (Burst 불가)
+- **로비와 인게임 씬은 동시에 상주한다** — 씬을 언로드하지 않는다 (`SceneDirector`/`BattleArena` 경유)
+- 캔버스 기준: `Lobby` = 1920×1080 가로, `InGame` = 1080×1920 세로 (팝업은 세로 여유가 1080 뿐)
+- 프리팹은 전부 Creator 산출물이다 — **프리팹을 손으로 고치지 말고 Creator 를 고친 뒤 다시 굽는다**

@@ -24,13 +24,18 @@ namespace BattleGame.Units
     /// </summary>
     public static class DamageMath
     {
-        public static float AfterDefense(float rawDamage, float rawDefense,
+        /// <param name="pierce">
+        /// 공격자의 방어율 관통 (0~1). 소프트캡·상한을 모두 적용한 <b>최종</b> 방어율에서
+        /// 뺀다 — 관통이 소프트캡 공식을 거꾸로 타고 증폭되지 않게 하려는 것이다.
+        /// </param>
+        public static float AfterDefense(float rawDamage, float rawDefense, float pierce,
                                          float softCap, float overflowRate, float effectiveCap)
         {
             float eff = rawDefense <= softCap
                 ? rawDefense
                 : softCap + (rawDefense - softCap) * overflowRate;
             float defense = math.min(eff, effectiveCap);
+            defense = math.max(0f, defense - math.saturate(pierce));
             return math.max(rawDamage * (1f - defense), 1f);
         }
     }
@@ -120,6 +125,12 @@ namespace BattleGame.Units
         /// <summary>단일 타격 넉백 상한 (여러 타격 합산 상한은 MaxKnockbackMag).</summary>
         const float MaxSingleKnockback  = 6f;
 
+        /// <summary>
+        /// 경직 발생 문턱 — 한 방에 최대 체력의 이 비율 이상을 날린 타격만 경직을 만든다.
+        /// 이 아래는 <b>경직 시간을 계산조차 하지 않고 그냥 무시</b>한다.
+        /// </summary>
+        const float StunHpRatioThreshold = 0.02f;
+
         public void Execute(
             [ChunkIndexInQuery] int                    chunkIndex,
             Entity                                     entity,
@@ -159,7 +170,8 @@ namespace BattleGame.Units
                 // 방어율 적용 (공식은 DamageMath 가 소유 — 예약 피해 계산과 반드시 동일)
                 float rawDamage    = hit.Damage;
                 float actualDamage = DamageMath.AfterDefense(
-                    rawDamage, rawDef, DefenseSoftCap, DefenseOverflowRate, DefenseEffectiveCap);
+                    rawDamage, rawDef, hit.DefensePierce,
+                    DefenseSoftCap, DefenseOverflowRate, DefenseEffectiveCap);
                 float absorbed     = rawDamage - actualDamage;
                 totalDamage       += actualDamage;
 
@@ -180,7 +192,7 @@ namespace BattleGame.Units
                     }
                 }
 
-                float stunTime = CalculateStunDuration(actualDamage);
+                float stunTime = CalculateStunDuration(actualDamage, maxHp);
                 maxStun        = math.max(maxStun, stunTime);
 
                 // 거울 방어 반사 — 실제로 받은 피해(방어 적용 후) 기준으로 반사. 반사된 피해는 재반사 불가.
@@ -281,12 +293,28 @@ namespace BattleGame.Units
                 ChangeState(ref unitState, UnitState.Hit);
         }
 
-        static float CalculateStunDuration(float damage)
+        /// <summary>
+        /// 경직 시간 — 넉백과 같은 기준(최대 체력 대비 비율)으로 정하고,
+        /// <b>문턱 아래의 타격은 경직을 아예 만들지 않는다.</b>
+        ///
+        /// ⚠ 절대 피해량 기준이던 것을 비율 + 문턱으로 바꿨다
+        ///   예전 표는 "피해 20 이상이면 무조건 경직" 이었다. 스테이지가 오르면
+        ///   잡몹 평타도 수백 피해라 <b>모든 타격이 경직</b>이 됐다. 그런데 경직은
+        ///   매 프레임 max() 로 갱신되고 공격 Job 은 UnitState.Hit 이면 그냥 return 한다.
+        ///   적 대여섯이 붙으면 프레임마다 새 경직이 덮여 타이머가 0 에 닿질 못했고,
+        ///   유닛은 계속 밀리기만 하며 평생 공격을 못 했다 — 그게 '무한 넉백' 증상이다.
+        ///   넉백 상한(MaxKnockbackMag)은 한 프레임의 세기만 막을 뿐 이 누적을 못 막는다.
+        ///
+        ///   지금은 한 방에 체력을 크게 날린 타격만 경직이다. 잡몹의 잔매는 몇이 붙든
+        ///   경직도 넉백도 아니다 (넉백은 IsStunned 일 때만 적용되므로 함께 사라진다).
+        /// </summary>
+        static float CalculateStunDuration(float damage, float maxHp)
         {
-            if (damage >= 100f) return 0.6f;
-            if (damage >= 50f)  return 0.35f;
-            if (damage >= 20f)  return 0.15f;
-            return 0f;
+            float ratio = damage / maxHp;
+            if (ratio < StunHpRatioThreshold) return 0f;   // 문턱 아래 = 무시
+            if (ratio >= 0.40f) return 0.5f;
+            if (ratio >= 0.25f) return 0.35f;
+            return 0.2f;
         }
 
         static void ChangeState(ref UnitStateComponent s, UnitState next)

@@ -138,26 +138,6 @@ public class GameplayConfig : ScriptableObject
     // ⚠ 희귀도별 "첫 획득 비용" 은 삭제됐다.
     //   유물은 전부 0레벨로 존재하며 획득 단계가 없다. 비용은 강화 비용 하나뿐.
 
-    [Header("유물 비용 — 강화")]
-    [Tooltip("강화 비용 지수. 기본 2 → (현재레벨+1)^지수 pt.\n예) 지수 2: 0→1: 1pt, 1→2: 4pt, 4→5: 25pt")]
-    public float RelicLevelUpCostExponent = 2f;
-
-    // ⚠ 지수만으로는 모든 유물이 같은 가격이 된다
-    //   +5% 스탯짜리와 '장수 배치 슬롯 +1' 이 똑같이 1pt 면 강화 순서를 고민할 이유가 없다.
-    //   효과의 세기는 이미 Rarity 에 적혀 있으므로 그 값을 그대로 가격 배율로 쓴다.
-    //   같은 희귀도 안에서 더 나눠야 하면 RelicData.CostWeight 로 개별 조정한다.
-    [Tooltip("희귀도별 강화 비용 배율 — 인덱스 = RelicRarity (일반·언커먼·희귀·영웅·전설)")]
-    public float[] RelicRarityCostMultipliers = { 1.0f, 1.6f, 2.5f, 4.0f, 6.0f };
-
-    /// <summary>희귀도 비용 배율. 배열이 짧거나 값이 비었으면 1배(예전 동작)로 본다.</summary>
-    public float GetRarityCostMultiplier(RelicRarity rarity)
-    {
-        int i = (int)rarity;
-        if (RelicRarityCostMultipliers == null || i < 0 || i >= RelicRarityCostMultipliers.Length)
-            return 1f;
-        return RelicRarityCostMultipliers[i] > 0f ? RelicRarityCostMultipliers[i] : 1f;
-    }
-
     // ──────────────────────────────────────────────────────────
     // ■ 디버그
     // ──────────────────────────────────────────────────────────
@@ -208,7 +188,26 @@ public class GameplayConfig : ScriptableObject
 
     [Tooltip("스킬 쿨다운 감소율 상한 (0~1). 이 값을 초과하는 쿨감은 무시된다.")]
     [Range(0f, 1f)]
-    public float CooldownReduceMax = 0.8f;
+    public float CooldownReduceMax = DefaultCooldownReduceMax;
+
+    /// <summary>
+    /// 쿨감 상한 기본값 (0.8 → 0.9, 2026-08-26 상향).
+    ///
+    /// ⚠ 이 상수만 고치면 안 된다 — 실제로 쓰이는 값은 에셋에 구워져 있다
+    ///   `Assets/Resources/GameplayConfig.asset` 의 `CooldownReduceMax` 를 같이 바꿔야
+    ///   런타임 동작이 바뀐다. 여기 값은 에셋을 새로 만들 때만 쓰인다.
+    /// </summary>
+    public const float DefaultCooldownReduceMax = 0.9f;
+
+    /// <summary>
+    /// 지금 걸리는 쿨감 상한. **쿨감을 클램프하는 모든 곳이 이것만 쓴다.**
+    ///
+    /// ⚠ 호출부마다 `?? 0.8f` 를 적지 말 것
+    ///   예전엔 폴백 숫자가 네 곳(전투 2 · UI 표시 2)에 흩어져 있었다.
+    ///   상한을 올릴 때 한 곳이라도 빠지면 전투와 화면에 뜨는 값이 어긋난다.
+    /// </summary>
+    public static float CooldownCap =>
+        Current != null ? Current.CooldownReduceMax : DefaultCooldownReduceMax;
 
     [Tooltip("방어율 실효 최대치 (0~1). 소프트캡 공식 적용 후 이 값으로 상한 클램프.")]
     [Range(0f, 1f)]

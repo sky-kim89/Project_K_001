@@ -45,31 +45,6 @@ public static class GradeStyle
     };
 }
 
-// ── 유물 희귀도 색상 ─────────────────────────────────────────
-// RelicRarity → UnitGrade 와 동일한 색상 체계로 매핑
-public static class RelicStyle
-{
-    public static Color GetColor(RelicRarity rarity) => rarity switch
-    {
-        RelicRarity.Common    => new Color(0.55f, 0.55f, 0.55f),  // 회색
-        RelicRarity.Uncommon  => new Color(0.25f, 0.80f, 0.35f),  // 초록
-        RelicRarity.Rare      => new Color(0.20f, 0.50f, 1.00f),  // 파랑
-        RelicRarity.Epic      => new Color(0.70f, 0.30f, 1.00f),  // 보라
-        RelicRarity.Legendary => new Color(1.00f, 0.60f, 0.10f),  // 주황
-        _                     => Color.white,
-    };
-
-    public static string GetLabel(RelicRarity rarity) => rarity switch
-    {
-        RelicRarity.Common    => "일반",
-        RelicRarity.Uncommon  => "언커먼",
-        RelicRarity.Rare      => "희귀",
-        RelicRarity.Epic      => "영웅",
-        RelicRarity.Legendary => "전설",
-        _                     => rarity.ToString(),
-    };
-}
-
 public static class JobStyle
 {
     public static string GetLabel(UnitJob job)
@@ -217,7 +192,7 @@ public static class StatDisplayHelper
     //  이제 출처가 하나면 액면가가 그대로 나오므로 두 수치가 갈릴 일이 없다)
     static string FormatCDRFinal(float cdr)
     {
-        float maxCDR = GameplayConfig.Current != null ? GameplayConfig.Current.CooldownReduceMax : 0.8f;
+        float maxCDR = GameplayConfig.CooldownCap;
         if (cdr <= maxCDR + 0.001f)
             return $"{cdr * 100f:F1}%";
         return $"{maxCDR * 100f:F1}% <size=80%><color=#888888>(상한)</color></size>";
@@ -252,7 +227,7 @@ public static class StatDisplayHelper
             float sum      = baseVal + equipVal + passiveVal + abilityVal + relicVal + traitVal + codexVal;
             float combined = HeroStatResult.CombineResidual(
                 baseVal, equipVal, passiveVal, abilityVal, relicVal, traitVal, codexVal);
-            float maxCDR   = GameplayConfig.Current != null ? GameplayConfig.Current.CooldownReduceMax : 0.8f;
+            float maxCDR   = GameplayConfig.CooldownCap;
             float final    = Mathf.Min(combined, maxCDR);
 
             if (Mathf.Abs(sum - final) > 0.001f)

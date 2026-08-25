@@ -22,7 +22,7 @@ using UnityEngine.UI;
 //    전체 1840 × (캔버스높이-32), 2단
 //    Header  H=136   ◆ 분 해 | 장비 분해     [강화석 보유]        [X]
 //    Body    H=814
-//      Left  1140   등급 필터 5칸 + 장비 그리드 (8열, 스크롤)
+//      Left  1140   [등급 필터 5칸 | 일괄 분해] 한 줄 + 장비 그리드 (7열, 스크롤)
 //      Right  660   선택 장비 크게 + 스탯 + 분해 보상 + 실행 버튼
 //
 //  ⚠ 셀·템플릿의 자식 이름을 바꾸지 말 것
@@ -49,6 +49,9 @@ public static class DisassemblePopupCreator
     const float LeftW    = PW - SidePad * 2f - RightW - ColGap;   // 1080
 
     const float FilterH  =   88f;
+    const float FilterTop=   44f;   // 구분선("등  급") 아래 — 필터 5칸과 일괄 버튼이 공유하는 줄
+    const float BulkW    =  300f;   // 필터 줄 오른쪽에서 일괄 분해 버튼이 가져가는 폭
+    const float BulkGap  =   14f;
     const float CellSize =  128f;
     const float CellGap  =   10f;
     const int   GridCols =    7;
@@ -256,8 +259,16 @@ public static class DisassemblePopupCreator
         // ── 등급 필터 ────────────────────────────────────────
         Divider(col, "FilterDivider", 0f, "등  급");
 
+        // ── 필터 줄 ──────────────────────────────────────────
+        //  ⚠ 일괄 분해 버튼과 **같은 줄**을 쓴다
+        //    예전엔 필터 아래에 버튼만 있는 줄이 따로 있어, 등급 5칸과 버튼의
+        //    위아래 선이 어긋나고 그리드가 그만큼 밀려 내려갔다.
+        //    필터 줄에서 버튼 폭만큼 오른쪽을 비우고 그 자리에 버튼을 끼운다 —
+        //    "영웅" 칸과 버튼의 위·아래 선이 정확히 맞는다.
         var filterRow = Go("FilterRow", col);
-        EditorUIBuilder.AnchorTop(filterRow.GetComponent<RectTransform>(), 44f, FilterH, padH: 4f);
+        var frRt = filterRow.GetComponent<RectTransform>();
+        EditorUIBuilder.AnchorTop(frRt, FilterTop, FilterH, padH: 4f);
+        frRt.offsetMax = new Vector2(-(BulkW + BulkGap + 2f), frRt.offsetMax.y);
 
         var toggles = new Toggle[5];
         for (int i = 0; i < 5; i++)
@@ -265,23 +276,28 @@ public static class DisassemblePopupCreator
 
         SetObjArray(so, "_gradeToggles", toggles);
 
-        // 일괄 분해 — 필터로 고른 등급을 통째로 넘긴다
+        // 일괄 분해 — 필터로 고른 등급을 통째로 넘긴다. 필터 줄과 높이·기준선을 공유한다.
         var bulk = EditorUIBuilder.RaisedBtn(col, "BulkBtn", BulkBtnC, out var bulkBody);
         var bRt = bulk.GetComponent<RectTransform>();
         bRt.anchorMin = new Vector2(1f, 1f); bRt.anchorMax = new Vector2(1f, 1f);
         bRt.pivot     = new Vector2(1f, 1f);
-        bRt.anchoredPosition = new Vector2(-4f, -(44f + FilterH + 12f));
-        bRt.sizeDelta        = new Vector2(260f, UIScale.BtnFor(UIScale.FontMd));
+        bRt.anchoredPosition = new Vector2(-2f, -FilterTop);
+        bRt.sizeDelta        = new Vector2(BulkW, FilterH);
 
         var bulkLbl = TMP(bulkBody, "Label", "선택 등급 일괄 분해", UIScale.FontSm, FontStyles.Bold);
-        bulkLbl.color         = new Color(1f, 0.97f, 0.88f);
-        bulkLbl.alignment     = TextAlignmentOptions.Center;
-        bulkLbl.raycastTarget = false;
+        bulkLbl.color            = new Color(1f, 0.97f, 0.88f);
+        bulkLbl.alignment        = TextAlignmentOptions.Center;
+        bulkLbl.raycastTarget    = false;
+        // 9글자라 300px 을 살짝 넘는다 — 줄바꿈 대신 축소한다(두 줄이면 버튼이 라벨처럼 보인다)
+        bulkLbl.textWrappingMode = TextWrappingModes.NoWrap;
+        bulkLbl.enableAutoSizing = true;
+        bulkLbl.fontSizeMin      = 26f;
+        bulkLbl.fontSizeMax      = UIScale.FontSm;
         EditorUIBuilder.Stretch(bulkLbl.gameObject);
         SetObj(so, "_bulkDisassembleBtn", bulk);
 
         // ── 그리드 ───────────────────────────────────────────
-        float gridTop = 44f + FilterH + 12f + UIScale.BtnFor(UIScale.FontMd) + 14f;
+        float gridTop = FilterTop + FilterH + 14f;
 
         var gridBg = Go("GridBg", col);
         gridBg.AddComponent<Image>().color = GridBg;

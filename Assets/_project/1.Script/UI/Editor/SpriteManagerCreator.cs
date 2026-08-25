@@ -6,7 +6,7 @@ using UnityEngine.U2D;
 
 // ============================================================
 //  SpriteManagerCreator.cs  [Editor Only]
-//  SpriteAtlas 8종 + SpriteManager.asset 자동 생성 도구.
+//  SpriteAtlas 9종 + SpriteManager.asset 자동 생성 도구.
 //
 //  사용법:
 //    Unity 메뉴 → BattleGame → 데이터 생성 → 스프라이트 매니저 생성
@@ -18,6 +18,7 @@ using UnityEngine.U2D;
 //    Abilities/                      → Atlas_Abilities.spriteatlas
 //    Traits/                         → Atlas_Traits.spriteatlas
 //    Relics/                         → Atlas_Relics.spriteatlas
+//    RelicTree/                      → Atlas_RelicTree.spriteatlas
 //    StageNodes/                     → Atlas_StageNodes.spriteatlas
 //    LobbyBtns/                      → Atlas_LobbyBtns.spriteatlas
 // ============================================================
@@ -34,6 +35,7 @@ public static class SpriteManagerCreator
     const string AbilityAtlasPath   = IconRoot + "/Atlas_Abilities.spriteatlas";
     const string TraitAtlasPath     = IconRoot + "/Atlas_Traits.spriteatlas";
     const string RelicAtlasPath     = IconRoot + "/Atlas_Relics.spriteatlas";
+    const string RelicTreeAtlasPath = IconRoot + "/Atlas_RelicTree.spriteatlas";
     const string StageNodeAtlasPath = IconRoot + "/Atlas_StageNodes.spriteatlas";
     const string LobbyBtnAtlasPath  = IconRoot + "/Atlas_LobbyBtns.spriteatlas";
 
@@ -55,6 +57,8 @@ public static class SpriteManagerCreator
         var traitAtlas     = CreateAtlas(TraitAtlasPath,
                                          new[] { $"{IconRoot}/Traits", $"{IconRoot}/Difficulty" });
         var relicAtlas     = CreateAtlas(RelicAtlasPath,     new[] { $"{IconRoot}/Relics" });
+        // 트리 노드 69종 — 구 유물 아틀라스와 나눠 둔다 (파일 상단 주석 참고)
+        var relicTreeAtlas = CreateAtlas(RelicTreeAtlasPath, new[] { RelicIconKey.FolderPath });
         var stageNodeAtlas = CreateAtlas(StageNodeAtlasPath, new[] { $"{IconRoot}/StageNodes" });
         var lobbyBtnAtlas  = CreateAtlas(LobbyBtnAtlasPath,  new[] { $"{IconRoot}/LobbyBtns" });
 
@@ -76,6 +80,7 @@ public static class SpriteManagerCreator
         so.FindProperty("_abilityAtlas")   .objectReferenceValue = abilityAtlas;
         so.FindProperty("_traitAtlas")     .objectReferenceValue = traitAtlas;
         so.FindProperty("_relicAtlas")     .objectReferenceValue = relicAtlas;
+        so.FindProperty("_relicTreeAtlas") .objectReferenceValue = relicTreeAtlas;
         so.FindProperty("_stageNodeAtlas") .objectReferenceValue = stageNodeAtlas;
         so.FindProperty("_lobbyBtnAtlas")  .objectReferenceValue = lobbyBtnAtlas;
         so.ApplyModifiedProperties();
@@ -84,10 +89,44 @@ public static class SpriteManagerCreator
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
-        Debug.Log("[SpriteManagerCreator] 완료 — 아틀라스 8종, SpriteManager.asset 갱신.");
+        Debug.Log("[SpriteManagerCreator] 완료 — 아틀라스 9종, SpriteManager.asset 갱신.");
     }
 
     // ── 헬퍼 ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// UI 아틀라스 패킹 설정. **회전·타이트 패킹을 반드시 끈다.**
+    ///
+    /// ⚠ enableRotation 이 켜져 있으면 아이콘이 화면에서 돌아간다
+    ///   패커는 자리를 아끼려고 스프라이트를 90° 눕혀 넣는다. 스프라이트 자체는
+    ///   회전 정보를 갖지만 **UGUI Image(Type.Simple)는 그 회전을 못 읽는다** —
+    ///   UV 사각형만 그대로 쓰므로 화면에는 돌아간 그림이 나온다.
+    ///   패커가 "넣기 좋을 때만" 눕히기 때문에 몇 장만 증상이 나타나,
+    ///   원본 PNG 를 아무리 열어 봐도 멀쩡해서 원인을 찾기 어렵다.
+    ///   (2026-08-26: '영웅의 기상'(ability_b11)이 뒤집혀 보인 원인이 이것이다)
+    ///
+    /// ⚠ enableTightPacking 도 UI 에서는 끈다
+    ///   알파를 따라 다각형으로 잘라 넣으면 스프라이트 사각형과 실제 그림 영역이
+    ///   어긋난다. Image 는 사각형 기준으로 그리므로 그림이 밀리거나 잘린다.
+    ///   텍스처 쪽 Mesh Type = Full Rect 와 짝이다 (IconImportSetup 참고).
+    ///
+    /// 유니티 문서도 캔버스에서 쓰는 스프라이트는 두 옵션을 끄라고 명시한다.
+    /// </summary>
+    static void ApplyUIPackingSettings(SpriteAtlas atlas)
+    {
+        var packing = SpriteAtlasExtensions.GetPackingSettings(atlas);
+        packing.enableRotation     = false;
+        packing.enableTightPacking = false;
+        packing.padding            = 4;
+        SpriteAtlasExtensions.SetPackingSettings(atlas, packing);
+
+        // 아이콘은 확대해서 쓰는 그림이라 압축 아티팩트가 그대로 보인다.
+        var tex = SpriteAtlasExtensions.GetTextureSettings(atlas);
+        tex.filterMode      = FilterMode.Bilinear;
+        tex.generateMipMaps = false;
+        tex.sRGB            = true;
+        SpriteAtlasExtensions.SetTextureSettings(atlas, tex);
+    }
 
     static SpriteAtlas CreateAtlas(string atlasPath, string[] sourceFolders)
     {
@@ -97,6 +136,8 @@ public static class SpriteManagerCreator
             atlas = new SpriteAtlas();
             AssetDatabase.CreateAsset(atlas, atlasPath);
         }
+
+        ApplyUIPackingSettings(atlas);
 
         // 기존 packable 초기화 후 폴더 재등록
         SpriteAtlasExtensions.Remove(atlas, SpriteAtlasExtensions.GetPackables(atlas));

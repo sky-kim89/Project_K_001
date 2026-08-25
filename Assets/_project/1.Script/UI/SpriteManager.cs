@@ -18,7 +18,8 @@ using UnityEngine.U2D;
 //    _equipmentAtlas  ← Icons/Equipments/
 //    _abilityAtlas    ← Icons/Abilities/
 //    _traitAtlas      ← Icons/Traits/
-//    _relicAtlas      ← Icons/Relics/
+//    _relicAtlas      ← Icons/Relics/      (구 카드 그리드용)
+//    _relicTreeAtlas  ← Icons/RelicTree/   (트리 노드 69종)
 //    _stageNodeAtlas  ← Icons/StageNodes/
 //    _lobbyBtnAtlas   ← Icons/LobbyBtns/
 //
@@ -48,8 +49,14 @@ public class SpriteManager : ScriptableObject
     [Header("특성")]
     [SerializeField] SpriteAtlas _traitAtlas;
 
-    [Header("유물")]
+    [Header("유물 (구 카드 그리드)")]
     [SerializeField] SpriteAtlas _relicAtlas;
+
+    // ⚠ 구 유물 아틀라스(_relicAtlas)와 별개다
+    //   Icons/Relics/ 29장은 구 RelicId 기준이라 트리 69노드와 1:1로 맞지 않고,
+    //   구 RelicData SO 가 아직 그 스프라이트를 참조한다. 트리는 새 폴더를 쓴다.
+    [Header("유물 트리 노드")]
+    [SerializeField] SpriteAtlas _relicTreeAtlas;
 
     [Header("스테이지 노드")]
     [SerializeField] SpriteAtlas _stageNodeAtlas;
@@ -69,6 +76,7 @@ public class SpriteManager : ScriptableObject
         if (_abilityAtlas   != null && (s = _abilityAtlas.GetSprite(name))   != null) return s;
         if (_traitAtlas     != null && (s = _traitAtlas.GetSprite(name))     != null) return s;
         if (_relicAtlas     != null && (s = _relicAtlas.GetSprite(name))     != null) return s;
+        if (_relicTreeAtlas != null && (s = _relicTreeAtlas.GetSprite(name)) != null) return s;
         if (_stageNodeAtlas != null && (s = _stageNodeAtlas.GetSprite(name)) != null) return s;
         if (_lobbyBtnAtlas  != null && (s = _lobbyBtnAtlas.GetSprite(name))  != null) return s;
 

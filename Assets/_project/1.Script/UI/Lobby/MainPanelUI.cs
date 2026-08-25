@@ -16,7 +16,7 @@ using UnityEngine.UI;
 //
 //  Inspector 연결 (MainPanelCreator 자동):
 //    _card       : GeneralCandidateCardUI (단일 카드)
-//    _relicBtn   : 유물 관리 버튼 (RelicPopup 을 위에 띄운다 — 이 화면은 유지)
+//    _relicBtn   : 유물 관리 버튼 (RelicTreePopup 을 위에 띄운다 — 이 화면은 유지)
 //    _startBtn   : 게임 시작 버튼
 //    _prevBtn    : ◀ 이전 화살표
 //    _nextBtn    : ▶ 다음 화살표
@@ -57,6 +57,15 @@ public class MainPanelUI : MonoBehaviour
     /// </summary>
     public static event System.Action OnShown;
 
+    /// <summary>
+    /// 이 화면을 떠났다 — 튜토리얼이 이 신호로 아직 시작 못 한 예약을 취소한다.
+    ///
+    /// ⚠ 이게 없으면 예약이 인게임까지 따라간다
+    ///   출전을 누르면 유물 안내가 큐에 남은 채 전투로 들어가고, 팝업이 걷히는
+    ///   순간 시작돼서 없는 유물 버튼을 기다리다 타임아웃 뒤 전투 화면에 말을 건다.
+    /// </summary>
+    public static event System.Action OnHidden;
+
     // ── 생명주기 ──────────────────────────────────────────────
 
     void OnEnable()
@@ -92,7 +101,7 @@ public class MainPanelUI : MonoBehaviour
             //   고르던 장수가 사라진다. 팝업으로 덮어 이 화면을 그대로 살려 둔다.
             //   닫히면 유물 강화가 반영된 스탯으로 카드만 다시 그린다.
             _relicBtn.onClick.AddListener(() =>
-                PopupManager.Instance.Open<RelicPopup>(PopupType.Relic)
+                PopupManager.Instance.Open<RelicTreePopup>(PopupType.Relic)
                             .SetOnClose(RefreshCard));
         }
 
@@ -116,8 +125,35 @@ public class MainPanelUI : MonoBehaviour
             _refreshBtn.onClick.AddListener(RerollCandidate);
         }
 
+        // ⚠ 수확 화면을 튜토리얼보다 **먼저** 연다
+        //   OnShown 은 유물 튜토리얼을 예약한다. 튜토리얼은 팝업이 떠 있으면
+        //   기다렸다가 시작하므로(TutorialManager.CanStartNow), 순서를 뒤집으면
+        //   안내가 먼저 화면을 잡고 수확 목록이 그 아래 깔린다.
+        ShowCodexGainsIfAny();
+
         // 버튼을 다 묶은 뒤에 알린다 — 튜토리얼이 곧바로 유물 버튼을 누르게 한다.
         OnShown?.Invoke();
+    }
+
+    /// <summary>
+    /// 지난 여정에 새로 채운 도감을 한 번에 보여 준다 (환생 직후 이 화면이 첫 정착지다).
+    ///
+    /// ⚠ 도감 버프는 여정 경계에서만 들어온다 (CodexData.LockForRun)
+    ///   그래서 환생하면 장수가 갑자기 세져 있는데 왜 세졌는지 알 방법이 없었다.
+    ///   여기서 "무엇을 채웠고 공격력·체력이 얼마나 올랐는지" 를 한 화면에 편다.
+    ///
+    /// 꺼내는 즉시 소비된다 — 로비를 오갈 때마다 같은 목록이 다시 뜨면 안 된다.
+    /// </summary>
+    void ShowCodexGainsIfAny()
+    {
+        var codex = UserDataManager.Instance?.Get<CodexData>();
+        if (codex == null || !codex.HasRunGains) return;
+        if (PopupManager.Instance == null) return;
+
+        var popup = PopupManager.Instance.Open<CodexPopup>(PopupType.Codex);
+        if (popup == null) return;
+
+        popup.SetupRunGains(codex.TakeRunGains());
     }
 
     void OnDisable()
@@ -125,6 +161,8 @@ public class MainPanelUI : MonoBehaviour
         // 패널을 떠나면 판을 닫는다 — 로비 어딘가에서 유닛이 계속 싸우고 있으면 안 된다.
         LobbyDemoBattle.Instance?.End();
         SceneDirector.Instance?.RequestArenaBackdrop(false);
+
+        OnHidden?.Invoke();
     }
 
     // ── 후보 생성 (직업별 1명) ────────────────────────────────

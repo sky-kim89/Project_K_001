@@ -62,6 +62,13 @@ public static class TopBarCreator
         var bar = CreatePanel(parent, "TopBar", BarColor);
         AnchorTop(bar, BarH);
 
+        // 메인 화면(장수 선택)에서는 스스로 숨는다.
+        // ⚠ CanvasGroup 이 있어야 한다 — GameObject 를 끄면 자기를 다시 켤 수 없다
+        //   (TopBarAutoHide 주석 참고). 컴포넌트가 [RequireComponent] 로 강제하지만
+        //   순서를 분명히 하려고 여기서 먼저 붙인다.
+        bar.AddComponent<CanvasGroup>();
+        bar.AddComponent<TopBarAutoHide>();
+
         // 플레이어 프로필(아이콘 + 레벨 배지)은 제거했다.
         // 그 자리에 현재 런의 특성 스트립이 들어간다.
         BuildTraitStrip(bar);

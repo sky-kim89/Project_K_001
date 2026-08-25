@@ -16,7 +16,7 @@ public class AbilityArmorReaction : AbilityData
     public float DefenseBuff = 0.01f;
 
     public override string Description
-        => $"피격마다 방어율 +{DefenseBuff * 100f:0}%  (전투 내 누적, 최대 95%)";
+        => $"피격마다 방어율 +{DefenseBuff * 100f:0.0}%  (전투 내 누적, 최대 95%)";
 
     public override PassiveTrigger GetTriggerType() => PassiveTrigger.OnHit;
 

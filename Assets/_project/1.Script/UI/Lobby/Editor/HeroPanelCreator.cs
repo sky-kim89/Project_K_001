@@ -1368,29 +1368,16 @@ public static class HeroPanelCreator
 
         // ── 상세 보기 힌트 (i) — 등급 배지 왼쪽 ───────────────
         //  카드를 누르면 상세 정보가 뜬다는 안내 표시. 기능은 없다(장식).
-        var infoBadge = CreateImage(textArea, "InfoBadge", new Color(0.32f, 0.45f, 0.66f, 0.95f));
+        // 그림은 EditorUIBuilder.InfoDot 이 소유한다 — 장수 상세의 등급 배지도 같은 것을 쓴다.
+        // 여기서 또 그리면 화면마다 원 크기·글자 위치가 갈린다.
+        var infoBadge = EditorUIBuilder.InfoDot(textArea, "InfoBadge", InfoSize,
+                                                new Color(0.32f, 0.45f, 0.66f, 0.95f));
         {
-            var rt = infoBadge.rectTransform;
+            var rt = infoBadge.GetComponent<RectTransform>();
             rt.anchorMin        = rt.anchorMax = new Vector2(0.70f, 1f);
             rt.pivot            = new Vector2(1f, 1f);
             rt.anchoredPosition = new Vector2(-6f, -9f);
-            rt.sizeDelta        = new Vector2(InfoSize, InfoSize);
         }
-        // 동그란 정보 아이콘 — 내장 Knob 스프라이트를 원으로 쓴다.
-        var knob = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
-        if (knob != null) infoBadge.sprite = knob;
-
-        var infoLabel = CreateTMP(infoBadge.gameObject, "InfoLabel", "i", InfoSize * 0.72f, FontStyles.Bold);
-        {
-            var rt = infoLabel.rectTransform;
-            rt.anchorMin = Vector2.zero;
-            rt.anchorMax = Vector2.one;
-            rt.offsetMin = new Vector2(0, 1);
-            rt.offsetMax = Vector2.zero;
-        }
-        infoLabel.alignment        = TextAlignmentOptions.Center;
-        infoLabel.textWrappingMode = TextWrappingModes.NoWrap;
-        infoLabel.color            = Color.white;
 
         // ── 등급 뱃지 배경 (상단 기준, 우측, 행 내 2px 인셋) ─
         var gradeBadge = CreateImage(textArea, "GradeBadge", new Color(0.55f, 0.55f, 0.55f));

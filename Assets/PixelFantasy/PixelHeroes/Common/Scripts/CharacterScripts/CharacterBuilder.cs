@@ -26,6 +26,9 @@ namespace Assets.PixelFantasy.PixelHeroes.Common.Scripts.CharacterScripts
         //    Layer.GetPixels32 ×5 (2.04MB/회) + MergeLayers 버퍼 2.04MB ≒ GC 12MB
         //    + 2MB 텍스처 GPU 업로드 + SpriteLibraryAsset 1개(126 라벨).
         //  스테이지가 쌓일수록 짧은 주기의 GC 가 계속 터지던 원인이 이것이다.
+        //
+        //  ⚠ 벤더 에셋(PixelFantasy) 직접 수정분 — 패키지 업데이트 때마다 날아간다.
+        //    4.0 업데이트에서 실제로 덮어써져 BattleManager 가 컴파일 실패했다(2026-08-25).
         private sealed class SharedBuild
         {
             public Texture2D          Texture;
@@ -118,7 +121,7 @@ namespace Assets.PixelFantasy.PixelHeroes.Common.Scripts.CharacterScripts
             if (Cape != "") CapeOverlay(layers["Cape"]);
 
             _sprites ??= Layout.ToDictionary(i => i.Key, i => Sprite.Create(Texture, new Rect(i.Value[0], i.Value[1], i.Value[2], i.Value[3]), new Vector2((float)i.Value[4] / i.Value[2], (float)i.Value[5] / i.Value[3]), 16, 0, SpriteMeshType.FullRect));
-
+            
             var spriteLibraryAsset = ScriptableObject.CreateInstance<SpriteLibraryAsset>();
 
             foreach (var sprite in _sprites)
@@ -183,8 +186,8 @@ namespace Assets.PixelFantasy.PixelHeroes.Common.Scripts.CharacterScripts
             }
             else
             {
-                Character.Firearm.Renderer.enabled  = true;
-                Character.Firearm.Renderer.sprite   = build.FirearmSprite;
+                Character.Firearm.Renderer.enabled   = true;
+                Character.Firearm.Renderer.sprite    = build.FirearmSprite;
                 Character.Firearm.FireMuzzlePosition = build.MuzzlePosition;
                 Character.Firearm.FireMuzzle.localPosition = build.MuzzlePosition / 16;
             }
@@ -194,7 +197,7 @@ namespace Assets.PixelFantasy.PixelHeroes.Common.Scripts.CharacterScripts
 
         /// <summary>합성 결과를 좌우하는 모든 입력을 이어 붙인 캐시 키.</summary>
         private string GetAppearanceKey(bool forceMerge)
-            => string.Join("|", Body, Head, Ears, Eyes, Hair, Armor, Helmet, Weapon,
+            => string.Join("|", Body, Head, Ears, Eyes, Hair, Armor, Helmet, Weapon, WeaponSecondary,
                                 Firearm, Shield, Cape, Back, Mask, Horns,
                                 Character.Firearm.Detached ? "D" : "-",
                                 forceMerge ? "F" : "-");
@@ -270,7 +273,7 @@ namespace Assets.PixelFantasy.PixelHeroes.Common.Scripts.CharacterScripts
                     var data = Armor == "" ? Body : Armor;
                     var pixels = dict[source].GetPixels(data);
 
-                    if (pixels == null && source == "Bracers")
+                    if (pixels == null && source == "Bracers" || pixels[index].a == 0)
                     {
                         pixels = dict["Arms"].GetPixels(Body);
                     }

@@ -423,12 +423,32 @@ public static class BattlePanelCreator
         le.flexibleWidth   = 0f;
         var nodeUi = go.AddComponent<StageNodeUI>();
 
-        // 배경 이미지 (노드 크기를 채움)
+        // ── 테두리 → 판 ──────────────────────────────────────
+        //  ⚠ 테두리는 판의 **앞 형제**로 만든다 (UI 규칙 3)
+        //    자식으로 두면 부모 Image 보다 앞에 그려져 판을 덮는다.
+        //    먼저 만든 형제가 뒤에 깔리므로, 노드를 꽉 채운 테두리 위에
+        //    BorderThick 만큼 작은 판을 얹으면 테가 그만큼 드러난다.
+        //
+        //  ⚠ 속성 색은 테두리에만 들어간다 — 판은 전부 같은 색이다
+        //    (이유는 StageNodeUI.ColBg 주석 참고)
+        var borderGo = new GameObject("Border", typeof(RectTransform), typeof(Image));
+        borderGo.transform.SetParent(go.transform, false);
+        FullStretch(borderGo);
+        var borderImg = borderGo.GetComponent<Image>();
+        borderImg.color         = new Color(0.42f, 0.46f, 0.60f);
+        borderImg.raycastTarget = false;
+
         var bgGo = new GameObject("Bg", typeof(RectTransform), typeof(Image));
         bgGo.transform.SetParent(go.transform, false);
-        FullStretch(bgGo);
+        {
+            const float T = StageNodeUI.BorderThick;
+            var rt = bgGo.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2( T,  T);
+            rt.offsetMax = new Vector2(-T, -T);
+        }
         var bgImg = bgGo.GetComponent<Image>();
-        bgImg.color = new Color(0.30f, 0.33f, 0.46f);
+        bgImg.color = StageNodeUI.ColBg;
 
         // 스테이지 타입 아이콘 이미지 (내부 80%)
         var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(Image));
@@ -442,14 +462,35 @@ public static class BattlePanelCreator
         iconImg.raycastTarget  = false;
         iconImg.enabled        = false;   // 아이콘 없을 때 숨김
 
-        // 타입 라벨 (노드 바로 아래)
+        // ── 타입 라벨 (노드 바로 아래) ───────────────────────
+        //  ⚠ 글자 뒤에 판을 깐다
+        //    "이벤트" 는 보라색이라 로비 배경에 묻혀 거의 안 보였다.
+        //    판 폭은 글자에 맞춰 흐르게 둔다 — 라벨 칸 폭(104)으로 고정하면
+        //    노드 간격(78)보다 넓어 옆 노드의 판과 겹친다.
+        var plateGo  = MakeGo("LabelPlate", go);
+        var plateImg = plateGo.AddComponent<Image>();
+        plateImg.color         = new Color(0.05f, 0.055f, 0.10f, 0.88f);
+        plateImg.raycastTarget = false;
+        var plateRt = plateGo.GetComponent<RectTransform>();
+        plateRt.anchorMin        = plateRt.anchorMax = new Vector2(0.5f, 0f);
+        plateRt.pivot            = new Vector2(0.5f, 1f);
+        plateRt.anchoredPosition = new Vector2(0f, -6f);
+        plateRt.sizeDelta        = new Vector2(0f, UIScale.RowSm);
+
+        var plateHlg = plateGo.AddComponent<HorizontalLayoutGroup>();
+        plateHlg.childAlignment         = TextAnchor.MiddleCenter;
+        plateHlg.padding                = new RectOffset(10, 10, 0, 0);
+        plateHlg.childControlWidth      = true;
+        plateHlg.childControlHeight     = true;
+        plateHlg.childForceExpandWidth  = false;
+        plateHlg.childForceExpandHeight = true;
+
+        var plateFit = plateGo.AddComponent<ContentSizeFitter>();
+        plateFit.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+        plateFit.verticalFit   = ContentSizeFitter.FitMode.Unconstrained;
+
         var labelGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-        labelGo.transform.SetParent(go.transform, false);
-        var labelRt = labelGo.GetComponent<RectTransform>();
-        labelRt.anchorMin        = labelRt.anchorMax = new Vector2(0.5f, 0f);
-        labelRt.pivot            = new Vector2(0.5f, 1f);
-        labelRt.anchoredPosition = new Vector2(0f, -6f);
-        labelRt.sizeDelta        = new Vector2(StageNodeUI.NodeSize + StageNodeGap * 2f, UIScale.RowSm);
+        labelGo.transform.SetParent(plateGo.transform, false);
         var labelTmp = labelGo.GetComponent<TextMeshProUGUI>();
         labelTmp.text             = "";
         labelTmp.fontSize         = UIScale.FontSm;
@@ -457,7 +498,8 @@ public static class BattlePanelCreator
         labelTmp.color            = new Color(0.55f, 0.58f, 0.70f);
         labelTmp.raycastTarget    = false;
         labelTmp.textWrappingMode = TextWrappingModes.NoWrap;
-        labelGo.SetActive(false);
+        labelTmp.overflowMode     = TextOverflowModes.Overflow;
+        plateGo.SetActive(false);
 
         // 현재 위치 마커 — 노드 위에 떠서 노드를 "가리키므로" 아래를 향해야 한다.
         // 예전엔 ▲ 글리프였는데 방향이 반대인 데다 기본 폰트에 없는 문자다(UI 규칙 2).
@@ -474,11 +516,13 @@ public static class BattlePanelCreator
         // 필드 연결
         var so = new SerializedObject(nodeUi);
         so.Update();
-        SetObj(so, "_bg",     bgImg);
-        SetObj(so, "_icon",   iconImg);
-        SetObj(so, "_label",  labelTmp);
-        SetObj(so, "_marker", markerGo);
-        SetObj(so, "_le",     le);
+        SetObj(so, "_bg",        bgImg);
+        SetObj(so, "_border",    borderImg);
+        SetObj(so, "_icon",      iconImg);
+        SetObj(so, "_label",     labelTmp);
+        SetObj(so, "_labelRoot", plateGo);   // 켜고 끄는 대상 = 판 (라벨은 그 자식)
+        SetObj(so, "_marker",    markerGo);
+        SetObj(so, "_le",        le);
         so.ApplyModifiedProperties();
 
         var prefab = PrefabUtility.SaveAsPrefabAsset(go, StageNodePrefabPath);

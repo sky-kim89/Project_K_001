@@ -40,6 +40,13 @@ public class TutorialOverlay : MonoBehaviour
     // ── 치수 ─────────────────────────────────────────────────
     const int   SortingOrder = 1000;   // 로비 0 · 인게임 10 · 팝업 200 보다 위
     const float BubbleMaxW   = 900f;
+
+    // ⚠ 자리가 좁으면 말풍선을 이만큼까지 줄인다
+    //   최대 폭을 고집하면 "양옆 어디에도 900 이 안 들어감 → 화면 중앙" 으로 떨어져
+    //   가리키던 대상을 그대로 덮는다 (LayoutBubble 주석 참고).
+    //   FontMd(42) 기준 본문 폭 456 ≈ 한 줄 10자 — 이보다 좁으면 읽기가 더 나빠지므로
+    //   그때는 차라리 중앙에 두고 겹치는 쪽을 택한다.
+    const float BubbleMinW   = 520f;
     const float BubblePad    = 32f;
     const float BubbleGap    = 28f;    // 타겟과 말풍선 사이 간격
     const float FrameThick   = 4f;
@@ -70,6 +77,8 @@ public class TutorialOverlay : MonoBehaviour
     RectTransform   _bubbleEdge;
     TextMeshProUGUI _body;
     TextMeshProUGUI _hint;
+
+    RectTransform _skipRoot;
 
     Action _onAnyClick;
     Action _onSkip;
@@ -194,6 +203,7 @@ public class TutorialOverlay : MonoBehaviour
         var rootGo = new GameObject("SkipBtn", typeof(RectTransform));
         rootGo.transform.SetParent(_root, false);
         var rootRt = rootGo.GetComponent<RectTransform>();
+        _skipRoot = rootRt;
         rootRt.anchorMin = rootRt.anchorMax = new Vector2(1f, 1f);
         rootRt.pivot     = new Vector2(1f, 1f);
         rootRt.anchoredPosition = new Vector2(-ScreenMargin, -ScreenMargin);
@@ -247,6 +257,18 @@ public class TutorialOverlay : MonoBehaviour
     // ── 표시 ─────────────────────────────────────────────────
 
     public void SetActive(bool on) => gameObject.SetActive(on);
+
+    /// <summary>
+    /// 건너뛰기 버튼 노출. 강제 진행 튜토리얼에서는 끈다.
+    ///
+    /// ⚠ 버튼 자리가 배속·오토 버튼 자리와 겹친다
+    ///   화면 오른쪽 위에 상주하는데, 인게임 시나리오는 바로 그 두 버튼을
+    ///   가리키며 설명한다. 켜 둔 채로는 설명 대상이 버튼에 가린다.
+    /// </summary>
+    public void SetSkipVisible(bool on)
+    {
+        if (_skipRoot != null) _skipRoot.gameObject.SetActive(on);
+    }
 
     /// <summary>가장 위로 끌어올린다 — 뒤늦게 만들어진 캔버스에 밀리지 않게.</summary>
     public void BringToFront() => _canvas.sortingOrder = SortingOrder;
@@ -346,35 +368,74 @@ public class TutorialOverlay : MonoBehaviour
         SetRect(_frame[3], Rect.MinMaxRect(h.xMax,     h.yMin,     h.xMax + t, h.yMax));
     }
 
+    /// <summary>
+    /// 말풍선 자리를 잡는다.
+    ///
+    /// ⚠ 폭을 고정해 두면 가운데 열을 가리킬 때 대상을 덮는다
+    ///   장수 상세의 스탯 열처럼 **세로로 길고 화면 가운데 있는** 타겟은
+    ///   위·아래에 자리가 없고, 좌우에 남는 폭도 BubbleMaxW(900)보다 좁다.
+    ///   그러면 TryPlaceBeside 가 전부 실패해 화면 중앙으로 떨어지고,
+    ///   가리키던 스탯 목록을 설명 글이 그대로 가렸다. (2026-08-26)
+    ///
+    ///   실제 수치 — StatColumn 좌우 여유 646 / 786, 필요 폭 952.
+    ///   오른쪽에 786 이 남아 있는데 900 을 고집하다 못 쓴 것이다.
+    ///
+    /// 그래서 최대 폭으로 실패하면 **남는 쪽 폭에 맞춰 줄여** 다시 시도한다.
+    /// BubbleMinW 보다도 좁으면 그때는 중앙에 둔다 — 읽을 수 없는 폭보다는 겹치는 편이 낫다.
+    /// </summary>
     void LayoutBubble(TutorialStep step, Rect? hole)
     {
         _body.text = step.Message ?? "";
-        float w = Mathf.Min(BubbleMaxW, _root.rect.width - ScreenMargin * 2f);
 
-        // 본문 높이를 먼저 재고 그만큼만 칸을 잡는다 — 고정 높이는 글자를 자른다.
-        float textW = w - BubblePad * 2f;
-        float textH = string.IsNullOrEmpty(step.Message)
-            ? 0f
-            : _body.GetPreferredValues(step.Message, textW, 0f).y;
-        float h = textH + BubblePad * 2f + UIScale.RowSm;
-
-        Rect full = _root.rect;
+        Rect  full = _root.rect;
+        float maxW = Mathf.Min(BubbleMaxW, full.width - ScreenMargin * 2f);
 
         var anchor = step.Anchor;
         if (hole == null) anchor = TutorialAnchor.Center;
 
+        float   w = maxW;
+        float   h = MeasureHeight(step.Message, w);
         Vector2 center;
+
         if (anchor == TutorialAnchor.Center)
+        {
             center = full.center;
-        else
-            center = PlaceBeside(full, hole.Value, w, h, anchor);
+        }
+        else if (!TryPlaceBeside(full, hole.Value, w, h, anchor, out center))
+        {
+            // 좌우 중 넓은 쪽에 맞춰 줄여 본다.
+            // (세로 여유는 폭을 줄이면 오히려 나빠진다 — 줄바꿈이 늘어 h 가 커진다)
+            float side = Mathf.Max(hole.Value.xMin - full.xMin,
+                                   full.xMax - hole.Value.xMax) - BubbleGap - ScreenMargin;
 
-        float cx = center.x;
-        float cy = center.y;
+            if (side >= BubbleMinW)
+            {
+                // ⚠ 1px 뺀다 — 딱 맞추면 부동소수점에 걸려 다시 실패한다
+                //   needH = w + Gap + Margin 이므로 w = side 로 두면
+                //   needH 가 남는 폭과 '정확히' 같아진다. + 와 - 를 거친 값이라
+                //   마지막 자리가 어긋나면 조건이 거짓이 되고 그대로 중앙으로 떨어진다.
+                w = Mathf.Min(w, side) - 1f;
+                h = MeasureHeight(step.Message, w);
+                TryPlaceBeside(full, hole.Value, w, h, anchor, out center);
+            }
+            else
+            {
+                center = full.center;
+            }
+        }
 
-        var rect = new Rect(cx - w * 0.5f, cy - h * 0.5f, w, h);
+        var rect = new Rect(center.x - w * 0.5f, center.y - h * 0.5f, w, h);
         SetRect(_bubble, rect);
         SetRect(_bubbleEdge, new Rect(rect.x - 3f, rect.y - 3f, rect.width + 6f, rect.height + 6f));
+    }
+
+    /// <summary>본문 높이를 먼저 재고 그만큼만 칸을 잡는다 — 고정 높이는 글자를 자른다.</summary>
+    float MeasureHeight(string message, float w)
+    {
+        float textH = string.IsNullOrEmpty(message)
+            ? 0f
+            : _body.GetPreferredValues(message, w - BubblePad * 2f, 0f).y;
+        return textH + BubblePad * 2f + UIScale.RowSm;
     }
 
 
@@ -391,9 +452,14 @@ public class TutorialOverlay : MonoBehaviour
     ///   ① 요청받은 방향이 들어가면 그대로
     ///   ② 위·아래 중 자리가 있는 쪽 (넓은 쪽 우선)
     ///   ③ 좌·우 중 자리가 있는 쪽 — 세로로 긴 타겟은 여기서 풀린다
-    ///   ④ 어디에도 안 들어가면(타겟이 화면 전체) 중앙. 이때만 겹친다.
+    ///
+    /// ⚠ 못 찾으면 <b>중앙으로 떠넘기지 않고 false 를 돌려준다</b>
+    ///   예전엔 여기서 바로 화면 중앙을 반환했다. 그러면 부르는 쪽은 "자리를 못 찾았다" 를
+    ///   알 수 없어 말풍선 폭을 줄여 다시 시도할 기회가 없었다 (LayoutBubble 주석 참고).
+    ///   겹치는 자리를 고르는 판단은 부르는 쪽이 마지막에 한다.
     /// </summary>
-    Vector2 PlaceBeside(Rect full, Rect hole, float w, float h, TutorialAnchor requested)
+    bool TryPlaceBeside(Rect full, Rect hole, float w, float h,
+                        TutorialAnchor requested, out Vector2 result)
     {
         float needV = h + BubbleGap + ScreenMargin;
         float needH = w + BubbleGap + ScreenMargin;
@@ -431,19 +497,25 @@ public class TutorialOverlay : MonoBehaviour
                       full.xMax - ScreenMargin - w * 0.5f), cyAligned);
 
         // ① 요청받은 방향
-        if (requested == TutorialAnchor.Above && above >= needV) return Above();
-        if (requested == TutorialAnchor.Below && below >= needV) return Below();
+        if (requested == TutorialAnchor.Above && above >= needV) { result = Above(); return true; }
+        if (requested == TutorialAnchor.Below && below >= needV) { result = Below(); return true; }
 
         // ② 위·아래
         if (above >= needV || below >= needV)
-            return above >= below ? Above() : Below();
+        {
+            result = above >= below ? Above() : Below();
+            return true;
+        }
 
         // ③ 좌·우 — 세로로 긴 타겟(배치 칸 같은 열)이 여기서 풀린다
         if (left >= needH || right >= needH)
-            return right >= left ? Right() : Left();
+        {
+            result = right >= left ? Right() : Left();
+            return true;
+        }
 
-        // ④ 어디에도 자리가 없다 — 타겟이 화면을 통째로 덮은 경우뿐이다
-        return full.center;
+        result = full.center;
+        return false;
     }
 
     // ── 유틸 ─────────────────────────────────────────────────
