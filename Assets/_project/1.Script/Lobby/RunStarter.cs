@@ -108,6 +108,15 @@ public static class RunStarter
         if (jobTrait != TraitType.None)
             udm.Get<RunTraitData>().AddTrait(jobTrait);
 
+        // 유물 '여정의 군자금' — 기본 500(ItemData.SetDefaults) 위에 얹는다.
+        // ⚠ 여기 말고 다른 데서 또 주면 안 된다
+        //   BeginRun 은 여정당 한 번뿐이라(MainPanelUI · LobbyManager 첫 실행)
+        //   이 자리가 "여정 시작" 의 유일한 지점이다. 골드는 런 내내 오르내리므로
+        //   나중에 세어서 보정할 방법이 없다 — 두 번 주면 그대로 두 배가 된다.
+        int startGold = RelicTreeApplier.GetStartGoldBonus();
+        if (startGold > 0)
+            udm.Get<ItemData>().Add(eItem.Gold, startGold);
+
         // 도감 버프를 이번 여정 값으로 박는다.
         // ⚠ 모든 등록이 끝난 뒤라야 한다 — 시작 장수·직업 특성도 도감에 기록되므로
         //   먼저 잠그면 이번 여정에 그 두 종이 빠진 값으로 싸우게 된다.

@@ -222,8 +222,8 @@ public class GameplayConfig : ScriptableObject
     public int ExpPerLevel = 100;
 
     [Header("스텟 성장 배율")]
-    [Tooltip("레벨 1포인트당 스텟 배율 증가량.\n기본 0.01 → Lv1=×1.0, Lv100=×1.99")]
-    public float LevelMultPerLevel = 0.01f;
+    [Tooltip("레벨 1포인트당 스텟 배율 증가량.\n기본 0.02 → Lv1=×1.0, Lv100=×2.98")]
+    public float LevelMultPerLevel = 0.02f;
 
     [Tooltip("등급 1단계당 스텟 배율 증가량.\n기본 0.10 → Normal=×1.0, Epic(4단계)=×1.4")]
     public float GradeMultPerTier  = 0.10f;

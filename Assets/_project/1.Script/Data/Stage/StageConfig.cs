@@ -54,7 +54,7 @@ public class StageConfig : ScriptableObject
 
     [Header("적 레벨 (스테이지 번호 1→NormalStageCount 에 따라 Min→Max 선형 보간)")]
     public int EnemyLevelMin = 1;
-    public int EnemyLevelMax = 50;
+    public int EnemyLevelMax = 120;
 
     // ──────────────────────────────────────────────────────────
     // ■ 지수 성장 난이도 설정

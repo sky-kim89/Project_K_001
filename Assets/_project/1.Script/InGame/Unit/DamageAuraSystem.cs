@@ -88,7 +88,7 @@ namespace BattleGame.Units
                     if (aura.Timer > 0f) return;
 
                     // ⚠ Timer = Interval 로 덮어쓰지 않고 더한다
-                    //   배속(3×)에서 한 프레임이 간격을 넘기면 그 초과분이 사라져
+                    //   배속(2×)에서 한 프레임이 간격을 넘기면 그 초과분이 사라져
                     //   실제 발동이 설정보다 느려진다.
                     aura.Timer += aura.Interval;
                     if (aura.Timer <= 0f) aura.Timer = aura.Interval;   // 프레임이 크게 튄 경우

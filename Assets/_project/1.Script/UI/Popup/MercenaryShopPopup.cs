@@ -293,8 +293,8 @@ public class MercenaryShopPopup : PopupBase
 
         if (_hireBtn != null)
         {
-            _hireBtn.gameObject.SetActive(Current != null && hasSlot);
-            _hireBtn.interactable = canPay;
+            _hireBtn.gameObject.SetActive(Current != null);
+            _hireBtn.interactable = hasSlot && canPay;
         }
 
         // 보상 모드는 무료라 비용 표시를 숨긴다
@@ -331,7 +331,7 @@ public class MercenaryShopPopup : PopupBase
 
     // ── 현재 부대 ─────────────────────────────────────────────
     //
-    //  슬롯이 꽉 차면 고용 버튼이 숨겨진다(RefreshActionBar).
+    //  슬롯이 꽉 차면 고용 버튼이 비활성화된다(RefreshActionBar).
     //  좋은 장수가 떴는데 아무것도 못 하는 상황을 막으려면 여기서 바로
     //  누굴 내보낼지 정할 수 있어야 한다 — 칸을 누르면 HeroDetailPopup 이 열린다.
     //

@@ -6,7 +6,7 @@ using UnityEngine;
 
 // ============================================================
 //  RelicTreeIconStubs.cs  [Editor Only]
-//  유물 트리 노드 69종의 **자리표시 PNG** 를 굽는다.
+//  유물 트리 노드 71종의 **자리표시 PNG** 를 굽는다.
 //
 //  ■ 무엇을 위한 것인가
 //    진짜 그림은 밖에서(코덱스) `Docs/RelicTree_Icon_Spec.md` 를 보고 만들어
@@ -42,7 +42,7 @@ public static class RelicTreeIconStubs
     {
         if (!EditorUtility.DisplayDialog(
                 "자리표시 강제 재생성",
-                "69장을 전부 자리표시로 덮어씁니다.\n" +
+                $"{RelicTreeCatalog.All.Length}장을 전부 자리표시로 덮어씁니다.\n" +
                 "이미 넣어 둔 진짜 그림도 사라집니다. 계속할까요?",
                 "덮어쓴다", "취소"))
             return;
@@ -85,7 +85,7 @@ public static class RelicTreeIconStubs
 
         if (missing.Count == 0)
         {
-            Debug.Log($"[RelicTreeIconStubs] 69종 전부 있음 ({RelicIconKey.FolderPath}).");
+            Debug.Log($"[RelicTreeIconStubs] {RelicTreeCatalog.All.Length}종 전부 있음 ({RelicIconKey.FolderPath}).");
             return;
         }
         Debug.LogWarning($"[RelicTreeIconStubs] 누락 {missing.Count}장:\n  " +

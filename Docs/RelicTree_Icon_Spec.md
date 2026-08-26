@@ -1,13 +1,13 @@
-# 유물 트리 아이콘 생성 명세 (69종)
+# 유물 트리 아이콘 생성 명세 (71종)
 
 작성일: 2026-08-25  
-대상: `Assets/_project/3.Textures/Icons/RelicTree/` — 신규 폴더, 69개 PNG  
+대상: `Assets/_project/3.Textures/Icons/RelicTree/` — 신규 폴더, 71개 PNG  
 해상도: **128×128** (프로젝트 전체 아이콘을 128로 올리는 중이다)  
 짝 문서: `Docs/Icon_Regeneration_Spec.md` — 그쪽이 "유물은 개편 중이라 제외"로 남겨 둔 부분이 이 문서다.
 
 ## 왜 새로 필요한가
 
-유물 습득이 카드 그리드에서 **테크트리**로 교체됐다(`Relic/Tree/RelicTreeCatalog.cs`, 69노드).
+유물 습득이 카드 그리드에서 **테크트리**로 교체됐다(`Relic/Tree/RelicTreeCatalog.cs`, 71노드).
 구 유물 아이콘 `Icons/Relics/` 29장은 구 `RelicId` 기준이라 트리 노드와 1:1로 맞지 않는다.
 현재 `RelicTreePopup` 은 아이콘이 없어 계열 색 타일만 그리고 있다.
 
@@ -38,7 +38,7 @@
 | 주제 | 한 아이콘에 하나의 읽히는 도구·행위·상태 | 트리에서 52px 로 축소돼 표시된다 — 두 개를 넣으면 뭉갠다 |
 | 여백 | 중앙 주제 88~104px, 외곽 여백 12~20px | 마름모(특수 노드)로 45° 회전해도 잘리지 않는다 |
 | 외곽선 | 어두운 2~3px 실루엣 외곽선 | 어떤 계열 색 판 위에서도 형태가 분리된다 |
-| 광원 | 좌상단 단일 광원, 플랫 셰이딩 | 69장이 한 화면에 같이 보인다 — 광원이 흔들리면 잡동사니가 된다 |
+| 광원 | 좌상단 단일 광원, 플랫 셰이딩 | 71장이 한 화면에 같이 보인다 — 광원이 흔들리면 잡동사니가 된다 |
 | 색 | 계열 색을 주조로, 강조 1색만 추가 | 계열을 색으로 먼저 읽고 형태로 확인한다 |
 | 금지 | 문자·숫자·워터마크·프레임·테두리 장식·드롭섀도 | 프레임은 노드 Face 가 그린다. 겹치면 두 겹이 된다 |
 
@@ -52,7 +52,7 @@
 | 공격 | `#E0693D` | ember orange-red | 24 |
 | 체력 | `#4F99C4` | steel blue | 12 |
 | 병사 | `#C79438` | bronze | 14 |
-| 유틸 | `#9978D1` | amethyst violet | 18 |
+| 유틸 | `#9978D1` | amethyst violet | 20 |
 
 ### 특수 노드 (마름모) — 9종
 
@@ -98,7 +98,7 @@ cropped subject, subject touching the edge
 **검수는 52px 축소본으로 한다.** 128px 에서 예쁜지가 아니라 52px 에서 계열과 주제가
 읽히는지가 합격 기준이다.
 
-## 노드별 프롬프트 (69종)
+## 노드별 프롬프트 (71종)
 
 `주제` 는 검수용 한국어 설명이고, `Prompt` 가 공통 프롬프트 뒤에 붙는 본문이다.
 `효과` 는 아이콘이 무엇을 뜻해야 하는지 판단하는 근거다 — 그림이 효과와 어긋나면 다시 만든다.
@@ -222,6 +222,8 @@ cropped subject, subject touching the edge
 | `node_sage_tome.png` | **현자의 서** | 4 | 경험치 +10% | 빛나는 서표가 꽂힌 두꺼운 현자의 서 | a thick sage tome with a glowing bookmark ribbon hanging out |
 | `node_golden_bounty.png` | **만금의 축복** | 4 | 골드 +10% | 금화와 보석이 넘치는 보물 상자 | an overflowing treasure chest of coins and gemstones |
 | `node_soul_urn.png` | **영혼의 항아리** | 4 | 소울 +10% | 푸른 혼불이 새어 나오는 항아리 | a ceramic urn with blue soul flames curling out of its mouth |
+| `node_travel_fund.png` | **여정의 노잣돈** | 2 | 시작 골드 +150 | 동전 몇 닢을 묶은 여행자의 허리 주머니 | a small drawstring travel pouch tied to a belt, a few coins spilling at its mouth |
+| `node_war_chest.png` | **여정의 군자금** | 5 | 시작 골드 +600 | 출발 전 봉인된 철제 군자금 궤짝 | an iron-banded war chest sealed with a strap, gold coins stacked beside it before departure |
 
 ### 유틸 · 편의 (오른쪽 아래)
 
@@ -229,7 +231,7 @@ cropped subject, subject touching the edge
 
 | 파일명 | 노드 | T | 효과 (레벨당) | 주제 | Prompt |
 |---|---|:-:|---|---|---|
-| `node_time_reins.png` | **시간의 고삐** ◆ | 2 | 배속 2× 해금 | 시계 문자판에 물린 가죽 고삐 | a leather rein bridling a clock face like a horse bit |
+| `node_time_reins.png` | **시간의 고삐** ◆ | 2 | 배속 1.5× 해금 | 시계 문자판에 물린 가죽 고삐 | a leather rein bridling a clock face like a horse bit |
 | `node_moment_mastery.png` | **찰나의 지배** ◆ | 4 | 배속 2× 해금 | 멈춘 순간을 움켜쥔 깨진 시계 | a shattered clock face with a hand grasping the frozen instant |
 | `node_march_order.png` | **출병 명령** ◆ | 3 | 장수 슬롯 +1칸 | 봉랍이 찍힌 출병 명령서와 군기 | a sealed war order scroll with a wax seal, a marching banner behind it |
 | `node_ability_reform.png` | **어빌리티 재편성** | 3 | 새로고침 +1회 | 화살표가 도는 재배치되는 카드 세 장 | three cards being reshuffled, circular arrows around them |
@@ -255,9 +257,9 @@ cropped subject, subject touching the edge
 
 ### 그림을 만드는 쪽
 
-1. 512×512 로 69장 생성 → **256×256** 으로 축소 → 알파 임계값 0.35 로 정리.
+1. 512×512 로 71장 생성 → **256×256** 으로 축소 → 알파 임계값 0.35 로 정리.
 2. `Assets/_project/3.Textures/Icons/RelicTree/` 의 같은 이름 파일에 **덮어쓴다.**
-   (69장 전부 자리표시 PNG 가 이미 그 이름으로 깔려 있다 — 새 파일을 만들지 말고 덮어쓸 것)
+   (71장 전부 자리표시 PNG 가 이미 그 이름으로 깔려 있다 — 새 파일을 만들지 말고 덮어쓸 것)
 3. Unity 를 켠다. **임포트 설정은 자동으로 붙는다** (`RelicTreeIconImporter`).
 4. `Tools > Project K > 데이터 생성 > SpriteManager + 아틀라스` 실행 → 아틀라스에 반영.
 5. 유물 화면을 열어 확인한다.
@@ -279,7 +281,7 @@ cropped subject, subject touching the edge
 | 메뉴 | 하는 일 |
 |---|---|
 | `아이콘·텍스처 > 유물 트리 자리표시 생성 (빈 자리만)` | 파일이 없는 노드만 자리표시로 채운다. **진짜 그림은 안 건드린다** |
-| `아이콘·텍스처 > 유물 트리 자리표시 강제 재생성` | 69장 전부 자리표시로 덮어쓴다 (확인 대화상자 있음) |
+| `아이콘·텍스처 > 유물 트리 자리표시 강제 재생성` | 71장 전부 자리표시로 덮어쓴다 (확인 대화상자 있음) |
 | `아이콘·텍스처 > 유물 트리 아이콘 임포트 재적용` | 이미 임포트된 파일에 설정을 다시 얹는다 |
 | `아이콘·텍스처 > 유물 트리 아이콘 누락 점검` | 파일이 없는 노드를 콘솔에 나열 |
 | `데이터 생성 > SpriteManager + 아틀라스` | `Atlas_RelicTree` 재패킹 + SpriteManager 갱신 |
@@ -295,12 +297,12 @@ cropped subject, subject touching the edge
 
 > ✅ **연동은 끝났다 (2026-08-25).** 이 폴더에 규칙에 맞는 이름으로 PNG 를 넣으면 그대로 붙는다.
 > `RelicTreePopup.BuildNode()` 가 `SpriteManager.Instance.Get(RelicIconKey.Of(id))` 로 찾는다.
-> 지금은 69장 전부 **자리표시(계열 색 원반 + 티어 눈금)** 로 채워져 있다 — 그 위에 덮어쓰면 된다.
+> 지금은 71장 전부 **자리표시(계열 색 원반 + 티어 눈금)** 로 채워져 있다 — 그 위에 덮어쓰면 된다.
 > 자세한 절차는 아래 '작업 절차' 참고.
 
 ## 검수 체크리스트
 
-- [ ] 69장 전부 있고 파일명이 `RelicNodeId` snake_case 와 일치한다
+- [ ] 71장 전부 있고 파일명이 `RelicNodeId` snake_case 와 일치한다
 - [ ] 배경이 완전 투명하다 (배경판·원형 뱃지가 없다)
 - [ ] 128px 에서 주제가 하나로 읽힌다 — 52px 로 줄여도 형태가 남는다
 - [ ] 문자·숫자·워터마크가 없다

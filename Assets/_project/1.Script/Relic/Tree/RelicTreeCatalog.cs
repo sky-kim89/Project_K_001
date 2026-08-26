@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 // ============================================================
 //  RelicTreeCatalog.cs
-//  유물 테크트리 노드 표 — 69개. 이 파일이 트리의 정본이다.
+//  유물 테크트리 노드 표 — 71개. 이 파일이 트리의 정본이다.
 //
 //  ■ 읽는 법
 //    Stat(...) = 스탯 노드, Sys(...) = 시스템 노드.
@@ -304,10 +304,21 @@ public static class RelicTreeCatalog
             9, 4, 4, RelicSystemEffect.GoldGainBonus, 0.10f);
         Sys(RelicNodeId.N_SoulUrn, RelicNodeId.N_WarriorLegacy, "영혼의 항아리", 4,
             7, 5, 4, RelicSystemEffect.SoldierSoulGainBonus, 0.10f);
+        // 시작 골드는 두 노드로 나뉜다 — 트렁크 바로 아래에서 조금(노잣돈),
+        // 골드 가지 끝에서 크게(군자금). 배속(시간의 고삐 → 찰나의 지배)과 같은 형태다.
+        //
+        // ⚠ 값이 절대값(골드)이라 저티어에 큰 값을 두면 안 된다
+        //   획득량(+%) 노드는 판이 길어야 체감되지만 이쪽은 1스테이지 상점에서
+        //   그대로 쓴다. 초반 상점을 통째로 쉽게 만들지 않으려고 앞은 얇게 준다.
+        //   만렙 합계 = 150×5 + 600×3 = +2,550 (기본 500 → 3,050).
+        Sys(RelicNodeId.N_TravelFund, RelicNodeId.N_GrowthMark, "여정의 노잣돈", 2,
+            5, -2, 5, RelicSystemEffect.StartGoldBonus, 150f);
+        Sys(RelicNodeId.N_WarChest, RelicNodeId.N_GoldenBounty, "여정의 군자금", 5,
+            9, 6, 3, RelicSystemEffect.StartGoldBonus, 600f);
 
         // ── 편의 (오른쪽 아래) ───────────────────────────────────
-        // ⚠ 배속은 두 노드로 나뉜다 — 저티어에서 2×, 고티어에서 3×
-        //   하나에 몰아 두면 첫 환생에 3배속이 열려 트리를 더 볼 이유가 사라진다.
+        // ⚠ 배속은 두 노드로 나뉜다 — 저티어에서 1.5×, 고티어에서 2×
+        //   하나에 몰아 두면 첫 환생에 최고 배속이 열려 트리를 더 볼 이유가 사라진다.
         Sys(RelicNodeId.N_TimeReins, RelicNodeId.N_GrowthMark, "시간의 고삐", 2,
             5, 0, 1, RelicSystemEffect.BattleSpeedUnlock, 1f);
         // 장수 슬롯은 최종 티어가 아니라 t3 다 — 부대 편성이 바뀌는 재미는 일찍 줘야 한다

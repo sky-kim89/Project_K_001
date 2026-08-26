@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
 using UnityEditor;
 
@@ -52,8 +51,7 @@ public static class EventDatabaseCreator
     const string IllustDir = "Assets/_project/3.Textures/Events";
 
     // ── 이벤트 ↔ 삽화 매핑 ────────────────────────────────────
-    //  삽화 8종을 이벤트 10종에 배분한다 (분위기가 겹치면 공유).
-    //  PNG 는 아이콘·텍스처 > 이벤트 일러스트 로 생성한다.
+    //  각 이벤트는 사건 내용에 맞춘 전용 삽화를 쓴다.
     static readonly Dictionary<string, string> IllustMap = new()
     {
         { "InjuredSoldier",     "evt_soldier"  },  // 부상당한 병사
@@ -67,11 +65,11 @@ public static class EventDatabaseCreator
         { "LoneVeteran",        "evt_veteran"   },  // 고독한 노병 — 모닥불 옆 실루엣
         { "AbandonedWarehouse", "evt_warehouse" },  // 방치된 창고 — 상자 더미
         { "WarRelic",           "evt_relic"     },  // 전쟁 유물 — 묻힌 갑옷과 전투석
-        { "BlackMarket",        "evt_merchant" },  // 상인의 밀거래
-        { "TravelingMerchant",  "evt_merchant" },  // 행상인의 좌판 (상점 스테이지)
-        { "StragglerSoldiers",  "evt_soldier"  },  // 패잔병 무리
+        { "BlackMarket",        "evt_black_market"       },  // 상인의 밀거래
+        { "TravelingMerchant",  "evt_traveling_merchant" },  // 행상인의 좌판 (상점 스테이지)
+        { "StragglerSoldiers",  "evt_straggler_soldiers" },  // 패잔병 무리
         { "WanderingMercenary", "evt_forest"   },  // 떠돌이 용병
-        { "PromisingSoldier",   "evt_soldier"  },  // 눈에 띄는 병사
+        { "PromisingSoldier",   "evt_promising_soldier"  },  // 눈에 띄는 병사
     };
 
     [MenuItem(ProjectKMenu.Data + "이벤트", priority = ProjectKMenu.DataPrio + 18)]
@@ -425,20 +423,11 @@ public static class EventDatabaseCreator
     }
 
     /// <summary>
-    /// IllustMap 이 가리키는 PNG 가 전부 있는지 확인하고, 하나라도 없으면
-    /// EventIllustrationGenerator 를 돌린다.
-    /// 이미 다 있으면 아무것도 하지 않는다 (매번 12장을 다시 그리면 느리다).
+    /// 프로젝트에 포함된 이벤트 PNG 를 갱신하고 Sprite 임포트 설정을 적용한다.
     /// </summary>
     static void EnsureIllustrations()
     {
-        foreach (var file in IllustMap.Values)
-        {
-            if (File.Exists($"{IllustDir}/{file}.png")) continue;
-
-            Debug.Log($"[EventDatabaseCreator] 삽화 {file}.png 가 없어 이벤트 일러스트를 먼저 생성합니다.");
-            EventIllustrationGenerator.Generate();
-            return;
-        }
+        EventIllustrationGenerator.Generate();
     }
 
     static EventData LoadOrCreate(string id)

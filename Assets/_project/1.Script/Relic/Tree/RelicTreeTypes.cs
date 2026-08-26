@@ -6,7 +6,7 @@ using UnityEngine;
 //  유물 테크트리 — 타입 정의 (노드 정의는 RelicTreeCatalog.cs)
 //
 //  ■ 왜 SO 가 아니라 코드 테이블인가
-//    노드가 69개다. SO 로 만들면 부모 참조가 끊긴 에셋을 눈으로 찾아야 하고
+//    노드가 71개다. SO 로 만들면 부모 참조가 끊긴 에셋을 눈으로 찾아야 하고
 //    가지 구조를 한눈에 볼 수 없다. 트리는 "표 하나"로 있을 때만 관리된다.
 //    (구 RelicData SO + RelicPopup 은 2026-08-25 에 제거됐다)
 //
@@ -122,9 +122,11 @@ public enum RelicNodeId
     N_SageTome         = 404,  // 현자의 서        — 경험치 +10%                             t4 Lv4  80pt
     N_GoldenBounty     = 405,  // 만금의 축복      — 골드 +10%                               t4 Lv4  80pt
     N_SoulUrn          = 406,  // 영혼의 항아리    — 소울 +10%                               t4 Lv4  80pt
+    N_TravelFund       = 407,  // 여정의 노잣돈    — 시작 골드 +150                          t2 Lv5  45pt
+    N_WarChest         = 408,  // 여정의 군자금    — 시작 골드 +600                          t5 Lv3  72pt
 
     // ── 유틸 트렁크 · 편의 (오른쪽 아래) ─────────────────────
-    N_TimeReins        = 411,  // 시간의 고삐      — 배속 2x 해금                            t2 특수 3pt
+    N_TimeReins        = 411,  // 시간의 고삐      — 배속 1.5x 해금                          t2 특수 3pt
     N_MomentMastery    = 412,  // 찰나의 지배      — 배속 2x 해금                            t4 특수 8pt
     N_MarchOrder       = 413,  // 출병 명령        — 장수 슬롯 +1칸                          t3 특수 5pt
     N_AbilityReform    = 414,  // 어빌리티 재편성  — 새로고침 +1회                           t3 Lv3  30pt
@@ -239,12 +241,17 @@ public sealed class RelicNodeDef
         RelicSystemEffect.AbilityChoiceCount    => $"어빌리티 선택지 +{Mathf.RoundToInt(v)}개",
         RelicSystemEffect.AbilityAdvancedChance => $"고급 이상 어빌리티 확률 +{v * 100f:0.#}%p",
         RelicSystemEffect.GoldGainBonus         => $"골드 획득량 +{v * 100f:0.#}%",
+        RelicSystemEffect.StartGoldBonus        => $"여정 시작 시 골드 +{Mathf.RoundToInt(v):#,0}",
         RelicSystemEffect.SoldierSoulGainBonus  => $"병사 소울 획득량 +{v * 100f:0.#}%",
         RelicSystemEffect.ExpGainBonus          => $"경험치 획득량 +{v * 100f:0.#}%",
         RelicSystemEffect.EnemyMaxHpReduction   => $"적 최대 체력 -{v * 100f:0.#}%",
         RelicSystemEffect.EnemyAttackReduction  => $"적 공격력 -{v * 100f:0.#}%",
         RelicSystemEffect.GeneralSlotBonus      => $"장수 배치 슬롯 +{Mathf.RoundToInt(v)}칸",
-        RelicSystemEffect.BattleSpeedUnlock     => $"전투 배속 {1 + Mathf.RoundToInt(v)}× 해금",
+        // 배속 값의 정본은 TopBarUI.SpeedSteps 다. 여기에 숫자를 박으면 둘이 갈라진다.
+        // ⚠ v 는 '이 노드가 주는 양'(둘 다 1)이라 노드만으로는 몇 번째 단계인지 모른다.
+        //   두 번째 해금 노드(찰나의 지배)만 짚어 준다 — 아니면 둘 다 같은 배속을 말한다.
+        RelicSystemEffect.BattleSpeedUnlock     =>
+            $"전투 배속 {TopBarUI.SpeedAtStep(Id == RelicNodeId.N_MomentMastery ? 2 : 1):0.##}× 해금",
         RelicSystemEffect.RandomTraitOnStart    => $"여정 시작 시 무작위 특성 +{Mathf.RoundToInt(v)}개",
         RelicSystemEffect.LoneWolfBonus         => $"줄인 병사 1명당 장수 공격력·체력 +{v * 100f:0.##}%",
         _                                       => string.Empty,

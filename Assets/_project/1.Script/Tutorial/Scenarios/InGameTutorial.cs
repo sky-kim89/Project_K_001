@@ -11,7 +11,7 @@ using UnityEngine.UI;
 //  ■ 세 덩어리가 한 시나리오다
 //    ① 전투 설명 — 이 게임은 알아서 싸운다
 //    ② 스킬 사용 — 플레이어가 개입할 수 있는 유일한 지점
-//    ③ 인게임 UI — 웨이브·배속·일시정지 읽는 법
+//    ③ 인게임 UI — 웨이브·AUTO·배속·일시정지 읽는 법
 //    같은 화면에서 끊기지 않고 이어지는 이야기라 쪼개지 않는다.
 //    쪼개면 중간에 끊겼을 때 이어 볼 지점이 시나리오 경계로 뭉개지고,
 //    나중에 i 버튼을 달 때도 "이 화면의 설명" 이 셋으로 흩어진다.
@@ -57,6 +57,7 @@ public class InGameTutorial : TutorialScenario
 
         // ── ③ 인게임 UI ─────────────────────────────────────
         steps.Add(PointWaveBar);
+        steps.Add(PointAutoButton);
         steps.Add(PointSpeedButton);
         steps.Add(PointPauseButton);
         steps.Add(Closing);
@@ -167,6 +168,23 @@ public class InGameTutorial : TutorialScenario
             ByName("WaveProgressBg"),
             "적은 여러 <b>웨이브</b>로 나뉘어 몰려옵니다.\n" +
             "마지막 웨이브의 보스까지 쓰러뜨리면 승리합니다.",
+            TutorialAnchor.Below));
+    }
+
+    /// <summary>
+    /// AUTO 토글 설명.
+    ///
+    /// 스킬을 직접 눌러 본 바로 다음에 놓는다 — "직접 누른다" 를 겪은 뒤라야
+    /// "안 누르고 맡긴다" 가 무슨 말인지 통한다.
+    /// ⚠ 기본값은 꺼짐이다 (BattleSettingsData.RawData.AutoSkill = false).
+    ///   "켜져 있습니다" 라고 쓰면 안 된다.
+    /// </summary>
+    IEnumerator PointAutoButton()
+    {
+        yield return Show(TutorialStep.Point(
+            ByName("AutoButton"),
+            "<b>AUTO</b> 를 켜면 스킬도 알아서 사용합니다.\n" +
+            "직접 골라 쓰고 싶을 때는 꺼 두세요.",
             TutorialAnchor.Below));
     }
 

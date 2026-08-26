@@ -9,7 +9,7 @@ using UnityEngine;
 //  SpawnUnitType 별로 스텟 범위가 다르게 적용된다.
 //
 //  성장 요소 (level, statMultiplier):
-//    level         — 레벨당 LevelMultPerLevel(기본 1%) 스텟 증가 (HP·ATK만 적용)
+//    level         — 레벨당 2% 스텟 증가 (HP·ATK만 적용)
 //    statMultiplier — 스테이지 진행도 기반 배율 (HP·ATK에 곱함, 지수 성장)
 //
 //  사용:
@@ -35,8 +35,7 @@ public static class EnemyStatRoller
             ? cfg.GetEnemyRange(unitType)
             : FallbackRange(unitType);
 
-        // 레벨 배율: 레벨당 1% (GameplayConfig.LevelMultPerLevel)
-        float levelMultPerLevel = cfg != null ? cfg.LevelMultPerLevel : 0.01f;
+        float levelMultPerLevel = cfg != null ? cfg.LevelMultPerLevel : 0.02f;
         float levelMult = 1f + Mathf.Max(0, level - 1) * levelMultPerLevel;
 
         // HP·ATK에만 레벨 배율 + 스테이지 배율을 곱한다

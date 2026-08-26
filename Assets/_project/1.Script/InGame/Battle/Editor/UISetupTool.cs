@@ -765,7 +765,7 @@ public static class UISetupTool
         bossHpRoot.SetActive(false);
 
         // ── 우상단 코너 버튼: [AUTO 토글] [배속 토글] [일시 정지] ─────────
-        //  배속은 버튼 하나짜리 토글이다 (1× → 2× → 3×).
+        //  배속은 버튼 하나짜리 토글이다 (1× → 1.5× → 2×).
         //  UI 규칙 1 — 누를 수 있는 버튼은 음각(RaisedBtn).
         var pauseBtn = EditorUIBuilder.RaisedBtn(topBarGo, "PauseButton",
                                                  new Color(0.30f, 0.16f, 0.18f), out var pauseBody);

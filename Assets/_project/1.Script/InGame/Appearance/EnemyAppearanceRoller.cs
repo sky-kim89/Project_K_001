@@ -20,6 +20,21 @@ using Unity.Mathematics;
 
 public static class EnemyAppearanceRoller
 {
+    static readonly EnemyRace[] LowTierRaces =
+    {
+        EnemyRace.Hog, EnemyRace.Slug, EnemyRace.Wolf,
+    };
+
+    static readonly EnemyRace[] MidTierRaces =
+    {
+        EnemyRace.Orc, EnemyRace.Skeleton, EnemyRace.ZombieA, EnemyRace.ZombieB,
+    };
+
+    static readonly EnemyRace[] InfernoRaces =
+    {
+        EnemyRace.Drakosha, EnemyRace.Demon, EnemyRace.Demigod,
+    };
+
     // (EnemyRace, unitName) → UnitAppearanceData 캐시
     static readonly Dictionary<(EnemyRace, string), UnitAppearanceData> _cache = new();
 
@@ -35,6 +50,27 @@ public static class EnemyAppearanceRoller
     };
 
     // ── 공개 API ─────────────────────────────────────────────
+
+    /// <summary>현재 난이도의 적 종족 풀에서 이름 시드로 하나를 고른다.</summary>
+    public static EnemyRace RollForCurrentDifficulty(
+        string unitName, SpawnUnitType unitType, EnemyRace requestedRace)
+    {
+        if (unitType == SpawnUnitType.Boss && requestedRace == EnemyRace.Troll)
+            return EnemyRace.Troll;
+
+        var pool = DifficultyConfig.CurrentTier().Tier switch
+        {
+            DifficultyTier.Easy or DifficultyTier.Normal => LowTierRaces,
+            DifficultyTier.Hard or DifficultyTier.Hell   => MidTierRaces,
+            DifficultyTier.Inferno                       => InfernoRaces,
+            _                                            => LowTierRaces,
+        };
+
+        return pool[ComputeSeed(unitName) % (uint)pool.Length];
+    }
+
+    public static bool IsMonster(EnemyRace race)
+        => race is EnemyRace.Hog or EnemyRace.Slug or EnemyRace.Troll or EnemyRace.Wolf;
 
     /// <summary>
     /// 종족으로 신체를 결정하고 unitName 시드로 무기를 결정한다.

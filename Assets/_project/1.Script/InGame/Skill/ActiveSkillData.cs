@@ -291,14 +291,18 @@ public static class ActiveSkillIdExtensions
     ///
     /// ■ 판정 기준
     ///   "시전 순간 시전자가 적 옆에 있어야 하는가" 로만 가른다.
-    ///   병사가 대신 달려가는 소환형(돌격병사·자폭병사)은 거리가 필요 없으므로 여기에 넣는다.
+    ///   병사가 대신 달려가는 소환형(자폭병사)은 거리가 필요 없으므로 여기에 넣는다.
     ///   피해가 섞여 있어도 주 효과가 아군 강화면 버프로 본다 (불멸의 방벽).
+    ///
+    /// ⚠ 돌격 병사는 여기 없다 (의도적)
+    ///   소환형이지만 적이 공격 사거리 안에 들어왔을 때만 나가게 한다 —
+    ///   적이 아직 화면 저편에 있을 때 터뜨리면 병사 3명이 허공을 달리고
+    ///   긴 쿨다운만 사라진다. 소환형이라는 이유로 예외를 주던 자리다.
     /// </summary>
     public static bool IsSupport(this ActiveSkillId id) => id switch
     {
         ActiveSkillId.HealAura         => true,   // 치유 오라
         ActiveSkillId.TargetHeal       => true,   // 집중 치유
-        ActiveSkillId.ChargeSoldier    => true,   // 소환 — 병사가 달려간다
         ActiveSkillId.SummonSkeleton   => true,   // 소환
         ActiveSkillId.SacrificeSoldier => true,   // 자기 강화
         ActiveSkillId.SuicideSoldier   => true,   // 소환 — 병사가 달려가 폭발

@@ -25,7 +25,7 @@ public enum RelicSystemEffect
     EnemyAttackReduction   = 8,  // 적 공격력 -N%
 
     GeneralSlotBonus       = 9,  // 장수 배치 슬롯 +N칸 (기본은 RelicTreeApplier.BaseGeneralSlots)
-    BattleSpeedUnlock      = 10, // 전투 배속 해금 +N단계 (기본 1× 만) — 트리에서 2×·3× 노드가 나뉘어 있다
+    BattleSpeedUnlock      = 10, // 전투 배속 해금 +N단계 (기본 1× 만) — 트리에서 1.5×·2× 노드가 나뉘어 있다
 
     /// <summary>여정 시작 시 무작위 특성을 N개 들고 시작한다. TraitDatabase 에서 추첨.</summary>
     RandomTraitOnStart     = 11,
@@ -38,4 +38,13 @@ public enum RelicSystemEffect
     ///   기준은 역분기 노드가 깎은 고정 수치(RelicTreeCatalog 의 음수 SoldierCount 합)다.
     /// </summary>
     LoneWolfBonus          = 12,
+
+    /// <summary>
+    /// 여정 시작 시 골드를 N 더 들고 시작한다 (기본 500 — ItemData.SetDefaults).
+    ///
+    /// ⚠ 획득량 증가(GoldGainBonus)와 다른 물건이다
+    ///   획득량은 벌어들이는 속도를, 이쪽은 <b>첫 상점에서 무엇을 살 수 있는가</b> 를 바꾼다.
+    ///   1스테이지 상점 앞에서 특성 하나(500~)를 집을 수 있느냐가 갈린다.
+    /// </summary>
+    StartGoldBonus         = 13,
 }

@@ -8,7 +8,7 @@ using UnityEngine;
 //  Tools > Project K > Cheat Editor
 //
 //  플레이 모드 전용 치트 에디터.
-//  어빌리티 / 특성 / 장비 / 장수 를 즉시 획득하고,
+//  재화 / 어빌리티 / 특성 / 장비 / 장수 를 즉시 획득하고,
 //  난이도 해금 제한을 풀 수 있다.
 // ============================================================
 
@@ -16,7 +16,16 @@ public class CheatEditorWindow : EditorWindow
 {
     // ── 탭 ──────────────────────────────────────────────────────
     int _tab;
-    static readonly string[] kTabs = { "어빌리티", "특성", "장비", "장수", "도감", "난이도", "튜토리얼" };
+    static readonly string[] kTabs = { "어빌리티", "특성", "장비", "장수", "도감", "난이도", "튜토리얼", "재화" };
+
+    // ── 재화 ────────────────────────────────────────────────────
+    static readonly eItem[] kCheatItems = System.Enum.GetValues(typeof(eItem))
+        .Cast<eItem>()
+        .Where(item => (int)item >= 0 && (int)item < 200 && item != eItem.BattleStone)
+        .ToArray();
+    static readonly string[] kCheatItemLabels = kCheatItems.Select(item => item.DisplayName()).ToArray();
+    int _itemIdx;
+    int _itemAmount = 10000;
 
     // ── 어빌리티 ─────────────────────────────────────────────────
     AbilityData[] _allAbilities;
@@ -73,6 +82,33 @@ public class CheatEditorWindow : EditorWindow
             case 4: DrawCodexTab();    break;
             case 5: DrawDifficultyTab(); break;
             case 6: DrawTutorialTab();   break;
+            case 7: DrawItemTab();       break;
+        }
+    }
+
+    // ── 재화 탭 ───────────────────────────────────────────────────
+
+    void DrawItemTab()
+    {
+        var data = UserDataManager.Instance?.Get<ItemData>();
+        if (data == null)
+        {
+            EditorGUILayout.HelpBox("ItemData 를 불러올 수 없습니다.", MessageType.Warning);
+            return;
+        }
+
+        _itemIdx    = EditorGUILayout.Popup("재화", _itemIdx, kCheatItemLabels);
+        _itemAmount = Mathf.Max(1, EditorGUILayout.IntField("지급 수량", _itemAmount));
+
+        var item = kCheatItems[_itemIdx];
+        EditorGUILayout.LabelField("현재 보유", $"{data.Get(item):N0}");
+        EditorGUILayout.Space(4);
+
+        if (GUILayout.Button($"{item.DisplayName()} +{_itemAmount:N0}", GUILayout.Height(30)))
+        {
+            data.Add(item, _itemAmount);
+            RequestSave();
+            Debug.Log($"[치트] {item.DisplayName()} +{_itemAmount:N0} (현재 {data.Get(item):N0})");
         }
     }
 

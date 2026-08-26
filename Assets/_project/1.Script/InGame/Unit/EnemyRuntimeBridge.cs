@@ -68,7 +68,8 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
 
         _stat     = EnemyStatRoller.Roll(unitName, unitType, level, statMultiplier, stageBias);
 
-        GetComponent<UnitAppearanceBridge>()?.ApplyEnemy(race, unitName);
+        GetComponent<UnitAppearanceBridge>()?.ApplyEnemy(
+            EnemyAppearanceRoller.RollForCurrentDifficulty(unitName, unitType, race), unitName);
 
         // 유물 트리 적 약화 적용 (EnemyMaxHpReduction / EnemyAttackReduction)
         RelicTreeApplier.ApplyEnemyWeaken(_stat);

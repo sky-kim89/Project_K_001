@@ -10,7 +10,7 @@ using UnityEngine;
 //    같은 이름은 항상 같은 직업.
 //
 //  ■ 스텟 배율
-//    레벨 보너스: × (1 + (level - 1) × 0.01)   → Lv1=×1.0, Lv100=×1.99
+//    레벨 보너스: × (1 + (level - 1) × 0.02)   → Lv1=×1.0, Lv100=×2.98
 //    등급 보너스: × (1 + (int)grade  × 0.10)   → Normal=×1.0, Epic=×1.4
 //    두 배율 곱 적용. 고정 스텟(CritChance, CritDamage)은 배율 미적용.
 //    배율 계산 뒤 레벨업 고정 성장(체력 +10 / 공격력 +1 per 레벨)을 더한다.
@@ -64,7 +64,7 @@ public static class UnitJobRoller
         float commandPower = math.round(ranges.CommandPower.Lerp(RollT(ref rng, floorT)));
 
         // ── 레벨·등급 배율 계산 ──────────────────────────────
-        float levelCoef = cfg != null ? cfg.LevelMultPerLevel : 0.01f;
+        float levelCoef = cfg != null ? cfg.LevelMultPerLevel : 0.02f;
         float gradeCoef = cfg != null ? cfg.GradeMultPerTier  : 0.10f;
         float defMax    = cfg != null ? cfg.DefenseMax         : 0.95f;
 

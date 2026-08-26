@@ -62,6 +62,7 @@ public static class ProjectKBatch
         EquipmentCreator.CreateAllEquipments();
         EventDatabaseCreator.CreateAll();
         GameAssetCreator.CreateStageConfig();
+        EnemyMonsterCatalogCreator.Create();
         SpriteManagerCreator.Create();          // 아틀라스는 아이콘 생성 뒤에 다시 돌릴 것
 
         AssetDatabase.SaveAssets();

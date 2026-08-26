@@ -51,13 +51,14 @@ public class RunShopPopup : PopupBase
     //  런 내내 유지되고 스택까지 쌓이는데 값이 싸면(한 스테이지 보상의 절반 수준)
     //  보이는 족족 전부 사게 된다 — 고를 이유가 없으면 상점이 자판기가 된다.
     //
-    //  ⚠ 스테이지가 아니라 **보유 개수**에 비례한다
+    //  ⚠ 스테이지가 아니라 **이번 여정에 상점에서 산 개수**에 비례한다
     //    스테이지 비례로 두면 "언제 샀느냐" 가 값을 정한다 — 늦게 시작한 특성일수록
     //    비싸서, 초반에 몰아 사는 게 항상 정답이 된다.
-    //    보유 비례면 "몇 개째냐" 가 값을 정한다. 특성을 쌓을수록 다음 하나가 무거워져
+    //    구매 비례면 "몇 개째 사느냐" 가 값을 정한다. 살수록 다음 하나가 무거워져
     //    소수 정예로 갈지 넓게 모을지 고르게 된다.
-    const int TraitCostBase     = 500;
-    const int TraitCostPerOwned = 400;   // 보유 1개당 인상폭
+    //    ⚠ 보유 개수가 아니다 — 이벤트·유물로 받은 특성은 값을 올리지 않는다.
+    const int TraitCostBase      = 500;
+    const int TraitCostPerBought = 400;   // 상점 구매 1개당 인상폭
 
     const int RefreshBaseCost = 100;
     const int SeedPrime       = 7919;   // 새로고침별 시드 오프셋용 소수
@@ -85,15 +86,24 @@ public class RunShopPopup : PopupBase
     void GenerateShop()
     {
         var shopData = UserDataManager.Instance.Get<RunShopData>();
+        bool generateOffers = !shopData.OffersGenerated;
+        if (generateOffers) shopData.BeginOffers();
+
         var rng      = new System.Random(shopData.ShopSeed + shopData.RefreshCount * SeedPrime);
 
-        SetupEquipSlots(rng, shopData);
-        SetupTraitSlots(rng, shopData);
-        SetupGeneralSlots(rng, shopData);
+        SetupEquipSlots(rng, shopData, generateOffers);
+        SetupTraitSlots(rng, shopData, generateOffers);
+        SetupGeneralSlots(rng, shopData, generateOffers);
+
+        if (generateOffers)
+        {
+            shopData.CompleteOffers();
+            UserDataManager.Instance.RequestSave();
+        }
         RefreshHeader();
     }
 
-    void SetupEquipSlots(System.Random rng, RunShopData shopData)
+    void SetupEquipSlots(System.Random rng, RunShopData shopData, bool generateOffers)
     {
         var db         = EquipmentDatabase.Current;
         int stageLevel = UserDataManager.Instance.Get<StageProgressData>().CurrentRunStage + 1;
@@ -102,7 +112,11 @@ public class RunShopPopup : PopupBase
         for (int i = 0; i < EquipSlots; i++)
         {
             var slot = _goodsSlots[i];
-            var data = PickUniqueEquipment(db, stageLevel, rng, usedIds);
+            var data = generateOffers
+                ? PickUniqueEquipment(db, stageLevel, rng, usedIds)
+                : db.Get(shopData.GetEquipOffer(i));
+
+            if (generateOffers) shopData.SetEquipOffer(i, data != null ? data.EquipmentId : "");
 
             if (data == null) { slot.SetEmpty(); continue; }
 
@@ -130,7 +144,7 @@ public class RunShopPopup : PopupBase
     // 추첨 풀은 "아직 없는 특성" 으로만 채운다.
     // 이미 산 슬롯은 풀을 건드리지 않고 저장된 특성을 그대로 품절로 보여준다
     // — 그러지 않으면 다시 열 때마다 새 특성이 올라와 공짜 새로고침이 된다.
-    void SetupTraitSlots(System.Random rng, RunShopData shopData)
+    void SetupTraitSlots(System.Random rng, RunShopData shopData, bool generateOffers)
     {
         var db    = TraitDatabase.Current;
         var owned = UserDataManager.Instance.Get<RunTraitData>();
@@ -158,19 +172,17 @@ public class RunShopPopup : PopupBase
             var purchase = shopData.GetPurchasedTrait(i);
             int idx      = i;
 
-            // 이미 산 슬롯 — 저장된 특성을 그대로 다시 그리고 품절 처리
-            if (purchase != TraitType.None)
-            {
-                var bought = db.Get(purchase);
-                slot.SetupTrait(bought, TraitCost(), () => OnBuyTrait(bought, TraitCost(), idx));
-                slot.SetSoldOut("구매 완료");
-                continue;
-            }
+            var data = generateOffers
+                ? (poolIdx < pool.Count ? pool[poolIdx++] : null)
+                : db.Get(shopData.GetTraitOffer(i));
 
-            if (poolIdx >= pool.Count) { slot.SetEmpty(); continue; }
+            if (generateOffers)
+                shopData.SetTraitOffer(i, data != null ? data.TraitType : TraitType.None);
 
-            var data = pool[poolIdx++];
+            if (data == null) { slot.SetEmpty(); continue; }
+
             slot.SetupTrait(data, TraitCost(), () => OnBuyTrait(data, TraitCost(), idx));
+            if (purchase != TraitType.None) slot.SetSoldOut("구매 완료");
         }
     }
 
@@ -183,7 +195,7 @@ public class RunShopPopup : PopupBase
     ///   rng 를 소모한 뒤라 처음과 다른 얼굴이 나온다 — 사실상 공짜 새로고침이다.
     ///   뽑아만 두고 '보여 줄지' 는 RenderGeneralSlots 가 정한다.
     /// </summary>
-    void SetupGeneralSlots(System.Random rng, RunShopData shopData)
+    void SetupGeneralSlots(System.Random rng, RunShopData shopData, bool generateOffers)
     {
         var allNames = UserDataManager.Instance.Get<UnitData>().GetAvailableNames();
         var used     = new HashSet<string>();
@@ -192,15 +204,19 @@ public class RunShopPopup : PopupBase
 
         for (int i = 0; i < _generalSlots.Length; i++)
         {
-            if (allNames.Count == 0) continue;
-
-            string chosen = null;
-            for (int retry = 0; retry < 20; retry++)
+            string chosen = generateOffers ? null : shopData.GetGeneralOffer(i);
+            if (generateOffers && allNames.Count > 0)
             {
-                string nm = allNames[rng.Next(allNames.Count)];
-                if (used.Add(nm)) { chosen = nm; break; }
+                for (int retry = 0; retry < 20; retry++)
+                {
+                    string nm = allNames[rng.Next(allNames.Count)];
+                    if (used.Add(nm)) { chosen = nm; break; }
+                }
+                chosen ??= allNames[i % allNames.Count];
             }
-            chosen ??= allNames[i % allNames.Count];
+
+            if (generateOffers) shopData.SetGeneralOffer(i, chosen);
+            if (string.IsNullOrEmpty(chosen)) continue;
 
             // 등급은 이름 시드가 정한 태생 등급 그대로 — 즉 매물마다 랜덤이다.
             // ⚠ 예전엔 GradeUpCount 로 Epic 까지 끌어올려 전 매물이 에픽이었다.
@@ -218,25 +234,19 @@ public class RunShopPopup : PopupBase
     }
 
     /// <summary>
-    /// 뽑아 둔 매물을 현재 배치 상황에 맞춰 다시 그린다. <b>추첨은 하지 않는다.</b>
-    ///
-    /// 장수 배치 슬롯이 늘어나는 특성을 사면 그 자리에서 고용이 열려야 한다.
-    /// 이때 GenerateShop() 을 다시 부르면 상품 6칸까지 새 시드로 갈려 버린다 —
-    /// 여기서는 하단 용병 줄만 손댄다.
+    /// 뽑아 둔 매물을 다시 그린다. <b>추첨은 하지 않는다.</b>
+    /// 배치 슬롯이 꽉 차도 매물과 구매 버튼을 유지한다. 자리를 비우는 것은
+    /// 구매 버튼이 여는 MercenaryShopPopup 안에서 처리한다.
     /// </summary>
     void RenderGeneralSlots(RunShopData shopData)
     {
         if (_generalPicks == null) return;
 
-        int  activeSlots = RelicTreeApplier.GetTotalActiveGeneralSlots();
-        int  deployed    = UserDataManager.Instance.Get<DeploymentData>().GetDeployedUnits().Count;
-        bool slotsFull   = deployed >= activeSlots;
-
         for (int i = 0; i < _generalSlots.Length; i++)
         {
-            UnitEntry entry = slotsFull ? null : _generalPicks[i];
+            UnitEntry entry = _generalPicks[i];
 
-            // 고용가는 매물 등급에 따라 다르다 (빈 슬롯이면 표시용 기본값)
+            // 고용가는 매물 등급에 따라 다르다 (매물이 없으면 표시용 기본값)
             int idx  = i;
             int cost = entry != null
                 ? GameplayConfig.HireCost(entry.Grade)
@@ -310,7 +320,7 @@ public class RunShopPopup : PopupBase
         //   RenderGeneralSlots 는 같은 그림을 다시 그릴 뿐이라 손해가 없다.
         RenderGeneralSlots(shopData);
 
-        // ⚠ 특성 값은 보유 개수에 비례한다 — 하나 사면 옆 칸도 그만큼 올라야 한다
+        // ⚠ 특성 값은 구매 횟수에 비례한다 — 하나 사면 옆 칸도 그만큼 올라야 한다
         //   예전엔 여기서 RefreshHeader() 만 불렀다. 가격표는 슬롯을 세울 때
         //   찍힌 값 그대로 남고, 클릭 시 넘어가는 cost 는 람다 안에서 TraitCost() 를
         //   다시 계산했다 — 표시가 500 인 칸을 누르면 1,000 이 빠져나갔다.
@@ -360,8 +370,7 @@ public class RunShopPopup : PopupBase
         shopData.SetPurchasedGeneral(slotIdx);
         UserDataManager.Instance.RequestSave();
 
-        // 산 칸은 품절로, 나머지는 남은 배치 슬롯 기준으로 다시 그린다
-        // (방금 고용으로 슬롯이 꽉 찼으면 다른 칸은 '고용 불가' 가 된다)
+        // 산 칸만 품절로 바꾸고, 나머지 매물은 그대로 유지한다.
         RenderGeneralSlots(shopData);
         RefreshHeader();
     }
@@ -379,27 +388,22 @@ public class RunShopPopup : PopupBase
     // ── 유틸 ─────────────────────────────────────────────────
 
     /// <summary>
-    /// 특성 가격 — 이미 보유한 특성 개수에 비례한다.
+    /// 특성 가격 — <b>이번 여정에 상점에서 산 특성 개수</b>에 비례한다.
     /// 0개 500 / 1개 900 / 2개 1,300 / 3개 1,700 / 6개 2,900 …
+    ///
+    /// ⚠ '보유 개수' 가 아니라 '구매 횟수' 다
+    ///   예전엔 RunTraitData 의 보유 특성을 셌다. 그러면 이벤트 보상·유물로
+    ///   공짜로 받은 특성까지 값을 밀어 올린다 — 받은 쪽이 손해가 되는 구조다.
+    ///   상점에서 지갑을 연 만큼만 다음 값이 무거워진다 (RunShopData.TraitBuyCount).
+    ///   덤으로 시너지 특성(1000~)을 걸러 낼 필요도 없어졌다 — 애초에 살 수 없다.
     ///
     /// ⚠ 값이 도중에 바뀌므로 표시도 같이 갱신해야 한다
     ///   한 칸을 사면 옆 칸 값이 즉시 오른다 — OnBuyTrait 이 RefreshTraitCosts()
     ///   를 부르는 이유다. 안 부르면 가격표와 실제 차감액이 어긋난다.
-    ///
-    /// ⚠ 시너지 특성(1000~)은 세지 않는다
-    ///   배치 구성에 따라 자동으로 붙었다 떨어지는 파생값이라,
-    ///   세면 부대를 바꿀 때마다 상점 가격이 출렁인다.
     /// </summary>
     static int TraitCost()
-    {
-        var run = UserDataManager.Instance?.Get<RunTraitData>();
-        int owned = 0;
-        if (run?.AcquiredTraits != null)
-            foreach (var t in run.AcquiredTraits)
-                if ((int)t < 1000) owned++;
-
-        return TraitCostBase + owned * TraitCostPerOwned;
-    }
+        => TraitCostBase
+         + UserDataManager.Instance.Get<RunShopData>().TraitBuyCount * TraitCostPerBought;
 
     // 장비는 특성보다 싸되, 등급 차이가 선택으로 느껴질 만큼은 벌린다
     static int CalcEquipCost(EquipmentData data) => data.Grade switch

@@ -80,7 +80,13 @@ public class NormalMode : BattleModeBase
 
         int   maxStage = GameplayConfig.Current.MaxStage;
         float bias     = Mathf.Clamp01((float)_stage.StageNumber / maxStage);
-        foreach (var e in entries) e.StageBias = bias;
+        foreach (var e in entries)
+        {
+            e.StageBias = bias;
+            e.EnemyRace = _stage.Mode == BattleMode.Elite && e.UnitType == SpawnUnitType.Boss
+                ? EnemyRace.Troll
+                : e.EnemyRace == EnemyRace.Troll ? EnemyRace.Orc : e.EnemyRace;
+        }
         return entries;
     }
 

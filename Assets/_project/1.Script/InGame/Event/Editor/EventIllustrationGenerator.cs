@@ -7,7 +7,7 @@ using UnityEngine;
 //  EventIllustrationGenerator.cs  [Editor Only]
 //  Tools > Project K > 아이콘·텍스처 > 이벤트 일러스트
 //
-//  이벤트 삽화 8종 절차 생성 (832 × 200 PNG).
+//  프로젝트에 포함된 이벤트 삽화 PNG 의 Sprite 임포트 설정을 적용한다.
 //
 //  ── 그리기 규칙 ─────────────────────────────────────────
 //  · 좌표는 전부 screenY (0 = 상단, 199 = 하단).
@@ -45,27 +45,10 @@ public static class EventIllustrationGenerator
     [MenuItem(ProjectKMenu.Icon + "이벤트 일러스트", priority = ProjectKMenu.IconPrio + 19)]
     public static void Generate()
     {
-        if (!Directory.Exists(OutDir)) Directory.CreateDirectory(OutDir);
-
-        GenAmbush();
-        GenMerchant();
-        GenShrine();
-        GenSoldier();
-        GenMystery();
-        GenForest();
-        GenPotion();
-        GenDark();
-
-        // 발견형 이벤트 전용 — 사건이 무엇인지 그림만 보고 알 수 있어야 한다
-        GenTome();
-        GenWarehouse();
-        GenRelic();
-        GenVeteran();
-
         AssetDatabase.Refresh();
-        ApplySpriteImportSettings();   // ← 이게 없으면 Sprite 로 로드되지 않는다
+        ApplySpriteImportSettings();
         AssetDatabase.SaveAssets();
-        Debug.Log($"[EventIllustrationGenerator] 삽화 12종 → {OutDir}");
+        Debug.Log($"[EventIllustrationGenerator] 이벤트 삽화 Sprite 임포트 설정 적용 → {OutDir}");
     }
 
     // PNG 를 Sprite(Single) 로 임포트한다.
@@ -84,7 +67,7 @@ public static class EventIllustrationGenerator
             importer.textureType         = TextureImporterType.Sprite;
             importer.spriteImportMode    = SpriteImportMode.Single;
             importer.spritePivot         = new Vector2(0.5f, 0.5f);
-            importer.filterMode          = FilterMode.Bilinear;
+            importer.filterMode          = FilterMode.Point;
             importer.textureCompression  = TextureImporterCompression.Uncompressed;
             importer.maxTextureSize      = 1024;   // 832 폭 유지
             importer.alphaIsTransparency = true;

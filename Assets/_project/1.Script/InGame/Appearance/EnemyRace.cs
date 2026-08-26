@@ -23,4 +23,10 @@ public enum EnemyRace
     Furry,
     Merman,
     Teddy,
+
+    // FantasyHeroes/Bonus/Monsters — 기존 enum 직렬화 값을 지키기 위해 끝에 추가한다.
+    Hog,
+    Slug,
+    Troll,
+    Wolf,
 }

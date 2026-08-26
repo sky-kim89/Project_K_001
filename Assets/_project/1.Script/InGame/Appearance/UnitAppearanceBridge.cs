@@ -1,5 +1,6 @@
 using Assets.PixelFantasy.PixelHeroes.Common.Scripts.CharacterScripts;
 using UnityEngine;
+using UnityEngine.U2D.Animation;
 
 // ============================================================
 //  UnitAppearanceBridge.cs
@@ -111,7 +112,10 @@ public class UnitAppearanceBridge : MonoBehaviour
         _hasAppliedEnemy   = true;
         _appliedGeneration = _cacheGeneration;
 
-        Apply(EnemyAppearanceRoller.Roll(race, unitName));
+        if (EnemyAppearanceRoller.IsMonster(race))
+            ApplyMonster(race);
+        else
+            Apply(EnemyAppearanceRoller.Roll(race, unitName));
     }
 
     // ── 내부 ─────────────────────────────────────────────────
@@ -124,6 +128,9 @@ public class UnitAppearanceBridge : MonoBehaviour
 
     void Apply(UnitAppearanceData data)
     {
+        // 몬스터 모드가 남긴 Attack → Slash 오버라이드를 지운다.
+        _builder.Character.Body.GetComponent<SpriteLibrary>().RemoveOverride("Slash");
+
         _builder.Body    = data.Body;
         _builder.Head    = data.Head;
         _builder.Ears    = data.Ears;
@@ -140,5 +147,20 @@ public class UnitAppearanceBridge : MonoBehaviour
         _builder.Firearm = data.Firearm;
 
         _builder.Rebuild();
+    }
+
+    void ApplyMonster(EnemyRace race)
+    {
+        var body = _builder.Character.Body;
+        var source  = EnemyMonsterCatalog.Current.Get(race);
+        var library = body.GetComponent<SpriteLibrary>();
+
+        library.spriteLibraryAsset = source;
+        // 기존 컨트롤러의 근접 공격 상태는 Slash를 찾고, 몬스터 원본은 Attack으로 묶여 있다.
+        for (int i = 0; i < 4; i++)
+            library.AddOverride(source.GetSprite("Attack", i.ToString()), "Slash", i.ToString());
+
+        body.GetComponent<SpriteResolver>().SetCategoryAndLabel("Idle", "0");
+        _builder.Character.Firearm.Renderer.enabled = false;
     }
 }

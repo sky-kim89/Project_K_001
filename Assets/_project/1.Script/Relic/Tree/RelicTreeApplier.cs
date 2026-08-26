@@ -215,6 +215,16 @@ public static class RelicTreeApplier
         => GetSystemInt(RelicSystemEffect.RandomTraitOnStart);
 
     /// <summary>
+    /// 여정 시작 시 얹어 주는 골드 (여정의 군자금).
+    ///
+    /// ⚠ 지급은 RunStarter.BeginRun 한 곳에서만 한다
+    ///   ItemData.SetDefaults 에 넣으면 안 된다 — 그 자리는 환생 처리 도중이라,
+    ///   방금 번 포인트로 이 노드를 찍어도 다음 여정이 아니라 그 다음에야 반영된다.
+    /// </summary>
+    public static int GetStartGoldBonus()
+        => GetSystemInt(RelicSystemEffect.StartGoldBonus);
+
+    /// <summary>
     /// 그 효과를 주는 노드 중 <b>아직 만렙이 아닌 첫 노드</b>의 이름.
     /// 잠긴 기능을 안내할 때 "무엇을 찍으면 되는지" 를 짚는 데 쓴다.
     ///

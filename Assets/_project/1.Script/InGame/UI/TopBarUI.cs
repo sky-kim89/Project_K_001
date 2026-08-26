@@ -16,10 +16,10 @@ using TMPro;
 //    - 우상단: [AUTO 토글] [배속 토글] [일시 정지]
 //
 //  ■ 배속은 버튼 하나짜리 토글이다
-//    누를 때마다 1× → 2× → 3× → 1× 로 돌아간다.
+//    누를 때마다 1× → 1.5× → 2× → 1× 로 돌아간다.
 //    ⚠ 단, 도는 범위는 '시간의 고삐'(R_BattleSpeed) 유물이 정한다.
-//      0레벨 = 1× 고정(버튼 비활성), Lv1 = 2× 까지, Lv2 = 3× 까지.
-//    ⚠ 예전엔 1×/2×/3× 버튼 3개가 따로 있어 상단 폭을 셋이서 나눠 먹었다.
+//      0레벨 = 1× 고정(버튼 비활성), Lv1 = 1.5× 까지, Lv2 = 2× 까지.
+//    ⚠ 예전엔 배속 버튼 3개가 따로 있어 상단 폭을 셋이서 나눠 먹었다.
 //      셋 중 하나만 켜져 있으므로 정보량은 같은데 자리만 3배로 썼다.
 //
 //  ■ AUTO 는 아군 장수 스킬 자동 사용 토글이다
@@ -30,8 +30,8 @@ using TMPro;
 //    누를 때마다 섹션에 쓰고 RequestSave() 한다. 다음 전투에 그대로 복원된다.
 //
 //  ⚠ 씬을 떠날 때 timeScale 을 1 로 되돌린다
-//    저장된 3× 를 그대로 두고 로비로 나가면 로비 연출까지 3배로 돈다.
-//    저장값(SpeedIndex)은 남으므로 다음 전투에서는 다시 3× 로 시작한다.
+//    저장된 2× 를 그대로 두고 로비로 나가면 로비 연출까지 2배로 돈다.
+//    저장값(SpeedIndex)은 남으므로 다음 전투에서는 다시 2× 로 시작한다.
 //
 //  ⚠ 일시 정지 중에는 배속을 바꾸지 않는다
 //    PausePopup 이 timeScale=0 을 걸고 닫힐 때 이전 값으로 되돌린다.
@@ -65,7 +65,7 @@ public class TopBarUI : MonoBehaviour
     [Header("킬 카운터")]
     [SerializeField] TextMeshProUGUI _killCountText;
 
-    [Header("배속 토글 (누를 때마다 1× → 2× → 3×)")]
+    [Header("배속 토글 (누를 때마다 1× → 1.5× → 2×)")]
     [SerializeField] Button          _speedButton;
     [SerializeField] TextMeshProUGUI _speedLabel;
     // ⚠ 버튼 본체가 아니라 그 위에 얹은 색 띠를 가리킨다.
@@ -84,12 +84,20 @@ public class TopBarUI : MonoBehaviour
     [Header("일시 정지")]
     [SerializeField] Button _pauseButton;
 
-    /// <summary>토글 순서. 여기에 값을 더하면 버튼이 그대로 따라간다.</summary>
-    static readonly float[] SpeedSteps = { 1f, 2f, 3f };
+    /// <summary>
+    /// 토글 순서. 여기에 값을 더하면 버튼이 그대로 따라간다.
+    ///
+    /// 배속 값의 정본이다 — 유물 툴팁("전투 배속 N× 해금")도 여기를 읽는다.
+    /// </summary>
+    public static readonly float[] SpeedSteps = { 1f, 1.5f, 2f };
 
-    // ⚠ 처음부터 3× 를 쓸 수 있는 게 아니다
+    /// <summary>해금 단계(0=1×) → 그 단계의 배속. 범위 밖은 잘라 낸다.</summary>
+    public static float SpeedAtStep(int step)
+        => SpeedSteps[Mathf.Clamp(step, 0, SpeedSteps.Length - 1)];
+
+    // ⚠ 처음부터 2× 를 쓸 수 있는 게 아니다
     //   '시간의 고삐'(R_BattleSpeed) 유물이 여는 만큼만 돈다 —
-    //   0레벨이면 1× 고정이라 버튼이 아예 안 눌리고, Lv1 이면 1×↔2×, Lv2 라야 3× 까지 간다.
+    //   0레벨이면 1× 고정이라 버튼이 아예 안 눌리고, Lv1 이면 1×↔1.5×, Lv2 라야 2× 까지 간다.
     //   SpeedSteps 를 직접 세지 말 것. 유물을 빼먹으면 잠금이 통째로 풀린다.
     static int UnlockedSpeedCount
         => Mathf.Clamp(RelicTreeApplier.GetBattleSpeedStepCount(), 1, SpeedSteps.Length);
@@ -101,9 +109,9 @@ public class TopBarUI : MonoBehaviour
 
     static readonly Color[] SpeedColors =
     {
-        new Color(0.18f, 0.30f, 0.46f, 1f),   // 1× — 차분한 남색
-        new Color(0.24f, 0.46f, 0.36f, 1f),   // 2× — 청록
-        new Color(0.52f, 0.36f, 0.10f, 1f),   // 3× — 금빛 (가장 빠름)
+        new Color(0.18f, 0.30f, 0.46f, 1f),   // 1×   — 차분한 남색
+        new Color(0.24f, 0.46f, 0.36f, 1f),   // 1.5× — 청록
+        new Color(0.52f, 0.36f, 0.10f, 1f),   // 2×   — 금빛 (가장 빠름)
     };
 
     // 배속이 잠겼을 때의 띠 색 — 1× 정상 색보다 확실히 죽은 회색.
@@ -459,7 +467,18 @@ public class TopBarUI : MonoBehaviour
         float speed = SpeedSteps[_speedIndex];
         Time.timeScale = speed;
 
-        if (_speedLabel != null) _speedLabel.text  = $"{speed:0}×";
+        if (_speedLabel != null)
+        {
+            // ⚠ "1.5×" 는 네 글자다 — 66px 코너 버튼에 FontSm 그대로는 안 들어간다.
+            //   1× 일 때까지 작아지지 않게 최대값은 원래 크기로 묶어 둔다.
+            if (!_speedLabel.enableAutoSizing)
+            {
+                _speedLabel.fontSizeMax     = _speedLabel.fontSize;
+                _speedLabel.fontSizeMin     = _speedLabel.fontSize * 0.7f;
+                _speedLabel.enableAutoSizing = true;
+            }
+            _speedLabel.text = $"{speed:0.##}×";
+        }
         if (_speedFace  != null) _speedFace.color  = SpeedColors[_speedIndex];
 
         // ⚠ 잠겨 있어도 버튼은 살려 둔다
