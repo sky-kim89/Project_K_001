@@ -44,6 +44,9 @@ using UnityEngine;
 //    FX_BossSlam_Warning  — 강타 예고 (루프, 반경 연동, 바닥)
 //    FX_BossSlam_Impact   — 강타 착탄 (반경 연동)
 //    FX_BossSlam_Hit      — 강타 피격 (대상마다 1개)
+//    FX_BossJumpShockwave_Lift   — 낮은 제자리 도약 예고
+//    FX_BossJumpShockwave_Impact — 흙빛 이중 충격파
+//    FX_BossJumpShockwave_Hit    — 충격파 피격 먼지
 // ============================================================
 
 public static class RareSkillEffectGenerator
@@ -61,32 +64,32 @@ public static class RareSkillEffectGenerator
     static readonly Dictionary<string, string[]> kMaterials = new()
     {
         { "FX_Bisect_Charge",    new[] { "MAT_FX_Spark_Add",     "MAT_FX_Line_Add",    "MAT_FX_Soft_Add"                          } },
-        { "FX_Bisect_Slash",     new[] { "MAT_FX_Beam_Add",      "MAT_FX_Blade_Add",   "MAT_FX_Spark_Add",  "MAT_FX_Shard_Add"    } },
+        { "FX_Bisect_Slash",     new[] { "MAT_FX_Beam_Add",      "MAT_FX_Blade_Add",   "MAT_FX_Spark_Add",  "MAT_FX_Shard_Add", "MAT_FX_Halo_Add", "MAT_FX_Spark_Add" } },
         { "FX_Bisect_Cut",       new[] { "MAT_FX_Blade_Add",     "MAT_FX_Spark_Add",   "MAT_FX_Soft_Add"                          } },
         // 화살은 Arrow 텍스처 + Stretch 렌더라야 "떨어지는 화살" 로 읽힌다 (StretchArrow 참고)
         { "FX_ArrowStorm_Volley",new[] { "MAT_FX_ArrowH_Add",    "MAT_FX_Star_Add",    "MAT_FX_Spark_Add",  "MAT_FX_Smoke_Alpha"  } },
-        { "FX_ArrowStorm_Burst", new[] { "MAT_FX_ArrowH_Add",    "MAT_FX_Halo_Add",    "MAT_FX_Spark_Add",  "MAT_FX_Smoke_Alpha"  } },
+        { "FX_ArrowStorm_Burst", new[] { "MAT_FX_ArrowH_Add",    "MAT_FX_Halo_Add",    "MAT_FX_Spark_Add",  "MAT_FX_Smoke_Alpha", "MAT_FX_Halo_Add", "MAT_FX_Spark_Add" } },
         { "FX_Gravity_Vortex",   new[] { "MAT_FX_Vortex_Add",    "MAT_FX_Wisp_Add",    "MAT_FX_Shard_Add",  "MAT_FX_Soft_Add"     } },
-        { "FX_Gravity_Collapse", new[] { "MAT_FX_Halo_Add",      "MAT_FX_Shard_Add",   "MAT_FX_Soft_Add",   "MAT_FX_Smoke_Alpha"  } },
+        { "FX_Gravity_Collapse", new[] { "MAT_FX_Halo_Add",      "MAT_FX_Shard_Add",   "MAT_FX_Soft_Add",   "MAT_FX_Smoke_Alpha", "MAT_FX_Halo_Add", "MAT_FX_Spark_Add" } },
         { "FX_Bulwark_Dome",     new[] { "MAT_FX_HexShield_Add", "MAT_FX_Soft_Add",    "MAT_FX_Crystal_Add"                       } },
-        { "FX_Bulwark_Burst",    new[] { "MAT_FX_Halo_Add",      "MAT_FX_Crystal_Add", "MAT_FX_Petal_Add",  "MAT_FX_Spark_Add"    } },
+        { "FX_Bulwark_Burst",    new[] { "MAT_FX_Halo_Add",      "MAT_FX_Crystal_Add", "MAT_FX_Petal_Add",  "MAT_FX_Spark_Add", "MAT_FX_Halo_Add", "MAT_FX_Spark_Add" } },
         // 공통 희귀 — 연쇄 번개 / 사형 선고
         { "FX_Chain_Cast",       new[] { "MAT_FX_Spark_Add",     "MAT_FX_Soft_Add"                                              } },
         // FX_Chain_Bolt 는 LineRenderer 라 파티클 머티리얼이 자식(ImpactSparks)부터 붙는다
         { "FX_Chain_Bolt",       new[] { "MAT_FX_Spark_Add"                                                                     } },
-        { "FX_Chain_Hit",        new[] { "MAT_FX_Halo_Add",      "MAT_FX_Lightning_Add", "MAT_FX_Soft_Add"                      } },
+        { "FX_Chain_Hit",        new[] { "MAT_FX_Halo_Add",      "MAT_FX_Lightning_Add", "MAT_FX_Soft_Add", "MAT_FX_Halo_Add", "MAT_FX_Spark_Add" } },
         { "FX_Sentence_Mark",    new[] { "MAT_FX_Brand_Add",     "MAT_FX_Spark_Add"                                             } },
-        { "FX_Sentence_Execute", new[] { "MAT_FX_Blade_Add",     "MAT_FX_Halo_Add",    "MAT_FX_Shard_Add"                       } },
+        { "FX_Sentence_Execute", new[] { "MAT_FX_Blade_Add",     "MAT_FX_Halo_Add",    "MAT_FX_Shard_Add", "MAT_FX_Halo_Add", "MAT_FX_Spark_Add" } },
         // 비석 강림 / 군기 강림 / 피의 대가 / 관통 돌진
         { "FX_Grave_Warning",    new[] { "MAT_FX_Ring_Add",      "MAT_FX_Wisp_Add"                                              } },
         // 비석 본체는 Alpha — Additive 로 두면 돌덩이가 유리처럼 비쳐 보인다
         // 자식 순서대로 매칭된다: Root(비석) · Ring · Dirt · GroundDust · Flash
         { "FX_Grave_Impact",     new[] { "MAT_FX_Tomb_Alpha",    "MAT_FX_Halo_Add",    "MAT_FX_Smoke_Alpha",
-                                         "MAT_FX_Smoke_Alpha",  "MAT_FX_Halo_Add"                                              } },
+                                         "MAT_FX_Smoke_Alpha",  "MAT_FX_Halo_Add", "MAT_FX_Halo_Add", "MAT_FX_Spark_Add" } },
         { "FX_Grave_Rise",       new[] { "MAT_FX_Wisp_Add",      "MAT_FX_Rune_Add"                                              } },
-        { "FX_Banner_Aura",      new[] { "MAT_FX_Banner_Add",    "MAT_FX_Ring_Add",    "MAT_FX_Star_Add"                        } },
-        { "FX_Blood_Burst",      new[] { "MAT_FX_Blade_Add",     "MAT_FX_Spark_Add",   "MAT_FX_Soft_Add"                        } },
-        { "FX_Dash_Slash",       new[] { "MAT_FX_Beam_Add",      "MAT_FX_Spark_Add"                                             } },
+        { "FX_Banner_Aura",      new[] { "MAT_FX_Banner_Add",    "MAT_FX_Ring_Add",    "MAT_FX_Star_Add", "MAT_FX_Halo_Add", "MAT_FX_Spark_Add" } },
+        { "FX_Blood_Burst",      new[] { "MAT_FX_Blade_Add",     "MAT_FX_Spark_Add",   "MAT_FX_Soft_Add", "MAT_FX_Halo_Add", "MAT_FX_Spark_Add" } },
+        { "FX_Dash_Slash",       new[] { "MAT_FX_Beam_Add",      "MAT_FX_Spark_Add", "MAT_FX_Halo_Add", "MAT_FX_Spark_Add" } },
         { "FX_Death_Skull",      new[] { "MAT_FX_Skull_Add",     "MAT_FX_Halo_Add",    "MAT_FX_Wisp_Add"                        } },
         // 보스 패턴 — 돌진 / 분쇄 강타 (자식 생성 순서대로 매칭)
         { "FX_BossCharge_Windup",new[] { "MAT_FX_Ring_Add",      "MAT_FX_Spark_Add",   "MAT_FX_Smoke_Alpha"                     } },
@@ -95,6 +98,10 @@ public static class RareSkillEffectGenerator
         { "FX_BossSlam_Warning", new[] { "MAT_FX_Ring_Add",      "MAT_FX_Spark_Add"                                             } },
         { "FX_BossSlam_Impact",  new[] { "MAT_FX_Halo_Add",      "MAT_FX_Shard_Add",   "MAT_FX_Smoke_Alpha", "MAT_FX_Ring_Add"  } },
         { "FX_BossSlam_Hit",     new[] { "MAT_FX_Spark_Add",     "MAT_FX_Soft_Add"                                              } },
+        // 낮은 제자리 착지 — 붉은 분쇄 강타보다 흙빛·먼지 비중을 높인다
+        { "FX_BossJumpShockwave_Lift",  new[] { "MAT_FX_Ring_Add", "MAT_FX_Smoke_Alpha", "MAT_FX_Spark_Add"                    } },
+        { "FX_BossJumpShockwave_Impact",new[] { "MAT_FX_Halo_Add", "MAT_FX_Soft_Add", "MAT_FX_Smoke_Alpha", "MAT_FX_Shard_Add", "MAT_FX_Ring_Add" } },
+        { "FX_BossJumpShockwave_Hit",   new[] { "MAT_FX_Smoke_Alpha", "MAT_FX_Spark_Add"                                        } },
     };
 
     // ⚠ 방향이 곧 연출인 이펙트는 여기에 등록한다
@@ -106,6 +113,21 @@ public static class RareSkillEffectGenerator
     {
         "FX_Dash_Slash",    // 관통 돌진 — 돌진 방향으로 눕는 참격선
         "FX_Blood_Burst",   // 피의 대가 — 전방 부채꼴 파도
+    };
+
+    // 희귀 10종의 결정타는 공통으로 짧은 백색 섬광 + 직업색 파편을 한 겹 더 얹는다.
+    // 평범한 스킬과 같은 레이어 수로 끝나면 희귀도를 눈으로 구분할 수 없다.
+    static readonly Dictionary<string, Color32> kRareAccents = new()
+    {
+        { "FX_Bisect_Slash",     C(205, 235, 255) },
+        { "FX_ArrowStorm_Burst", C(255, 225, 135) },
+        { "FX_Gravity_Collapse", C(175, 105, 255) },
+        { "FX_Bulwark_Burst",    C(125, 220, 255) },
+        { "FX_Chain_Hit",        C(145, 205, 255) },
+        { "FX_Sentence_Execute", C(255, 105, 85)  },
+        { "FX_Dash_Slash",       C(210, 245, 255) },
+        { "FX_Banner_Aura",      C(255, 205, 90)  },
+        { "FX_Grave_Impact",     C(175, 220, 145) },
     };
 
     // ⚠ 캐릭터 뒤(바닥)에 깔려야 하는 레이어만 여기에 등록한다
@@ -122,11 +144,13 @@ public static class RareSkillEffectGenerator
         // 분쇄 강타 예고 — 통째로 바닥이다. "어디까지 맞는가" 를 읽는 그림이라
         // 보스 몸이 이걸 덮으면 피할 자리를 못 본다.
         { "FX_BossSlam_Warning", new[] { "", "Converge" } },
+        { "FX_BossJumpShockwave_Lift", new[] { "", "Dust" } },
+        { "FX_BossJumpShockwave_Impact", new[] { "Dust", "GroundRing" } },
         // 돌진 웅크림 — 발밑 링만 바닥으로, 불티·먼지는 앞에 남긴다
         { "FX_BossCharge_Windup", new[] { "" } },
     };
 
-    [MenuItem(ProjectKMenu.Fx + "희귀·보스 스킬 이펙트 (27종)", priority = ProjectKMenu.PrefabPrio + 52)]
+    [MenuItem(ProjectKMenu.Fx + "희귀·보스 스킬 이펙트 (30종)", priority = ProjectKMenu.PrefabPrio + 52)]
     public static void GenerateAll()
     {
         Directory.CreateDirectory(Path.Combine(Application.dataPath, "_project/2.Prefabs/Effect"));
@@ -162,11 +186,32 @@ public static class RareSkillEffectGenerator
         n += Save("FX_BossSlam_Warning",  BuildBossSlamWarning());
         n += Save("FX_BossSlam_Impact",   BuildBossSlamImpact());
         n += Save("FX_BossSlam_Hit",      BuildBossSlamHit());
+        n += GenerateBossJumpShockwaveFiles();
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         Debug.Log($"[RareSkillEffectGenerator] ✓ 희귀·보스 스킬 이펙트 {n}종 생성 → {kSavePath}\n" +
                   "PoolController 의 Effect 풀 프리팹 목록을 다시 불러와야 스폰된다.");
+    }
+
+    [MenuItem(ProjectKMenu.Fx + "도약 충격파 이펙트·SFX", priority = ProjectKMenu.PrefabPrio + 53)]
+    public static void GenerateBossJumpShockwave()
+    {
+        Directory.CreateDirectory(Path.Combine(Application.dataPath, "_project/2.Prefabs/Effect"));
+        AssetDatabase.Refresh();
+        int n = GenerateBossJumpShockwaveFiles();
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+        Debug.Log($"[RareSkillEffectGenerator] ✓ 도약 충격파 이펙트 {n}종 생성 완료");
+    }
+
+    static int GenerateBossJumpShockwaveFiles()
+    {
+        int n = 0;
+        n += Save("FX_BossJumpShockwave_Lift",   BuildBossJumpShockwaveLift());
+        n += Save("FX_BossJumpShockwave_Impact", BuildBossJumpShockwaveImpact());
+        n += Save("FX_BossJumpShockwave_Hit",    BuildBossJumpShockwaveHit());
+        return n;
     }
 
     // ══════════════════════════════════════════════════════════
@@ -2659,6 +2704,275 @@ public static class RareSkillEffectGenerator
         return go;
     }
 
+    // 도약 충격파 ① 낮은 점프 예고 — 발밑 원이 짧게 조여들고 먼지가 뜬다.
+    // 기준 반경 3 — Runner 가 SlamRadius/3 를 곱한다.
+    static GameObject BuildBossJumpShockwaveLift()
+    {
+        var go = NewGO();
+
+        // Root — 착지 범위를 보여 주는 낮은 황토색 링
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.45f; m.loop = true;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.45f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(0f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(6f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 205, 120, 185));
+            m.maxParticles = 4;
+
+            var em = ps.emission; em.rateOverTime = 2.2f;
+            var sh = ps.shape; sh.enabled = false;
+
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(1f, 0.62f, 0.72f, 0.58f));
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, (Color)C(255, 230, 165)), (1f, (Color)C(175, 105, 45)) },
+                new[] { (0f, 0f), (0.18f, 0.8f), (1f, 0f) }));
+        }
+
+        // 바닥에서 살짝 들리는 먼지 — 큰 폭발이 아니라 낮은 점프임을 보여 준다
+        {
+            var c = Child(go, "Dust");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.45f; m.loop = true;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.35f, 0.55f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(0.5f, 1.6f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(0.55f, 1.1f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(155, 125, 88, 145), C(105, 86, 68, 110));
+            m.simulationSpace = ParticleSystemSimulationSpace.World;
+            m.maxParticles = 22;
+
+            var em = ps.emission; em.rateOverTime = 12f;
+            var sh = ps.shape;
+            sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle;
+            sh.radius = 1.6f; sh.radiusThickness = 1f;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, (Color)C(180, 150, 105)), (1f, (Color)C(90, 75, 60)) },
+                new[] { (0f, 0f), (0.2f, 0.55f), (1f, 0f) }));
+        }
+
+        // 몸 아래로 모이는 작은 불티 — 점프 시작점을 눈에 잡히게 한다
+        {
+            var c = Child(go, "Flecks");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.45f; m.loop = true;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.2f, 0.35f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(-2.2f, -1.1f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(0.12f, 0.26f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 235, 170), C(215, 145, 65));
+            m.simulationSpace = ParticleSystemSimulationSpace.Local;
+            m.maxParticles = 20;
+
+            var em = ps.emission; em.rateOverTime = 15f;
+            var sh = ps.shape;
+            sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle;
+            sh.radius = 1.4f; sh.radiusThickness = 0f;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, (Color)C(205, 120, 45)) },
+                new[] { (0f, 0f), (0.2f, 1f), (1f, 0f) }));
+        }
+
+        return go;
+    }
+
+    // 도약 충격파 ② 착지 — 중심 섬광, 이중 파문, 먼지와 작은 돌조각.
+    // 분쇄 강타보다 낮고 넓게 퍼져 '제자리 충격파' 로 읽히게 한다.
+    static GameObject BuildBossJumpShockwaveImpact()
+    {
+        var go = NewGO();
+
+        // Root — 첫 번째 빠른 충격파
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.55f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.42f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(0f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(1.2f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 235, 175, 235));
+            m.maxParticles = 2;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 1) });
+            var sh = ps.shape; sh.enabled = false;
+
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.35f, 0.32f, 3.4f, 4.8f));
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.5f, (Color)C(255, 190, 95)), (1f, (Color)C(150, 85, 35)) },
+                new[] { (0f, 1f), (0.45f, 0.7f), (1f, 0f) }));
+        }
+
+        // 중심 압력광 — 첫 프레임을 단단하게 잡아 준다
+        {
+            var c = Child(go, "Core");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.3f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.16f, 0.24f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(0f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(2.4f, 3.2f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 245, 205, 245));
+            m.maxParticles = 3;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 2) });
+            var sh = ps.shape; sh.enabled = false;
+
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.45f, 0.25f, 1.15f, 0.15f));
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, (Color)C(235, 155, 75)) },
+                new[] { (0f, 0.95f), (1f, 0f) }));
+        }
+
+        // 바닥을 타고 퍼지는 먼지 — 높이 솟지 않고 반경을 따라 흐른다
+        {
+            var c = Child(go, "Dust");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.65f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.55f, 0.9f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(3.5f, 7f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(0.9f, 1.8f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(175, 140, 95, 190), C(105, 85, 68, 150));
+            m.simulationSpace = ParticleSystemSimulationSpace.World;
+            m.maxParticles = 34;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.01f, 24) });
+            var sh = ps.shape;
+            sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle;
+            sh.radius = 0.7f; sh.radiusThickness = 1f;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, (Color)C(190, 155, 105)), (1f, (Color)C(82, 70, 58)) },
+                new[] { (0f, 0f), (0.12f, 0.75f), (1f, 0f) }));
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.5f, 0.35f, 1.1f, 1.45f));
+        }
+
+        // 작은 파편 — 분쇄 강타보다 수와 높이를 줄여 위계를 지킨다
+        {
+            var c = Child(go, "Debris");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.55f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.45f, 0.75f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(2.5f, 5.5f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(0.16f, 0.42f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(200, 165, 110), C(100, 82, 65));
+            m.simulationSpace = ParticleSystemSimulationSpace.World;
+            m.gravityModifier = 1.2f;
+            m.maxParticles = 20;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 14) });
+            var sh = ps.shape;
+            sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle;
+            sh.radius = 0.55f; sh.radiusThickness = 1f;
+            SetVelocity(ps, ParticleSystemSimulationSpace.World, y: new Vector2(1.2f, 3.2f));
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, (Color)C(220, 185, 125)), (1f, (Color)C(85, 70, 58)) },
+                new[] { (0f, 1f), (0.75f, 0.85f), (1f, 0f) }));
+        }
+
+        // 두 번째 느린 파문 — 첫 링 뒤를 따라가 충격파의 폭을 만든다
+        {
+            var c = Child(go, "GroundRing");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.55f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.48f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(0f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(1.1f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(235, 170, 80, 175));
+            m.maxParticles = 2;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0.08f, 1) });
+            var sh = ps.shape; sh.enabled = false;
+
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.4f, 0.38f, 3.1f, 4.5f));
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, (Color)C(255, 215, 135)), (1f, (Color)C(135, 82, 42)) },
+                new[] { (0f, 0.75f), (1f, 0f) }));
+        }
+
+        return go;
+    }
+
+    // 도약 충격파 ③ 피격 — 대상마다 뜨므로 먼지와 불티만 짧게 남긴다.
+    static GameObject BuildBossJumpShockwaveHit()
+    {
+        var go = NewGO();
+
+        {
+            var ps = AddPS(go);
+            var m = ps.main;
+            m.duration = 0.35f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.28f, 0.48f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(1.8f, 4f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(0.35f, 0.75f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(185, 150, 100, 170), C(105, 85, 68, 125));
+            m.simulationSpace = ParticleSystemSimulationSpace.World;
+            m.maxParticles = 12;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 8) });
+            var sh = ps.shape;
+            sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle;
+            sh.radius = 0.2f; sh.radiusThickness = 1f;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, (Color)C(205, 170, 110)), (1f, (Color)C(82, 68, 56)) },
+                new[] { (0f, 0.8f), (1f, 0f) }));
+        }
+
+        {
+            var c = Child(go, "Glint");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.22f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.12f, 0.2f);
+            m.startSpeed    = new ParticleSystem.MinMaxCurve(2f, 4.5f);
+            m.startSize     = new ParticleSystem.MinMaxCurve(0.1f, 0.24f);
+            m.startColor    = new ParticleSystem.MinMaxGradient(C(255, 235, 175), C(225, 145, 55));
+            m.maxParticles = 10;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 7) });
+            var sh = ps.shape;
+            sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle;
+            sh.radius = 0.18f; sh.radiusThickness = 1f;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, (Color)C(205, 115, 35)) },
+                new[] { (0f, 1f), (1f, 0f) }));
+        }
+
+        return go;
+    }
+
     // ══════════════════════════════════════════════════════════
     //  헬퍼 — EffectPrefabGenerator 와 같은 규칙
     // ══════════════════════════════════════════════════════════
@@ -2666,6 +2980,7 @@ public static class RareSkillEffectGenerator
     static int Save(string key, GameObject go)
     {
         go.name = key;
+        if (kRareAccents.TryGetValue(key, out var accent)) AddRareAccent(go, accent);
         if (kMaterials.TryGetValue(key, out var mats)) ApplyMaterials(go, mats);
 
         if (kDirectional.Contains(key) || key.StartsWith("FX_Bisect_")) AlignToTransform(go);
@@ -2673,6 +2988,58 @@ public static class RareSkillEffectGenerator
         PrefabUtility.SaveAsPrefabAsset(go, $"{kSavePath}/{key}.prefab");
         Object.DestroyImmediate(go);
         return 1;
+    }
+
+    static void AddRareAccent(GameObject root, Color32 tint)
+    {
+        // 큰 순간광 — 한 프레임에 밝아졌다가 빠르게 퍼지며 사라진다.
+        {
+            var c = Child(root, "RareFlash");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.35f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.24f, 0.38f);
+            m.startSpeed = new ParticleSystem.MinMaxCurve(0f);
+            m.startSize = new ParticleSystem.MinMaxCurve(1.8f, 2.6f);
+            m.startColor = new ParticleSystem.MinMaxGradient(Color.white, tint);
+            m.maxParticles = 3;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 2) });
+            var sh = ps.shape; sh.enabled = false;
+
+            var sz = ps.sizeOverLifetime; sz.enabled = true;
+            sz.size = new ParticleSystem.MinMaxCurve(1f, AC3(0.35f, 0.22f, 1.8f, 3.3f));
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (1f, (Color)tint) },
+                new[] { (0f, 0.95f), (0.35f, 0.8f), (1f, 0f) }));
+        }
+
+        // 직업색 파편 — 큰 섬광만 쓰면 흰 원 하나로 뭉개져 희귀 스킬의 색이 사라진다.
+        {
+            var c = Child(root, "RareShards");
+            var ps = AddPS(c);
+            var m = ps.main;
+            m.duration = 0.42f; m.loop = false;
+            m.startLifetime = new ParticleSystem.MinMaxCurve(0.24f, 0.52f);
+            m.startSpeed = new ParticleSystem.MinMaxCurve(3.5f, 7.5f);
+            m.startSize = new ParticleSystem.MinMaxCurve(0.12f, 0.3f);
+            m.startColor = new ParticleSystem.MinMaxGradient(Color.white, tint);
+            m.simulationSpace = ParticleSystemSimulationSpace.World;
+            m.maxParticles = 24;
+
+            var em = ps.emission; em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 16) });
+            var sh = ps.shape;
+            sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle;
+            sh.radius = 0.28f; sh.radiusThickness = 1f;
+
+            var col = ps.colorOverLifetime; col.enabled = true;
+            col.color = new ParticleSystem.MinMaxGradient(MakeGrad(
+                new[] { (0f, Color.white), (0.25f, (Color)tint), (1f, (Color)tint) },
+                new[] { (0f, 1f), (0.65f, 0.9f), (1f, 0f) }));
+        }
     }
 
     // ══════════════════════════════════════════════════════════

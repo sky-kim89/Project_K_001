@@ -143,7 +143,7 @@ public class GeneralPanelUI : MonoBehaviour
 
         if (_portraitBg   != null) _portraitBg.color    = s_JobColors[jobIdx];
         if (_portraitIcon != null) _portraitIcon.sprite = portrait;
-        if (_nameText     != null) _nameText.text       = bridge.UnitName ?? bridge.name;
+        if (_nameText     != null) _nameText.text       = LocalizationManager.Instance.Get(bridge.UnitName ?? bridge.name);
         if (_jobChipText  != null) _jobChipText.text    = JobStyle.GetLabel(job);
         if (_skillSlot    != null)
         {

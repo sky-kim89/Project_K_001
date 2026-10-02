@@ -29,9 +29,12 @@ using TMPro;
 
 public static class SplashSetupTool
 {
+    const string BackgroundPath   = "Assets/_project/3.Textures/UI/Splash/background_pixel_general.png";
+    const string EnglishTitlePath = "Assets/_project/3.Textures/UI/Splash/title_pixel_general_splash.png";
+    const string KoreanTitlePath  = "Assets/_project/3.Textures/UI/Splash/title_pixel_general_ko.png";
+
     // ── 색상 팔레트 ───────────────────────────────────────────
     static readonly Color BgColor          = new Color(0.035f, 0.035f, 0.063f, 1f);
-    static readonly Color LogoPlaceholder  = new Color(0.15f,  0.15f,  0.25f,  1f);
     static readonly Color BarBgColor       = new Color(0.12f,  0.12f,  0.20f,  1f);
     static readonly Color BarFillColor     = new Color(0.20f,  0.70f,  0.90f,  1f);
     static readonly Color StatusColor      = new Color(0.70f,  0.70f,  0.80f,  1f);
@@ -75,7 +78,7 @@ public static class SplashSetupTool
         // CanvasScaler
         var scaler = root.AddComponent<CanvasScaler>();
         scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1080, 1920);
+        scaler.referenceResolution = new Vector2(1920, 1080);
         scaler.screenMatchMode     = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
         scaler.matchWidthOrHeight  = 0.5f;
 
@@ -90,38 +93,31 @@ public static class SplashSetupTool
         // ── Background ─────────────────────────────────────
         var bg = CreatePanel(root, "Background", BgColor);
         Stretch(bg);
+        var bgImage = bg.GetComponent<Image>();
+        bgImage.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(BackgroundPath);
+        bgImage.raycastTarget = false;
 
         // ── LogoArea ───────────────────────────────────────
         var logoArea = CreateEmpty(root, "LogoArea");
         {
             var rt = logoArea.GetComponent<RectTransform>();
-            rt.anchorMin        = new Vector2(0f, 1f);
-            rt.anchorMax        = new Vector2(1f, 1f);
-            rt.offsetMin        = new Vector2(0,  -900f);
-            rt.offsetMax        = new Vector2(0,  -160f);
+            rt.anchorMin = new Vector2(0f, 0.28f);
+            rt.anchorMax = new Vector2(1f, 0.95f);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
         }
 
-        // 로고 이미지 (플레이스홀더 — 실제 Sprite 교체)
-        var logoImg = CreateImage(logoArea, "LogoImage", LogoPlaceholder);
+        // 언어 설정에 맞춰 SplashBootstrap 이 교체하는 타이틀 이미지
+        var logoImg = CreateImage(logoArea, "LogoImage", Color.white);
         {
             var rt = logoImg.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(0.25f, 0.35f);
-            rt.anchorMax = new Vector2(0.75f, 0.85f);
+            rt.anchorMin = new Vector2(0.20f, 0.08f);
+            rt.anchorMax = new Vector2(0.80f, 0.92f);
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
             logoImg.preserveAspect = true;
-        }
-
-        // 타이틀 텍스트
-        var titleTmp = CreateTMP(logoArea, "TitleText", "PROJECT K", 64, FontStyles.Bold);
-        {
-            var rt = titleTmp.rectTransform;
-            rt.anchorMin        = new Vector2(0f, 0f);
-            rt.anchorMax        = new Vector2(1f, 0.30f);
-            rt.offsetMin        = Vector2.zero;
-            rt.offsetMax        = Vector2.zero;
-            titleTmp.color      = Color.white;
-            titleTmp.characterSpacing = 8f;
+            logoImg.raycastTarget  = false;
+            logoImg.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(EnglishTitlePath);
         }
 
         // ── BottomGroup ────────────────────────────────────
@@ -130,8 +126,8 @@ public static class SplashSetupTool
             var rt = bottomGroup.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0f, 0f);
             rt.anchorMax = new Vector2(1f, 0f);
-            rt.offsetMin = new Vector2(0,  160f);
-            rt.offsetMax = new Vector2(0,  560f);
+            rt.offsetMin = new Vector2(0,  32f);
+            rt.offsetMax = new Vector2(0, 292f);
         }
 
         // ProgressBarBg
@@ -192,6 +188,9 @@ public static class SplashSetupTool
         SetObj(so, "_progressBarFill", fillImg);
         SetObj(so, "_statusText",      statusTmp);
         SetObj(so, "_splashCanvas",    splashCg);
+        SetObj(so, "_titleImage",      logoImg);
+        SetObj(so, "_englishTitle",    AssetDatabase.LoadAssetAtPath<Sprite>(EnglishTitlePath));
+        SetObj(so, "_koreanTitle",     AssetDatabase.LoadAssetAtPath<Sprite>(KoreanTitlePath));
         so.ApplyModifiedProperties();
 
         return root;
@@ -246,6 +245,7 @@ public static class SplashSetupTool
         tmp.fontStyle = style;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color     = Color.white;
+        go.AddComponent<LocalizedText>();
         return tmp;
     }
 

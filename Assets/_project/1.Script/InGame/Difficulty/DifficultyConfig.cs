@@ -64,12 +64,16 @@ public class DifficultyConfig : ScriptableObject
             return list.ToArray();
         }
 
-        /// <summary>툴팁에 띄울 수치 문구. 없으면 빈 문자열.</summary>
+        /// <summary>
+        /// 툴팁에 띄울 수치 문구. 없으면 빈 문자열.
+        /// ⚠ $"" 보간으로 조립하지 않는다 — 숫자가 박힌 문장은 번역표에 없어서
+        ///   다른 언어에서 한국어가 그대로 샜다. 틀(행)과 숫자를 나눠 Format 으로 넘긴다.
+        /// </summary>
         public string DescribeDebuff(DifficultyDebuff d) => d switch
         {
-            DifficultyDebuff.Ferocity  => $"적 공격력·최대체력 +{EnemyStatBonus * 100f:0}%",
-            DifficultyDebuff.Horde     => $"적 등장 수 +{EnemyCountBonus * 100f:0}%",
-            DifficultyDebuff.Awakening => $"엘리트·보스 스킬 쿨다운 -{BossCooldownCut * 100f:0}%",
+            DifficultyDebuff.Ferocity  => LocalizationManager.Instance.Format("적 공격력·최대체력 +{0:0}%", EnemyStatBonus * 100f),
+            DifficultyDebuff.Horde     => LocalizationManager.Instance.Format("적 등장 수 +{0:0}%", EnemyCountBonus * 100f),
+            DifficultyDebuff.Awakening => LocalizationManager.Instance.Format("엘리트·보스 스킬 쿨다운 -{0:0}%", BossCooldownCut * 100f),
             DifficultyDebuff.Frenzy    => "엘리트가 돌진을 익히고, 보스가 분쇄 강타를 쓴다",
             _                          => "",
         };

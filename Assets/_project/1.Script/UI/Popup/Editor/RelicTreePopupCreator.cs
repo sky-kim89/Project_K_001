@@ -87,6 +87,7 @@ public static class RelicTreePopupCreator
         canvas.GetComponent<RectTransform>().sizeDelta = new Vector2(1920f, 1080f);
 
         var panel = Build(canvas);
+        PixelSkin.Apply(panel);
         PrefabUtility.SaveAsPrefabAsset(panel, SavePath);
         Object.DestroyImmediate(canvas);
 

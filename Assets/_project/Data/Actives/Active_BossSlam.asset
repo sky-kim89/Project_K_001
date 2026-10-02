@@ -14,26 +14,30 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   SkillId: 32
   SkillName: "\uBD84\uC1C4 \uAC15\uD0C0"
-  Description: "\uB3C4\uC57D\uD574 \uB0B4\uB824\uCC0D\uC73C\uBA70 \uBC1C\uBC11\uC744
-    \uBD84\uC1C4\uD55C\uB2E4. \uBC18\uACBD 7 \uC548\uC758 \uC801\uC5D0\uAC8C \uACF5\uACA9\uB825
-    350% \uD53C\uD574\uC640 \uAC15\uD55C \uB109\uBC31. \uAC00\uC7A5\uC790\uB9AC\uB294
-    \uD53C\uD574\uAC00 \uC904\uC5B4\uB4E0\uB2E4."
+  Description: "\uD0C0\uAC9F \uC704\uCE58\uB85C \uB192\uC774 \uB3C4\uC57D\uD574 \uB0B4\uB824\uCC0D\uB294\uB2E4.
+    \uBC18\uACBD 7 \uC548\uC758 \uC801\uC5D0\uAC8C \uACF5\uACA9\uB825 350% \uD53C\uD574\uC640
+    \uAC15\uD55C \uB109\uBC31. \uAC00\uC7A5\uC790\uB9AC\uB294 \uD53C\uD574\uAC00
+    \uC904\uC5B4\uB4E0\uB2E4."
   Cooldown: 13
   EffectValue: 1
   EffectRadius: 7
   EffectDuration: 0
   AllowedJobs: 
   IsRare: 0
+  SkillSfx: 132
+  SkillSfxDelay: 1.25
   CasterEffectKey: FX_BossSlam_Impact
   TargetEffectKey: FX_BossSlam_Hit
   BaseEffectKey: FX_BossSlam_Warning
   ShowRangeIndicator: 1
   RangeIndicatorDuration: 0
   EffectDespawnDelay: 1.6
-  WindupTime: 0.8
-  JumpHeight: 2.2
-  SlamTime: 0.22
+  WindupTime: 0.6
+  JumpHeight: 3.2
+  SlamTime: 0.65
   RecoverTime: 0.5
+  LeapToTarget: 1
+  MaxLeapDistance: 9
   DamageMultiplier: 3.5
   SlamRadius: 7
   KnockbackMult: 9

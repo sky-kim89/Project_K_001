@@ -243,6 +243,7 @@ public static class RunShopPopupCreator
         SetObj(so, "_closeBtn",        closeBtn);
         so.ApplyModifiedProperties();
 
+        PixelSkin.Apply(root);
         PrefabUtility.SaveAsPrefabAsset(root, SavePath);
         Object.DestroyImmediate(root);
         AssetDatabase.SaveAssets();
@@ -588,9 +589,9 @@ public static class RunShopPopupCreator
         //   체력 · 공격
         //   방어 · 용병
         var (hpTmp,  atkTmp) = BuildStatPair(cardGo, 0,
-            "Hp",  "체력", StatColors.Hp,  "Atk",     "공격", StatColors.Atk);
+            "Hp",  StatType.MaxHp,   StatColors.Hp,  "Atk",     StatType.Attack,       StatColors.Atk);
         var (defTmp, sldTmp) = BuildStatPair(cardGo, 1,
-            "Def", "방어", StatColors.Def, "Soldier", "용병", StatColors.Soldier);
+            "Def", StatType.Defense, StatColors.Def, "Soldier", StatType.SoldierCount, StatColors.Soldier);
 
         // ── 초상화 렌더용 빌더 (비활성 — 화면에 그리지 않는다) ──
         var preview = Go("PortraitPreview", cardGo);
@@ -672,16 +673,16 @@ public static class RunShopPopupCreator
     //  칸마다 제각각 줄어들어 글자 크기가 어긋나던 문제의 원인이었다.
     //  값 칸이 200px 넘게 남으므로 "999,999" 도 줄이지 않고 들어간다.
     /// <summary>
-    /// 스탯 두 개를 한 행에 나란히 놓는다 — [라벨 값] [라벨 값].
+    /// 스탯 두 개를 한 행에 나란히 놓는다 — [아이콘 값] [아이콘 값].
     ///
+    /// ⚠ 라벨 글자 대신 스탯 아이콘 (2026-10-02) — 아이콘의 뜻은 HeroDetailPopup 목록이 알려 준다.
     /// ⚠ 값 칸은 AutoSize 로 줄어들게 둔다
-    ///   한 칸이 카드 폭의 절반뿐이라 "12,345" 같은 다섯 자리가 라벨을 파고든다.
-    ///   라벨은 고정 폭으로 자리를 지키고, 넘치는 쪽은 값의 글자 크기가 줄어든다.
+    ///   한 칸이 카드 폭의 절반뿐이라 "12,345" 같은 다섯 자리가 넘칠 수 있다.
     /// </summary>
     static (TextMeshProUGUI left, TextMeshProUGUI right) BuildStatPair(
         GameObject card, int index,
-        string idL, string labelL, Color colorL,
-        string idR, string labelR, Color colorR)
+        string idL, StatType statL, Color colorL,
+        string idR, StatType statR, Color colorR)
     {
         float y = MercStatY + index * (StatRowH + StatRowGap);
 
@@ -691,17 +692,17 @@ public static class RunShopPopupCreator
         rowImg.raycastTarget = false;
         AnchorTop(row, y, StatRowH, 12f);
 
-        var l = BuildStatCell(row, idL, labelL, colorL, 0f,   0.5f);
-        var r = BuildStatCell(row, idR, labelR, colorR, 0.5f, 1f);
+        var l = BuildStatCell(row, idL, statL, colorL, 0f,   0.5f);
+        var r = BuildStatCell(row, idR, statR, colorR, 0.5f, 1f);
         return (l, r);
     }
 
     /// <summary>행 안의 한 칸. xMin~xMax 는 행을 좌우로 나눈 비율.</summary>
-    static TextMeshProUGUI BuildStatCell(GameObject row, string id, string label,
+    static TextMeshProUGUI BuildStatCell(GameObject row, string id, StatType stat,
                                          Color valueColor, float xMin, float xMax)
     {
-        const float LabelW = 74f;   // "체력" 2글자 (FontSm) 가 들어가는 최소 폭
-        const float Pad    = 10f;
+        float      IconSz = StatRowH - 8f;   // 행 높이에 맞춘 정사각
+        const float Pad   = 10f;
 
         var cell = Go($"Stat_{id}", row);
         {
@@ -712,23 +713,17 @@ public static class RunShopPopupCreator
             rt.offsetMax = Vector2.zero;
         }
 
-        var lbl = TMP(cell, $"{id}Label", label, UIScale.FontSm, FontStyles.Normal);
-        lbl.color            = StatLabelC;
-        lbl.alignment        = TextAlignmentOptions.MidlineLeft;
-        lbl.raycastTarget    = false;
-        lbl.textWrappingMode = TextWrappingModes.NoWrap;
-        lbl.overflowMode     = TextOverflowModes.Overflow;
+        var icon = EditorUIBuilder.StatIconImg(cell, $"{id}Icon", stat, IconSz);
         {
-            var rt = lbl.rectTransform;
-            rt.anchorMin = new Vector2(0f, 0f); rt.anchorMax = new Vector2(0f, 1f);
+            var rt = icon.rectTransform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
             rt.pivot     = new Vector2(0f, 0.5f);
-            rt.offsetMin = new Vector2(Pad, 0f);
-            rt.offsetMax = new Vector2(Pad + LabelW, 0f);
+            rt.anchoredPosition = new Vector2(Pad, 0f);
         }
 
         var val = TMP(cell, $"{id}Text", "—", UIScale.FontSm, FontStyles.Bold);
         val.color             = valueColor;
-        val.alignment         = TextAlignmentOptions.MidlineRight;
+        val.alignment         = TextAlignmentOptions.MidlineLeft;
         val.raycastTarget     = false;
         val.textWrappingMode  = TextWrappingModes.NoWrap;
         val.overflowMode      = TextOverflowModes.Overflow;
@@ -738,7 +733,7 @@ public static class RunShopPopupCreator
         {
             var rt = val.rectTransform;
             rt.anchorMin = new Vector2(0f, 0f); rt.anchorMax = new Vector2(1f, 1f);
-            rt.offsetMin = new Vector2(Pad + LabelW + 4f, 0f);
+            rt.offsetMin = new Vector2(Pad + IconSz + 6f, 0f);
             rt.offsetMax = new Vector2(-Pad, 0f);
         }
         return val;

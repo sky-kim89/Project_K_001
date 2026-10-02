@@ -64,7 +64,7 @@ ShieldBearer = 3  // 방어율·체력 최고
 ## 스킬 시스템
 
 ### 액티브 스킬 (ActiveSkillId)
-**총 33종** — 1~30 일반 · 31~33 보스/엘리트 전용.
+**총 34종** — 1~30 일반 · 31~34 보스/엘리트 전용.
 `ActiveSkillData` SO + 각 `InGame/Skill/Actives/Active*.cs` 구현체.
 
 > **⚠ enum 은 `InGame/Skill/ActiveSkillData.cs` 에 있다** (GameEnums.cs 아님).
@@ -356,6 +356,21 @@ UI=0, Unit=1, Effect=2, Projectile=3
 - **⚠ 강제 튜토리얼은 팝업 위에서 시작하지 않는다** — `TutorialScenario.StagePopup` 참고
 - **기록**: `Data/Sections/TutorialData.cs` (환생으로 초기화하지 않는다)
 
+### 플랫폼 설정 / Android 로컬 알림
+- **설정 팝업**: `UI/Popup/SettingsPopup.cs` + `UI/Popup/Editor/PopupPrefabCreator.cs`
+- **사운드 볼륨**: `Data/Sections/BattleSettingsData.cs` 가 BGM/SFX 0~1 저장, `Audio/AudioManager.cs` 가 즉시 반영
+- **플랫폼 분기**: `UNITY_ANDROID` 는 알림, `UNITY_STANDALONE` 은 기기 지원 해상도·전체 화면 행을 노출
+- **로비 진입점**: `UI/Lobby/MainPanelUI.cs` — 도감 아래 설정 버튼
+- **런타임**: `AndroidLocalNotificationManager.cs` — 앱을 떠날 때 다음 날부터 3일간 19:00 예약
+- **메시지 분기**: `StageProgressData.RunInProgress` 가 진행 중/새 모험 문구의 정본
+- **패키지·정책**: `com.unity.mobile.notifications` — 재부팅 재예약 사용, 정확 알람 권한은 사용하지 않는다
+
+### 다국어 UI
+- **번역 정본**: `Assets/Resources/Localization/LocalizationTable.txt` — `validate_localization.py`로 검증
+- **동적 TMP 갱신**: `Localization/LocalizedText.cs` — 메시 생성 전 LateUpdate에서 번역, 언어 선택 항목은 원어 유지
+- **수량 표시**: `LocalizationManager.SourceForRendered`는 숫자를 역번역하지 않는다. 용병 수는 `UIConstants.cs`에서 단위 없이 표시
+- **긴 상세 설명**: `HeroDetailPopup`은 런타임에 스탯·스킬 높이와 스크롤을 구성하고, 장비·고용 안내는 `LocalizedText.ScrollDescription`을 사용
+
 ### 성장 연출 (레벨업·강화 이펙트)
 - `UI/Juice/UIJuice.cs` (프리셋) + `UI/Juice/UIJuiceLayer.cs` (실행)
 - **⚠ 대상의 `localScale` 을 직접 만진다.** 버튼이 커져 보이면 레이아웃보다 여기를 먼저 본다
@@ -418,7 +433,7 @@ UI=0, Unit=1, Effect=2, Projectile=3
 > 없는 기능을 새로 만들기 전에 여기부터 볼 것 — 대부분 이미 있다.
 
 - **전투**: ECS 공격·이동·타겟팅·피격 / 발사체 포물선 + 넉백 / 보스·엘리트 패턴
-- **스킬**: 액티브 33종 + 패시브 40종 + 이펙트 파이프라인
+- **스킬**: 액티브 34종 + 패시브 40종 + 이펙트 파이프라인
 - **성장**: 레벨업 · 등급업 · 용병 수 · 장비 강화/분해 · 어빌리티 · 특성 · 유물(영구)
 - **런 구조**: 스테이지 시퀀스(일반/엘리트/상점/이벤트) · 이벤트 팝업 · 런 상점 · 용병 고용
 - **메타**: 환생(포인트→유물) · 도감(수집 버프, 여정 경계에 반영) · 난이도

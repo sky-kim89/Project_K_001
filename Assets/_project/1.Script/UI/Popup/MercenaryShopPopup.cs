@@ -88,6 +88,8 @@ public class MercenaryShopPopup : PopupBase
     protected override void Awake()
     {
         base.Awake();
+        LocalizedText.ScrollDescription(_hintText);
+        LocalizedText.FitLabel(_hireBtnLabel);
         _closeBtn?.onClick.AddListener(() => Close());
         _hireBtn ?.onClick.AddListener(OnHire);
         _passBtn ?.onClick.AddListener(OnDecompose);
@@ -310,7 +312,7 @@ public class MercenaryShopPopup : PopupBase
 
         // 버튼 문구 — 상점 재확인은 "산다" 는 뜻이 분명해야 한다
         if (_hireBtnLabel != null)
-            _hireBtnLabel.text = IsShopConfirm ? ShopBuyLabel : HireLabel;
+            _hireBtnLabel.text = LocalizationManager.Instance.Get(IsShopConfirm ? ShopBuyLabel : HireLabel);
 
         // 돌려보내기 — 상점 재확인 모드엔 없다.
         //
@@ -322,11 +324,11 @@ public class MercenaryShopPopup : PopupBase
         _passBtn?.gameObject.SetActive(!IsShopConfirm);
 
         if (_hintText != null)
-            _hintText.text = hasSlot
+            _hintText.text = LocalizationManager.Instance.LocalizeText(hasSlot
                 ? (IsShopConfirm
                     ? "이 용병을 고용한다. 골드는 구매를 확정할 때 빠진다."
                     : "한 명을 고용하거나, 전부 돌려보내 용병 조각을 받는다.")
-                : "배치 슬롯이 가득 찼다 — 아래 부대에서 한 명을 해고하면 고용할 수 있다.";
+                : "배치 슬롯이 가득 찼다 — 아래 부대에서 한 명을 해고하면 고용할 수 있다.");
     }
 
     // ── 현재 부대 ─────────────────────────────────────────────
@@ -358,9 +360,8 @@ public class MercenaryShopPopup : PopupBase
 
             _squadBtns[i].interactable = entry != null;
 
-            _squadNames[i].text  = entry != null ? entry.UnitName
-                                 : unlocked      ? "비어 있음"
-                                                 : "잠 김";
+            _squadNames[i].text  = LocalizationManager.Instance.Get(
+                entry != null ? entry.UnitName : unlocked ? "비어 있음" : "잠 김");
             // 등급은 이름 색으로 표시한다 — 칸 배경을 갈아끼우면 버튼 눌림 색 계산이 어긋난다
             _squadNames[i].color = entry != null ? GradeStyle.GetColor(entry.Grade) : SquadDimText;
 

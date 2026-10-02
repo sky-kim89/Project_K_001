@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 // ============================================================
 //  MainPanelUI.cs
-//  런 시작 전 장수 선택 화면.
+//  런 시작 전 장수 선택 화면. 스플래시와 같은 정적 야영지 배경을 사용한다.
 //
 //  흐름:
 //    1. OnEnable → 직업별 1명씩 4명의 후보 장수 생성
@@ -42,6 +42,7 @@ public class MainPanelUI : MonoBehaviour
     [Header("버튼")]
     [SerializeField] Button _relicBtn;
     [SerializeField] Button _codexBtn;
+    [SerializeField] Button _settingsBtn;
     [SerializeField] Button _startBtn;
     [SerializeField] Button _refreshBtn;
 
@@ -70,11 +71,6 @@ public class MainPanelUI : MonoBehaviour
 
     void OnEnable()
     {
-        // 배경 데모 전투 — 정적인 화면을 피한다. 실전과는 완전히 분리돼 있다.
-        // 로비 배경(Background)과 이 패널의 BackgroundImage 를 내려야 전장이 비친다.
-        SceneDirector.Ensure().RequestArenaBackdrop(true);
-        LobbyDemoBattle.Ensure().Begin();
-
         _currentPage = 0;
 
         GenerateCandidates();
@@ -110,6 +106,13 @@ public class MainPanelUI : MonoBehaviour
             _codexBtn.onClick.RemoveAllListeners();
             _codexBtn.onClick.AddListener(() =>
                 PopupManager.Instance.Open<CodexPopup>(PopupType.Codex));
+        }
+
+        if (_settingsBtn != null)
+        {
+            _settingsBtn.onClick.RemoveAllListeners();
+            _settingsBtn.onClick.AddListener(() =>
+                PopupManager.Instance.Open<SettingsPopup>(PopupType.Settings));
         }
 
         if (_startBtn != null)
@@ -158,10 +161,6 @@ public class MainPanelUI : MonoBehaviour
 
     void OnDisable()
     {
-        // 패널을 떠나면 판을 닫는다 — 로비 어딘가에서 유닛이 계속 싸우고 있으면 안 된다.
-        LobbyDemoBattle.Instance?.End();
-        SceneDirector.Instance?.RequestArenaBackdrop(false);
-
         OnHidden?.Invoke();
     }
 

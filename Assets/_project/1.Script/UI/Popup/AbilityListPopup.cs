@@ -98,7 +98,7 @@ public class AbilityListPopup : PopupBase
         }
 
         if (_headerCountTmp != null)
-            _headerCountTmp.text = $"{uniqueCount}종 보유";
+            _headerCountTmp.text = LocalizationManager.Instance.Format("{0}종 보유", uniqueCount);
 
         if (firstData != null) SelectAbility(firstData);
     }
@@ -128,7 +128,7 @@ public class AbilityListPopup : PopupBase
 
         // 이름
         var nameTmp = go.transform.Find("NameText")?.GetComponent<TextMeshProUGUI>();
-        if (nameTmp != null) nameTmp.text = data.AbilityName;
+        if (nameTmp != null) nameTmp.text = LocalizationManager.Instance.Get(data.AbilityName);
 
         // 등급
         var gradeTmp = go.transform.Find("GradeText")?.GetComponent<TextMeshProUGUI>();
@@ -178,7 +178,7 @@ public class AbilityListPopup : PopupBase
         if (_infoIcon     != null) { _infoIcon.sprite = d.Icon; _infoIcon.enabled = d.Icon != null; }
         if (_infoGradeBar != null)   _infoGradeBar.color = gc;
         if (_infoGradeTmp != null) { _infoGradeTmp.text = LocalizationManager.Instance.Get(d.Grade.ToString()); _infoGradeTmp.color = gc; }
-        if (_infoNameTmp  != null)   _infoNameTmp.text  = d.AbilityName;
+        if (_infoNameTmp  != null)   _infoNameTmp.text  = LocalizationManager.Instance.Get(d.AbilityName);
         if (_infoTargetTmp!= null)   _infoTargetTmp.text = LocalizationManager.Instance.Get(d.Target.ToString());
 
         // 기존 스탯 행 제거
@@ -189,10 +189,11 @@ public class AbilityListPopup : PopupBase
 
         if (d.Grade == AbilityGrade.Special || d.Grade == AbilityGrade.Mastery)
         {
-            AddInfoRow($"<color=#888888>발동 조건</color>  {LocalizationManager.Instance.Get(d.GetTriggerType().ToString())}", gc);
-            var desc = d.Description;
+            AddInfoRow(LocalizationManager.Instance.Format(
+                "<color=#888888>발동 조건</color>  {0}", LocalizationManager.Instance.Get(d.GetTriggerType().ToString())), gc);
+            var desc = LocalizationManager.Instance.LocalizeText(d.Description);
             if (!string.IsNullOrEmpty(desc))
-                AddInfoRow($"<color=#888888>효과</color>  {desc}", Color.white);
+                AddInfoRow(LocalizationManager.Instance.Format("<color=#888888>효과</color>  {0}", desc), Color.white);
         }
         else
         {

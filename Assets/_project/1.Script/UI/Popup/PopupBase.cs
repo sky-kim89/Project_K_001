@@ -78,6 +78,7 @@ public abstract class PopupBase : MonoBehaviour
     {
         _canvasGroup   = GetComponent<CanvasGroup>();
         _rectTransform = GetComponent<RectTransform>();
+        LocalizedText.EnsureIn(gameObject);
     }
 
     // ── 공개 API ─────────────────────────────────────────────────

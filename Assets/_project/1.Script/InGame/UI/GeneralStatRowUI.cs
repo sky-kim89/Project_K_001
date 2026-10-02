@@ -25,7 +25,7 @@ public class GeneralStatRowUI : MonoBehaviour
 
     public void Setup(string unitName)
     {
-        if (_nameText != null) _nameText.text = unitName;
+        if (_nameText != null) _nameText.text = LocalizationManager.Instance.Get(unitName);
 
         var unitData = UserDataManager.Instance?.Get<UnitData>();
         var entry    = unitData?.GetUnit(unitName);

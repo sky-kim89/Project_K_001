@@ -208,6 +208,8 @@ Creator 들이 각자 복사해 쓰던 `Make*/Create*/Add*` 헬퍼의 본문은 
 > 구조: `Shadow`(아래 6px 노출 = 두께) → `Body` → `TopEdge`(밝은 2px) + `BottomEdge`(어두운 4px).
 > 눌림 색은 `Button.colors` 가 targetGraphic 색에 **곱해지므로** `TintFor()` 로 역산한다.
 > 템플릿처럼 루트가 이미 있으면 `RaisedBtnOn(root, ...)` — 자식 경로가 `Body/...` 로 유지된다.
+> **PixelTheme 스킨 화면**(MainPanel)은 `EditorUIBuilder.PixelBtn/PixelBtnOn(…, "ui_button_*_9slice")` —
+> 음각이 스프라이트에 그려져 있어 규칙 1 을 충족한다. 구조는 같다 (`Root → Body`).
 
 > **⚠ 규칙 2 — 장식 기호에 폰트 글리프를 쓰지 않는다**
 > 기본 폰트 `LiberationSans SDF` 는 **문자 250자(ASCII + Latin-1 일부)뿐**이고
@@ -298,6 +300,9 @@ UI=0, Unit=1, Effect=2, Projectile=3
   - 스테이지 진행바 노드도 여기서 만든다 (`BuildStageNodePrefab` → `UI/Battle/StageNodeUI.cs`,
     배치·갱신은 `UI/Battle/StageProgressBarUI.cs`)
 - **장수 선택 화면**: `UI/Lobby/MainPanelUI.cs` (+ `Editor/MainPanelCreator.cs`)
+  - 스킨은 `3.Textures/UI/PixelTheme/` (Codex 제작). 9-slice 는 Multiple 모드라 `EditorUIBuilder.PixelSprite()` 로 읽는다
+  - 없는 아이콘은 `IconOr()` 가 도형으로 대신 그린다 — Codex 의뢰서 `Docs/ImageSpecs/PixelTheme_UI.md`
+  - 카드(`BuildHeroCard`)는 용병 고용 팝업과 공유 — MainPanel 을 구우면 `팝업 > Mercenary` 도 굽는다
 - **상단바·특성 스트립**: `UI/Lobby/Editor/TopBarCreator.cs`
 - **카드 팩토리**: `UI/Lobby/Editor/HeroPanelCreator.cs` 의 `BuildCardPrefab()`
   — BattlePanel·Mercenary·RunShop 이 공유하므로 `public` 유지 필수
@@ -348,6 +353,14 @@ UI=0, Unit=1, Effect=2, Projectile=3
 - **초기화 범위**: `Data/Core/UserDataManager.cs` 의 `Reincarnate()` — 여기 목록이 정본
 - **유물 데이터**: `Relic/RelicData.cs`, `Relic/RelicDatabase.cs`, `Data/Sections/RelicInventoryData.cs`
 - **UI**: `UI/Popup/RelicPopup.cs`, 패배 화면은 `InGame/UI/ReincarnationPopup.cs`
+
+### 업적 (1회성만 — 단계형 없음)
+- **ID·이름·설명**: `InGame/Achievement/AchievementCatalog.cs` — 번호 규칙이 곧 매핑(희귀 장수 = 300+스킬ID, 달인 = AbilityId)
+- **판정**: `InGame/Achievement/AchievementTracker.cs` — 호출 지점 목록이 파일 머리에 있다
+- **세이브**: `Data/Sections/AchievementData.cs` (환생으로 초기화하지 않는다), 해제 알림은 `AchievementData.OnUnlocked`
+- **⚠ 최종 스테이지(30)는 승리가 없다** (무한 보스) — 클리어 판정은 `BattleManager.OnEndlessStarted`
+- **Steam·Google 연동**: `InGame/Achievement/Platform/` — 계정 생기기 전이라 Null 백엔드로 돈다.
+  진행 상태·연동 순서·업적 표는 **`Docs/Achievement_Platform.md` 가 정본**
 
 ### 튜토리얼
 - **총괄·노출 시점**: `Tutorial/TutorialManager.cs` — 트리거는 전부 여기 (각 UI 에서 부르지 않는다)

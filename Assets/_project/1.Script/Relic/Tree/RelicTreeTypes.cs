@@ -228,32 +228,35 @@ public sealed class RelicNodeDef
         string label = LocalizationManager.Instance.Get(s.Stat.ToString());
         string sign  = total < 0f ? "" : "+";
 
-        if (!s.Absolute) return $"{label} {sign}{total * 100f:0.#}%";
+        if (!s.Absolute)
+            return LocalizationManager.Instance.Format("{0} {1}{2:0.#}%", label, sign, total * 100f);
 
-        if (s.Stat == StatType.SoldierCount)  return $"{label} {sign}{Mathf.RoundToInt(total)}명";
-        if (s.Stat == StatType.CommandPower)  return $"{label} {sign}{Mathf.RoundToInt(total)}";
-        return $"{label} {sign}{total * 100f:0.#}%p";
+        if (s.Stat == StatType.SoldierCount)
+            return LocalizationManager.Instance.Format("{0} {1}{2}명", label, sign, Mathf.RoundToInt(total));
+        if (s.Stat == StatType.CommandPower)
+            return LocalizationManager.Instance.Format("{0} {1}{2}", label, sign, Mathf.RoundToInt(total));
+        return LocalizationManager.Instance.Format("{0} {1}{2:0.#}%p", label, sign, total * 100f);
     }
 
     string SystemLine(float v) => System switch
     {
-        RelicSystemEffect.AbilityRefreshCount   => $"어빌리티 새로고침 +{Mathf.RoundToInt(v)}회",
-        RelicSystemEffect.AbilityChoiceCount    => $"어빌리티 선택지 +{Mathf.RoundToInt(v)}개",
-        RelicSystemEffect.AbilityAdvancedChance => $"고급 이상 어빌리티 확률 +{v * 100f:0.#}%p",
-        RelicSystemEffect.GoldGainBonus         => $"골드 획득량 +{v * 100f:0.#}%",
-        RelicSystemEffect.StartGoldBonus        => $"여정 시작 시 골드 +{Mathf.RoundToInt(v):#,0}",
-        RelicSystemEffect.SoldierSoulGainBonus  => $"병사 소울 획득량 +{v * 100f:0.#}%",
-        RelicSystemEffect.ExpGainBonus          => $"경험치 획득량 +{v * 100f:0.#}%",
-        RelicSystemEffect.EnemyMaxHpReduction   => $"적 최대 체력 -{v * 100f:0.#}%",
-        RelicSystemEffect.EnemyAttackReduction  => $"적 공격력 -{v * 100f:0.#}%",
-        RelicSystemEffect.GeneralSlotBonus      => $"장수 배치 슬롯 +{Mathf.RoundToInt(v)}칸",
+        RelicSystemEffect.AbilityRefreshCount   => LocalizationManager.Instance.Format("어빌리티 새로고침 +{0}회", Mathf.RoundToInt(v)),
+        RelicSystemEffect.AbilityChoiceCount    => LocalizationManager.Instance.Format("어빌리티 선택지 +{0}개", Mathf.RoundToInt(v)),
+        RelicSystemEffect.AbilityAdvancedChance => LocalizationManager.Instance.Format("고급 이상 어빌리티 확률 +{0:0.#}%p", v * 100f),
+        RelicSystemEffect.GoldGainBonus         => LocalizationManager.Instance.Format("골드 획득량 +{0:0.#}%", v * 100f),
+        RelicSystemEffect.StartGoldBonus        => LocalizationManager.Instance.Format("여정 시작 시 골드 +{0:#,0}", Mathf.RoundToInt(v)),
+        RelicSystemEffect.SoldierSoulGainBonus  => LocalizationManager.Instance.Format("병사 소울 획득량 +{0:0.#}%", v * 100f),
+        RelicSystemEffect.ExpGainBonus          => LocalizationManager.Instance.Format("경험치 획득량 +{0:0.#}%", v * 100f),
+        RelicSystemEffect.EnemyMaxHpReduction   => LocalizationManager.Instance.Format("적 최대 체력 -{0:0.#}%", v * 100f),
+        RelicSystemEffect.EnemyAttackReduction  => LocalizationManager.Instance.Format("적 공격력 -{0:0.#}%", v * 100f),
+        RelicSystemEffect.GeneralSlotBonus      => LocalizationManager.Instance.Format("장수 배치 슬롯 +{0}칸", Mathf.RoundToInt(v)),
         // 배속 값의 정본은 TopBarUI.SpeedSteps 다. 여기에 숫자를 박으면 둘이 갈라진다.
         // ⚠ v 는 '이 노드가 주는 양'(둘 다 1)이라 노드만으로는 몇 번째 단계인지 모른다.
         //   두 번째 해금 노드(찰나의 지배)만 짚어 준다 — 아니면 둘 다 같은 배속을 말한다.
         RelicSystemEffect.BattleSpeedUnlock     =>
-            $"전투 배속 {TopBarUI.SpeedAtStep(Id == RelicNodeId.N_MomentMastery ? 2 : 1):0.##}× 해금",
-        RelicSystemEffect.RandomTraitOnStart    => $"여정 시작 시 무작위 특성 +{Mathf.RoundToInt(v)}개",
-        RelicSystemEffect.LoneWolfBonus         => $"줄인 병사 1명당 장수 공격력·체력 +{v * 100f:0.##}%",
+            LocalizationManager.Instance.Format("전투 배속 {0:0.##}× 해금", TopBarUI.SpeedAtStep(Id == RelicNodeId.N_MomentMastery ? 2 : 1)),
+        RelicSystemEffect.RandomTraitOnStart    => LocalizationManager.Instance.Format("여정 시작 시 무작위 특성 +{0}개", Mathf.RoundToInt(v)),
+        RelicSystemEffect.LoneWolfBonus         => LocalizationManager.Instance.Format("줄인 병사 1명당 장수 공격력·체력 +{0:0.##}%", v * 100f),
         _                                       => string.Empty,
     };
 }

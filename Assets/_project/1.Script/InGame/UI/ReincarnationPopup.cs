@@ -86,8 +86,10 @@ public class ReincarnationPopup : PopupBase
         //   갈리므로(스테이지 기반) 같은 줄에 있어야 납득이 된다.
         int stage = context?.StageLevel ?? 0;
         _subText.text = stage > 0
-            ? $"도달 스테이지 {stage}  ·  웨이브 {currentWave} / {totalWaves}  ·  처치 {killCount}명"
-            : $"웨이브 {currentWave} / {totalWaves}  ·  처치 {killCount}명";
+            ? LocalizationManager.Instance.Format("도달 스테이지 {0}  ·  웨이브 {1} / {2}  ·  처치 {3}명",
+                stage, currentWave, totalWaves, killCount)
+            : LocalizationManager.Instance.Format("웨이브 {0} / {1}  ·  처치 {2}명",
+                currentWave, totalWaves, killCount);
 
         float totalDmg = 0f;
         if (context?.CombatStats != null && context.CombatStats.Count > 0)
@@ -96,7 +98,7 @@ public class ReincarnationPopup : PopupBase
             foreach (var e in BattleStatsTracker.Instance.GetAllEntries()) totalDmg += e.TotalDamageDealt;
 
         float dps = elapsedSec > 0f ? totalDmg / elapsedSec : 0f;
-        _statsText.text = $"총 피해  {FormatNum(totalDmg)}  |  DPS  {FormatNum(dps)}";
+        _statsText.text = LocalizationManager.Instance.Format("총 피해  {0}  |  DPS  {1}", FormatNum(totalDmg), FormatNum(dps));
 
         BuildAbilityStrip();
         BuildGeneralRows(context);
@@ -109,9 +111,9 @@ public class ReincarnationPopup : PopupBase
         _earnPoints     = ReincarnationData.PreviewPoints(cleared);
         int current     = reincarData?.ReincarnationPoints ?? 0;
 
-        _currentPtsText.text = $"보유  {current} pt";
+        _currentPtsText.text = LocalizationManager.Instance.Format("보유  {0} pt", current);
         _earnPtsText.text    = $"+{_earnPoints} pt";
-        _totalPtsText.text   = $"환생 후  {current + _earnPoints} pt";
+        _totalPtsText.text   = LocalizationManager.Instance.Format("환생 후  {0} pt", current + _earnPoints);
     }
 
     // ── 어빌리티 스트립 ────────────────────────────────────────

@@ -50,6 +50,7 @@ public static class UISetupTool
 
         // 3. Canvas + InGameHUD 계층 생성
         var canvasGo = CreateCanvasHierarchy(panelPrefab);
+        PixelSkin.Apply(canvasGo);   // 씬 HUD (상단바·배속·오토 버튼 등) — 프리팹과 같은 스킨
 
         // 4. PopupManager 루트 오브젝트 생성/업데이트
         CreateOrUpdatePopupManager(canvasGo);
@@ -422,6 +423,7 @@ public static class UISetupTool
         sso.FindProperty("_cooldownText").objectReferenceValue    = cdText;
         sso.ApplyModifiedPropertiesWithoutUndo();
 
+        PixelSkin.Apply(root);
         var prefab = PrefabUtility.SaveAsPrefabAsset(root, PANEL_PREFAB);
         Object.DestroyImmediate(root);
         Debug.Log($"[UISetupTool] GeneralPanel 프리팹 저장 → {PANEL_PREFAB}");
@@ -538,6 +540,7 @@ public static class UISetupTool
         so.FindProperty("_tooltip").objectReferenceValue       = tooltip;
         so.ApplyModifiedPropertiesWithoutUndo();
 
+        PixelSkin.Apply(root);
         var prefab = PrefabUtility.SaveAsPrefabAsset(root, REWARD_CARD_PREFAB);
         Object.DestroyImmediate(root);
         Debug.Log($"[UISetupTool] RewardCard 프리팹 저장 → {REWARD_CARD_PREFAB}");

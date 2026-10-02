@@ -84,12 +84,12 @@ public static class CodexCatalog
                     if (onlyKeys != null && !onlyKeys.Contains(e.EquipmentId)) continue;
                     result.Add(new CodexEntry
                     {
-                        Name     = e.EquipmentName,
+                        Name     = LocalizationManager.Instance.Get(e.EquipmentName),
                         Icon     = e.Icon,
                         Owned    = codex != null && codex.HasEquip(e.EquipmentId),
                         Accent   = GradeStyle.GetColor(e.Grade),
                         SubLabel = GradeStyle.GetLabel(e.Grade),
-                        Desc     = e.Description,
+                        Desc     = LocalizationManager.Instance.LocalizeText(e.Description),
                         StatLine = EquipStatLine(e),
                     });
                 }
@@ -106,7 +106,7 @@ public static class CodexCatalog
                     if (onlyKeys != null && !onlyKeys.Contains(a.Id.ToString())) continue;
                     result.Add(new CodexEntry
                     {
-                        Name     = a.AbilityName,
+                        Name     = LocalizationManager.Instance.Get(a.AbilityName),
                         Icon     = a.Icon,
                         Owned    = codex != null && codex.HasAbility(a.Id),
                         Accent   = AbilityAccent(a.Grade),
@@ -128,11 +128,11 @@ public static class CodexCatalog
                     if (onlyKeys != null && !onlyKeys.Contains(t.TraitType.ToString())) continue;
                     result.Add(new CodexEntry
                     {
-                        Name     = t.TraitName,
+                        Name     = LocalizationManager.Instance.Get(t.TraitName),
                         Icon     = t.Icon,
                         Owned    = codex != null && codex.HasTrait(t.TraitType),
                         Accent   = NeutralAccent,
-                        Desc     = t.Description,
+                        Desc     = LocalizationManager.Instance.LocalizeText(t.Description),
                         // 스택 누적치는 런 상태라 도감에선 뺀다 — 도감은 항목 자체의 설명이다
                         StatLine = AbilityUIHelper.BuildStatText(t, showAccumulated: false),
                     });
@@ -158,7 +158,7 @@ public static class CodexCatalog
 
                     result.Add(new CodexEntry
                     {
-                        Name        = name,
+                        Name        = LocalizationManager.Instance.Get(name),
                         Icon        = null,
                         Owned       = codex != null && codex.HasGeneral(name),
                         Accent      = GradeStyle.GetColor(birth),
@@ -269,7 +269,7 @@ public static class CodexCatalog
     {
         // Special 은 효과를 코드로 들고 있어 Description 을 직접 만든다
         string d = a.Description;
-        return string.IsNullOrEmpty(d) ? null : d;
+        return string.IsNullOrEmpty(d) ? null : LocalizationManager.Instance.LocalizeText(d);
     }
 
     static string AbilityStatLine(AbilityData a)
@@ -289,14 +289,14 @@ public static class CodexCatalog
         return sb.ToString();
     }
 
-    static string AbilityGradeLabel(AbilityGrade grade) => grade switch
+    static string AbilityGradeLabel(AbilityGrade grade) => LocalizationManager.Instance.Get(grade switch
     {
         AbilityGrade.Normal   => "일반",
         AbilityGrade.Advanced => "고급",
         AbilityGrade.Special  => "특수",
         AbilityGrade.Mastery  => "달인",
         _                     => "",
-    };
+    });
 
     static Color AbilityAccent(AbilityGrade grade) => grade switch
     {

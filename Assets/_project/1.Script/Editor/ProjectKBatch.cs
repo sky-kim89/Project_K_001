@@ -7,10 +7,37 @@
 //  전체 생성에서 빠지고, 그때부터 다시 메뉴가 어긋나기 시작한다.
 // ============================================================
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 public static class ProjectKBatch
 {
+    // 배치 실행용: 설정 진입 버튼·팝업을 굽고 상주 PopupManager 에 즉시 등록한다.
+    public static void CreateSettingsUI()
+    {
+        MainPanelCreator.Run();
+        PopupPrefabCreator.CreateSettingsPopup();
+        PopupPrefabCreator.CreatePausePopup();
+
+        var scene = EditorSceneManager.OpenScene("Assets/Scenes/Splash.unity", OpenSceneMode.Single);
+        PopupManagerEditor.LoadPopupPrefabs(Object.FindFirstObjectByType<PopupManager>());
+        EditorSceneManager.SaveScene(scene);
+        AssetDatabase.SaveAssets();
+        Debug.Log("[ProjectKBatch] ✓ 설정 UI 생성 및 PopupManager 등록 완료");
+    }
+
+    [MenuItem(ProjectKMenu.Fx + "▶ 스킬 연출 전체 재생성", priority = ProjectKMenu.PrefabPrio + 50)]
+    public static void GenerateAllSkillPresentation()
+    {
+        ActiveSkillCreator.CreateAllActiveSkills();
+        RareSkillEffectGenerator.GenerateAll();
+        SkillSfxGenerator.GenerateAllAndWireSplash();
+
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+        Debug.Log("[ProjectKBatch] ✓ 액티브 34종 데이터·희귀 FX·전용 SFX 생성 및 연결 완료");
+    }
+
     // ══════════════════════════════════════════════════════════
     //  프리팹 전체
     // ══════════════════════════════════════════════════════════
@@ -42,6 +69,7 @@ public static class ProjectKBatch
 
         // ── 이펙트 ────────────────────────────────────────────
         EffectPrefabGenerator.GenerateAll();
+        RareSkillEffectGenerator.GenerateAll();
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();

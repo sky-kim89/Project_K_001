@@ -561,6 +561,7 @@ public static class ReincarnationPopupCreator
     static void Save(GameObject root, string fileName)
     {
         string path = $"{SavePath}/{fileName}.prefab";
+        PixelSkin.Apply(root);
         PrefabUtility.SaveAsPrefabAsset(root, path);
         Object.DestroyImmediate(root);
         AssetDatabase.SaveAssets();

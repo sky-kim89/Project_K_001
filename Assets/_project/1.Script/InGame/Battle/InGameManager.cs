@@ -59,6 +59,7 @@ public class InGameManager : MonoBehaviour
         BattleManager.OnAlliesReady += HandleAlliesReady;
         BattleManager.OnVictory     += HandleVictory;
         BattleManager.OnDefeat      += HandleDefeat;
+        BattleManager.OnEndlessStarted += RecordStageAchievements;
 
         if (ExternallyDriven) return;
 
@@ -77,6 +78,21 @@ public class InGameManager : MonoBehaviour
         BattleManager.OnAlliesReady -= HandleAlliesReady;
         BattleManager.OnVictory     -= HandleVictory;
         BattleManager.OnDefeat      -= HandleDefeat;
+        BattleManager.OnEndlessStarted -= RecordStageAchievements;
+    }
+
+    /// <summary>
+    /// 스테이지 클리어 업적 판정 — 승리 직후, 그리고 최종 스테이지의 무한 보스 진입 때.
+    ///
+    /// ⚠ 병사 생존 수를 세야 하므로 유닛이 회수되기 전에 부른다.
+    ///   진행 기록(RecordStageClear)은 어빌리티 선택 뒤라 그때는 전장이 비어 있다.
+    ///   CurrentRunStage 는 아직 올라가기 전이라 +1 이 방금 깬 스테이지 번호다.
+    /// </summary>
+    void RecordStageAchievements()
+    {
+        if (!GameSession.Instance.HasStage) return;
+        AchievementTracker.OnStageCleared(
+            UserDataManager.Instance.Get<StageProgressData>().CurrentRunStage + 1);
     }
 
     // ── 이벤트 핸들러 ─────────────────────────────────────────
@@ -135,6 +151,8 @@ public class InGameManager : MonoBehaviour
                         RewardOpener.Commit(reward, context.StageLevel);
                 }
             }
+
+            RecordStageAchievements();
 
             UserDataManager.Instance.RequestSave();
         }
@@ -254,7 +272,10 @@ public class InGameManager : MonoBehaviour
         int before = diff.ClearedTierIndex;
         diff.RecordClear(diff.SelectedTier);
         if (diff.ClearedTierIndex != before)
+        {
             Debug.Log($"[InGameManager] 난이도 해금 — {diff.SelectedTier} 등급 {unlockStage}스테이지 도달");
+            AchievementTracker.OnDifficultyUnlocked();
+        }
     }
 
     /// <summary>전투 패배 → 통계 스냅샷 후 유닛 디스폰, 환생 팝업 오픈.</summary>

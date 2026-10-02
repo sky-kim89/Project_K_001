@@ -56,8 +56,8 @@ public class RunShopGoodsSlot : MonoBehaviour
     {
         // 가운뎃점(·)은 기본 폰트에 있다는 보장이 없어 쓰지 않는다 — 띄어쓰기로 나눈다.
         Bind(RewardView.OfEquipment(data.EquipmentId),
-             data.EquipmentName,
-             $"{GradeStyle.GetLabel(data.Grade)} 장비",
+             LocalizationManager.Instance.Get(data.EquipmentName),
+             LocalizationManager.Instance.Format("{0} 장비", LocalizationManager.Instance.Get(GradeStyle.GetLabel(data.Grade))),
              GradeStyle.GetColor(data.Grade),
              cost, onBuy);
     }
@@ -65,7 +65,7 @@ public class RunShopGoodsSlot : MonoBehaviour
     public void SetupTrait(TraitData data, int cost, Func<bool> onBuy)
     {
         Bind(RewardView.OfTrait(data.TraitType),
-             data.TraitName, "특성", TraitKindColor, cost, onBuy);
+             LocalizationManager.Instance.Get(data.TraitName), LocalizationManager.Instance.Get("특성"), TraitKindColor, cost, onBuy);
     }
 
     /// <summary>내놓을 물건이 없는 칸 (특성 풀 고갈 등).</summary>

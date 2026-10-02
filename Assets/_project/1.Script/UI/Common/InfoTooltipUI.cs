@@ -194,12 +194,12 @@ public class InfoTooltipUI : MonoBehaviour
 
     void Fill(string title, string desc, string stat)
     {
-        _nameText.text = title;
+        _nameText.text = LocalizationManager.Instance.LocalizeText(title);
 
-        _descText.text = desc ?? "";
+        _descText.text = LocalizationManager.Instance.LocalizeText(desc ?? "");
         _descText.gameObject.SetActive(!string.IsNullOrEmpty(desc));
 
-        _statText.text = stat ?? "";
+        _statText.text = LocalizationManager.Instance.LocalizeText(stat ?? "");
         _statText.gameObject.SetActive(!string.IsNullOrEmpty(stat));
     }
 

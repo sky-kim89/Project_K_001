@@ -20,7 +20,8 @@ using UnityEngine.UI;
 //  ■ 새 레이아웃 (AbilityList·HeroDetail 과 같은 전체화면 톤)
 //    전체 1840 × (캔버스높이-32)
 //    Header  H=136   ◆ 어빌리티 | 어빌리티 선택        [새로고침 N회 남음]
-//    Body            카드 5장 가로 정렬 (한 장 328×640, 입체 카드)
+//    Body            카드 가로 정렬 — 폭은 장수에 맞춤 (3장 420 · 5장 328), 높이 760
+//                    판 = 정보 칸 9-slice, 등급 = 윗변 리본 + 아이콘 테두리 (BuildCard 주석 참고)
 //    Footer          안내 문구
 //
 //  ⚠ 닫기 버튼이 없다
@@ -42,7 +43,16 @@ public static class AbilitySelectPopupCreator
     const float BodyTop  =  156f;
 
     const int   MaxCards =    5;
-    const float CardW    =  328f;
+    const float CardW    =  328f;   // 5장일 때의 최소 폭
+    const float CardMaxW =  420f;   // 3장일 때 — 효과 글자를 FontMd 로 한 줄에 담는 폭
+    const float AreaPad  =   40f;   // 창 금테 안쪽 여백
+    const float RibbonH  =   46f;   // 카드 윗변에 걸친 등급 리본
+    const float CardPad  =   24f;   // 카드 테두리(정보 칸 9-slice ×0.6 ≈ 8) 안쪽 여백
+    const float RibbonW  =  168f;
+
+    // PixelTheme — 카드 판은 늘려도 줄무늬가 안 생기는 정보 칸 9-slice
+    const string InfoPx = "ui_info_panel_9slice";
+    const string TealPx = "ui_button_teal_9slice";
 
     // ⚠ 설명이 잘려 있었다 (2026-08-21)
     //   카드 640 에서 설명 칸에 남는 높이는 116 — FontSm 기준 2줄이 조금 넘는다.
@@ -65,13 +75,12 @@ public static class AbilitySelectPopupCreator
     static readonly Color TitleColor   = new Color(1.00f,  0.94f,  0.86f,  1f);
     static readonly Color TitleShadow  = new Color(0.03f,  0.02f,  0.05f,  0.85f);
 
-    static readonly Color CardFace     = new Color(0.155f, 0.145f, 0.255f, 1f);
-    static readonly Color CardInner    = new Color(0.10f,  0.10f,  0.175f, 1f);
     static readonly Color IconPadBg    = new Color(0.24f,  0.21f,  0.36f,  1f);
     static readonly Color DescColor    = new Color(0.82f,  0.86f,  0.96f,  1f);
     static readonly Color LabelColor   = new Color(0.64f,  0.66f,  0.78f,  1f);
     static readonly Color LevelColor   = new Color(1.00f,  0.86f,  0.42f,  1f);
-    static readonly Color SelectBtnC   = new Color(0.36f,  0.24f,  0.62f,  1f);
+    static readonly Color RibbonEdgeC  = new Color(0.04f,  0.07f,  0.16f,  1f);   // 리본 외곽 (짙은 남흑)
+    static readonly Color DividerC     = new Color(0.25f,  0.39f,  0.67f,  0.55f);
     static readonly Color RefreshBtnC  = new Color(0.14f,  0.38f,  0.52f,  1f);
     static readonly Color RefreshTxt   = new Color(0.62f,  0.88f,  1.00f,  1f);
 
@@ -85,6 +94,7 @@ public static class AbilitySelectPopupCreator
         Directory.CreateDirectory(Path.GetDirectoryName(PrefabPath));
 
         var root = Build();
+        PixelSkin.Apply(root);
         PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
         Object.DestroyImmediate(root);
 
@@ -226,25 +236,29 @@ public static class AbilitySelectPopupCreator
         bRt.offsetMin = new Vector2(0f, FooterH);
         bRt.offsetMax = new Vector2(0f, -(HeaderH + 23f));
 
+        // ⚠ 카드 폭을 장수에 맞춘다 (2026-10-02)
+        //   보통 3장이 나오는데 328 고정이라 창 1840 중 1020 만 쓰고 양옆이 텅 비었다.
+        //   레이아웃이 폭을 정한다 — 3장이면 CardMaxW, 5장이면 창에 맞게 CardW 쪽으로 줄어든다.
         var area = Go("CardArea", band);
         var aRt = area.GetComponent<RectTransform>();
-        aRt.anchorMin = new Vector2(0.5f, 0.5f);
-        aRt.anchorMax = new Vector2(0.5f, 0.5f);
+        aRt.anchorMin = new Vector2(0f, 0.5f);
+        aRt.anchorMax = new Vector2(1f, 0.5f);
         aRt.pivot     = new Vector2(0.5f, 0.5f);
         aRt.anchoredPosition = Vector2.zero;
-        aRt.sizeDelta        = new Vector2(MaxCards * CardW + (MaxCards - 1) * CardGap, CardH);
+        aRt.sizeDelta        = new Vector2(-2f * AreaPad, CardH);
 
         // 띠보다 카드가 크면 줄인다 (가운데 정렬이라 그대로 가운데에 남는다)
         var fitter = band.AddComponent<ScaleToFitHeight>();
         var fso = new SerializedObject(fitter);
         fso.FindProperty("_content").objectReferenceValue = aRt;
-        fso.FindProperty("_designHeight").floatValue      = CardH;
+        // 카드 높이 + 윗변에 걸친 등급 리본이 위로 나간 몫
+        fso.FindProperty("_designHeight").floatValue      = CardH + RibbonH;
         fso.ApplyModifiedPropertiesWithoutUndo();
 
         var hlg = area.AddComponent<HorizontalLayoutGroup>();
         hlg.spacing                = CardGap;
         hlg.childAlignment         = TextAnchor.MiddleCenter;
-        hlg.childControlWidth      = false;
+        hlg.childControlWidth      = true;    // LayoutElement 의 min~preferred 사이에서 폭을 정한다
         hlg.childControlHeight     = false;
         hlg.childForceExpandWidth  = false;
         hlg.childForceExpandHeight = false;
@@ -265,158 +279,146 @@ public static class AbilitySelectPopupCreator
     }
 
     /// <summary>
-    /// 어빌리티 카드 한 장. 카드 전체가 눌리는 입체 버튼이다 (UI 규칙 1).
+    /// 어빌리티 카드 한 장 — 카드 전체가 눌리는 버튼이다 (판 = 정보 칸 9-slice).
     ///
-    /// ⚠ 내용물은 전부 Body 아래에 넣는다
-    ///   루트에 넣으면 눌러도 같이 안 내려가 "판이 눌린" 느낌이 안 난다.
+    ///        ┌──[ 고급 ]──┐   ← 등급 리본: 윗변에 걸친 등급색 판 + 짙은 글씨
+    ///        │  ┏━━━━┓   │   ← 아이콘 테두리도 등급색 (리본과 두 곳에서 등급이 읽힌다)
+    ///        │  ┃ 🔥 ┃   │
+    ///        │  ┗━━━━┛   │
+    ///        │ 기사의 분노 │   ← FontLg
+    ///        │    기사     │   ← 대상(또는 발동 조건)
+    ///        │  Lv 1 / 3   │
+    ///        │ ─────────── │
+    ///        │ 공격 +15%   │   ← 효과 FontMd (긴 특수 설명만 줄어든다)
+    ///        │ 체력 +10%   │
+    ///        │ [  선 택  ] │   ← 청록 판 (표시용 — 누르는 것은 카드 전체)
+    ///        └─────────────┘
+    ///
+    /// ⚠ 1차(2026-10-02 이전)의 문제
+    ///   · RaisedBtn 카드에 PixelSkin 이 파란 버튼 그림을 328×760 으로 늘려 세로 줄무늬가 생겼다.
+    ///   · 등급이 카드 맨 위 12px 색 막대뿐이라 '무슨 막대인지' 안 읽혔다 (사용자: "너무 어색").
+    ///   · 효과가 FontSm 두 줄이라 카드 아래 절반이 비었다.
+    /// ⚠ 내용물은 전부 Body 아래 — 루트에 넣으면 눌림 색이 같이 안 먹는다.
     /// </summary>
     static AbilityCardUI BuildCard(GameObject parent, string name)
     {
         var card = Go(name, parent);
-        var cRt = card.GetComponent<RectTransform>();
-        cRt.sizeDelta = new Vector2(CardW, CardH);
+        card.GetComponent<RectTransform>().sizeDelta = new Vector2(CardW, CardH);
+        var le = card.AddComponent<LayoutElement>();
+        le.minWidth       = CardW;
+        le.preferredWidth = CardMaxW;
+        le.flexibleWidth  = 0f;
 
-        var selectBtn = EditorUIBuilder.RaisedBtnOn(card, CardFace, out var body);
+        var selectBtn = EditorUIBuilder.PixelBtnOn(card, InfoPx, out var body, 0.6f);
         var cardUI    = card.AddComponent<AbilityCardUI>();
 
-        // ── 등급 바 (카드 최상단 굵은 띠) ────────────────────
-        var gradeBar = EditorUIBuilder.Img(body, "GradeBar", AccentPurple);
-        var gbRt = gradeBar.rectTransform;
-        gbRt.anchorMin = new Vector2(0f, 1f); gbRt.anchorMax = new Vector2(1f, 1f);
-        gbRt.pivot     = new Vector2(0.5f, 1f);
-        gbRt.anchoredPosition = Vector2.zero;
-        gbRt.sizeDelta        = new Vector2(0f, 12f);
+        // ── 등급 리본 — 윗변 가운데에 반쯤 걸친다 ────────────
+        //  테두리는 리본의 '앞 형제' 로 뒤에 깐다 (UI 규칙 3)
+        var ribbonEdge = EditorUIBuilder.Img(body, "GradeRibbonEdge", RibbonEdgeC);
+        CenterTop(ribbonEdge.rectTransform, 0f, RibbonW + 6f, RibbonH + 6f);
+        var gradeBar = EditorUIBuilder.Img(body, "GradeRibbon", AccentPurple);   // 색은 런타임 (등급색)
+        CenterTop(gradeBar.rectTransform, 0f, RibbonW, RibbonH);
+        ribbonEdge.raycastTarget = gradeBar.raycastTarget = false;
 
-        float y = 12f + 22f;
-
-        // ── 아이콘 ───────────────────────────────────────────
-        var iconPad = EditorUIBuilder.Img(body, "IconPad", IconPadBg);
-        var ipRt = iconPad.rectTransform;
-        ipRt.anchorMin = ipRt.anchorMax = new Vector2(0.5f, 1f);
-        ipRt.pivot     = new Vector2(0.5f, 1f);
-        ipRt.anchoredPosition = new Vector2(0f, -y);
-        ipRt.sizeDelta        = new Vector2(IconSz + 14f, IconSz + 14f);
-
-        var icon = EditorUIBuilder.Img(body, "Icon", Color.white);
-        var icRt = icon.rectTransform;
-        icRt.anchorMin = icRt.anchorMax = new Vector2(0.5f, 1f);
-        icRt.pivot     = new Vector2(0.5f, 1f);
-        icRt.anchoredPosition = new Vector2(0f, -(y + 7f));
-        icRt.sizeDelta        = new Vector2(IconSz, IconSz);
-        icon.preserveAspect = true;
-
-        y += IconSz + 14f + 16f;
-
-        // ── 이름 ─────────────────────────────────────────────
-        //  칸 높이는 폰트 한 줄 이상 (UI 규칙 5). 길면 접고 자동 축소한다.
-        //  ⚠ 2줄(106)에서 1.7줄(90)로 줄였다 — 남긴 16 은 설명 칸으로 간다
-        //    어빌리티 이름은 '고통의 계약'·'독수리의 눈' 처럼 6자 안쪽이라 한 줄이면
-        //    충분하고, 넘치면 AutoSize 가 먼저 줄인다. 2줄을 통으로 비워 둘 이유가 없다.
-        float nameH = UIScale.Line(UIScale.FontMd) * 1.7f;
-
-        var nameTmp = TMP(body, "NameText", "어빌리티", UIScale.FontMd, FontStyles.Bold);
-        nameTmp.color            = Color.white;
-        nameTmp.alignment        = TextAlignmentOptions.Center;
-        nameTmp.raycastTarget    = false;
-        nameTmp.textWrappingMode = TextWrappingModes.Normal;
-        nameTmp.enableAutoSizing = true;
-        nameTmp.fontSizeMin      = UIScale.FontSm;
-        nameTmp.fontSizeMax      = UIScale.FontMd;
-        PinTop(nameTmp.rectTransform, y, nameH, 14f);
-
-        y += nameH + 6f;
-
-        // ── 등급 · 대상 (한 줄에 나란히) ─────────────────────
-        var gradeTmp = TMP(body, "GradeText", "등급", UIScale.FontSm, FontStyles.Bold);
-        gradeTmp.color         = AccentPurple;
-        gradeTmp.alignment     = TextAlignmentOptions.MidlineRight;
+        var gradeTmp = TMP(gradeBar.gameObject, "GradeText", "등급", UIScale.FontSm, FontStyles.Bold);
+        gradeTmp.alignment     = TextAlignmentOptions.Center;
         gradeTmp.raycastTarget = false;
-        // ⚠ 반반으로 나누지 않는다
-        //   등급은 "일반/고급/특수/숙련" 두 글자로 고정인데,
-        //   오른쪽은 대상("전체") 이거나 트리거("스테이지 클리어 시") 라 길이 편차가 크다.
-        //   반반이면 오른쪽이 모자라 두 줄로 접힌다 — 실제로 그랬다.
-        const float GradeSplit = 0.38f;
-        var grRt = gradeTmp.rectTransform;
-        grRt.anchorMin = new Vector2(0f, 1f); grRt.anchorMax = new Vector2(GradeSplit, 1f);
-        grRt.pivot     = new Vector2(0.5f, 1f);
-        grRt.anchoredPosition = new Vector2(0f, -y);
-        grRt.sizeDelta        = new Vector2(-14f, UIScale.RowSm);
+        Fit(gradeTmp);
+        EditorUIBuilder.Stretch(gradeTmp.gameObject);
+        gradeTmp.rectTransform.offsetMin = new Vector2(10f, 0f);
+        gradeTmp.rectTransform.offsetMax = new Vector2(-10f, 0f);
 
+        float y = RibbonH * 0.5f + 20f;   // 리본 아래쪽 절반 + 여백
+
+        // ── 아이콘 (등급색 테두리 → 짙은 판 → 아이콘) ────────
+        const float FrameT = 4f;
+        var iconFrame = EditorUIBuilder.Img(body, "IconFrame", AccentPurple);   // 색은 런타임 (등급색)
+        CenterTop(iconFrame.rectTransform, y, IconSz + 16f + FrameT * 2f, IconSz + 16f + FrameT * 2f);
+        var iconPad = EditorUIBuilder.Img(body, "IconPad", IconPadBg);
+        CenterTop(iconPad.rectTransform, y + FrameT, IconSz + 16f, IconSz + 16f);
+        var icon = EditorUIBuilder.Img(body, "Icon", Color.white);
+        CenterTop(icon.rectTransform, y + FrameT + 8f, IconSz, IconSz);
+        icon.preserveAspect = true;
+        iconFrame.raycastTarget = iconPad.raycastTarget = icon.raycastTarget = false;
+
+        y += IconSz + 16f + FrameT * 2f + 14f;
+
+        // ── 이름 — 한 줄, 넘치면 줄어든다 ────────────────────
+        var nameTmp = TMP(body, "NameText", "어빌리티", UIScale.FontLg, FontStyles.Bold);
+        nameTmp.color         = TitleColor;
+        nameTmp.alignment     = TextAlignmentOptions.Center;
+        nameTmp.raycastTarget = false;
+        Fit(nameTmp);
+        PinTop(nameTmp.rectTransform, y, UIScale.RowLg, CardPad);
+        y += UIScale.RowLg;
+
+        // ── 대상 (또는 발동 조건) ────────────────────────────
         var targetTmp = TMP(body, "TargetText", "대상", UIScale.FontSm, FontStyles.Normal);
         targetTmp.color         = LabelColor;
-        targetTmp.alignment     = TextAlignmentOptions.MidlineLeft;
+        targetTmp.alignment     = TextAlignmentOptions.Center;
         targetTmp.raycastTarget = false;
-        // 접히느니 살짝 줄어드는 쪽이 낫다 — 한 줄 유지가 우선이다.
-        // AutoSize 하한은 FontSm 의 88% 로만 둔다 (UI 규칙 4: 너무 줄이면 안 읽힌다).
-        targetTmp.textWrappingMode = TextWrappingModes.NoWrap;
-        targetTmp.overflowMode     = TextOverflowModes.Overflow;
-        targetTmp.enableAutoSizing = true;
-        targetTmp.fontSizeMin      = UIScale.FontSm * 0.88f;
-        targetTmp.fontSizeMax      = UIScale.FontSm;
+        Fit(targetTmp);
+        PinTop(targetTmp.rectTransform, y, UIScale.RowSm, CardPad);
+        y += UIScale.RowSm;
 
-        var tgRt = targetTmp.rectTransform;
-        tgRt.anchorMin = new Vector2(GradeSplit, 1f); tgRt.anchorMax = new Vector2(1f, 1f);
-        tgRt.pivot     = new Vector2(0.5f, 1f);
-        tgRt.anchoredPosition = new Vector2(0f, -y);
-        tgRt.sizeDelta        = new Vector2(-14f, UIScale.RowSm);
-
-        y += UIScale.RowSm + 4f;
-
-        // ── 레벨 ─────────────────────────────────────────────
-        var levelTmp = TMP(body, "LevelText", "Lv 1/3", UIScale.FontSm, FontStyles.Bold);
+        // ── 레벨 (MaxLevel 1 이면 런타임이 숨긴다) ───────────
+        var levelTmp = TMP(body, "LevelText", "Lv 1 / 3", UIScale.FontSm, FontStyles.Bold);
         levelTmp.color         = LevelColor;
         levelTmp.alignment     = TextAlignmentOptions.Center;
         levelTmp.raycastTarget = false;
-        PinTop(levelTmp.rectTransform, y, UIScale.RowSm, 14f);
-
+        Fit(levelTmp);
+        PinTop(levelTmp.rectTransform, y, UIScale.RowSm, CardPad);
         y += UIScale.RowSm + 12f;
 
-        // ── 설명 (남는 높이를 전부 쓴다) ─────────────────────
-        float btnH   = UIScale.BtnFor(UIScale.FontMd);
-        float descBt = btnH + 20f;
+        // ── 구분선 ───────────────────────────────────────────
+        var div = EditorUIBuilder.Img(body, "Divider", DividerC);
+        div.raycastTarget = false;
+        PinTop(div.rectTransform, y, 2f, CardPad + 12f);
+        y += 2f + 16f;
 
-        var descBg = Go("DescBg", body);
-        descBg.AddComponent<Image>().color = CardInner;
-        var dbRt = descBg.GetComponent<RectTransform>();
-        dbRt.anchorMin = new Vector2(0f, 0f); dbRt.anchorMax = new Vector2(1f, 1f);
-        dbRt.offsetMin = new Vector2(14f, descBt);
-        dbRt.offsetMax = new Vector2(-14f, -y);
+        // ── 효과 (남는 높이 전부) ────────────────────────────
+        //  스탯 두 줄짜리가 대부분이라 FontMd 로 크게 — 카드끼리 비교하는 핵심 정보다.
+        //  특수 어빌리티의 긴 설명만 칸에 맞춰 줄어든다 (하한 26).
+        float pickH  = UIScale.BtnFor(UIScale.FontMd);   // 72
+        float descBt = CardPad + pickH + 16f;
 
-        var descTmp = TMP(descBg, "DescText", "", UIScale.FontSm, FontStyles.Normal);
+        var descTmp = TMP(body, "DescText", "", UIScale.FontMd, FontStyles.Normal);
         descTmp.color            = DescColor;
-        descTmp.alignment        = TextAlignmentOptions.TopLeft;
+        descTmp.alignment        = TextAlignmentOptions.Top;
         descTmp.raycastTarget    = false;
         descTmp.textWrappingMode = TextWrappingModes.Normal;
-        descTmp.lineSpacing      = 10f;
+        descTmp.lineSpacing      = 8f;
         // ⚠ Ellipsis 로 두면 긴 설명이 통째로 "..." 이 된다
         descTmp.overflowMode     = TextOverflowModes.Overflow;
         descTmp.enableAutoSizing = true;
         descTmp.fontSizeMin      = 26f;
-        descTmp.fontSizeMax      = UIScale.FontSm;
+        descTmp.fontSizeMax      = UIScale.FontMd;
         var dtRt = descTmp.rectTransform;
         dtRt.anchorMin = Vector2.zero; dtRt.anchorMax = Vector2.one;
-        dtRt.offsetMin = new Vector2(14f, 12f);
-        dtRt.offsetMax = new Vector2(-14f, -12f);
+        dtRt.offsetMin = new Vector2(CardPad, descBt);
+        dtRt.offsetMax = new Vector2(-CardPad, -y);
 
-        // ── 선택 표시 (카드 하단 띠) ─────────────────────────
-        //  카드 전체가 버튼이지만, "여기를 누르면 고른다" 를 글자로 못 박는다.
-        var pick = Go("PickBar", body);
-        pick.AddComponent<Image>().color = SelectBtnC;
-        var pkRt = pick.GetComponent<RectTransform>();
+        // ── 선택 표시 — 청록 판 (누르는 것은 카드 전체) ──────
+        var pick = EditorUIBuilder.PixelImage(body, "PickBar", TealPx, 0.6f);
+        var pkRt = pick.rectTransform;
         pkRt.anchorMin = new Vector2(0f, 0f); pkRt.anchorMax = new Vector2(1f, 0f);
         pkRt.pivot     = new Vector2(0.5f, 0f);
-        pkRt.offsetMin = new Vector2(14f, 12f);
-        pkRt.offsetMax = new Vector2(-14f, 12f + btnH);
+        pkRt.offsetMin = new Vector2(CardPad, CardPad);
+        pkRt.offsetMax = new Vector2(-CardPad, CardPad + pickH);
 
-        var pickLbl = TMP(pick, "Label", "선  택", UIScale.FontMd, FontStyles.Bold);
+        var pickLbl = TMP(pick.gameObject, "Label", "선  택", UIScale.FontMd, FontStyles.Bold);
         pickLbl.color         = Color.white;
         pickLbl.alignment     = TextAlignmentOptions.Center;
         pickLbl.raycastTarget = false;
+        Fit(pickLbl);
         EditorUIBuilder.Stretch(pickLbl.gameObject);
+        pickLbl.rectTransform.offsetMin = new Vector2(16f, 0f);
+        pickLbl.rectTransform.offsetMax = new Vector2(-16f, 0f);
 
         // ── AbilityCardUI 필드 연결 ──────────────────────────
         var cardSo = new SerializedObject(cardUI);
         SetObjOn(cardSo, "_gradeBar",  gradeBar);
+        SetObjOn(cardSo, "_iconFrame", iconFrame);
         SetObjOn(cardSo, "_icon",      icon);
         SetObjOn(cardSo, "_gradeTmp",  gradeTmp);
         SetObjOn(cardSo, "_nameTmp",   nameTmp);
@@ -459,6 +461,26 @@ public static class AbilitySelectPopupCreator
         rt.pivot     = new Vector2(0.5f, 1f);
         rt.anchoredPosition = new Vector2(0f, -yFromTop);
         rt.sizeDelta        = new Vector2(-padH * 2f, height);
+    }
+
+    // 부모 위쪽 가운데 — 위에서 yFromTop, 고정 크기 (pivot 위쪽 가운데)
+    //  yFromTop = 0 이고 pivot 이 가운데면 윗변에 반쯤 걸친다 (리본)
+    static void CenterTop(RectTransform rt, float yFromTop, float w, float h)
+    {
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f);
+        rt.pivot     = yFromTop == 0f ? new Vector2(0.5f, 0.5f) : new Vector2(0.5f, 1f);
+        rt.anchoredPosition = new Vector2(0f, -yFromTop);
+        rt.sizeDelta = new Vector2(w, h);
+    }
+
+    // 한 줄 · 칸에 맞춰 축소 (긴 언어만 줄어든다 — MainPanelCreator.Fit 과 같은 규칙)
+    static void Fit(TextMeshProUGUI tmp)
+    {
+        tmp.textWrappingMode = TextWrappingModes.NoWrap;
+        tmp.overflowMode     = TextOverflowModes.Overflow;
+        tmp.enableAutoSizing = true;
+        tmp.fontSizeMax      = tmp.fontSize;
+        tmp.fontSizeMin      = tmp.fontSize * 0.6f;
     }
 
     static void StretchV(RectTransform rt, float width, float vMargin)

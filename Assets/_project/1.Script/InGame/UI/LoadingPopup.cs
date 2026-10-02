@@ -30,7 +30,7 @@ public class LoadingPopup : PopupBase
     protected override void OnAfterOpen()
     {
         if (_titleText != null)
-            _titleText.text = "배틀 준비 중";
+            _titleText.text = LocalizationManager.Instance.Get("배틀 준비 중");
 
         _dotRoutine = StartCoroutine(DotAnimation());
     }
@@ -52,7 +52,7 @@ public class LoadingPopup : PopupBase
         while (true)
         {
             if (_statusText != null)
-                _statusText.text = "장군 소환 중" + new string('.', (i % 3) + 1);
+                _statusText.text = LocalizationManager.Instance.Get("장군 소환 중") + new string('.', (i % 3) + 1);
             i++;
             yield return new WaitForSecondsRealtime(0.4f);
         }

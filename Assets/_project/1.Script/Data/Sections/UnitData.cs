@@ -30,6 +30,7 @@ public class UnitData : ISaveSection
     {
         CodexData.RecordGeneral(entry.UnitName);   // 도감 — 회귀해도 남는다
         _raw.Units.Add(entry);
+        AchievementTracker.OnUnitAcquired(entry.UnitName);   // 희귀 장수 고용
     }
 
     public void RemoveUnit(string unitId)
@@ -103,6 +104,7 @@ public class UnitData : ISaveSection
         var entry = GetUnit(unitId);
         if (entry == null || entry.Grade >= UnitGrade.Epic) return;
         entry.GradeUpCount++;
+        AchievementTracker.OnGradeUp(entry);   // 전설의 장수
     }
 
     public string PickAvailableName()

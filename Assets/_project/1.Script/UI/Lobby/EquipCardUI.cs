@@ -39,7 +39,7 @@ public class EquipCardUI : MonoBehaviour
 
         if (!iconOnly)
         {
-            if (_nameText  != null) _nameText.text  = data.EquipmentName;
+            if (_nameText  != null) _nameText.text  = LocalizationManager.Instance.Get(data.EquipmentName);
             if (_gradeText != null)
             {
                 _gradeText.text  = GradeStyle.GetLabel(data.Grade);

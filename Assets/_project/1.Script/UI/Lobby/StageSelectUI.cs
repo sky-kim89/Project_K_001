@@ -179,7 +179,7 @@ public class StageSelectUI : MonoBehaviour
         // 스테이지 번호만 남긴다.
         // "도전"·스테이지 타입·"N / 30 스테이지" 는 전부 진행바가 이미 보여 주는
         // 정보라 중복이었다 — 화면 가운데를 비워 두는 쪽이 읽기 쉽다.
-        if (_stageText     != null) _stageText.text = $"스테이지 {stageIndex + 1}";
+        if (_stageText     != null) _stageText.text = LocalizationManager.Instance.Format("스테이지 {0}", stageIndex + 1);
         if (_progressText  != null) _progressText.gameObject.SetActive(false);
         if (_stageTypeText != null) _stageTypeText.gameObject.SetActive(false);
 
@@ -195,7 +195,7 @@ public class StageSelectUI : MonoBehaviour
 
         // 상점은 자동으로 열리므로 이 버튼은 항상 "전투 시작" 이다.
         var label = _battleStartBtn?.GetComponentInChildren<TextMeshProUGUI>();
-        if (label != null) label.text = "전투 시작";
+        if (label != null) label.text = LocalizationManager.Instance.Get("전투 시작");
     }
 
     void RefreshSlots()

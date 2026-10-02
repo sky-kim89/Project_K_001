@@ -245,7 +245,11 @@ public class RelicTreePopup : PopupBase,
 
         var c = ColorOf(def.Branch);
         v.Face.color = c;
-        v.Name.text  = def.Name;
+        v.Name.text  = LocalizationManager.Instance.Get(def.Name);
+        v.Name.enableAutoSizing = true;
+        v.Name.fontSizeMin = UIScale.FontSm;
+        v.Name.fontSizeMax = UIScale.FontMd;
+        v.Name.textWrappingMode = TextWrappingModes.Normal;
 
         // ── 노드 그림 ────────────────────────────────────────
         //  파일명 규칙은 RelicIconKey 하나가 갖는다 (N_Blade → "node_blade").
@@ -261,7 +265,7 @@ public class RelicTreePopup : PopupBase,
 
         var id = def.Id;
         v.Face.GetComponent<Button>().onClick.AddListener(() => Select(id));
-        v.Buy.onClick.AddListener(() => TryLevelUp(id));
+        HoldRepeatButton.Bind(v.Buy, () => TryLevelUp(id));
 
         // 안개 실루엣 — 노드와 같은 자리에 겹쳐 두고 둘 중 하나만 켠다
         var ghost = Instantiate(_ghostTemplate, _content);
@@ -300,8 +304,9 @@ public class RelicTreePopup : PopupBase,
         int points = _reinc.ReincarnationPoints;
 
         _pointText.text = points.ToString();
-        _summaryText.text =
-            $"찍은 노드 {_tree.TakenCount} / {RelicTreeCatalog.All.Length}   ·   투자 {_tree.InvestedPoints}pt";
+        _summaryText.text = LocalizationManager.Instance.Format(
+            "찍은 노드 {0} / {1}   ·   투자 {2}pt",
+            _tree.TakenCount, RelicTreeCatalog.All.Length, _tree.InvestedPoints);
 
         foreach (var v in _views.Values)
         {
@@ -375,7 +380,7 @@ public class RelicTreePopup : PopupBase,
         if (!canReinc) return;
 
         int pts = ReincarnationData.PreviewPoints(cleared);   // 난이도 배율 포함
-        _reincLabel.text = $"환생 — {pts}pt 획득";
+        _reincLabel.text = LocalizationManager.Instance.Format("환생 — {0}pt 획득", pts);
     }
 
     // ══════════════════════════════════════════════════════════
@@ -394,21 +399,24 @@ public class RelicTreePopup : PopupBase,
         int lv  = _tree.GetLevel(id);
 
         _tooltipRoot.SetActive(true);
-        _tipName.text  = def.Name;
+        _tipName.text  = LocalizationManager.Instance.Get(def.Name);
         _tipName.color = ColorOf(def.Branch);
 
-        string lvText = def.Special ? "단일 습득" : $"{lv} / {def.MaxLevel} 레벨";
+        string lvText = def.Special
+            ? LocalizationManager.Instance.Get("단일 습득")
+            : LocalizationManager.Instance.Format("{0} / {1} 레벨", lv, def.MaxLevel);
         string parent = def.Parent == RelicNodeId.None
-            ? "시작 노드"
-            : $"선행 {RelicTreeCatalog.Get(def.Parent).Name}";
-        _tipSub.text = $"티어 {def.Tier}   ·   {lvText}   ·   {parent}";
+            ? LocalizationManager.Instance.Get("시작 노드")
+            : LocalizationManager.Instance.Format("선행 {0}",
+                LocalizationManager.Instance.Get(RelicTreeCatalog.Get(def.Parent).Name));
+        _tipSub.text = LocalizationManager.Instance.Format("티어 {0}   ·   {1}   ·   {2}", def.Tier, lvText, parent);
 
         // 0레벨이면 1레벨 미리보기가 뜬다 — 뭐가 붙는지 봐야 살지 말지 정한다
-        _tipEffect.text = def.GetDescription(lv);
+        _tipEffect.text = LocalizationManager.Instance.LocalizeText(def.GetDescription(lv));
 
         _tipCost.text = lv >= def.MaxLevel
-            ? "최대 레벨"
-            : $"다음 레벨 {def.LevelUpCost(lv)}pt   (만렙까지 {def.TotalCost}pt)";
+            ? LocalizationManager.Instance.Get("최대 레벨")
+            : LocalizationManager.Instance.Format("다음 레벨 {0}pt   (만렙까지 {1}pt)", def.LevelUpCost(lv), def.TotalCost);
     }
 
     void HideTooltip()

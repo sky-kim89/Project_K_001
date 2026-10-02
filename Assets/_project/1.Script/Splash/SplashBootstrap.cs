@@ -48,6 +48,9 @@ public class SplashBootstrap : MonoBehaviour
     [SerializeField] Image           _progressBarFill;   // Image Type = Filled, Fill Method = Horizontal
     [SerializeField] TextMeshProUGUI _statusText;
     [SerializeField] CanvasGroup     _splashCanvas;      // 루트 CanvasGroup (페이드아웃용)
+    [SerializeField] Image           _titleImage;
+    [SerializeField] Sprite          _englishTitle;
+    [SerializeField] Sprite          _koreanTitle;
 
     [Header("앱 공통 설정")]
     [Tooltip("목표 프레임레이트. vSync 비활성 시 유효.")]
@@ -57,7 +60,7 @@ public class SplashBootstrap : MonoBehaviour
     [Tooltip("화면 자동 꺼짐 방지 (모바일).")]
     [SerializeField] bool _neverSleep       = true;
     [Tooltip("앱이 포커스를 잃어도 계속 실행.")]
-    [SerializeField] bool _runInBackground  = true;
+    [SerializeField] bool _runInBackground  = false;
 
     [Header("전환 연출")]
     [Tooltip("스플래시 최소 표시 시간 (초). 로딩이 빨라도 이 시간은 유지됨.")]
@@ -75,6 +78,9 @@ public class SplashBootstrap : MonoBehaviour
 
     void Awake()
     {
+        _titleImage.sprite = LocalizationManager.Instance.SplashLanguage == GameLanguage.Korean
+            ? _koreanTitle
+            : _englishTitle;
         ApplyAppSettings();
     }
 

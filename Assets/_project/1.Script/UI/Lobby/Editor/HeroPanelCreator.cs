@@ -77,15 +77,18 @@ public static class HeroPanelCreator
         AssetDatabase.Refresh();
 
         var equipCardGo    = BuildEquipCardPrefab();
+        PixelSkin.Apply(equipCardGo);
         var equipCardAsset = PrefabUtility.SaveAsPrefabAsset(equipCardGo, EquipCardPrefabPath);
         Object.DestroyImmediate(equipCardGo);
 
         var cardGo    = BuildCardPrefab();
+        PixelSkin.Apply(cardGo);
         var cardAsset = PrefabUtility.SaveAsPrefabAsset(cardGo, CardPrefabPath);
         Object.DestroyImmediate(cardGo);
 
         var panelGo = BuildHeroPanel(cardAsset.GetComponent<HeroCardUI>(),
                                      equipCardAsset.GetComponent<EquipCardUI>());
+        PixelSkin.Apply(panelGo);
         PrefabUtility.SaveAsPrefabAsset(panelGo, PanelPrefabPath);
         Object.DestroyImmediate(panelGo);
 
@@ -1440,13 +1443,13 @@ public static class HeroPanelCreator
         }
 
         // ── 스탯 2×2 (텍스트 영역을 반씩 나눠 씀) ────────────
-        var hpText   = BuildCardStat(textArea, "Hp",      "체력", StatColors.Hp,
+        var hpText   = BuildCardStat(textArea, "Hp",      StatType.MaxHp,        StatColors.Hp,
                                      0f,   MidX, -92f,  -128f);
-        var atkText  = BuildCardStat(textArea, "Atk",     "공격", StatColors.Atk,
+        var atkText  = BuildCardStat(textArea, "Atk",     StatType.Attack,       StatColors.Atk,
                                      MidX, 1f,   -92f,  -128f);
-        var defText  = BuildCardStat(textArea, "Def",     "방어", StatColors.Def,
+        var defText  = BuildCardStat(textArea, "Def",     StatType.Defense,      StatColors.Def,
                                      0f,   MidX, -132f, -168f);
-        var soldText = BuildCardStat(textArea, "Soldier", "용병", StatColors.Soldier,
+        var soldText = BuildCardStat(textArea, "Soldier", StatType.SoldierCount, StatColors.Soldier,
                                      MidX, 1f,   -132f, -168f);
 
         // ── 배치 배지 (초상화 우상단 — 번호만 표시, 33×33) ──────
@@ -1518,40 +1521,30 @@ public static class HeroPanelCreator
     //  [x0..x1] 구간(텍스트 영역 기준 비율)을 레이블 38% / 값 62% 로 나눈다.
     //  둘 다 NoWrap 이고 값은 AutoSize — 자릿수가 늘어나도 두 줄로 깨지거나
     //  잘리지 않고 폰트만 작아진다 (공격 4자리, 체력 6자리 대응).
-    static TextMeshProUGUI BuildCardStat(GameObject textArea, string id, string label,
+    // [아이콘] 값 — 라벨 글자 대신 스탯 아이콘 (사용자 지시, 2026-10-02)
+    //  글자 라벨은 긴 언어에서 값 칸을 먹었다. 아이콘의 뜻은 HeroDetailPopup 스탯 목록이 알려 준다.
+    static TextMeshProUGUI BuildCardStat(GameObject textArea, string id, StatType stat,
                                          Color valueColor, float x0, float x1,
                                          float top, float bottom)
     {
-        const float LabelRatio = 0.38f;
-        float split = x0 + (x1 - x0) * LabelRatio;
-
-        var lbl = CreateTMP(textArea, $"{id}Label", label, FntSub, FontStyles.Normal);
+        float iconSz = top - bottom - 2f;   // 행 높이에 맞춘 정사각
+        var icon = EditorUIBuilder.StatIconImg(textArea, $"{id}Icon", stat, iconSz);
         {
-            var rt = lbl.rectTransform;
-            rt.anchorMin = new Vector2(x0,    1f);
-            rt.anchorMax = new Vector2(split, 1f);
-            rt.offsetMin = new Vector2(0, bottom);
-            rt.offsetMax = new Vector2(0, top);
+            var rt = icon.rectTransform;
+            rt.anchorMin = rt.anchorMax = new Vector2(x0, 1f);
+            rt.pivot     = new Vector2(0f, 1f);
+            rt.anchoredPosition = new Vector2(0f, top - 1f);
         }
-        lbl.alignment         = TextAlignmentOptions.MidlineLeft;
-        lbl.color             = LabelColor;
-        lbl.textWrappingMode  = TextWrappingModes.NoWrap;
-        // Ellipsis 는 칸보다 한 줄이 높으면 줄을 통째로 버린다 → Overflow + AutoSize.
-        // 값과 같은 규칙이라 레이블·값의 글자 크기가 어긋나지 않는다.
-        lbl.overflowMode      = TextOverflowModes.Overflow;
-        lbl.enableAutoSizing  = true;   // 좁은 카드(영웅 목록 356px)에서는 줄여서라도 다 보인다
-        lbl.fontSizeMin       = FntSub - 10;
-        lbl.fontSizeMax       = FntSub;
 
         var val = CreateTMP(textArea, $"{id}Text", "—", FntSub, FontStyles.Bold);
         {
             var rt = val.rectTransform;
-            rt.anchorMin = new Vector2(split, 1f);
-            rt.anchorMax = new Vector2(x1,    1f);
-            rt.offsetMin = new Vector2(0,  bottom);
+            rt.anchorMin = new Vector2(x0, 1f);
+            rt.anchorMax = new Vector2(x1, 1f);
+            rt.offsetMin = new Vector2(iconSz + 6f, bottom);
             rt.offsetMax = new Vector2(-6, top);
         }
-        val.alignment        = TextAlignmentOptions.MidlineRight;
+        val.alignment        = TextAlignmentOptions.MidlineLeft;
         val.color            = valueColor;
         val.textWrappingMode = TextWrappingModes.NoWrap;
         val.overflowMode     = TextOverflowModes.Overflow;

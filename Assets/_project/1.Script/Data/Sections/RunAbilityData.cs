@@ -41,6 +41,7 @@ public class RunAbilityData : ISaveSection
     {
         CodexData.Record(id);   // 도감 — 회귀해도 남는다
         _levels[id] = _levels.GetValueOrDefault(id, 0) + 1;
+        AchievementTracker.OnAbilityAcquired(id);   // 직업 달인
     }
 
     /// UI용 — 고유 ID 열거

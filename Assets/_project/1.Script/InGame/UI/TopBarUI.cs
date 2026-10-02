@@ -229,8 +229,8 @@ public class TopBarUI : MonoBehaviour
         // 무한 보스 구간에서는 웨이브 대신 몇 번째 보스인지 보여준다
         if (_waveText != null)
             _waveText.text = ctx.EndlessBossIndex > 0
-                ? $"무한 보스 {ctx.EndlessBossIndex}"
-                : $"웨이브 {current} / {total}";
+                ? LocalizationManager.Instance.Format("무한 보스 {0}", ctx.EndlessBossIndex)
+                : LocalizationManager.Instance.Format("웨이브 {0} / {1}", current, total);
         if (_waveProgressFill != null) _waveProgressFill.fillAmount = progress;
         if (_waveTimerText    != null) _waveTimerText.text          = FormatTime(_waveElapsed);
     }
@@ -258,7 +258,9 @@ public class TopBarUI : MonoBehaviour
         float ratio = Mathf.Clamp01(cur / maxHp);
 
         if (_bossHpFill != null) _bossHpFill.fillAmount = ratio;
-        if (_bossHpText != null) _bossHpText.text       = $"보스   {Mathf.CeilToInt(cur):N0} / {Mathf.RoundToInt(maxHp):N0}";
+        if (_bossHpText != null)
+            _bossHpText.text = LocalizationManager.Instance.Format(
+                "보스   {0:N0} / {1:N0}", Mathf.CeilToInt(cur), Mathf.RoundToInt(maxHp));
 
         RefreshBossEnrage(boss);
         RefreshBossSkills(boss);
@@ -289,7 +291,7 @@ public class TopBarUI : MonoBehaviour
 
         _bossEnrageText.gameObject.SetActive(stacks > 0);
         if (stacks > 0)
-            _bossEnrageText.text = $"광폭화 × {stacks}";
+            _bossEnrageText.text = LocalizationManager.Instance.Format("광폭화 × {0}", stacks);
     }
 
     // ── 보스 스킬 설명 툴팁 ───────────────────────────────────
@@ -309,9 +311,9 @@ public class TopBarUI : MonoBehaviour
         var data = ActiveSkillDatabase.Current?.Get(id);
 
         string title = data != null && !string.IsNullOrEmpty(data.SkillName)
-            ? data.SkillName
+            ? LocalizationManager.Instance.Get(data.SkillName)
             : LocalizationManager.Instance.Get(id.ToString());
-        string desc  = data != null ? data.Description : "";
+        string desc  = data != null ? LocalizationManager.Instance.LocalizeText(data.Description) : "";
 
         _bossSkillTooltip.ShowAnchored(
             _bossSkillButtons[slot].transform as RectTransform, title, desc, "");
@@ -394,7 +396,7 @@ public class TopBarUI : MonoBehaviour
     void RefreshKillCount()
     {
         if (_killCountText != null)
-            _killCountText.text = $"처치 {_killCount}";
+            _killCountText.text = LocalizationManager.Instance.Format("처치 {0}", _killCount);
     }
 
     // ── 이벤트 ─────────────────────────────────────────────────
@@ -505,12 +507,14 @@ public class TopBarUI : MonoBehaviour
         // 배속 해금 노드가 둘이라(시간의 고삐 → 찰나의 지배) '다음에 찍을 것' 을 짚어 준다
         string relicName = RelicTreeApplier.NextNodeNameFor(RelicSystemEffect.BattleSpeedUnlock);
 
+        var localization = LocalizationManager.Instance;
         string desc = string.IsNullOrEmpty(relicName)
-            ? SpeedLockDesc
-            : $"유물 전승도에서 '{relicName}' 을(를) 찍은 뒤 시도해 주세요.";
+            ? localization.Get(SpeedLockDesc)
+            : localization.Format("유물 전승도에서 '{0}' 을(를) 찍은 뒤 시도해 주세요.",
+                localization.Get(relicName));
 
         _speedLockTooltip.ShowAnchored(
-            _speedButton.transform as RectTransform, SpeedLockTitle, desc, "");
+            _speedButton.transform as RectTransform, localization.Get(SpeedLockTitle), desc, "");
     }
 
     // ── 자동 스킬 토글 ─────────────────────────────────────────

@@ -10,7 +10,7 @@ using BattleGame.Units;
 //  호출하면 EnemyStatRoller 로 스텟을 생성하고 ECS Entity 를 만든다.
 //
 //  엘리트: 스킬 ID를 unitName 시드로 결정, GeneralActiveSkillComponent 추가
-//  보스:   AoE 반경·넉백·돌진 패턴 필드 초기화
+//  보스:   AoE 반경·넉백·난이도별 패턴 슬롯 초기화
 // ============================================================
 
 public class EnemyRuntimeBridge : UnitRuntimeBridge
@@ -140,7 +140,7 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
                 //   BossSkillPool 은 메테오·블리자드·화살비 같은 판 전체를 덮는 스킬을
                 //   EffectValue 2.5 / 반경 3.5 로 쓴다. 오토배틀이라 플레이어가 피할
                 //   수단이 없어서, 낮은 난이도에서는 이 한 방이 승패를 통째로 정했다.
-                //   아래 난이도의 보스는 AoE 평타 + 돌진으로 싸운다.
+                //   아래 난이도의 보스는 AoE 평타 + 전용 행동 패턴으로 싸운다.
                 if (FrenzyEnabled)
                 {
                     em.AddComponentData(entity, new GeneralActiveSkillComponent
@@ -164,16 +164,11 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
                 em.AddBuffer<ActiveSkillExecuteEvent>(entity);
 
                 // 행동 패턴도 스킬이다. 대표 스킬과 달리 AI 만 발동하는 슬롯에 꽂는다.
-                // 돌진은 항상 — 보스를 보스로 보이게 하는 동작이고, 직선 한 번이라
-                // 광역 스킬처럼 판을 쓸어버리지 않는다.
-                // 분쇄 강타는 '폭주'(불지옥) 난이도에서만.
+                // 1·2단계: 제자리 도약 충격파
+                // 3·4단계: 도약 충격파 + 돌진
+                // 5단계  : 도약 충격파를 빼고 분쇄 강타 + 돌진
                 var bossSlots = em.AddBuffer<ActiveSkillSlot>(entity);
-                bossSlots.Add(PatternSlot(ActiveSkillId.BossCharge, cooldown: 9f, first: 5f));
-                if (FrenzyEnabled)
-                    bossSlots.Add(PatternSlot(ActiveSkillId.BossSlam, cooldown: 13f, first: 9f));
-                // 광폭화 — 난이도와 무관하게 항상. 교착을 끝내는 장치라 빼면 안 된다.
-                bossSlots.Add(PatternSlot(ActiveSkillId.BossEnrage, cooldown: EnrageCooldown,
-                                                                    first:    EnrageCooldown));
+                ConfigureBossPatternSlots(bossSlots);
                 break;
 
             case SpawnUnitType.Elite:
@@ -244,6 +239,31 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
         CooldownRemaining = first,
     };
 
+    /// <summary>
+    /// 난이도별 보스 행동 슬롯 정본.
+    /// 1·2는 도약 충격파, 3·4는 돌진을 더하고, 5는 충격파를 분쇄 강타로 교체한다.
+    /// </summary>
+    static void ConfigureBossPatternSlots(DynamicBuffer<ActiveSkillSlot> slots)
+    {
+        slots.Clear();
+        DifficultyTier tier = DifficultyConfig.CurrentTier().Tier;
+        bool chargeEnabled = tier is DifficultyTier.Hard
+                                  or DifficultyTier.Hell
+                                  or DifficultyTier.Inferno;
+
+        if (chargeEnabled)
+            slots.Add(PatternSlot(ActiveSkillId.BossCharge, cooldown: 9f, first: 5f));
+
+        slots.Add(tier == DifficultyTier.Inferno
+            ? PatternSlot(ActiveSkillId.BossSlam, cooldown: 13f, first: 9f)
+            : PatternSlot(ActiveSkillId.BossJumpShockwave, cooldown: 9f,
+                                                        first: chargeEnabled ? 9f : 5f));
+
+        // 광폭화 — 난이도와 무관하게 항상. 교착을 끝내는 장치라 빼면 안 된다.
+        slots.Add(PatternSlot(ActiveSkillId.BossEnrage, cooldown: EnrageCooldown,
+                                                        first: EnrageCooldown));
+    }
+
     // 풀에서 꺼낸 Entity 는 AddComponents 를 다시 타지 않는다.
     // 페이즈·돌진 타이머·넉백 내성이 지난 보스 값 그대로 남으므로 여기서 다시 찍는다.
     protected override void OnEntityReset(EntityManager em, Entity entity)
@@ -286,12 +306,7 @@ public class EnemyRuntimeBridge : UnitRuntimeBridge
         if (em.HasBuffer<ActiveSkillSlot>(entity))
         {
             var slots = em.GetBuffer<ActiveSkillSlot>(entity);
-            slots.Clear();
-            slots.Add(PatternSlot(ActiveSkillId.BossCharge, cooldown: 9f, first: 5f));
-            if (FrenzyEnabled)
-                slots.Add(PatternSlot(ActiveSkillId.BossSlam, cooldown: 13f, first: 9f));
-            slots.Add(PatternSlot(ActiveSkillId.BossEnrage, cooldown: EnrageCooldown,
-                                                            first:    EnrageCooldown));
+            ConfigureBossPatternSlots(slots);
         }
 
         ClearCastLock(em, entity);

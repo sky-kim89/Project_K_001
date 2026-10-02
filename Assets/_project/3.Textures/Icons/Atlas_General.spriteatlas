@@ -34,6 +34,7 @@ SpriteAtlas:
     packables:
     - {fileID: 102900000, guid: 1306ce5ac2d08b84ca2f0d4345bdd41a, type: 3}
     - {fileID: 102900000, guid: f7faf627d20cf7a4f82cbb29ab60a8aa, type: 3}
+    - {fileID: 102900000, guid: 9765fab9b797e6d4f8fa192951f888c2, type: 3}
     bindAsDefault: 1
     isAtlasV2: 0
     cachedData: {fileID: 0}
@@ -41,6 +42,7 @@ SpriteAtlas:
     - d4ecc40012cbfe945b9fb4cb8c01114c: 21300000
     - 833a72e0e63571b4db4983552049d7a7: 21300000
     - 9a7560f00590fb343a50d2d8709ed5e6: 21300000
+    - 70c46192b58940a4e9a6e11fabb9a64a: 21300000
     - ced29ea28e9b86b41bb257f24e9a5863: 21300000
     - 4ac5f7b244d47434f8008e8da957a2d7: 21300000
     - 0985cac2add4b9e4089d516dc72177e3: 21300000
@@ -54,6 +56,7 @@ SpriteAtlas:
     - 6e5560a4e2efef545b9e509f0a3725d8: 21300000
     - d95552369337d204d91b364eb0057999: 21300000
     - 653b6b36f60c137448ca74027ac8673a: 21300000
+    - 0f3fe15646917ad478c9e48294fa081a: 21300000
     - a912d70825f5f5a4cb2ccb2d8a578062: 21300000
     - 434fdb68dba3a6f40851f1661dd90e13: 21300000
     - 190154884f9b02447bb8bce4eaa11988: 21300000
@@ -73,12 +76,15 @@ SpriteAtlas:
     - ffc1b98e929c8bf41a0cd10c138b1bc6: 21300000
     - ed2006cedfd294a409baeb90035adc01: 21300000
     - 63b136cebe4484143ae5f7ddb02537d7: 21300000
+    - 019b2d7f5a1d6914a8c6b6f25d26c7e1: 21300000
+    - 93a0beaf9661f7744917c7b8261e38d1: 21300000
     - 8186b0ffbaac6cc439b1ccde05fd5c40: 21300000
   m_MasterAtlas: {fileID: 0}
   m_PackedSprites:
   - {fileID: 21300000, guid: d4ecc40012cbfe945b9fb4cb8c01114c, type: 3}
   - {fileID: 21300000, guid: 833a72e0e63571b4db4983552049d7a7, type: 3}
   - {fileID: 21300000, guid: 9a7560f00590fb343a50d2d8709ed5e6, type: 3}
+  - {fileID: 21300000, guid: 70c46192b58940a4e9a6e11fabb9a64a, type: 3}
   - {fileID: 21300000, guid: ced29ea28e9b86b41bb257f24e9a5863, type: 3}
   - {fileID: 21300000, guid: 4ac5f7b244d47434f8008e8da957a2d7, type: 3}
   - {fileID: 21300000, guid: 0985cac2add4b9e4089d516dc72177e3, type: 3}
@@ -92,6 +98,7 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 6e5560a4e2efef545b9e509f0a3725d8, type: 3}
   - {fileID: 21300000, guid: d95552369337d204d91b364eb0057999, type: 3}
   - {fileID: 21300000, guid: 653b6b36f60c137448ca74027ac8673a, type: 3}
+  - {fileID: 21300000, guid: 0f3fe15646917ad478c9e48294fa081a, type: 3}
   - {fileID: 21300000, guid: a912d70825f5f5a4cb2ccb2d8a578062, type: 3}
   - {fileID: 21300000, guid: 434fdb68dba3a6f40851f1661dd90e13, type: 3}
   - {fileID: 21300000, guid: 190154884f9b02447bb8bce4eaa11988, type: 3}
@@ -111,11 +118,14 @@ SpriteAtlas:
   - {fileID: 21300000, guid: ffc1b98e929c8bf41a0cd10c138b1bc6, type: 3}
   - {fileID: 21300000, guid: ed2006cedfd294a409baeb90035adc01, type: 3}
   - {fileID: 21300000, guid: 63b136cebe4484143ae5f7ddb02537d7, type: 3}
+  - {fileID: 21300000, guid: 019b2d7f5a1d6914a8c6b6f25d26c7e1, type: 3}
+  - {fileID: 21300000, guid: 93a0beaf9661f7744917c7b8261e38d1, type: 3}
   - {fileID: 21300000, guid: 8186b0ffbaac6cc439b1ccde05fd5c40, type: 3}
   m_PackedSpriteNamesToIndex:
   - knight_icon
   - skill_volley_fire
   - skill_charge_soldier
+  - stat_soldier_count
   - skill_gravity_collapse
   - skill_meteor
   - skill_suicide_soldier
@@ -129,6 +139,7 @@ SpriteAtlas:
   - skill_arrow_rain
   - skill_target_heal
   - skill_boss_charge
+  - stat_attack
   - skill_battle_cry
   - skill_berserker
   - skill_death_sentence
@@ -148,6 +159,8 @@ SpriteAtlas:
   - skill_bulwark
   - skill_iron_shield
   - skill_summon_elite
+  - stat_hp
+  - stat_defense
   - skill_leap_strike
   m_RenderDataMap: {}
   m_Tag: Atlas_General

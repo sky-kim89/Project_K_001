@@ -103,9 +103,9 @@ public class EventPopup : PopupBase
         _illustration.sprite = _data.Illustration;
         _illustration.color  = _data.Illustration != null ? Color.white : IllustPlaceholder;
 
-        _titleTmp.text       = _data.Title;
-        _titleShadowTmp.text = _data.Title;
-        _bodyTmp.text        = _data.Body;
+        _titleTmp.text       = LocalizationManager.Instance.LocalizeText(_data.Title);
+        _titleShadowTmp.text = _titleTmp.text;
+        _bodyTmp.text        = LocalizationManager.Instance.LocalizeText(_data.Body);
 
         _resultPanel.SetActive(false);
         _confirmBtn.gameObject.SetActive(false);
@@ -162,10 +162,10 @@ public class EventPopup : PopupBase
             var labelTmp = btn.transform.Find("Body/LabelText").GetComponent<TextMeshProUGUI>();
             var hintTmp  = btn.transform.Find("Body/HintText").GetComponent<TextMeshProUGUI>();
 
-            labelTmp.text = choice.Label;
+            labelTmp.text = LocalizationManager.Instance.LocalizeText(choice.Label);
             {
                 string hint = BuildChoiceHint(choice);
-                hintTmp.text = hint;
+                hintTmp.text = LocalizationManager.Instance.LocalizeText(hint);
                 hintTmp.gameObject.SetActive(!string.IsNullOrEmpty(hint));
             }
 
@@ -250,7 +250,7 @@ public class EventPopup : PopupBase
         _choiceDivider.SetActive(false);
 
         _resultPanel.SetActive(true);
-        _resultTmp.text = text ?? string.Empty;
+        _resultTmp.text = LocalizationManager.Instance.LocalizeText(text ?? string.Empty);
 
         BuildRewardCards(granted);
 

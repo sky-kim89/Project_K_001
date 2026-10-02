@@ -89,6 +89,7 @@ public static class CodexPopupCreator
         EditorUIBuilder.SetObjArray(so, "_tabBodies",  tabBodies,  Tag);
         so.ApplyModifiedProperties();
 
+        PixelSkin.Apply(root);
         PrefabUtility.SaveAsPrefabAsset(root, SavePath);
         Object.DestroyImmediate(root);
         AssetDatabase.SaveAssets();

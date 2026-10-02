@@ -99,6 +99,7 @@ public static class EquipComparePopupCreator
         AssetDatabase.Refresh();
 
         var go = BuildPopup();
+        PixelSkin.Apply(go);
         PrefabUtility.SaveAsPrefabAsset(go, PrefabPath);
         Object.DestroyImmediate(go);
 

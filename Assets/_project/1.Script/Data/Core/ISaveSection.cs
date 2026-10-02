@@ -32,6 +32,7 @@ public enum SaveKey
     Difficulty      = 14,  // 난이도 선택·해금 기록 (영구, 환생 무관)
     Tutorial        = 15,  // 튜토리얼 노출 기록 (영구, 환생 무관)
     RelicTree       = 16,  // 유물 테크트리 노드 레벨 (영구, 환생 무관)
+    Achievement     = 17,  // 업적 달성 기록 — 1회성 (영구, 환생 무관)
 }
 
 public interface ISaveSection

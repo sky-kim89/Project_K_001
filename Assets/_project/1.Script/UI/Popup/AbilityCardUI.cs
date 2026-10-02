@@ -10,7 +10,8 @@ using UnityEngine.UI;
 
 public class AbilityCardUI : MonoBehaviour
 {
-    [SerializeField] Image            _gradeBar;
+    [SerializeField] Image            _gradeBar;    // 카드 윗변에 걸친 등급 리본 바탕 (등급색)
+    [SerializeField] Image            _iconFrame;   // 아이콘 테두리 (등급색)
     [SerializeField] Image            _icon;
     [SerializeField] TextMeshProUGUI  _gradeTmp;
     [SerializeField] TextMeshProUGUI  _nameTmp;
@@ -18,6 +19,8 @@ public class AbilityCardUI : MonoBehaviour
     [SerializeField] TextMeshProUGUI  _descTmp;
     [SerializeField] Button           _selectBtn;
     [SerializeField] TextMeshProUGUI  _levelTmp;
+
+    static readonly Color GradeInk = new Color(0.04f, 0.07f, 0.16f, 1f);
 
     // ── 트리거 표기 ───────────────────────────────────────────
     //
@@ -30,8 +33,8 @@ public class AbilityCardUI : MonoBehaviour
     //    툴팁·설명에는 원래 문구가 그대로 나가고, 카드에서만 줄인다.
     static string TriggerLabel(PassiveTrigger t) => t switch
     {
-        PassiveTrigger.StageClear    => "클리어 시",
-        PassiveTrigger.OnBattleStart => "전투 시작",
+        PassiveTrigger.StageClear    => LocalizationManager.Instance.Get("클리어 시"),
+        PassiveTrigger.OnBattleStart => LocalizationManager.Instance.Get("전투 시작"),
         _                            => LocalizationManager.Instance.Get(t.ToString()),
     };
 
@@ -41,15 +44,17 @@ public class AbilityCardUI : MonoBehaviour
         Color gradeColor = AbilityUIHelper.GradeColor(data.Grade);
 
         if (_gradeBar  != null) _gradeBar.color  = gradeColor;
+        if (_iconFrame != null) _iconFrame.color = gradeColor;
         if (_icon      != null) _icon.sprite      = data.Icon;
 
         if (_gradeTmp != null)
         {
+            // 등급 글자는 등급색 리본 '위' 에 얹힌다 — 같은 색이면 안 보이므로 짙은 남색
             _gradeTmp.text  = LocalizationManager.Instance.Get(data.Grade.ToString());
-            _gradeTmp.color = gradeColor;
+            _gradeTmp.color = GradeInk;
         }
 
-        if (_nameTmp   != null) _nameTmp.text   = data.AbilityName;
+        if (_nameTmp   != null) _nameTmp.text   = LocalizationManager.Instance.Get(data.AbilityName);
         if (_targetTmp != null)
             _targetTmp.text = (data.Grade == AbilityGrade.Special || data.Grade == AbilityGrade.Mastery)
                 ? TriggerLabel(data.GetTriggerType())
@@ -86,7 +91,7 @@ public class AbilityCardUI : MonoBehaviour
     static string BuildDesc(AbilityData data)
     {
         if (data.Grade == AbilityGrade.Special || data.Grade == AbilityGrade.Mastery)
-            return data.Description;
+            return LocalizationManager.Instance.LocalizeText(data.Description);
 
         // 스탯 창의 '어빌리티' 색과 같은 주황 — 색만 보고 출처를 알 수 있게 한다
         string d = StatBonusColors.Wrap(StatSource.Ability,

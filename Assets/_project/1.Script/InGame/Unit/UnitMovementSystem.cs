@@ -32,6 +32,22 @@ namespace BattleGame.Units
         public float3 Position;
         public float  Radius;   // GameObject.transform.localScale 기반 반경
         public float  Mass;     // 분리 질량 (General = 5, 나머지 = 1)
+
+        // 분리 원의 중심을 몸 중심이 아니라 발밑에 둔다.
+        //   발밑 = 로컬 y -0.34 (UnitBuffAuraView.FootOffsetY) × localScale.y,
+        //   Radius = localScale × 0.5 이므로 월드 오프셋 = -0.68 × Radius.
+        //   몸집이 다른 유닛(보스 vs 병사)끼리 발 위치 기준으로 겹침을 판정한다.
+        public const float FootOffsetRatio = 0.68f;
+
+        // 분리 반경 배율 — Radius 자체는 보스 AoE·오라 사거리에도 쓰이므로 여기서만 키운다
+        public const float RadiusScale = 1.1f;
+
+        // 분리 영역을 세로로 납작한 타원으로 — 세로 반경 = 가로 반경 × EllipseY.
+        //   원형이면 뒷줄 유닛의 머리가 앞줄 유닛의 발을 밀어내 앞뒤로 설 수 없다.
+        public const float EllipseY = 0.5f;
+
+        public static float3 FootPos(float3 pos, float radius)
+            => new float3(pos.x, pos.y - radius * FootOffsetRatio, pos.z);
     }
 
     [UpdateInGroup(typeof(SimulationSystemGroup))]
@@ -42,7 +58,7 @@ namespace BattleGame.Units
         NativeParallelMultiHashMap<int2, SeparationEntry> _sepGrid;
 
         const float SepCellSize     = 1.0f;  // 그리드 셀 크기
-        const float SepStrength     = 3.0f;  // 밀어내는 힘
+        const float SepStrength     = 3.3f;  // 밀어내는 힘
         const float ChargeSpeedMult = 6.0f;  // 돌진 이동속도 배율
 
         public void OnCreate(ref SystemState state)
@@ -268,12 +284,14 @@ namespace BattleGame.Units
 
         public void Execute(Entity entity, in LocalTransform transform, in UnitSizeComponent size)
         {
-            int2 cell = (int2)math.floor(transform.Position.xy / CellSize);
+            float  radius = size.Radius * SeparationEntry.RadiusScale;
+            float3 foot   = SeparationEntry.FootPos(transform.Position, size.Radius);
+            int2   cell   = (int2)math.floor(foot.xy / CellSize);
             GridWriter.Add(cell, new SeparationEntry
             {
                 Entity   = entity,
-                Position = transform.Position,
-                Radius   = size.Radius,
+                Position = foot,
+                Radius   = radius,
                 Mass     = size.Mass,
             });
         }
@@ -298,9 +316,10 @@ namespace BattleGame.Units
         public void Execute(Entity entity, ref LocalTransform transform,
                             in UnitSizeComponent size, in UnitStateComponent unitState)
         {
-            float  myRadius = size.Radius;
+            float  myRadius = size.Radius * SeparationEntry.RadiusScale;
             float  myMass   = math.max(size.Mass, 0.01f);
-            int2   myCell   = (int2)math.floor(transform.Position.xy / CellSize);
+            float3 myFoot   = SeparationEntry.FootPos(transform.Position, size.Radius);
+            int2   myCell   = (int2)math.floor(myFoot.xy / CellSize);
             float3 push     = float3.zero;
 
             for (int dx = -1; dx <= 1; dx++)
@@ -315,7 +334,9 @@ namespace BattleGame.Units
                     if (entry.Entity == entity) continue;
 
                     float  pushDist = myRadius + entry.Radius;
-                    float3 diff     = transform.Position - entry.Position;
+                    // 타원 공간: y 를 늘려서 원 판정으로 바꾼다
+                    float3 d        = myFoot - entry.Position;
+                    float2 diff     = new float2(d.x, d.y / SeparationEntry.EllipseY);
                     float  distSq   = math.lengthsq(diff);
 
                     if (distSq > 0.0001f && distSq < pushDist * pushDist)
@@ -327,7 +348,8 @@ namespace BattleGame.Units
                         // push 비율 = otherMass / (myMass + otherMass)
                         float otherMass  = math.max(entry.Mass, 0.01f);
                         float massRatio  = otherMass / (myMass + otherMass);
-                        push += diff / dist * overlap * Strength * massRatio;
+                        float2 p = diff / dist * overlap * Strength * massRatio;
+                        push += new float3(p.x, p.y * SeparationEntry.EllipseY, 0f);  // 월드로 되돌림
                     }
                 }
                 while (Grid.TryGetNextValue(out entry, ref it));

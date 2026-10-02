@@ -106,6 +106,7 @@ public static class MercenaryPopupCreator
 
         var root = Build();
         string path = $"{SaveDir}/MercenaryShopPopup.prefab";
+        PixelSkin.Apply(root);
         PrefabUtility.SaveAsPrefabAsset(root, path);
         Object.DestroyImmediate(root);
 

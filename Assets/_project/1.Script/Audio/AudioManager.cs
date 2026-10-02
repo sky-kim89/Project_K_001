@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -88,9 +89,12 @@ public class AudioManager : Singleton<AudioManager>
         { SfxKey.ATK_Knight,     new Budget( 6, 5, 0.25f) },
         { SfxKey.ATK_Mage,       new Budget( 5, 4, 0.28f) },
         { SfxKey.ATK_Shield,     new Budget( 4, 3, 0.28f) },  // 수가 적고 공속도 느리다
+
     };
 
     static readonly Budget Default = new(10, 4, 0.6f);
+    static readonly Budget RareSkill = new(6, 3, 0.72f);
+    static readonly Budget BossSkill = new(4, 2, 0.76f);
 
     // ── 내부 자료구조 ─────────────────────────────────────────
 
@@ -144,7 +148,7 @@ public class AudioManager : Singleton<AudioManager>
         _bgmSource.playOnAwake  = false;
         _bgmSource.loop         = true;
         _bgmSource.spatialBlend = 0f;
-        _bgmSource.volume       = _bgmVolume * _masterVolume;
+        _bgmSource.volume       = _bgmVolume * _masterVolume * BattleSettingsData.BgmVolume;
     }
 
     // 재생이 끝난 만큼 예산을 돌려준다.
@@ -158,7 +162,7 @@ public class AudioManager : Singleton<AudioManager>
         if (_bgmSource != null)
         {
             _bgmSource.mute   = !BattleSettingsData.BgmEnabled;
-            _bgmSource.volume = _bgmVolume * _masterVolume;
+            _bgmSource.volume = _bgmVolume * _masterVolume * BattleSettingsData.BgmVolume;
         }
 
         float now = Time.unscaledTime;
@@ -175,6 +179,23 @@ public class AudioManager : Singleton<AudioManager>
 
     public void Play(SfxKey key) => Play(key, 1f);
 
+    /// <summary>
+    /// 게임 시간 기준으로 늦춰 재생한다. 메테오·일도양단처럼 예고 뒤 판정이 나는
+    /// 스킬은 배속이 바뀌어도 이펙트와 같은 프레임에 소리가 붙어야 한다.
+    /// </summary>
+    public void PlayDelayed(SfxKey key, float delay)
+    {
+        if (key == SfxKey.None) return;
+        if (delay <= 0f) { Play(key); return; }
+        StartCoroutine(PlayAfterDelay(key, delay));
+    }
+
+    IEnumerator PlayAfterDelay(SfxKey key, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        Play(key);
+    }
+
     /// <summary>volumeScale 로 개별 호출의 크기를 더 줄일 수 있다 (0~1).</summary>
     public void Play(SfxKey key, float volumeScale)
     {
@@ -189,16 +210,20 @@ public class AudioManager : Singleton<AudioManager>
             return;
         }
 
-        Budget b = Budgets.TryGetValue(key, out var found) ? found : Default;
+        int raw = (int)key;
+        Budget b = Budgets.TryGetValue(key, out var found) ? found
+                 : raw is >= 121 and <= 130 or 135 or 136 ? RareSkill
+                 : raw is >= 131 and <= 134 ? BossSkill
+                 : Default;
         if (!TakeBudget(key, b)) return;
 
         var src = Rent();
         src.clip   = clip;
-        src.volume = b.Volume * volumeScale * _masterVolume;
+        src.volume = b.Volume * volumeScale * _masterVolume * BattleSettingsData.SfxVolume;
 
-        // 같은 샘플이 반복되면 바로 티난다 — ±12% 만 흔들어 준다.
-        // 배속은 반영하지 않는다 (위 주석 참고).
-        src.pitch = Random.Range(0.88f, 1.12f);
+        // 스킬음은 이펙트 판정에 맞춘 완성 큐다. 피치를 흔들면 화살 폭풍의
+        // 0.45초 간격 같은 내부 타이밍도 함께 틀어지므로 원속도로 재생한다.
+        src.pitch = raw >= 101 ? 1f : Random.Range(0.88f, 1.12f);
         src.Play();
 
         _busy.Add((src, key, Time.unscaledTime + clip.length / src.pitch + 0.05f));
@@ -231,7 +256,7 @@ public class AudioManager : Singleton<AudioManager>
 
         _currentBgm       = key;
         _bgmSource.clip   = clip;
-        _bgmSource.volume = _bgmVolume * _masterVolume;
+        _bgmSource.volume = _bgmVolume * _masterVolume * BattleSettingsData.BgmVolume;
         _bgmSource.Play();
     }
 

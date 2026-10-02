@@ -47,7 +47,8 @@ public static class SpriteManagerCreator
 
         // ── 아틀라스 8종 생성 ────────────────────────────────
         var itemAtlas      = CreateAtlas(ItemAtlasPath,      new[] { $"{IconRoot}/Items" });
-        var genAtlas       = CreateAtlas(GenAtlasPath,       new[] { $"{IconRoot}/Classes", $"{IconRoot}/Skills" });
+        // Stats — 스탯 아이콘(StatIcon.Key). 라벨 대신 아이콘으로 스탯을 보여 주는 화면이 런타임에 꺼내 쓴다.
+        var genAtlas       = CreateAtlas(GenAtlasPath,       new[] { $"{IconRoot}/Classes", $"{IconRoot}/Skills", $"{IconRoot}/Stats" });
         var equipAtlas     = CreateAtlas(EquipAtlasPath,     new[] { $"{IconRoot}/Equipments" });
         var abilityAtlas   = CreateAtlas(AbilityAtlasPath,   new[] { $"{IconRoot}/Abilities" });
         // 난이도 아이콘(등급 5 + 디버프 4)은 특성 아틀라스에 얹는다.

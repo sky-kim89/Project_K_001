@@ -31,7 +31,7 @@ public class AudioManagerEditor : Editor
         GUI.backgroundColor = Color.white;
     }
 
-    static void LoadClips(AudioManager manager)
+    public static void LoadClips(AudioManager manager)
     {
         var so = new SerializedObject(manager);
 

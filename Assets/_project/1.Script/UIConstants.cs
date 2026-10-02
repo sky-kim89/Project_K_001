@@ -49,10 +49,37 @@ public static class JobStyle
 {
     public static string GetLabel(UnitJob job)
         => LocalizationManager.Instance?.Get(job.ToString()) ?? job.ToString();
+
+    /// <summary>SpriteManager 키 = Icons/Classes 파일명 (knight_icon …).</summary>
+    public static string IconKey(UnitJob job) => $"{job.ToString().ToLower()}_icon";
 }
 
 // ── 스탯 항목별 색상 ─────────────────────────────────────────
 // MercCandidateCard / BattlePanel 슬롯 / HeroDetailPopup 공통 사용.
+// ── 스탯 아이콘 키 ───────────────────────────────────────────
+// SpriteManager 키 = Icons/Stats 파일명. 라벨 글자 대신 아이콘으로 스탯을 보여 줄 때의 정본.
+// ⚠ 무슨 스탯인지는 HeroDetailPopup 스탯 목록이 [아이콘 + 이름] 으로 알려 준다 (범례).
+//   다른 화면에서 아이콘만 쓰더라도 그 목록과 같은 키를 써야 같은 그림이 된다.
+// 그림 의뢰: Docs/ImageSpecs/PixelTheme_UI.md (시트 PT03·PT04)
+public static class StatIcon
+{
+    public static string Key(StatType type) => type switch
+    {
+        StatType.MaxHp               => "stat_hp",
+        StatType.Attack              => "stat_attack",
+        StatType.Defense             => "stat_defense",
+        StatType.SoldierCount        => "stat_soldier_count",
+        StatType.MoveSpeed           => "stat_move_speed",
+        StatType.AttackSpeed         => "stat_attack_speed",
+        StatType.AttackRange         => "stat_attack_range",
+        StatType.CommandPower        => "stat_command_power",
+        StatType.SkillCooldownReduce => "stat_skill_cooldown",
+        StatType.CritChance          => "stat_crit_chance",
+        StatType.CritDamage          => "stat_crit_damage",
+        _                            => null,
+    };
+}
+
 public static class StatColors
 {
     public static readonly Color Hp      = new Color(0.35f, 1.00f, 0.45f);  // 초록
@@ -164,7 +191,7 @@ public static class StatDisplayHelper
                 ? $"{EffectiveDefensePct(value):F1}%"
                 : $"{sign}{value * 100f:F1}%",
             StatType.AttackSpeed => isFinal
-                ? $"{value:F2}/초"
+                ? $"{value:F2}/s"   // 단위 기호 — 언어와 무관하게 s ("/초" 는 번역이 안 돼 그대로 샜다)
                 : $"{sign}{value:F2}",
             StatType.MoveSpeed    => $"{sign}{value:F1}",
             // ⚠ 소수 둘째 자리까지 — F1 이면 근접 직업의 증감이 안 보인다
@@ -172,7 +199,7 @@ public static class StatDisplayHelper
             //   분해 줄에 "+0.0" 이 뜨고 합계도 그대로라, 옵션이 안 붙은 것처럼 보였다.
             //   (궁수 7.7 에서는 F1 로도 보이지만 표기는 한 가지여야 한다)
             StatType.AttackRange  => $"{sign}{value:F2}",
-            StatType.SoldierCount => $"{sign}{Mathf.RoundToInt(value)}명",
+            StatType.SoldierCount => $"{sign}{Mathf.RoundToInt(value)}",
             StatType.CritChance   => $"{sign}{value * 100f:F1}%",
             // 치명피해는 배수(1.8)로 저장되지만 화면에는 % 로 뿌린다 — 180.0%.
             // ⚠ 증감분(isFinal=false)도 같은 규칙이다
@@ -231,8 +258,10 @@ public static class StatDisplayHelper
             float final    = Mathf.Min(combined, maxCDR);
 
             if (Mathf.Abs(sum - final) > 0.001f)
-                sb.Append($"\n<color=#AAAAAA>→ 중첩 적용 {final * 100f:F1}%" +
-                          (combined > maxCDR + 0.001f ? " (상한)" : "") + "</color>");
+                sb.Append(LocalizationManager.Instance.Format(
+                    "\n<color=#AAAAAA>→ 중첩 적용 {0:F1}%{1}</color>",
+                    final * 100f,
+                    combined > maxCDR + 0.001f ? " " + LocalizationManager.Instance.Get("(상한)") : ""));
         }
         else if (stat == StatType.Defense)
         {
@@ -240,7 +269,8 @@ public static class StatDisplayHelper
             float effective = StatDisplayHelper.EffectiveDefensePct(rawTotal);
             float rawPct    = rawTotal * 100f;
             if (Mathf.Abs(rawPct - effective) > 0.1f)
-                sb.Append($"\n<color=#AAAAAA>→ 체감 {effective:F1}%</color>");
+                sb.Append(LocalizationManager.Instance.Format(
+                    "\n<color=#AAAAAA>→ 체감 {0:F1}%</color>", effective));
         }
 
         return sb.ToString();
@@ -275,12 +305,13 @@ public static class CodexMark
     {
         if (string.IsNullOrEmpty(unitName)) return unitName;
 
+        string localizedName = LocalizationManager.Instance.Get(unitName);
         var codex = CodexData.Current;
         // 세이브가 아직 없으면(부팅 직후) 표를 붙이지 않는다 —
         // 있는 장수를 없다고 말하는 쪽이 없다고 말 안 하는 쪽보다 나쁘다.
-        if (codex == null || codex.HasGeneral(unitName)) return unitName;
+        if (codex == null || codex.HasGeneral(unitName)) return localizedName;
 
-        return $"{unitName} <color={Color}><size=70%>{Label}</size></color>";
+        return $"{localizedName} <color={Color}><size=70%>{Label}</size></color>";
     }
 
     /// <summary>도감 미등록 여부만 필요할 때.</summary>

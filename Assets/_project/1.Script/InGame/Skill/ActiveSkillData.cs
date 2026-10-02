@@ -83,6 +83,26 @@ public class ActiveSkillData : ScriptableObject
     public bool IsRare = false;
 
     // ─────────────────────────────────────────────────────────
+    // ■ 사운드
+    // ─────────────────────────────────────────────────────────
+
+    [Header("사운드")]
+    [Tooltip("스킬 전용 효과음. 파일명과 같은 SfxKey 를 사용한다.")]
+    public SfxKey SkillSfx = SfxKey.None;
+
+    /// <summary>착탄음보다 먼저 필요한 스킬만 시전 즉시 재생한다.</summary>
+    public SfxKey CastSfx => SkillId switch
+    {
+        ActiveSkillId.Bisect          => SfxKey.SKILL_Bisect_Cast,
+        ActiveSkillId.GravityCollapse => SfxKey.SKILL_GravityCollapse_Cast,
+        _                             => SfxKey.None,
+    };
+
+    [Min(0f)]
+    [Tooltip("시전 후 효과음 재생까지의 시간. 예고 뒤 착탄하는 스킬의 판정 시점에 맞춘다.")]
+    public float SkillSfxDelay = 0f;
+
+    // ─────────────────────────────────────────────────────────
     // ■ 이펙트 풀 키 (PoolType.Effect)
     // ─────────────────────────────────────────────────────────
 
@@ -226,8 +246,9 @@ public enum ActiveSkillId : int
     //  쿨다운·타겟팅·이펙트·Execute() 를 전부 재사용한다.
     //  ⚠ 아군 스킬 추첨 풀에 절대 넣지 말 것 — ActiveSkillRoller 가 걸러야 한다.
     BossCharge       = 31,  // 돌진          — 적을 관통하며 몸통박치기      (보스/엘리트)
-    BossSlam         = 32,  // 분쇄 강타      — 예고 후 제자리 대반경 강타     (보스)
+    BossSlam         = 32,  // 분쇄 강타      — 타겟 위치로 도약해 대반경 강타  (보스)
     BossEnrage       = 33,  // 광폭화         — 1분마다 공격력·방어관통·몸집 영구 중첩 (보스)
+    BossJumpShockwave = 34, // 도약 충격파    — 난이도 1~4 제자리 도약·넉백    (보스)
 }
 
 public static class ActiveSkillIdExtensions
@@ -266,6 +287,8 @@ public static class ActiveSkillIdExtensions
         ActiveSkillId.Gravestone       => "skill_gravestone",
         ActiveSkillId.BossCharge       => "skill_boss_charge",
         ActiveSkillId.BossSlam         => "skill_boss_slam",
+        // 저난이도판 분쇄 강타라 같은 그림을 쓴다.
+        ActiveSkillId.BossJumpShockwave => "skill_boss_slam",
         // 광폭화는 전용 아이콘을 따로 그리지 않고 광전사 아이콘을 빌린다 —
         // 같은 뜻의 기호가 이미 있는데 하나 더 만들 이유가 없다.
         ActiveSkillId.BossEnrage       => "skill_berserker",
@@ -279,7 +302,8 @@ public static class ActiveSkillIdExtensions
     public static bool IsBossPattern(this ActiveSkillId id)
         => id == ActiveSkillId.BossCharge
         || id == ActiveSkillId.BossSlam
-        || id == ActiveSkillId.BossEnrage;
+        || id == ActiveSkillId.BossEnrage
+        || id == ActiveSkillId.BossJumpShockwave;
 
     /// <summary>
     /// 버프·치유·소환 계열인가.
@@ -338,6 +362,7 @@ public static class ActiveSkillIdExtensions
         ActiveSkillId.LeapStrike   => true,   // 도약 강타 — 전방 도약
         ActiveSkillId.PiercingDash => true,   // 관통 돌진 — 1초 쿨 평타형
         ActiveSkillId.BossCharge   => true,   // 돌진      — 몸통박치기
+        ActiveSkillId.BossSlam     => true,   // 분쇄 강타 — 타겟 위치로 도약
         _                          => false,
     };
 
@@ -347,7 +372,7 @@ public static class ActiveSkillIdExtensions
     /// </summary>
     public static float RangeScale(this ActiveSkillId id) => id switch
     {
-        ActiveSkillId.BossSlam => 1.5f,   // 근접 직전 — 제자리 강타라 붙어야 한다
-        _                      => 1f,
+        ActiveSkillId.BossJumpShockwave => 1.5f,   // 제자리 강타라 붙어야 한다
+        _                                  => 1f,
     };
 }

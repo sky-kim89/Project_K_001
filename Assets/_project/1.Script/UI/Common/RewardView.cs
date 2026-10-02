@@ -174,8 +174,8 @@ public static class RewardInfoResolver
         {
             Icon        = data.Icon,
             Accent      = GradeStyle.GetColor(data.Grade),
-            Name        = $"{data.EquipmentName}  <color=#{ColorUtility.ToHtmlStringRGB(GradeStyle.GetColor(data.Grade))}>{GradeStyle.GetLabel(data.Grade)}</color>",
-            Description = data.Description,
+            Name        = $"{LocalizationManager.Instance.Get(data.EquipmentName)}  <color=#{ColorUtility.ToHtmlStringRGB(GradeStyle.GetColor(data.Grade))}>{GradeStyle.GetLabel(data.Grade)}</color>",
+            Description = LocalizationManager.Instance.LocalizeText(data.Description),
             StatText    = BuildEquipStats(data),
             AmountLabel = "",   // 장비는 개별 아이템 — 수량 없음
         };
@@ -221,8 +221,8 @@ public static class RewardInfoResolver
         {
             Icon        = data.Icon,
             Accent      = TraitColor,
-            Name        = data.TraitName,
-            Description = data.Description,
+            Name        = LocalizationManager.Instance.Get(data.TraitName),
+            Description = LocalizationManager.Instance.LocalizeText(data.Description),
             // 아직 안 받은 보상이므로 누적 스택 대신 스택당 수치를 보여준다.
             StatText    = AbilityUIHelper.BuildStatText(data, showAccumulated: false),
             AmountLabel = "",
@@ -241,8 +241,8 @@ public static class RewardInfoResolver
         {
             Icon        = data.Icon,
             Accent      = AbilityColor,
-            Name        = data.AbilityName,
-            Description = data.Description,
+            Name        = LocalizationManager.Instance.Get(data.AbilityName),
+            Description = LocalizationManager.Instance.LocalizeText(data.Description),
             StatText    = BuildAbilityStats(data),
             AmountLabel = "",
         };

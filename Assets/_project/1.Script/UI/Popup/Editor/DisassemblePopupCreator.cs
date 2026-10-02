@@ -106,6 +106,7 @@ public static class DisassemblePopupCreator
         Directory.CreateDirectory(Path.GetDirectoryName(PrefabPath));
 
         var root = Build();
+        PixelSkin.Apply(root);
         PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
         Object.DestroyImmediate(root);
 
@@ -288,10 +289,10 @@ public static class DisassemblePopupCreator
         bulkLbl.color            = new Color(1f, 0.97f, 0.88f);
         bulkLbl.alignment        = TextAlignmentOptions.Center;
         bulkLbl.raycastTarget    = false;
-        // 9글자라 300px 을 살짝 넘는다 — 줄바꿈 대신 축소한다(두 줄이면 버튼이 라벨처럼 보인다)
+        // 영문도 한 줄을 유지한다. 표에서는 "DISMANTLE GRADES" 로 짧게 번역한다.
         bulkLbl.textWrappingMode = TextWrappingModes.NoWrap;
         bulkLbl.enableAutoSizing = true;
-        bulkLbl.fontSizeMin      = 26f;
+        bulkLbl.fontSizeMin      = UIScale.FontSm;
         bulkLbl.fontSizeMax      = UIScale.FontSm;
         EditorUIBuilder.Stretch(bulkLbl.gameObject);
         SetObj(so, "_bulkDisassembleBtn", bulk);

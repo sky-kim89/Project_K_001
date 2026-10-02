@@ -19,7 +19,8 @@
 //      ├─ 프리팹 생성/      로비 · 팝업 · 인게임 · 이펙트
 //      ├─ 데이터 생성/      ScriptableObject · Database
 //      ├─ 아이콘·텍스처/    PNG · 머티리얼 · 일러스트
-//      └─ 도구/             에디터 윈도우 · 링커
+//      ├─ 도구/             에디터 윈도우 · 링커
+//      └─ 출시 설정/        Steam · Google Play 권장값
 // ============================================================
 
 public static class ProjectKMenu
@@ -34,6 +35,7 @@ public static class ProjectKMenu
     public const string Data   = Root + "데이터 생성/";
     public const string Icon   = Root + "아이콘·텍스처/";
     public const string Tool   = Root + "도구/";
+    public const string Release = Root + "출시 설정/";
 
     // ── 프리팹 생성 하위 그룹 ─────────────────────────────────
     public const string Lobby  = Prefab + "로비/";
@@ -48,4 +50,5 @@ public static class ProjectKMenu
     public const int DataPrio   = 100;
     public const int IconPrio   = 200;
     public const int ToolPrio   = 300;
+    public const int ReleasePrio = 400;
 }

@@ -61,18 +61,20 @@ public class SkillIconUI : MonoBehaviour
     public void SetActiveSkill(ActiveSkillId id, ActiveSkillData data)
     {
         string title = data != null && !string.IsNullOrEmpty(data.SkillName)
-            ? data.SkillName
+            ? LocalizationManager.Instance.Get(data.SkillName)
             : LocalizationManager.Instance.Get(id.ToString());
 
         Bind(SpriteManager.Instance?.Get(id.IconKey()), ActiveFrame, ActiveSlotBg,
-             title, data != null ? data.Description : "",
-             data != null ? $"쿨타임 {data.Cooldown:0.#}초" : "");
+             title, data != null ? LocalizationManager.Instance.LocalizeText(data.Description) : "",
+             data != null ? LocalizationManager.Instance.Format("쿨타임 {0:0.#}초", data.Cooldown) : "");
     }
 
     public void SetPassiveSkill(PassiveSkillData data)
     {
         if (data == null) { SetLocked(); return; }
-        Bind(data.Icon, PassiveFrame, PassiveSlotBg, data.SkillName, data.Description, "");
+        Bind(data.Icon, PassiveFrame, PassiveSlotBg,
+             LocalizationManager.Instance.Get(data.SkillName),
+             LocalizationManager.Instance.LocalizeText(data.Description), "");
     }
 
     /// <summary>등급이 모자라 아직 열리지 않은 칸.</summary>

@@ -63,6 +63,12 @@ public class BattleManager : Singleton<BattleManager>
     /// <summary>전체 웨이브 클리어(승리). InGameManager 가 결과 팝업 오픈에 사용.</summary>
     public static event System.Action OnVictory;
 
+    /// <summary>
+    /// 최종 스테이지의 웨이브를 전부 깨고 무한 보스에 들어섰다.
+    /// ⚠ 최종 스테이지는 승리(OnVictory)가 없다 — "최종 스테이지 클리어" 는 이 순간이다 (업적 판정).
+    /// </summary>
+    public static event System.Action OnEndlessStarted;
+
     /// <summary>아군 전멸(패배). InGameManager 가 결과 팝업 오픈에 사용.</summary>
     public static event System.Action OnDefeat;
 
@@ -296,6 +302,7 @@ public class BattleManager : Singleton<BattleManager>
                 // 최종 스테이지는 클리어되지 않는다 — 보스를 잡을 때마다 더 강한 보스가 나온다
                 if (_mode.IsEndless)
                 {
+                    OnEndlessStarted?.Invoke();
                     yield return StartCoroutine(EndlessBossRoutine());
                     yield break;
                 }

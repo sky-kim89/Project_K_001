@@ -36,7 +36,7 @@ public class ExpRowUI : MonoBehaviour
 
     public void Setup(BattleContext.UnitExpGain gain)
     {
-        if (_nameText  != null) _nameText.text  = gain.UnitName;
+        if (_nameText  != null) _nameText.text  = LocalizationManager.Instance.Get(gain.UnitName);
         if (_levelText != null) _levelText.text = $"Lv.{gain.NewLevel}";
         if (_expText   != null) _expText.text   = $"Exp {gain.ExpGained}";
 
@@ -141,13 +141,13 @@ public class ExpRowUI : MonoBehaviour
     void UpdateLegend(CombatStatTab tab)
     {
         if (_legendText == null) return;
-        _legendText.text = tab switch
+        _legendText.text = LocalizationManager.Instance.Get(tab switch
         {
             CombatStatTab.Damage => "<color=#4D8CF2>■</color> 장군  <color=#59CC74>■</color> 병사  <color=#F28C33>■</color> 스킬",
             CombatStatTab.Tank   => "<color=#E64040>■</color> 받은피해  <color=#4D8CF2>■</color> 감소피해",
             CombatStatTab.Heal   => "<color=#59D98C>■</color> 치유",
             _                    => "",
-        };
+        });
     }
 
     IEnumerator BlinkLevelUp()

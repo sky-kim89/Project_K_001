@@ -82,6 +82,7 @@ public class RelicTreeData : ISaveSection
         if (lv >= def.MaxLevel)   return false;
         if (!IsUnlocked(id))      return false;
         _levels[id] = lv + 1;
+        AchievementTracker.OnRelicLevelUp();   // 뿌리 내림 · 유물의 정점
         return true;
     }
 

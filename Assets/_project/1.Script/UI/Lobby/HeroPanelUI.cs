@@ -242,7 +242,7 @@ public class HeroPanelUI : MonoBehaviour
 
         UpdatePortrait(entry, job);
 
-        _nameText.text  = entry.UnitName;
+        _nameText.text  = LocalizationManager.Instance.Get(entry.UnitName);
         _levelText.text = $"Lv.{entry.Level}";
         _jobText.text   = JobStyle.GetLabel(job);
         _gradeText.text = GradeStyle.GetLabel(entry.Grade);
@@ -267,7 +267,7 @@ public class HeroPanelUI : MonoBehaviour
         var skillData = activeDb?.Get(rolledId);
         _activeSkillText.text = LocalizationManager.Instance.Get(rolledId.ToString());
         if (_activeSkillDescText != null)
-            _activeSkillDescText.text = skillData != null ? skillData.Description : "";
+            _activeSkillDescText.text = skillData != null ? LocalizationManager.Instance.LocalizeText(skillData.Description) : "";
         if (_activeSkillIcon != null)
         {
             var key = rolledId.IconKey();
@@ -339,7 +339,8 @@ public class HeroPanelUI : MonoBehaviour
 
         int enhance = (entry.RunEquipEnhance != null && slot < entry.RunEquipEnhance.Length)
                       ? entry.RunEquipEnhance[slot] : 0;
-        nameText.text = enhance > 0 ? $"{equip.EquipmentName} +{enhance}" : equip.EquipmentName;
+        string equipmentName = LocalizationManager.Instance.Get(equip.EquipmentName);
+        nameText.text = enhance > 0 ? $"{equipmentName} +{enhance}" : equipmentName;
         if (gradeBar != null) gradeBar.color = GradeStyle.GetColor(equip.Grade);
 
         if (iconImage != null)
@@ -638,10 +639,10 @@ public class HeroPanelUI : MonoBehaviour
             return;
         }
         var data       = db != null ? db.Get(type) : null;
-        nameText.text  = data != null ? data.SkillName : type.ToString();
+        nameText.text  = data != null ? LocalizationManager.Instance.Get(data.SkillName) : LocalizationManager.Instance.Get(type.ToString());
         nameText.color = Color.white;
         if (descText != null)
-            descText.text = data != null ? data.Description : "";
+            descText.text = data != null ? LocalizationManager.Instance.LocalizeText(data.Description) : "";
     }
 
     // ============================================================

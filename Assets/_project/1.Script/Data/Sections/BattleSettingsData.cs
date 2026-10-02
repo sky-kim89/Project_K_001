@@ -8,8 +8,8 @@ using UnityEngine;
 //  AutoSkill  : 액티브 스킬 자동 사용 여부 (상단바 AUTO 토글).
 //               꺼져 있으면 장수 카드를 눌러야만 스킬이 나간다.
 //  SpeedIndex : 배속 토글 단계 인덱스 (TopBarUI.SpeedSteps 의 인덱스).
-//  SfxOn      : 효과음 재생 여부 (PausePopup 토글).
-//  BgmOn      : 배경음 재생 여부 (PausePopup 토글).
+//  SfxVolume  : 효과음 볼륨 (0~1).
+//  BgmVolume  : 배경음 볼륨 (0~1).
 //
 //  ■ 사운드도 여기 둔다
 //    저장 섹션을 하나 더 만들 만큼의 내용이 아니고, "환생해도 남는 취향" 이라는
@@ -48,13 +48,15 @@ public class BattleSettingsData : ISaveSection
     /// </summary>
     public static bool SfxEnabled { get; private set; } = true;
     public static bool BgmEnabled { get; private set; } = true;
+    public static float SfxVolume { get; private set; } = 1f;
+    public static float BgmVolume { get; private set; } = 1f;
 
     // ── 읽기 ────────────────────────────────────────────────────
 
     public bool AutoSkill  => _raw.AutoSkill;
     public int  SpeedIndex => _raw.SpeedIndex;
-    public bool SfxOn      => _raw.SfxOn;
-    public bool BgmOn      => _raw.BgmOn;
+    public float SavedSfxVolume => _raw.SfxVolume;
+    public float SavedBgmVolume => _raw.BgmVolume;
 
     // ── 쓰기 ────────────────────────────────────────────────────
 
@@ -66,8 +68,21 @@ public class BattleSettingsData : ISaveSection
 
     public void SetSpeedIndex(int index) => _raw.SpeedIndex = index;
 
-    public void SetSfxOn(bool on) { _raw.SfxOn = on; SfxEnabled = on; }
-    public void SetBgmOn(bool on) { _raw.BgmOn = on; BgmEnabled = on; }
+    public void SetSfxVolume(float volume)
+    {
+        _raw.SfxVolume = Mathf.Clamp01(volume);
+        _raw.SfxOn = _raw.SfxVolume > 0f;
+        SfxVolume = _raw.SfxVolume;
+        SfxEnabled = _raw.SfxOn;
+    }
+
+    public void SetBgmVolume(float volume)
+    {
+        _raw.BgmVolume = Mathf.Clamp01(volume);
+        _raw.BgmOn = _raw.BgmVolume > 0f;
+        BgmVolume = _raw.BgmVolume;
+        BgmEnabled = _raw.BgmOn;
+    }
 
     // ── ISaveSection ────────────────────────────────────────────
 
@@ -76,6 +91,7 @@ public class BattleSettingsData : ISaveSection
     public void Deserialize(string json)
     {
         _raw = JsonUtility.FromJson<RawData>(json) ?? new RawData();
+        MigrateAudio(_raw);
         Mirror();
     }
 
@@ -89,9 +105,34 @@ public class BattleSettingsData : ISaveSection
     void Mirror()
     {
         AutoSkillEnabled = _raw.AutoSkill;
-        SfxEnabled       = _raw.SfxOn;
-        BgmEnabled       = _raw.BgmOn;
+        SfxVolume        = Mathf.Clamp01(_raw.SfxVolume);
+        BgmVolume        = Mathf.Clamp01(_raw.BgmVolume);
+        SfxEnabled       = _raw.SfxOn && SfxVolume > 0f;
+        BgmEnabled       = _raw.BgmOn && BgmVolume > 0f;
     }
+
+    static void MigrateAudio(RawData raw)
+    {
+        if (raw.AudioSettingsVersion != 0) return;
+        raw.SfxVolume = raw.SfxOn ? 1f : 0f;
+        raw.BgmVolume = raw.BgmOn ? 1f : 0f;
+        raw.AudioSettingsVersion = 1;
+    }
+
+#if UNITY_EDITOR
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void CheckLegacyAudioMigration()
+    {
+        var legacy = new RawData
+        {
+            SfxOn = true,
+            BgmOn = false,
+            AudioSettingsVersion = 0,
+        };
+        MigrateAudio(legacy);
+        Debug.Assert(legacy.SfxVolume == 1f && legacy.BgmVolume == 0f);
+    }
+#endif
 
     [Serializable]
     class RawData
@@ -104,5 +145,8 @@ public class BattleSettingsData : ISaveSection
         //   사운드 설정이 없던 시절의 저장을 읽었을 때의 값이 된다.
         public bool SfxOn = true;
         public bool BgmOn = true;
+        public float SfxVolume = 1f;
+        public float BgmVolume = 1f;
+        public int AudioSettingsVersion = 1;
     }
 }

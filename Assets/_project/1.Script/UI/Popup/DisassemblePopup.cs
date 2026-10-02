@@ -54,6 +54,9 @@ public class DisassemblePopup : PopupBase
     protected override void Awake()
     {
         base.Awake();
+        LocalizedText.ScrollDescription(_selectedStatsText);
+        LocalizedText.FitLabel(_selectedNameText);
+        LocalizedText.FitLabel(_selectedGradeText);
         _closeBtn?.onClick.AddListener(() => Close());
         _disassembleBtn?.onClick.AddListener(() => ConfirmDisassemble());
         _bulkDisassembleBtn?.onClick.AddListener(() => BulkDisassemble());
@@ -148,7 +151,8 @@ public class DisassemblePopup : PopupBase
         if (_selectedGradeBorder != null)
             _selectedGradeBorder.color = GradeStyle.GetColor(equip.Grade);
 
-        if (_selectedNameText != null) _selectedNameText.text = equip.EquipmentName;
+        if (_selectedNameText != null)
+            _selectedNameText.text = LocalizationManager.Instance.Get(equip.EquipmentName);
         if (_selectedGradeText != null)
         {
             _selectedGradeText.text  = GradeStyle.GetLabel(equip.Grade);
@@ -177,7 +181,8 @@ public class DisassemblePopup : PopupBase
     void ClearSelection()
     {
         _selectedCell = -1;
-        if (_selectedNameText    != null) _selectedNameText.text    = "장비를 선택하세요";
+        if (_selectedNameText    != null)
+            _selectedNameText.text = LocalizationManager.Instance.Get("장비를 선택하세요");
         if (_selectedGradeText   != null) _selectedGradeText.text   = "";
         if (_selectedStatsText   != null) _selectedStatsText.text   = "";
         if (_rewardText          != null) _rewardText.text          = "";

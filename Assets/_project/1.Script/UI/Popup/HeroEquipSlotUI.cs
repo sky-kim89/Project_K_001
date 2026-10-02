@@ -1,6 +1,7 @@
 using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 // ============================================================
@@ -53,8 +54,7 @@ public class HeroEquipSlotUI : MonoBehaviour
         _selectBtn.onClick.RemoveAllListeners();
         _selectBtn.onClick.AddListener(() => onSelect());
 
-        _enhanceBtn.onClick.RemoveAllListeners();
-        _enhanceBtn.onClick.AddListener(() => onEnhance());
+        HoldRepeatButton.Bind(_enhanceBtn, onEnhance);
     }
 
     // ── 표시 ─────────────────────────────────────────────────
@@ -87,5 +87,66 @@ public class HeroEquipSlotUI : MonoBehaviour
         _emptyMark.SetActive(true);
         _enhanceBadge.gameObject.SetActive(false);
         _enhanceBtn.gameObject.SetActive(false);
+    }
+}
+
+/// <summary>짧게 누르면 한 번, 길게 누르면 일정 간격으로 반복 실행하는 버튼.</summary>
+[DisallowMultipleComponent]
+[RequireComponent(typeof(Button))]
+public sealed class HoldRepeatButton : MonoBehaviour,
+    IPointerDownHandler, IPointerUpHandler, IPointerExitHandler
+{
+    const float HoldDelay      = 0.45f;
+    const float RepeatInterval = 0.12f;
+
+    Button _button;
+    Action _action;
+    bool   _pressed;
+    bool   _repeated;
+    float  _remaining;
+
+    public static void Bind(Button button, Action action)
+    {
+        var repeat = button.GetComponent<HoldRepeatButton>();
+        if (repeat == null) repeat = button.gameObject.AddComponent<HoldRepeatButton>();
+
+        repeat._action = action;
+        button.onClick.RemoveAllListeners();
+    }
+
+    void Awake() => _button = GetComponent<Button>();
+
+    public void OnPointerDown(PointerEventData eventData)
+    {
+        if (!_button.IsInteractable()) return;
+
+        _pressed   = true;
+        _repeated  = false;
+        _remaining = HoldDelay;
+    }
+
+    public void OnPointerUp(PointerEventData eventData)
+    {
+        if (!_pressed) return;
+
+        _pressed = false;
+        if (!_repeated && _button.IsInteractable()) _action();
+    }
+
+    public void OnPointerExit(PointerEventData eventData) => _pressed = false;
+
+    void OnDisable() => _pressed = false;
+
+    void Update()
+    {
+        if (!_pressed) return;
+        if (!_button.IsInteractable()) { _pressed = false; return; }
+
+        _remaining -= Time.unscaledDeltaTime;
+        if (_remaining > 0f) return;
+
+        _repeated  = true;
+        _remaining = RepeatInterval;
+        _action();
     }
 }

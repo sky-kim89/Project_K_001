@@ -577,6 +577,7 @@ public static class EventPopupCreator
     static void Save(GameObject root, string fileName)
     {
         string path = $"{SaveDir}/{fileName}.prefab";
+        PixelSkin.Apply(root);
         PrefabUtility.SaveAsPrefabAsset(root, path);
         UnityEngine.Object.DestroyImmediate(root);
         Debug.Log($"[EventPopupCreator] 저장: {path}");

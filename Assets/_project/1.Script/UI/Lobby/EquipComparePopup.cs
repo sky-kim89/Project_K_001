@@ -82,7 +82,7 @@ public class EquipComparePopup : PopupBase
         _slot       = slot;
         _onEquipped = onEquipped;
 
-        _titleText.text = $"슬롯 {slot + 1} 교체";
+        _titleText.text = LocalizationManager.Instance.Format("슬롯 {0} 교체", slot + 1);
 
         _selectedEquip = null;
         _selectedIndex = -1;
@@ -97,6 +97,10 @@ public class EquipComparePopup : PopupBase
     protected override void Awake()
     {
         base.Awake();
+        LocalizedText.ScrollDescription(_curStat);
+        LocalizedText.ScrollDescription(_selStat);
+        foreach (var label in new[] { _curName, _selName, _curGrade, _selGrade, _equipBtnLabel })
+            LocalizedText.FitLabel(label);
         _equipBtn.onClick.AddListener(OnEquipClick);
         _disassembleBtn.onClick.AddListener(OnDisassembleClick);
         _closeBtn.onClick.AddListener(() => Close());
@@ -145,7 +149,7 @@ public class EquipComparePopup : PopupBase
 
         bool ready = _selectedEquip != null;
         _equipBtn.interactable = ready;
-        _equipBtnLabel.text    = ready ? "장  착" : "장비를 고르세요";
+        _equipBtnLabel.text    = LocalizationManager.Instance.Get(ready ? "장  착" : "장비를 고르세요");
 
         // 분해도 "고른 장비" 를 대상으로 한다 — 장착 중인 장비는 귀속이라 분해할 수 없다.
         _disassembleBtn.interactable = ready;
@@ -173,7 +177,8 @@ public class EquipComparePopup : PopupBase
 
         var gc = GradeStyle.GetColor(equip.Grade);
 
-        nameText.text  = enhance > 0 ? $"{equip.EquipmentName} +{enhance}" : equip.EquipmentName;
+        string equipmentName = LocalizationManager.Instance.Get(equip.EquipmentName);
+        nameText.text  = enhance > 0 ? $"{equipmentName} +{enhance}" : equipmentName;
         nameText.color = Color.white;
         gradeText.text  = GradeStyle.GetLabel(equip.Grade);
         gradeText.color = gc;

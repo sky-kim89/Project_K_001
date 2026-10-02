@@ -151,7 +151,7 @@ public class BattleResultPopup : PopupBase
     // 타이틀·다이아 배지·강조선이 한 색으로 묶여 승패가 한눈에 읽힌다.
     void SetHeader(bool isVictory)
     {
-        string title = isVictory ? "승  리" : "패  배";
+        string title = LocalizationManager.Instance.Get(isVictory ? "승  리" : "패  배");
         Color  accent = isVictory ? VictoryColor : DefeatColor;
 
         if (_resultText != null)

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -15,7 +16,8 @@ using UnityEngine.UI;
 //
 //  ■ 항목
 //    계속하기        → Close() (배속 복원)
-//    효과음 / 배경음 → BattleSettingsData 토글. AudioManager 가 그 값을 읽는다.
+//    효과음 / 배경음 → BattleSettingsData 볼륨. AudioManager 가 즉시 반영한다.
+//    알림(Android)    → 다음 날부터 3일간 19:00 로컬 알림 토글.
 //    즉시 환생하기   → BattleManager.Surrender() → 아군 전멸과 같은 경로로 패배 처리
 //                     → InGameManager.HandleDefeat() 가 ReincarnationPopup 을 연다
 //
@@ -40,19 +42,27 @@ public class PausePopup : PopupBase
     [SerializeField] Button _resumeButton;
     [SerializeField] Button _reincarnateButton;
 
-    [Header("사운드 토글")]
-    [SerializeField] Button          _sfxButton;
-    [SerializeField] Image           _sfxPill;
-    [SerializeField] TextMeshProUGUI _sfxState;
-    [SerializeField] Button          _bgmButton;
-    [SerializeField] Image           _bgmPill;
-    [SerializeField] TextMeshProUGUI _bgmState;
+    [Header("사운드 볼륨")]
+    [SerializeField] Slider          _sfxSlider;
+    [SerializeField] TextMeshProUGUI _sfxValue;
+    [SerializeField] Slider          _bgmSlider;
+    [SerializeField] TextMeshProUGUI _bgmValue;
+
+    [Header("언어")]
+    [SerializeField] TMP_Dropdown _languageDropdown;
+
+    [Header("Android 알림")]
+    [SerializeField] Button          _notificationButton;
+    [SerializeField] Image           _notificationPill;
+    [SerializeField] TextMeshProUGUI _notificationState;
 
     [Header("전투 전용 행 접기 (Creator 가 채운다)")]
     [SerializeField] RectTransform _panelRect;
     [SerializeField] RectTransform _borderRect;
     [SerializeField] float         _panelFullH;
     [SerializeField] float         _surrenderRowH;
+    [SerializeField] float         _notificationRowH;
+    [SerializeField] float         _reincarnateY;
 
     /// <summary>테두리가 패널 밖으로 드러나는 두께 — Creator 의 값과 같아야 한다.</summary>
     const float BorderOutset = 6f;
@@ -62,6 +72,31 @@ public class PausePopup : PopupBase
 
     float _prevTimeScale = 1f;
     bool  _surrendering;
+
+    protected override void Awake()
+    {
+        base.Awake();
+        ShowLegacyChoiceLabel(_resumeButton);
+        ShowLegacyChoiceLabel(_reincarnateButton);
+    }
+
+    // 이전 92px 프리팹은 라벨과 설명을 반 칸씩 나눠 TMP 한 줄 높이조차
+    // 확보하지 못한다. Creator 로 다시 굽기 전에도 버튼 이름만은 보이게 한다.
+    static void ShowLegacyChoiceLabel(Button button)
+    {
+        if (((RectTransform)button.transform).sizeDelta.y >= UIScale.RowMd + UIScale.RowSm + 24f)
+            return;
+
+        Transform body = button.transform.Find("Body");
+        body.Find("Hint").gameObject.SetActive(false);
+        var label = body.Find("Label").GetComponent<TextMeshProUGUI>();
+        RectTransform rect = label.rectTransform;
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = new Vector2(16f, 0f);
+        rect.offsetMax = new Vector2(-16f, 0f);
+        label.alignment = TextAlignmentOptions.Center;
+    }
 
     protected override void OnBeforeOpen()
     {
@@ -77,14 +112,38 @@ public class PausePopup : PopupBase
         _reincarnateButton?.onClick.RemoveAllListeners();
         _reincarnateButton?.onClick.AddListener(OnReincarnateClicked);
 
-        _sfxButton?.onClick.RemoveAllListeners();
-        _sfxButton?.onClick.AddListener(ToggleSfx);
+        _sfxSlider?.onValueChanged.RemoveAllListeners();
+        _sfxSlider?.onValueChanged.AddListener(SetSfxVolume);
 
-        _bgmButton?.onClick.RemoveAllListeners();
-        _bgmButton?.onClick.AddListener(ToggleBgm);
+        _bgmSlider?.onValueChanged.RemoveAllListeners();
+        _bgmSlider?.onValueChanged.AddListener(SetBgmVolume);
+
+        // 언어 — 목록은 LocalizationManager 의 고정 표기(각 언어의 제 이름)로 채운다.
+        //   ⚠ 열 때마다 다시 채운다. 팝업이 풀에서 재사용되므로 리스너가 쌓이면 안 된다.
+        //
+        // ⚠ 언어 이름은 **원어 고정**이다
+        //   LocalizedText 가 붙어 있으면 "日本語" 가 지금 언어로 되번역돼,
+        //   영어를 고르면 목록이 전부 영어가 된다 — 제 나라 말을 찾을 수가 없다.
+        foreach (var label in _languageDropdown.GetComponentsInChildren<LocalizedText>(true))
+            label.enabled = false;
+
+        // ⚠ 글꼴에 **손대지 않는다**
+        //   라벨의 글꼴을 런타임 CJK 폰트로 갈아 끼우면 캡션만 보이고 펼친 목록의 줄이
+        //   전부 빈칸이 되며, 플레이를 나갈 때 파괴돼 MissingReferenceException 까지 남긴다.
+        //   필요한 가나·한자는 **미리 구운 에셋**(LanguagePickerFont)이 기본 폰트의
+        //   폴백표에 박혀 있다 — 굽는 곳: Tools > Project K > 아이콘·텍스처 > 언어 선택 폰트
+        _languageDropdown.onValueChanged.RemoveAllListeners();
+        _languageDropdown.ClearOptions();
+        _languageDropdown.AddOptions(new List<string>(LocalizationManager.SupportedLanguageNames));
+        _languageDropdown.onValueChanged.AddListener(SetLanguage);
+
+        _notificationButton?.onClick.RemoveAllListeners();
+        _notificationButton?.onClick.AddListener(ToggleNotifications);
 
         ApplyContext();
         RefreshSound();
+        RefreshLanguage();
+        RefreshNotifications();
     }
 
     protected override void OnAfterClose()
@@ -109,40 +168,92 @@ public class PausePopup : PopupBase
         // LobbyManager 가 없다 = 인게임 씬만 떠 있는 상태 → 전투로 본다
         bool inBattle = LobbyManager.Instance == null
                      || LobbyManager.Instance.Flow == LobbyFlow.Battle;
+        bool showNotifications = AndroidLocalNotificationManager.IsSupported;
 
         _reincarnateButton?.gameObject.SetActive(inBattle);
+        _notificationButton?.gameObject.SetActive(showNotifications);
+
+        if (_reincarnateButton != null)
+        {
+            var rt  = _reincarnateButton.transform as RectTransform;
+            var pos = rt.anchoredPosition;
+            pos.y = -(_reincarnateY - (showNotifications ? 0f : _notificationRowH));
+            rt.anchoredPosition = pos;
+        }
 
         if (_panelRect == null || _panelFullH <= 0f) return;
 
-        float h = inBattle ? _panelFullH : _panelFullH - _surrenderRowH;
+        float h = _panelFullH;
+        if (!inBattle)          h -= _surrenderRowH;
+        if (!showNotifications) h -= _notificationRowH;
         _panelRect.sizeDelta = new Vector2(_panelRect.sizeDelta.x, h);
         if (_borderRect != null)
             _borderRect.sizeDelta = new Vector2(_borderRect.sizeDelta.x, h + BorderOutset);
     }
 
-    // ── 사운드 토글 ──────────────────────────────────────────
+    // ── 사운드 볼륨 ──────────────────────────────────────────
 
-    void ToggleSfx()
+    void SetSfxVolume(float volume)
     {
         var s = UserDataManager.Instance.Get<BattleSettingsData>();
-        s.SetSfxOn(!s.SfxOn);
+        s.SetSfxVolume(volume);
         UserDataManager.Instance.RequestSave();
-        RefreshSound();
+        _sfxValue.text = VolumeText(volume);
     }
 
-    void ToggleBgm()
+    void SetBgmVolume(float volume)
     {
         var s = UserDataManager.Instance.Get<BattleSettingsData>();
-        s.SetBgmOn(!s.BgmOn);
+        s.SetBgmVolume(volume);
         UserDataManager.Instance.RequestSave();
-        RefreshSound();
+        _bgmValue.text = VolumeText(volume);
     }
 
     void RefreshSound()
     {
         var s = UserDataManager.Instance.Get<BattleSettingsData>();
-        SetPill(_sfxPill, _sfxState, s.SfxOn);
-        SetPill(_bgmPill, _bgmState, s.BgmOn);
+        _sfxSlider.SetValueWithoutNotify(s.SavedSfxVolume);
+        _sfxValue.text = VolumeText(s.SavedSfxVolume);
+        _bgmSlider.SetValueWithoutNotify(s.SavedBgmVolume);
+        _bgmValue.text = VolumeText(s.SavedBgmVolume);
+    }
+
+    void SetLanguage(int index)
+    {
+        var localization = LocalizationManager.Instance;
+        localization.SetLanguageIndex(index);
+        RefreshLanguage();
+    }
+
+    void RefreshLanguage()
+    {
+        var localization = LocalizationManager.Instance;
+        _languageDropdown.SetValueWithoutNotify(localization.CurrentLanguageIndex);
+        _languageDropdown.RefreshShownValue();
+    }
+
+    void ToggleNotifications()
+    {
+        AndroidLocalNotificationManager.ToggleFromSettings();
+        RefreshNotifications();
+    }
+
+    void RefreshNotifications()
+    {
+        if (!AndroidLocalNotificationManager.IsSupported) return;
+        if (AndroidLocalNotificationManager.PermissionNeeded)
+        {
+            _notificationPill.color = new Color(0.58f, 0.38f, 0.12f, 1f);
+            _notificationState.text = LocalizationManager.Instance.Get("권한 필요");
+            return;
+        }
+
+        SetPill(_notificationPill, _notificationState, AndroidLocalNotificationManager.Enabled);
+    }
+
+    void OnApplicationFocus(bool hasFocus)
+    {
+        if (hasFocus) RefreshNotifications();
     }
 
     /// <summary>
@@ -156,8 +267,10 @@ public class PausePopup : PopupBase
     static void SetPill(Image pill, TextMeshProUGUI label, bool on)
     {
         if (pill  != null) pill.color = on ? PillOn : PillOff;
-        if (label != null) label.text = on ? "켜짐" : "꺼짐";
+        if (label != null) label.text = LocalizationManager.Instance.Get(on ? "켜짐" : "꺼짐");
     }
+
+    static string VolumeText(float volume) => $"{Mathf.RoundToInt(volume * 100f)}%";
 
     // ── 버튼 핸들러 ──────────────────────────────────────────
 

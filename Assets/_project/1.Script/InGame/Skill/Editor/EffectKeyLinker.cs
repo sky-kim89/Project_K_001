@@ -294,10 +294,18 @@ public static class EffectKeyLinker
             targetKey: "FX_BossSlam_Hit",
             delay:     1.6f);
 
+        // ㉞ BossJumpShockwave — 난이도 1~4 도약 충격파
+        //    분쇄 강타와 같은 연출을 작은 반경으로 재사용한다.
+        Link("Active_BossJumpShockwave",
+            baseKey:   "FX_BossJumpShockwave_Lift",
+            casterKey: "FX_BossJumpShockwave_Impact",
+            targetKey: "FX_BossJumpShockwave_Hit",
+            delay:     1.6f);
+
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
-        Debug.Log("[EffectKeyLinker] ✓ 32개 액티브 스킬 이펙트 키 연동 완료 (보스 패턴 2종 포함).");
+        Debug.Log("[EffectKeyLinker] ✓ 33개 액티브 스킬 이펙트 키 연동 완료 (보스 공격 패턴 3종 포함).");
     }
 
     // ── 내부 헬퍼 ───────────────────────────────────────────────────────

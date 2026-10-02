@@ -143,11 +143,13 @@ public class CodexPopup : PopupBase
         float delta = count * CodexData.BonusPerEntry * 100f;
 
         if (_progressTmp != null)
-            _progressTmp.text = $"이번 여정 수확 <color=#{StatBonusColors.Codex}>{count}</color>종";
+            _progressTmp.text = LocalizationManager.Instance.Format(
+                "이번 여정 수확 <color=#{0}>{1}</color>종", StatBonusColors.Codex, count);
 
         if (_bonusTmp != null)
-            _bonusTmp.text = $"공격력·체력 +{after - delta:F1}% → " +
-                             $"<color=#{StatBonusColors.Codex}>+{after:F1}%</color>";
+            _bonusTmp.text = LocalizationManager.Instance.Format(
+                "공격력·체력 +{0:F1}% → <color=#{1}>+{2:F1}%</color>",
+                after - delta, StatBonusColors.Codex, after);
 
         _entries.Clear();
         _entries.AddRange(_gainEntries);
@@ -183,7 +185,9 @@ public class CodexPopup : PopupBase
 
             if (_tabLabels[i] != null)
             {
-                _tabLabels[i].text  = $"{CodexCatalog.Label(cat)}  <size=80%>{owned}/{t}</size>";
+                _tabLabels[i].text = LocalizationManager.Instance.Format(
+                    "{0}  <size=80%>{1}/{2}</size>",
+                    LocalizationManager.Instance.Get(CodexCatalog.Label(cat)), owned, t);
                 _tabLabels[i].color = active ? Color.white : LockedTextC;
             }
 
@@ -199,7 +203,8 @@ public class CodexPopup : PopupBase
         var (owned, total) = CodexCatalog.TotalProgress();
 
         if (_progressTmp != null)
-            _progressTmp.text = $"수집 <color=#{StatBonusColors.Codex}>{owned}</color> / {total}";
+            _progressTmp.text = LocalizationManager.Instance.Format(
+                "수집 <color=#{0}>{1}</color> / {2}", StatBonusColors.Codex, owned, total);
 
         if (_bonusTmp != null)
         {
@@ -207,12 +212,14 @@ public class CodexPopup : PopupBase
             float pct     = CodexApplier.BonusRatio  * 100f;
             float pending = CodexApplier.PendingRatio * 100f;
 
-            _bonusTmp.text = $"공격력·체력 <color=#{StatBonusColors.Codex}>+{pct:F1}%</color>";
+            _bonusTmp.text = LocalizationManager.Instance.Format(
+                "공격력·체력 <color=#{0}>+{1:F1}%</color>", StatBonusColors.Codex, pct);
 
             // 여정 중에 채운 몫은 다음 여정부터 붙는다 — 안 적어 두면
             // "도감을 채웠는데 스탯이 그대로" 로 보인다.
             if (pending > pct + 0.01f)
-                _bonusTmp.text += $"  <size=75%>(다음 여정 +{pending:F1}%)</size>";
+                _bonusTmp.text += "  " + LocalizationManager.Instance.Format(
+                    "<size=75%>(다음 여정 +{0:F1}%)</size>", pending);
         }
     }
 

@@ -66,6 +66,7 @@ public static class BattlePanelCreator
             new Vector2(UIScale.LobbyCanvasH / 9f * 16f, UIScale.LobbyCanvasH);
 
         var panel = Build(canvas);
+        PixelSkin.Apply(panel);
         PrefabUtility.SaveAsPrefabAsset(panel, SavePath);
         Object.DestroyImmediate(canvas);
         AssetDatabase.SaveAssets();

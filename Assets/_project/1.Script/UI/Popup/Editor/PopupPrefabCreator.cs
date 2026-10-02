@@ -30,6 +30,83 @@ public static class PopupPrefabCreator
     static readonly Color BrHint         = new Color(0.82f,  0.74f,  0.44f,  1f);
     static readonly Color BrConfirm      = new Color(0.16f,  0.58f,  0.36f,  1f);
 
+    /// <summary>[라벨] [트랙/핸들] [백분율] 한 줄짜리 볼륨 슬라이더.</summary>
+    static Slider MakeVolumeSlider(GameObject panel, string name, string label,
+                                   float yFromTop, float h, float sidePad,
+                                   out TextMeshProUGUI value)
+    {
+        var row = EditorUIBuilder.Panel(panel, name, new Color(0.15f, 0.18f, 0.29f, 1f));
+        var rt = row.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0f, 1f);
+        rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot = new Vector2(0.5f, 1f);
+        rt.anchoredPosition = new Vector2(0f, -yFromTop);
+        rt.sizeDelta = new Vector2(-sidePad * 2f, h);
+
+        var labelText = AddTMP(row, "Label", label, UIScale.FontMd, FontStyles.Bold);
+        labelText.color = Color.white;
+        labelText.alignment = TextAlignmentOptions.MidlineLeft;
+        labelText.raycastTarget = false;
+        labelText.textWrappingMode = TextWrappingModes.NoWrap;
+        labelText.enableAutoSizing = true;
+        labelText.fontSizeMin = UIScale.FontSm;
+        labelText.fontSizeMax = UIScale.FontMd;
+        var labelRt = labelText.rectTransform;
+        labelRt.anchorMin = Vector2.zero;
+        labelRt.anchorMax = Vector2.one;
+        labelRt.offsetMin = new Vector2(28f, 0f);
+        labelRt.offsetMax = new Vector2(-430f, 0f);
+
+        var track = EditorUIBuilder.Img(row, "Track", new Color(0.07f, 0.09f, 0.15f, 1f));
+        SetSliderRect(track.rectTransform, 340f, -116f, 18f);
+        track.raycastTarget = false;
+
+        var fillArea = EditorUIBuilder.Go("FillArea", row);
+        SetSliderRect(fillArea.GetComponent<RectTransform>(), 340f, -116f, 18f);
+        var fill = EditorUIBuilder.Img(fillArea, "Fill", new Color(0.30f, 0.70f, 1f, 1f));
+        StretchRT(fill.gameObject);
+        fill.raycastTarget = false;
+
+        var handleArea = EditorUIBuilder.Go("HandleArea", row);
+        SetSliderRect(handleArea.GetComponent<RectTransform>(), 340f, -116f, 18f);
+        var handle = EditorUIBuilder.Img(handleArea, "Handle", new Color(0.90f, 0.95f, 1f, 1f));
+        var handleRt = handle.rectTransform;
+        handleRt.anchorMin = handleRt.anchorMax = new Vector2(0f, 0.5f);
+        handleRt.pivot = new Vector2(0.5f, 0.5f);
+        handleRt.sizeDelta = new Vector2(UIScale.RowSm, UIScale.RowSm);
+
+        value = AddTMP(row, "Value", "100%", UIScale.FontSm, FontStyles.Bold);
+        value.color = Color.white;
+        value.alignment = TextAlignmentOptions.Center;
+        value.raycastTarget = false;
+        value.textWrappingMode = TextWrappingModes.NoWrap;
+        var valueRt = value.rectTransform;
+        valueRt.anchorMin = valueRt.anchorMax = new Vector2(1f, 0.5f);
+        valueRt.pivot = new Vector2(1f, 0.5f);
+        valueRt.anchoredPosition = new Vector2(-16f, 0f);
+        valueRt.sizeDelta = new Vector2(90f, UIScale.RowSm);
+
+        var slider = row.AddComponent<Slider>();
+        slider.minValue = 0f;
+        slider.maxValue = 1f;
+        slider.value = 1f;
+        slider.fillRect = fill.rectTransform;
+        slider.handleRect = handleRt;
+        slider.targetGraphic = handle;
+        slider.direction = Slider.Direction.LeftToRight;
+        slider.navigation = new Navigation { mode = Navigation.Mode.None };
+        return slider;
+    }
+
+    static void SetSliderRect(RectTransform rt, float left, float right, float height)
+    {
+        rt.anchorMin = new Vector2(0f, 0.5f);
+        rt.anchorMax = new Vector2(1f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.offsetMin = new Vector2(left, -height * 0.5f);
+        rt.offsetMax = new Vector2(right, height * 0.5f);
+    }
+
     /// <summary>
     /// 팝업 프리팹 전체 생성.
     ///
@@ -50,6 +127,7 @@ public static class PopupPrefabCreator
         // 이 파일이 직접 만드는 것 — BattleResult 가 ExpRow/RewardCard 를 참조하므로 순서 유지
         CreateExpRowPrefab();
         CreateBattleResultPopup();
+        CreateSettingsPopup();
         CreatePausePopup();
         CreateLoadingPopup();
         AbilitySelectPopupCreator.Create();
@@ -68,7 +146,7 @@ public static class PopupPrefabCreator
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("[PopupPrefabCreator] ✓ 팝업 프리팹 전체 생성 완료 (15종)");
+        Debug.Log("[PopupPrefabCreator] ✓ 팝업 프리팹 전체 생성 완료 (16종)");
     }
 
     // ── ExpRow 프리팹 ─────────────────────────────────────────
@@ -621,6 +699,114 @@ public static class PopupPrefabCreator
         rt.offsetMax = new Vector2(-outset, -outset);
     }
 
+    // ── SettingsPopup ─────────────────────────────────────────
+
+    [MenuItem(ProjectKMenu.Popup + "Settings", priority = ProjectKMenu.PrefabPrio + 31)]
+    public static void CreateSettingsPopup()
+    {
+        const float PW      = 840f;
+        const float HeaderH = 136f;
+        const float SidePad =  48f;
+        const float BtnGap  =  24f;
+        const float Outset  =   6f;
+
+        float rowH = UIScale.BtnFor(UIScale.FontMd);
+        float ySfx = HeaderH + 43f;
+        float yBgm = ySfx + rowH + BtnGap;
+        float yLanguage = yBgm + rowH + BtnGap;
+        float yPlatform = yLanguage + rowH + BtnGap;
+        float yFullscreen = yPlatform + rowH + BtnGap;
+        float sharedH  = yLanguage + rowH + 48f;
+        float androidH = yPlatform + rowH + 48f;
+        float steamH   = yFullscreen + rowH + 48f;
+
+        var root = CreateRoot<SettingsPopup>("SettingsPopup", PW + Outset, steamH + Outset);
+
+        // 테두리는 패널의 앞 형제라 뒤에 그려진다 (UI 규칙 3).
+        var border = EditorUIBuilder.Panel(root, "Border", new Color(0.26f, 0.44f, 0.72f, 1f));
+        SetRect(border.GetComponent<RectTransform>(), Vector2.zero,
+                new Vector2(PW + Outset, steamH + Outset));
+
+        var panel = EditorUIBuilder.Panel(root, "Panel", EditorUIBuilder.Pop.PanelBg);
+        SetRect(panel.GetComponent<RectTransform>(), Vector2.zero, new Vector2(PW, steamH));
+
+        var header = EditorUIBuilder.Panel(panel, "Header", EditorUIBuilder.Pop.HeaderBg);
+        EditorUIBuilder.AnchorTop(header.GetComponent<RectTransform>(), 0f, HeaderH);
+
+        var platformText = AddTMP(header, "Platform", "ANDROID", UIScale.FontSm, FontStyles.Bold);
+        platformText.color = new Color(0.52f, 0.72f, 1f);
+        platformText.alignment = TextAlignmentOptions.MidlineLeft;
+        platformText.raycastTarget = false;
+        platformText.textWrappingMode = TextWrappingModes.NoWrap;
+        var ptRt = platformText.rectTransform;
+        ptRt.anchorMin = Vector2.zero; ptRt.anchorMax = Vector2.one;
+        ptRt.offsetMin = new Vector2(32f, 0f); ptRt.offsetMax = new Vector2(-600f, 0f);
+
+        var title = AddTMP(header, "Title", "설 정", UIScale.FontLg, FontStyles.Bold);
+        title.color = new Color(1f, 0.94f, 0.78f);
+        title.raycastTarget = false;
+        title.textWrappingMode = TextWrappingModes.NoWrap;
+        StretchRT(title.gameObject);
+
+        var closeButton = EditorUIBuilder.RaisedBtn(
+            header, "CloseButton", new Color(0.52f, 0.16f, 0.20f, 1f), out var closeBody);
+        var closeRt = closeButton.GetComponent<RectTransform>();
+        closeRt.anchorMin = closeRt.anchorMax = new Vector2(1f, 0.5f);
+        closeRt.pivot = new Vector2(1f, 0.5f);
+        closeRt.anchoredPosition = new Vector2(-24f, 0f);
+        closeRt.sizeDelta = new Vector2(76f, 76f);
+        var xMark = EditorUIBuilder.XMark(closeBody, "Mark", 32f, Color.white);
+        var xRt = xMark.GetComponent<RectTransform>();
+        xRt.anchorMin = xRt.anchorMax = new Vector2(0.5f, 0.5f);
+        xRt.pivot = new Vector2(0.5f, 0.5f);
+        xRt.anchoredPosition = Vector2.zero;
+
+        var accent = EditorUIBuilder.Img(panel, "AccentLine", new Color(0.40f, 0.72f, 1f));
+        EditorUIBuilder.AnchorTop(accent.rectTransform, HeaderH, 3f);
+
+        var sfxSlider = MakeVolumeSlider(panel, "SfxSlider", "효 과 음",
+            ySfx, rowH, SidePad, out var sfxValue);
+        var bgmSlider = MakeVolumeSlider(panel, "BgmSlider", "배 경 음 악",
+            yBgm, rowH, SidePad, out var bgmValue);
+        var languageDropdown = EditorUIBuilder.LabeledDropdown(
+            panel, "LanguageDropdown", "언 어", yLanguage, rowH, SidePad);
+
+        // 같은 자리를 플랫폼 전용 행이 공유한다. 런타임 디파인이 한쪽만 켠다.
+        var notificationButton = MakeSoundToggle(panel, "NotificationButton", "알 림",
+            yPlatform, rowH, SidePad, out var notificationPill, out var notificationState);
+        var resolutionButton = MakeSoundToggle(panel, "ResolutionButton", "해 상 도",
+            yPlatform, rowH, SidePad, out var resolutionPill, out var resolutionState, 260f);
+        var fullscreenButton = MakeSoundToggle(panel, "FullscreenButton", "전 체 화 면",
+            yFullscreen, rowH, SidePad, out var fullscreenPill, out var fullscreenState);
+
+        var so = new SerializedObject(root.GetComponent<SettingsPopup>());
+        SetEnum(so, "_popupType", (int)PopupType.Settings);
+        SetObj(so, "_closeButton", closeButton);
+        SetObj(so, "_platformText", platformText);
+        SetObj(so, "_sfxSlider", sfxSlider);
+        SetObj(so, "_sfxValue", sfxValue);
+        SetObj(so, "_bgmSlider", bgmSlider);
+        SetObj(so, "_bgmValue", bgmValue);
+        SetObj(so, "_languageDropdown", languageDropdown);
+        SetObj(so, "_notificationButton", notificationButton);
+        SetObj(so, "_notificationPill", notificationPill);
+        SetObj(so, "_notificationState", notificationState);
+        SetObj(so, "_resolutionButton", resolutionButton);
+        SetObj(so, "_resolutionPill", resolutionPill);
+        SetObj(so, "_resolutionState", resolutionState);
+        SetObj(so, "_fullscreenButton", fullscreenButton);
+        SetObj(so, "_fullscreenPill", fullscreenPill);
+        SetObj(so, "_fullscreenState", fullscreenState);
+        SetObj(so, "_panelRect", panel.GetComponent<RectTransform>());
+        SetObj(so, "_borderRect", border.GetComponent<RectTransform>());
+        so.FindProperty("_androidHeight").floatValue = androidH;
+        so.FindProperty("_steamHeight").floatValue = steamH;
+        so.FindProperty("_sharedHeight").floatValue = sharedH;
+        so.ApplyModifiedProperties();
+
+        Save(root, "SettingsPopup");
+    }
+
     // ── PausePopup ────────────────────────────────────────────
 
     //  로비 팝업(EventPopup·HeroDetail)과 같은 톤으로 맞췄다:
@@ -635,19 +821,22 @@ public static class PopupPrefabCreator
         const float BtnGap  =  24f;
         const float Outset  =   6f;   // 테두리가 패널 밖으로 드러나는 두께 (PausePopup 과 동일)
 
-        float btnH = UIScale.BtnFor(UIScale.FontMd) + 20f;   // 92 — 인게임은 손가락으로 누른다
+        float btnH = UIScale.RowMd + UIScale.RowSm + 24f;   // 라벨·설명 각각 한 줄 높이 확보
         // 사운드 토글은 설명 줄이 없다 — 두 줄짜리 선택지보다 낮게 잡아 목록을 압축한다.
         float togH = UIScale.BtnFor(UIScale.FontMd);
 
-        // 행 순서: 계속하기 → 효과음 → 배경음악 → 즉시 환생하기
+        // 행 순서: 계속하기 → 효과음 → 배경음악 → 언어 → 알림(Android) → 즉시 환생하기
         //   되돌릴 수 없는 항목을 맨 아래에 둔다. 마침 로비에서 접는 행도 이것이라
         //   접었을 때 목록 중간에 구멍이 나지 않는다.
         float yResume = HeaderH + 43f;
         float ySfx    = yResume + btnH + BtnGap;
         float yBgm    = ySfx    + togH + BtnGap;
-        float yReinc  = yBgm    + togH + BtnGap;
+        float yLang   = yBgm    + togH + BtnGap;
+        float yNotify = yLang   + togH + BtnGap;
+        float yReinc  = yNotify + togH + BtnGap;
 
         float surrenderRowH = BtnGap + btnH;                  // 로비에서 접는 높이
+        float notificationRowH = BtnGap + togH;                // Android 외 플랫폼에서 접는 높이
         float popupH        = yReinc + btnH + 48f;
 
         // 루트는 전체화면 오버레이 — 뒤 전투 화면을 어둡게 깐다
@@ -710,13 +899,18 @@ public static class PopupPrefabCreator
                                         new Color(0.13f, 0.52f, 0.38f, 1f),
                                         yResume, btnH, SidePad);
 
-        var sfxBtn = MakeSoundToggle(panel, "SfxButton", "효 과 음",
-                                     ySfx, togH, SidePad,
-                                     out var sfxPill, out var sfxState);
+        var sfxSlider = MakeVolumeSlider(panel, "SfxSlider", "효 과 음",
+                                         ySfx, togH, SidePad, out var sfxValue);
 
-        var bgmBtn = MakeSoundToggle(panel, "BgmButton", "배 경 음 악",
-                                     yBgm, togH, SidePad,
-                                     out var bgmPill, out var bgmState);
+        var bgmSlider = MakeVolumeSlider(panel, "BgmSlider", "배 경 음 악",
+                                         yBgm, togH, SidePad, out var bgmValue);
+
+        var languageDropdown = EditorUIBuilder.LabeledDropdown(
+            panel, "LanguageDropdown", "언 어", yLang, togH, SidePad);
+
+        var notificationBtn = MakeSoundToggle(panel, "NotificationButton", "알 림",
+                                              yNotify, togH, SidePad,
+                                              out var notificationPill, out var notificationState);
 
         var reincBtn  = MakePauseChoice(panel, "ReincarnateButton", "즉시 환생하기",
                                         "이번 런을 포기하고 환생한다",
@@ -727,16 +921,20 @@ public static class PopupPrefabCreator
         SetEnum(so, "_popupType",          (int)PopupType.Pause);
         SetObj (so, "_resumeButton",       resumeBtn);
         SetObj (so, "_reincarnateButton",  reincBtn);
-        SetObj (so, "_sfxButton",          sfxBtn);
-        SetObj (so, "_sfxPill",            sfxPill);
-        SetObj (so, "_sfxState",           sfxState);
-        SetObj (so, "_bgmButton",          bgmBtn);
-        SetObj (so, "_bgmPill",            bgmPill);
-        SetObj (so, "_bgmState",           bgmState);
+        SetObj (so, "_sfxSlider",          sfxSlider);
+        SetObj (so, "_sfxValue",           sfxValue);
+        SetObj (so, "_bgmSlider",          bgmSlider);
+        SetObj (so, "_bgmValue",           bgmValue);
+        SetObj (so, "_languageDropdown",    languageDropdown);
+        SetObj (so, "_notificationButton",  notificationBtn);
+        SetObj (so, "_notificationPill",    notificationPill);
+        SetObj (so, "_notificationState",   notificationState);
         SetObj (so, "_panelRect",          panel.GetComponent<RectTransform>());
         SetObj (so, "_borderRect",         border.GetComponent<RectTransform>());
         so.FindProperty("_panelFullH").floatValue    = popupH;
         so.FindProperty("_surrenderRowH").floatValue = surrenderRowH;
+        so.FindProperty("_notificationRowH").floatValue = notificationRowH;
+        so.FindProperty("_reincarnateY").floatValue = yReinc;
         so.ApplyModifiedProperties();
 
         Save(root, "PausePopup");
@@ -752,7 +950,8 @@ public static class PopupPrefabCreator
     /// </summary>
     static Button MakeSoundToggle(GameObject panel, string name, string label,
                                   float yFromTop, float h, float sidePad,
-                                  out Image pill, out TextMeshProUGUI state)
+                                  out Image pill, out TextMeshProUGUI state,
+                                  float pillW = 170f)
     {
         var btn = EditorUIBuilder.RaisedBtn(panel, name, new Color(0.19f, 0.24f, 0.38f, 1f), out var body);
         var rt = btn.GetComponent<RectTransform>();
@@ -762,17 +961,16 @@ public static class PopupPrefabCreator
         rt.anchoredPosition = new Vector2(0f, -yFromTop);
         rt.sizeDelta        = new Vector2(-sidePad * 2f, h);
 
-        const float PillW = 170f;
-
         var lbl = AddTMP(body, "Label", label, UIScale.FontMd, FontStyles.Bold);
         lbl.color            = Color.white;
         lbl.alignment        = TextAlignmentOptions.MidlineLeft;
         lbl.raycastTarget    = false;
         lbl.textWrappingMode = TextWrappingModes.NoWrap;
+        lbl.overflowMode     = TextOverflowModes.Ellipsis;
         var lRt = lbl.rectTransform;
         lRt.anchorMin = Vector2.zero; lRt.anchorMax = Vector2.one;
         lRt.offsetMin = new Vector2(28f, 0f);
-        lRt.offsetMax = new Vector2(-(PillW + 40f), 0f);
+        lRt.offsetMax = new Vector2(-(pillW + 40f), 0f);
 
         // 알약 — 우측. 높이는 UIScale.RowSm (글자가 잘리지 않는 최소 한 줄, UI 규칙 5)
         pill = EditorUIBuilder.Img(body, "StatePill", new Color(0.16f, 0.50f, 0.34f, 1f));
@@ -780,7 +978,7 @@ public static class PopupPrefabCreator
         pRt.anchorMin = pRt.anchorMax = new Vector2(1f, 0.5f);
         pRt.pivot     = new Vector2(1f, 0.5f);
         pRt.anchoredPosition = new Vector2(-28f, 0f);
-        pRt.sizeDelta        = new Vector2(PillW, UIScale.RowSm);
+        pRt.sizeDelta        = new Vector2(pillW, UIScale.RowSm);
 
         state = AddTMP(pill.gameObject, "State", "켜짐", UIScale.FontSm, FontStyles.Bold);
         state.color            = Color.white;
@@ -827,6 +1025,7 @@ public static class PopupPrefabCreator
         lbl.alignment        = TextAlignmentOptions.Center;
         lbl.raycastTarget    = false;
         lbl.textWrappingMode = TextWrappingModes.NoWrap;
+        lbl.overflowMode     = TextOverflowModes.Ellipsis;
         var lRt = lbl.rectTransform;
         lRt.anchorMin = new Vector2(0f, 0.5f); lRt.anchorMax = new Vector2(1f, 1f);
         lRt.offsetMin = new Vector2(16f, 0f);  lRt.offsetMax = new Vector2(-16f, -6f);
@@ -836,6 +1035,7 @@ public static class PopupPrefabCreator
         hintTmp.alignment        = TextAlignmentOptions.Center;
         hintTmp.raycastTarget    = false;
         hintTmp.textWrappingMode = TextWrappingModes.NoWrap;
+        hintTmp.overflowMode     = TextOverflowModes.Ellipsis;
         var hRt = hintTmp.rectTransform;
         hRt.anchorMin = new Vector2(0f, 0f);   hRt.anchorMax = new Vector2(1f, 0.5f);
         hRt.offsetMin = new Vector2(16f, 8f);  hRt.offsetMax = new Vector2(-16f, 0f);
@@ -970,6 +1170,7 @@ public static class PopupPrefabCreator
     static void Save(GameObject root, string fileName)
     {
         string path = $"{SavePath}/{fileName}.prefab";
+        PixelSkin.Apply(root);
         PrefabUtility.SaveAsPrefabAsset(root, path);
         Object.DestroyImmediate(root);
         Debug.Log($"[PopupPrefabCreator] 저장: {path}");

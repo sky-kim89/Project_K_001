@@ -103,16 +103,23 @@ public class EquipmentData : ScriptableObject
         if (equip.EffectKind == EquipTriggerEffect.Summon)
         {
             int count = Mathf.Max(1, Mathf.RoundToInt(equip.TriggerValue));
-            return $"{triggerLabel} {chance} 확률: 스켈레톤 {count}기 소환";
+            return LocalizationManager.Instance.Format(
+                "{0} {1} 확률: 스켈레톤 {2}기 소환", triggerLabel, chance, count);
         }
 
         // 병사 대상이면 누구에게 걸리는지부터 밝힌다 — 장군 버프와 헷갈리면 고를 이유가 사라진다
-        string scope = equip.TriggerTarget == EquipTriggerTarget.Soldiers ? "[병사 전원] " : "";
+        string scope = equip.TriggerTarget == EquipTriggerTarget.Soldiers
+            ? LocalizationManager.Instance.Get("[병사 전원]") + " "
+            : "";
 
         if (equip.EffectKind == EquipTriggerEffect.RatioBuff)
         {
-            string dur = equip.TriggerDuration > 0f ? $" ({equip.TriggerDuration:F0}초)" : "";
-            return $"{triggerLabel} {chance} 확률: {scope}{statLabel} +{equip.TriggerValue * 100f:F0}%{dur}";
+            string dur = equip.TriggerDuration > 0f
+                ? " " + LocalizationManager.Instance.Format("({0:F0}초)", equip.TriggerDuration)
+                : "";
+            return LocalizationManager.Instance.Format(
+                "{0} {1} 확률: {2}{3} +{4:F0}%{5}",
+                triggerLabel, chance, scope, statLabel, equip.TriggerValue * 100f, dur);
         }
 
         string value;
@@ -124,14 +131,18 @@ public class EquipmentData : ScriptableObject
                 EquipTriggerPercentBase.OfMaxHp  => "최대 체력",
                 _                                => "",
             };
-            value = $"+{baseLabel}의 {equip.TriggerValue * 100f:F0}%";
+            value = LocalizationManager.Instance.Format(
+                "+{0}의 {1:F0}%", LocalizationManager.Instance.Get(baseLabel), equip.TriggerValue * 100f);
         }
         else
         {
             value = $"+{StatDisplayHelper.FormatStat(equip.TriggerStat, equip.TriggerValue)}";
         }
-        string duration = equip.TriggerDuration > 0f ? $" ({equip.TriggerDuration:F0}초)" : "";
-        return $"{triggerLabel} {chance} 확률: {scope}{statLabel} {value}{duration}";
+        string duration = equip.TriggerDuration > 0f
+            ? " " + LocalizationManager.Instance.Format("({0:F0}초)", equip.TriggerDuration)
+            : "";
+        return LocalizationManager.Instance.Format(
+            "{0} {1} 확률: {2}{3} {4}{5}", triggerLabel, chance, scope, statLabel, value, duration);
     }
 }
 

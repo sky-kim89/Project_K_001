@@ -146,13 +146,15 @@ public static class AbilityUIHelper
             //   스택 특성만 흰 글씨로 남아, 색으로 출처를 읽는 규칙이 거기서 깨졌다.
             if (stacks <= 0)
             {
-                sb.Append(StatBonusColors.Wrap(StatSource.Trait, $"{name} 스택당 {per}"));
+                sb.Append(StatBonusColors.Wrap(StatSource.Trait,
+                    LocalizationManager.Instance.Format("{0} 스택당 {1}", name, per)));
                 continue;
             }
 
             string total = FormatStatValue(e.Stat, e.Value * stacks, e.IsPercent);
             sb.Append(StatBonusColors.Wrap(StatSource.Trait,
-                $"{name} {total}  ({per} × {stacks}{cap}스택)"));
+                LocalizationManager.Instance.Format("{0} {1}  ({2} × {3}{4}스택)",
+                    name, total, per, stacks, cap)));
         }
         return sb.ToString();
     }

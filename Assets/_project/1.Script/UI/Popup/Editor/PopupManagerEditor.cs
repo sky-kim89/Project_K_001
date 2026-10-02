@@ -17,7 +17,7 @@ public class PopupManagerEditor : Editor
         GUI.backgroundColor = Color.white;
     }
 
-    static void LoadPopupPrefabs(PopupManager manager)
+    public static void LoadPopupPrefabs(PopupManager manager)
     {
         const string folderPath = "Assets/_project/2.Prefabs/UI";
 

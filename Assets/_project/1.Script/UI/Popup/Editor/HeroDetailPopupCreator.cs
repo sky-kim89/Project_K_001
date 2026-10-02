@@ -178,6 +178,7 @@ public static class HeroDetailPopupCreator
         AssetDatabase.Refresh();
 
         var go = BuildPopup();
+        PixelSkin.Apply(go);
         PrefabUtility.SaveAsPrefabAsset(go, PrefabPath);
         Object.DestroyImmediate(go);
 
@@ -893,6 +894,13 @@ public static class HeroDetailPopupCreator
         hlg.childControlHeight     = true;
         hlg.childForceExpandWidth  = false;
         hlg.childForceExpandHeight = true;
+
+        // 스탯 아이콘 — 그림은 런타임이 StatIcon.Key 로 끼운다 (HeroDetailPopup.SetupStatClickHandlers).
+        //  이 목록이 '아이콘 = 어떤 스탯' 의 범례다. 다른 화면은 아이콘만 쓴다.
+        var icon = Go("Icon", row, typeof(Image));
+        icon.GetComponent<Image>().preserveAspect = true;
+        icon.GetComponent<Image>().raycastTarget  = false;
+        icon.AddComponent<LayoutElement>().ignoreLayout = true;
 
         var lbl = TMP(row, "Label", label, UIScale.FontMd, FontStyles.Normal);
         lbl.alignment        = TextAlignmentOptions.MidlineLeft;

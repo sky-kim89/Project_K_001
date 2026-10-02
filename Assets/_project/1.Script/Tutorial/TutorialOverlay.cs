@@ -292,10 +292,11 @@ public class TutorialOverlay : MonoBehaviour
 
         LayoutDim(hasHole ? hole : (Rect?)null);
         LayoutFrame(hasHole ? hole : (Rect?)null);
-        LayoutBubble(step, hasHole ? hole : (Rect?)null);
+        string message = LocalizationManager.Instance.LocalizeText(step.Message ?? "");
+        LayoutBubble(step, hasHole ? hole : (Rect?)null, message);
 
-        _body.text = step.Message ?? "";
-        _hint.text = hint ?? "";
+        _body.text = message;
+        _hint.text = LocalizationManager.Instance.LocalizeText(hint ?? "");
         bool showBubble = !string.IsNullOrEmpty(step.Message) || !string.IsNullOrEmpty(hint);
         _bubble.gameObject.SetActive(showBubble);
         _bubbleEdge.gameObject.SetActive(showBubble);
@@ -383,9 +384,9 @@ public class TutorialOverlay : MonoBehaviour
     /// 그래서 최대 폭으로 실패하면 **남는 쪽 폭에 맞춰 줄여** 다시 시도한다.
     /// BubbleMinW 보다도 좁으면 그때는 중앙에 둔다 — 읽을 수 없는 폭보다는 겹치는 편이 낫다.
     /// </summary>
-    void LayoutBubble(TutorialStep step, Rect? hole)
+    void LayoutBubble(TutorialStep step, Rect? hole, string message)
     {
-        _body.text = step.Message ?? "";
+        _body.text = message;
 
         Rect  full = _root.rect;
         float maxW = Mathf.Min(BubbleMaxW, full.width - ScreenMargin * 2f);
@@ -394,7 +395,7 @@ public class TutorialOverlay : MonoBehaviour
         if (hole == null) anchor = TutorialAnchor.Center;
 
         float   w = maxW;
-        float   h = MeasureHeight(step.Message, w);
+        float   h = MeasureHeight(message, w);
         Vector2 center;
 
         if (anchor == TutorialAnchor.Center)
@@ -415,7 +416,7 @@ public class TutorialOverlay : MonoBehaviour
                 //   needH 가 남는 폭과 '정확히' 같아진다. + 와 - 를 거친 값이라
                 //   마지막 자리가 어긋나면 조건이 거짓이 되고 그대로 중앙으로 떨어진다.
                 w = Mathf.Min(w, side) - 1f;
-                h = MeasureHeight(step.Message, w);
+                h = MeasureHeight(message, w);
                 TryPlaceBeside(full, hole.Value, w, h, anchor, out center);
             }
             else

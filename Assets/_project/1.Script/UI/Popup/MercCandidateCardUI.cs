@@ -50,10 +50,10 @@ public class MercCandidateCardUI : MonoBehaviour
         // 도감 미등록이면 이름 옆에 NEW — 고용을 정하는 순간에 보여야 한다
         if (_nameText    != null) _nameText.text    = CodexMark.ForGeneral(entry.UnitName);
         if (_jobText     != null) _jobText.text     = JobStyle.GetLabel(job);
-        if (_hpText      != null) _hpText.text      = $"체력 {result.Total(StatType.MaxHp):N0}";
-        if (_atkText     != null) _atkText.text     = $"공격 {result.Total(StatType.Attack):N0}";
-        if (_defText     != null) _defText.text     = $"방어 {StatDisplayHelper.EffectiveDefensePct(result.Total(StatType.Defense)):F1}%";
-        if (_soldierText != null) _soldierText.text = $"용병 {Mathf.Max(0, Mathf.RoundToInt(result.Total(StatType.SoldierCount)))}명";
+        if (_hpText      != null) _hpText.text      = LocalizationManager.Instance.Format("체력 {0:N0}", result.Total(StatType.MaxHp));
+        if (_atkText     != null) _atkText.text     = LocalizationManager.Instance.Format("공격 {0:N0}", result.Total(StatType.Attack));
+        if (_defText     != null) _defText.text     = LocalizationManager.Instance.Format("방어 {0:F1}%", StatDisplayHelper.EffectiveDefensePct(result.Total(StatType.Defense)));
+        if (_soldierText != null) _soldierText.text = Mathf.Max(0, Mathf.RoundToInt(result.Total(StatType.SoldierCount))).ToString();
 
         FillSkills(job, entry);
 
@@ -94,7 +94,7 @@ public class MercCandidateCardUI : MonoBehaviour
             }
 
             if (_activeSkillNameText != null)
-                _activeSkillNameText.text = activeData?.SkillName ?? "-";
+                _activeSkillNameText.text = activeData != null ? LocalizationManager.Instance.Get(activeData.SkillName) : "-";
         }
 
         var passiveDb = PassiveSkillDatabase.Current;
@@ -117,11 +117,11 @@ public class MercCandidateCardUI : MonoBehaviour
             var pd = passiveDb.Get(passives[i]);
             if (nameTexts[i] != null)
             {
-                nameTexts[i].text  = pd?.SkillName ?? "-";
+                nameTexts[i].text  = pd != null ? LocalizationManager.Instance.Get(pd.SkillName) : "-";
                 // 장수 상세와 같은 규칙 — 패시브 이름은 '패시브' 색(초록)이다
                 nameTexts[i].color = StatBonusColors.PassiveColor;
             }
-            if (descTexts[i] != null) descTexts[i].text = pd?.Description  ?? "";
+            if (descTexts[i] != null) descTexts[i].text = pd != null ? LocalizationManager.Instance.LocalizeText(pd.Description) : "";
         }
     }
 }

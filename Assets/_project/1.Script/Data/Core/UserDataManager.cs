@@ -165,6 +165,7 @@ public class UserDataManager : PureSingleton<UserDataManager>
 
         // 이번이 몇 번째 환생인지 — 첫 환생 직후에만 뜨는 안내가 이 값을 본다.
         reincData?.CountReincarnation();
+        AchievementTracker.OnReincarnated();
 
         // 초기 장수 자동 배치
         AutoDeployFirstHeroIfNeeded();
@@ -195,6 +196,8 @@ public class UserDataManager : PureSingleton<UserDataManager>
         RegisterSection(new DifficultyData());
         // ⚠ Reincarnate() 의 초기화 목록에 넣지 말 것 — 환생마다 튜토리얼이 다시 뜬다.
         RegisterSection(new TutorialData());
+        // ⚠ Reincarnate() 의 초기화 목록에 넣지 말 것 — 업적은 영구 기록이다.
+        RegisterSection(new AchievementData());
 
         LoadAll();
         AutoDeployFirstHeroIfNeeded();

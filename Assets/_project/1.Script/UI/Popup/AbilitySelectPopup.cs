@@ -62,7 +62,7 @@ public class AbilitySelectPopup : PopupBase
 
     protected override void OnAfterOpen()
     {
-        if (_titleTmp != null) _titleTmp.text = "어빌리티 선택";
+        if (_titleTmp != null) _titleTmp.text = LocalizationManager.Instance.Get("어빌리티 선택");
 
         RefreshCards();
         RefreshButton();
@@ -103,7 +103,7 @@ public class AbilitySelectPopup : PopupBase
 
         _refreshBtn.interactable = remaining > 0 && _abilityDb != null && _runData != null;
         if (_refreshCountTmp != null)
-            _refreshCountTmp.text = $"새로고침  {remaining}회 남음";
+            _refreshCountTmp.text = LocalizationManager.Instance.Format("새로고침  {0}회 남음", remaining);
     }
 
     void OnRefreshClicked()

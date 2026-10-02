@@ -132,7 +132,7 @@ public class FirstRelicTutorial : TutorialScenario
     }
 
     // ── 타겟 ─────────────────────────────────────────────────
-    //  RelicBtn : MainPanelCreator 가 만드는 버튼 이름 (BuildWideBtn "RelicBtn")
+    //  RelicBtn : MainPanelCreator 가 만드는 버튼 이름 (BuildSideBtn "RelicBtn")
     //  나머지   : RelicTreePopup 이 런타임에 만드는 오브젝트 이름이다
     //             노드 = "Node_{RelicNodeId}", 실루엣 = "Ghost_{RelicNodeId}"
     //

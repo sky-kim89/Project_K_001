@@ -40,7 +40,7 @@ public class HeroCardUI : MonoBehaviour
         Entry     = entry;
         _onSelect = onSelect;
 
-        if (_nameText  != null) _nameText.text  = entry.UnitName;
+        if (_nameText  != null) _nameText.text  = LocalizationManager.Instance.Get(entry.UnitName);
         if (_levelText != null) _levelText.text = $"Lv.{entry.Level}";
         if (_gradeText != null) _gradeText.text = GradeStyle.GetLabelWithQuality(entry.Grade, entry.UnitName);
 
@@ -56,7 +56,7 @@ public class HeroCardUI : MonoBehaviour
         if (_hpText      != null) _hpText.text      = $"{result.Total(StatType.MaxHp):N0}";
         if (_atkText     != null) _atkText.text     = $"{result.Total(StatType.Attack):N0}";
         if (_defText     != null) _defText.text     = $"{StatDisplayHelper.EffectiveDefensePct(result.Total(StatType.Defense)):F1}%";
-        if (_soldierText != null) _soldierText.text = $"{Mathf.RoundToInt(result.Total(StatType.SoldierCount))}명";
+        if (_soldierText != null) _soldierText.text = Mathf.RoundToInt(result.Total(StatType.SoldierCount)).ToString();
 
         if (_button != null)
         {

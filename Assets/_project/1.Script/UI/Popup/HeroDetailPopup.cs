@@ -159,9 +159,9 @@ public class HeroDetailPopup : PopupBase
     {
         base.Awake();
         _closeBtn.onClick.AddListener(OnCloseClick);
-        _levelUpBtn.onClick.AddListener(OnLevelUpClick);
-        _soldierUpBtn.onClick.AddListener(OnSoldierUpClick);
-        _gradeUpBtn.onClick.AddListener(OnGradeUpClick);
+        HoldRepeatButton.Bind(_levelUpBtn, OnLevelUpClick);
+        HoldRepeatButton.Bind(_soldierUpBtn, OnSoldierUpClick);
+        HoldRepeatButton.Bind(_gradeUpBtn, OnGradeUpClick);
         _fireBtn.onClick.AddListener(OnFireClick);
         _gradeInfoBtn?.onClick.AddListener(ShowGradeTooltip);
 
@@ -175,6 +175,237 @@ public class HeroDetailPopup : PopupBase
         }
 
         SetupStatClickHandlers();
+        ConfigureLocalizedLayout();
+    }
+
+    RectTransform _localizedStats;
+    RectTransform _localizedSkills;
+
+    // Text height depends on the selected language, so size these regions at runtime.
+    void ConfigureLocalizedLayout()
+    {
+        // ⚠ 스탯 목록은 스크롤로 감싸지 않는다 (사용자 지시, 2026-10-02)
+        //   한 장에 다 보여야 장수끼리 비교가 된다. 높이는 LayoutStats 가 칸에 맞춰 나눈다.
+        var statViewport = (RectTransform)_hpText.transform.parent.parent;
+        _localizedStats = FillContent(statViewport);
+        foreach (var entry in _statRowEntries)
+        {
+            var row = (RectTransform)entry.ValueTmp.transform.parent;
+            row.SetParent(_localizedStats, false);
+            row.GetComponent<HorizontalLayoutGroup>().enabled = false;
+        }
+
+        var activeBox = (RectTransform)_activeSkillText.transform.parent;
+        var skillViewport = new GameObject("SkillViewport", typeof(RectTransform)).GetComponent<RectTransform>();
+        skillViewport.SetParent(activeBox.parent, false);
+        skillViewport.anchorMin = Vector2.zero;
+        skillViewport.anchorMax = Vector2.one;
+        skillViewport.offsetMin = new Vector2(12f, 12f);
+        skillViewport.offsetMax = new Vector2(-12f, -60f);
+        _localizedSkills = ScrollContent(skillViewport);
+        activeBox.SetParent(_localizedSkills, false);
+        foreach (var box in _passiveBoxes) box.transform.SetParent(_localizedSkills, false);
+
+        foreach (var button in new[] { _generalTabBtn, _soldierTabBtn })
+        {
+            var label = button.GetComponentInChildren<TextMeshProUGUI>();
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.enableAutoSizing = true;
+            label.fontSizeMin = UIScale.FontSm;
+            label.fontSizeMax = UIScale.FontMd;
+        }
+
+        _gradeBadge.rectTransform.sizeDelta = new Vector2(220f, UIScale.RowMd);
+        _gradeText.enableAutoSizing = true;
+        _gradeText.fontSizeMin = _gradeText.fontSizeMax = UIScale.FontSm;
+        _gradeText.textWrappingMode = TextWrappingModes.NoWrap;
+        _jobText.rectTransform.offsetMin = new Vector2(110f, _jobText.rectTransform.offsetMin.y);
+        _jobText.rectTransform.offsetMax = new Vector2(-240f, _jobText.rectTransform.offsetMax.y);
+        _jobText.enableAutoSizing = true;
+        _jobText.fontSizeMin = UIScale.FontSm;
+        _jobText.fontSizeMax = UIScale.FontMd;
+
+        // ── 헤더 한 줄: [이름] ··· [지휘력 안내] ··· [재화] [i][X] ──
+        //  ⚠ 지휘력 안내를 이름 '아래 줄' 로 내리지 않는다 (2026-10-02)
+        //    헤더(136) 맨 아래 y=110 에 전체 폭으로 깔았더니 헤더 경계와 겹쳐
+        //    본문 위로 글자가 걸쳤다. 처음 설계대로 이름 오른쪽 빈칸(HintX ~ 재화 바)에 둔다.
+        //    이름은 그 앞에서 끝나고, 둘 다 넘치면 줄어든다(긴 언어).
+        const float HintX = 480f, HintRight = 932f;   // HeroDetailPopupCreator: 재화 바 왼쪽 끝 = 932
+        foreach (var title in new[] { _nameText, _nameShadowText })
+        {
+            title.fontSize = UIScale.FontMd;
+            title.rectTransform.sizeDelta = new Vector2(HintX - 30f - 16f, UIScale.RowMd);
+            LocalizedText.FitLabel(title);
+        }
+        _commandHintText.transform.parent.Find("CommandHintMark").gameObject.SetActive(false);
+        var hint = _commandHintText.rectTransform;
+        hint.anchorMin = hint.anchorMax = new Vector2(0f, 1f);
+        hint.pivot     = new Vector2(0f, 1f);
+        hint.anchoredPosition = new Vector2(HintX, _nameText.rectTransform.anchoredPosition.y);
+        hint.sizeDelta = new Vector2(HintRight - HintX - 16f, UIScale.RowMd);
+        _commandHintText.overflowMode     = TextOverflowModes.Overflow;
+        _commandHintText.textWrappingMode = TextWrappingModes.NoWrap;
+        _commandHintText.enableAutoSizing = true;
+        _commandHintText.fontSizeMax = UIScale.FontSm;
+        _commandHintText.fontSizeMin = UIScale.FontSm * 0.6f;
+    }
+
+    /// <summary>스크롤 없이 칸을 그대로 채우는 컨테이너.</summary>
+    static RectTransform FillContent(RectTransform parent)
+    {
+        var content = new GameObject("Content", typeof(RectTransform)).GetComponent<RectTransform>();
+        content.SetParent(parent, false);
+        content.anchorMin = Vector2.zero;
+        content.anchorMax = Vector2.one;
+        content.offsetMin = content.offsetMax = Vector2.zero;
+        return content;
+    }
+
+    static RectTransform ScrollContent(RectTransform viewport)
+    {
+        viewport.gameObject.AddComponent<RectMask2D>();
+        var background = viewport.gameObject.AddComponent<Image>();
+        background.color = Color.clear;
+        var content = new GameObject("Content", typeof(RectTransform)).GetComponent<RectTransform>();
+        content.SetParent(viewport, false);
+        content.anchorMin = new Vector2(0f, 1f);
+        content.anchorMax = Vector2.one;
+        content.pivot = new Vector2(0.5f, 1f);
+        content.sizeDelta = Vector2.zero;
+        var scroll = viewport.gameObject.AddComponent<ScrollRect>();
+        scroll.viewport = viewport;
+        scroll.content = content;
+        scroll.horizontal = false;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+        scroll.scrollSensitivity = UIScale.RowMd;
+        return content;
+    }
+
+    void LateUpdate()
+    {
+        LayoutStats();
+
+        float y = LayoutSkill(_activeSkillText, _activeSkillDescText, 0f, UIScale.FontLg);
+        for (int i = 0; i < _passiveBoxes.Length; i++)
+            if (_passiveBoxes[i].activeSelf)
+                y = LayoutSkill(_passiveNameTexts[i], _passiveDescTexts[i], y, UIScale.FontMd);
+        _localizedSkills.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, y);
+    }
+
+    /// <summary>
+    /// 스탯 행을 칸 높이 안에 나눠 놓는다 — 스크롤 없음.
+    ///
+    ///   접힌 행    : 남는 높이를 똑같이 나눈다. 라벨·값은 한 줄, 긴 언어는 글자가 줄어든다.
+    ///   펼친 행    : 출처 내역(여러 줄)이 필요한 높이를 먼저 가져간다.
+    ///                나머지는 RowSm 까지만 줄고, 그래도 모자라면 내역 글자가 줄어든다.
+    ///
+    /// ⚠ 예전엔 행마다 글자를 줄바꿈해 높이를 늘리고 스크롤로 감쌌다 —
+    ///   언어에 따라 11줄이 한 화면에 안 들어와 아래 스탯을 보려면 내려야 했다.
+    /// </summary>
+    void LayoutStats()
+    {
+        float width  = _localizedStats.rect.width;
+        float avail  = _localizedStats.rect.height;
+        float labelW = width * 0.52f;
+        float valueX = labelW + 20f;
+        float valueW = width - valueX - 12f;
+
+        int active = 0;
+        RectTransform expandedRow = null;
+        for (int i = 0; i < _statRowEntries.Length; i++)
+        {
+            var row = (RectTransform)_statRowEntries[i].ValueTmp.transform.parent;
+            if (!row.gameObject.activeSelf) continue;
+            active++;
+            if (i == _expandedStatIndex) expandedRow = row;
+        }
+        if (active == 0) return;
+
+        float minRow = UIScale.RowSm;
+        float rowH   = Mathf.Max(minRow, avail / active);
+        float openH  = 0f;
+        if (expandedRow != null)
+        {
+            var v = _statRowEntries[_expandedStatIndex].ValueTmp;
+            float want = v.GetPreferredValues(v.text, valueW, Mathf.Infinity).y + 16f;
+            openH = Mathf.Clamp(want, rowH, avail - (active - 1) * minRow);
+            rowH  = Mathf.Max(minRow, (avail - openH) / (active - 1));
+        }
+
+        float y = 0f;
+        foreach (var entry in _statRowEntries)
+        {
+            var row = (RectTransform)entry.ValueTmp.transform.parent;
+            if (!row.gameObject.activeSelf) continue;
+
+            bool open = row == expandedRow;
+            float h = open ? openH : rowH;
+            PlaceRow(row, y, h);
+            y += h;
+
+            // [아이콘] 이름 ········ 값 — 아이콘은 접힌 행 높이에 맞춘 정사각, 행 위쪽 줄에 둔다
+            var icon  = (RectTransform)row.Find("Icon");
+            float iconSz = Mathf.Min(rowH - 8f, UIScale.RowMd);
+            icon.anchorMin = icon.anchorMax = new Vector2(0f, 1f);
+            icon.pivot     = new Vector2(0f, 0.5f);
+            icon.anchoredPosition = new Vector2(12f, -rowH * 0.5f);
+            icon.sizeDelta = new Vector2(iconSz, iconSz);
+            float labelX = icon.GetComponent<Image>().enabled ? 12f + iconSz + 10f : 12f;
+
+            FitLine(row.Find("Label").GetComponent<TextMeshProUGUI>(), labelX, labelW - (labelX - 12f), wrap: false);
+            FitLine(entry.ValueTmp, valueX, valueW, wrap: open);
+        }
+    }
+
+    // 행 높이를 채우는 글자 칸 — 넘치면 줄어든다 (FontSm 의 60% 까지)
+    static void FitLine(TextMeshProUGUI text, float x, float width, bool wrap)
+    {
+        text.enableAutoSizing = true;
+        text.fontSizeMax = UIScale.FontSm;
+        text.fontSizeMin = UIScale.FontSm * 0.6f;
+        text.textWrappingMode = wrap ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
+        text.overflowMode = TextOverflowModes.Overflow;
+        var rect = text.rectTransform;
+        rect.anchorMin = new Vector2(0f, 0f);
+        rect.anchorMax = new Vector2(0f, 1f);
+        rect.pivot     = new Vector2(0f, 0.5f);
+        rect.offsetMin = new Vector2(x, 4f);
+        rect.offsetMax = new Vector2(x + width, -4f);
+    }
+
+    float LayoutSkill(TextMeshProUGUI title, TextMeshProUGUI description, float y, float fontSize)
+    {
+        float left = title.rectTransform.offsetMin.x;
+        float width = _localizedSkills.rect.width - left - 20f;
+        float titleHeight = PlaceText(title, left, 12f, width, UIScale.Line(fontSize), fontSize);
+        float descHeight = PlaceText(description, left, 20f + titleHeight, width, UIScale.RowSm, UIScale.FontSm);
+        float height = Mathf.Max(152f, titleHeight + descHeight + 36f);
+        PlaceRow((RectTransform)title.transform.parent, y, height);
+        return y + height + 12f;
+    }
+
+    static void PlaceRow(RectTransform row, float y, float height)
+    {
+        row.anchorMin = new Vector2(0f, 1f);
+        row.anchorMax = Vector2.one;
+        row.pivot = new Vector2(0.5f, 1f);
+        row.anchoredPosition = new Vector2(0f, -y);
+        row.sizeDelta = new Vector2(0f, height);
+    }
+
+    static float PlaceText(TextMeshProUGUI text, float x, float y, float width, float minHeight, float fontSize)
+    {
+        text.enableAutoSizing = false;
+        text.fontSize = fontSize;
+        text.textWrappingMode = TextWrappingModes.Normal;
+        text.overflowMode = TextOverflowModes.Overflow;
+        float height = Mathf.Max(minHeight, text.GetPreferredValues(text.text, Mathf.Max(1f, width), Mathf.Infinity).y);
+        var rect = text.rectTransform;
+        rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
+        rect.pivot = new Vector2(0f, 1f);
+        rect.anchoredPosition = new Vector2(x, -y);
+        rect.sizeDelta = new Vector2(width, height);
+        return height;
     }
 
     protected override void OnAfterOpen()
@@ -214,7 +445,7 @@ public class HeroDetailPopup : PopupBase
         _gradeText.color   = Color.white;
         RefreshCommandHint();
         _nameText.text     = CodexMark.ForGeneral(_entry.UnitName);
-        if (_nameShadowText != null) _nameShadowText.text = _entry.UnitName;
+        if (_nameShadowText != null) _nameShadowText.text = LocalizationManager.Instance.Get(_entry.UnitName);
         _levelText.text    = $"Lv.{_entry.Level}";
         _jobText.text      = JobStyle.GetLabel(job);
 
@@ -235,8 +466,8 @@ public class HeroDetailPopup : PopupBase
 
         var activeId   = RareSkillArbiter.Resolve(entry.UnitName, job, activeDb, entry.Grade);
         var activeData = activeDb.Get(activeId);
-        _activeSkillText.text     = activeData?.SkillName   ?? "-";
-        _activeSkillDescText.text = activeData?.Description ?? "";
+        _activeSkillText.text     = activeData != null ? LocalizationManager.Instance.Get(activeData.SkillName) : "-";
+        _activeSkillDescText.text = activeData != null ? LocalizationManager.Instance.LocalizeText(activeData.Description) : "";
 
         // ⚠ 그림이 없을 때 어두운 색을 칠하지 않는다 (2026-08-26)
         //   아이콘 홈이 흰색 계열로 바뀌면서 그 색이 '어두운 사각형' 으로 또렷하게 보인다.
@@ -257,8 +488,8 @@ public class HeroDetailPopup : PopupBase
             if (!show) continue;
 
             var pd = passiveDb.Get(passives[i]);
-            _passiveNameTexts[i].text = pd?.SkillName   ?? "-";
-            _passiveDescTexts[i].text = pd?.Description ?? "";
+            _passiveNameTexts[i].text = pd != null ? LocalizationManager.Instance.Get(pd.SkillName) : "-";
+            _passiveDescTexts[i].text = pd != null ? LocalizationManager.Instance.LocalizeText(pd.Description) : "";
 
             // 이름을 '패시브' 색(초록)으로 — 스탯 창에서 초록으로 뜬 수치가
             // 어느 패시브에서 왔는지 색으로 이어진다.
@@ -435,13 +666,13 @@ public class HeroDetailPopup : PopupBase
             if (i > 0) sb.Append("<color=#808080> > </color>");
 
             string hex = ColorUtility.ToHtmlStringRGB(GradeStyle.GetColor(order[i]));
-            sb.Append($"<color=#{hex}>{GradeStyle.GetLabel(order[i])}</color>");
+            sb.Append($"<color=#{hex}>{LocalizationManager.Instance.Get(GradeStyle.GetLabel(order[i]))}</color>");
         }
 
         _gradeTooltip.ShowAnchored(
             _gradeInfoBtn.transform as RectTransform,
             "등급과 품질",
-            $"{sb}\n오른쪽으로 갈수록 기본 스탯이 높다.",
+            LocalizationManager.Instance.Format("{0}\n오른쪽으로 갈수록 기본 스탯이 높다.", sb.ToString()),
             "옆의 숫자는 품질(1~9)이다.\n같은 등급이라도 숫자가 클수록 스탯이 높다.");
     }
 
@@ -464,7 +695,8 @@ public class HeroDetailPopup : PopupBase
 
         // ⚠ 화살표(→ U+2192)를 쓰지 않는다 — 폰트에 없어서 □ 로 뜬다 (UI 규칙 2)
         //   폰트에 있는 › (U+203A) 로 대신한다. 앞의 ※ 는 도형으로 그려 뒀다.
-        _commandHintText.text = $"지휘력 +1 › 용병 스탯 +{perCmd * 100f:0.#}%";
+        _commandHintText.text = LocalizationManager.Instance.Format(
+            "지휘력 +1 › 용병 스탯 +{0:0.#}%", perCmd * 100f);
     }
 
     /// <summary>
@@ -556,6 +788,12 @@ public class HeroDetailPopup : PopupBase
 
             int idx = i;
             rowGo.GetComponent<Button>().onClick.AddListener(() => ToggleStatRow(idx));
+
+            // 스탯 아이콘 — 이 목록이 다른 화면의 '아이콘만 있는 스탯' 의 범례다.
+            //  그림이 아직 없는 스탯(Codex 대기)은 아이콘 칸을 끄고 라벨만 보인다.
+            var icon = rowGo.transform.Find("Icon").GetComponent<Image>();
+            icon.sprite  = SpriteManager.Instance.Get(StatIcon.Key(type));
+            icon.enabled = icon.sprite != null;
 
             _statRowEntries[i] = new StatRowEntry { ValueTmp = tmp, Type = type };
         }

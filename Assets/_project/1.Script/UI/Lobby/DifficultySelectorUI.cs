@@ -32,7 +32,8 @@ public class DifficultySelectorUI : MonoBehaviour
     [SerializeField] Image           _tierIcon;
     [SerializeField] TextMeshProUGUI _tierLabel;
     [SerializeField] TextMeshProUGUI _summaryLabel;   // 요약 설명
-    [SerializeField] TextMeshProUGUI _rewardLabel;    // 환생 포인트 배율
+    [SerializeField] TextMeshProUGUI _rewardLabel;    // 환생 포인트 배율 "×1.4"
+    [SerializeField] TextMeshProUGUI _rewardDescLabel; // 배율 풀이 (없으면 생략)
     [SerializeField] TextMeshProUGUI _lockLabel;      // 잠김/런중 안내
     [SerializeField] TextMeshProUGUI _noDebuffLabel;  // 제약 없을 때 "없음"
     [SerializeField] Button          _prevBtn;
@@ -89,7 +90,7 @@ public class DifficultySelectorUI : MonoBehaviour
 
         if (_tierLabel != null)
         {
-            _tierLabel.text  = tier.Label();
+            _tierLabel.text  = LocalizationManager.Instance.Get(tier.Label());
             _tierLabel.color = col;
         }
 
@@ -102,7 +103,7 @@ public class DifficultySelectorUI : MonoBehaviour
 
         if (_summaryLabel != null)
         {
-            _summaryLabel.text  = tier.Summary();
+            _summaryLabel.text  = LocalizationManager.Instance.Get(tier.Summary());
             _summaryLabel.color = new Color(0.72f, 0.76f, 0.86f);
         }
 
@@ -125,11 +126,17 @@ public class DifficultySelectorUI : MonoBehaviour
         if (_rewardLabel != null)
         {
             float mul = entry?.ReincarnationMultiplier ?? 1f;
-            _rewardLabel.text = $"환생 포인트  ×{mul:0.0#}";
+            // "보상 배율" 제목은 프리팹에 따로 있다 — 여기는 수치만
+            _rewardLabel.text = $"×{mul:0.0#}";
             // 배율이 1이면 보상이 없다는 뜻이라 강조하지 않는다
             _rewardLabel.color = mul > 1.001f
-                ? new Color(0.45f, 0.86f, 0.62f)
-                : new Color(0.45f, 0.48f, 0.58f);
+                ? new Color(1.00f, 0.73f, 0.20f)
+                : new Color(0.82f, 0.64f, 0.30f);
+
+            if (_rewardDescLabel != null)
+                _rewardDescLabel.text = mul > 1.001f
+                    ? LocalizationManager.Instance.Format("환생 포인트 {0:0}% 추가 획득", (mul - 1f) * 100f)
+                    : LocalizationManager.Instance.Get("기본 보상을 획득합니다");
         }
 
         RefreshDebuffIcons(entry);
@@ -148,7 +155,9 @@ public class DifficultySelectorUI : MonoBehaviour
             else if (atMax && data.MaxSelectableIndex < TierColors.Length - 1)
             {
                 var nextTier = (DifficultyTier)(data.MaxSelectableIndex + 1);
-                _lockLabel.text = $"{tier.Label()} 완주 시 {nextTier.Label()} 해금";
+                var localization = LocalizationManager.Instance;
+                _lockLabel.text = localization.Format("{0} 완주 시 {1} 해금",
+                    localization.Get(tier.Label()), localization.Get(nextTier.Label()));
                 _lockLabel.gameObject.SetActive(true);
             }
             else

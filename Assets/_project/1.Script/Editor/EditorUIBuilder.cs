@@ -49,6 +49,26 @@ public static class EditorUIBuilder
         => Panel(parent, name, color).GetComponent<Image>();
 
     /// <summary>
+    /// 단색 외곽선과 안쪽 면으로 만든 저비용 패널.
+    /// Outline 효과나 런타임 머티리얼을 쓰지 않아 정적 UI 배칭을 방해하지 않는다.
+    /// </summary>
+    public static GameObject FramedPanel(GameObject parent, string name, Color face,
+                                         Color border, float thickness = 4f)
+    {
+        var root = Panel(parent, name, border);
+        root.GetComponent<Image>().raycastTarget = false;
+
+        var inner = Panel(root, "Face", face);
+        inner.GetComponent<Image>().raycastTarget = false;
+        var rt = inner.GetComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = new Vector2(thickness, thickness);
+        rt.offsetMax = new Vector2(-thickness, -thickness);
+        return root;
+    }
+
+    /// <summary>
     /// TextMeshProUGUI 생성. center=false 면 alignment 를 건드리지 않는다
     /// (TMP 기본값 TopLeft 유지 — DisassemblePopup 등이 이 동작에 의존).
     /// </summary>
@@ -62,6 +82,7 @@ public static class EditorUIBuilder
         tmp.fontSize  = size;
         tmp.fontStyle = style;
         tmp.color     = Color.white;
+        go.AddComponent<LocalizedText>();
         if (center) tmp.alignment = TextAlignmentOptions.Center;
         return tmp;
     }
@@ -84,6 +105,7 @@ public static class EditorUIBuilder
         tmp.fontStyle = boldLabel ? FontStyles.Bold : FontStyles.Normal;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color     = Color.white;
+        labelGo.AddComponent<LocalizedText>();
         return go;
     }
 
@@ -244,20 +266,7 @@ public static class EditorUIBuilder
     public static Button RaisedBtnOn(GameObject root, Color face,
                                      out GameObject body, float lift = BtnLift)
     {
-        var shadow = Go("Shadow", root);
-        var shImg = shadow.AddComponent<Image>();
-        shImg.color         = Color.Lerp(face, Color.black, 0.82f);
-        shImg.raycastTarget = false;
-        Stretch(shadow);
-
-        body = Go("Body", root);
-        body.AddComponent<Image>().color = face;
-        var bRt = body.GetComponent<RectTransform>();
-        bRt.anchorMin = new Vector2(0f, 0f);   bRt.anchorMax = new Vector2(1f, 1f);
-        bRt.offsetMin = new Vector2(0f, lift); bRt.offsetMax = Vector2.zero;
-
-        BtnEdge(body, "TopEdge",    Color.Lerp(face, Color.white, 0.30f), true,  2f);
-        BtnEdge(body, "BottomEdge", Color.Lerp(face, Color.black, 0.45f), false, 4f);
+        RaisedSurface(root, face, out body, lift);
 
         var btn = root.AddComponent<Button>();
         btn.targetGraphic = body.GetComponent<Image>();
@@ -272,6 +281,25 @@ public static class EditorUIBuilder
         return btn;
     }
 
+    static void RaisedSurface(GameObject root, Color face,
+                              out GameObject body, float lift = BtnLift)
+    {
+        var shadow = Go("Shadow", root);
+        var shImg = shadow.AddComponent<Image>();
+        shImg.color         = Color.Lerp(face, Color.black, 0.82f);
+        shImg.raycastTarget = false;
+        Stretch(shadow);
+
+        body = Go("Body", root);
+        body.AddComponent<Image>().color = face;
+        var bRt = body.GetComponent<RectTransform>();
+        bRt.anchorMin = new Vector2(0f, 0f);   bRt.anchorMax = new Vector2(1f, 1f);
+        bRt.offsetMin = new Vector2(0f, lift); bRt.offsetMax = Vector2.zero;
+
+        BtnEdge(body, "TopEdge",    Color.Lerp(face, Color.white, 0.30f), true,  2f);
+        BtnEdge(body, "BottomEdge", Color.Lerp(face, Color.black, 0.45f), false, 4f);
+    }
+
     /// <summary>가운데 라벨이 있는 입체 버튼.</summary>
     public static Button RaisedTextBtn(GameObject parent, string name, string label,
                                        float fontSize, Color face, float lift = BtnLift)
@@ -282,6 +310,247 @@ public static class EditorUIBuilder
         tmp.raycastTarget = false;
         Stretch(tmp.gameObject);
         return btn;
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  PixelTheme — 짙은 남색 · 왕실 파랑 · 골드 도트 스킨
+    // ══════════════════════════════════════════════════════════
+    //  에셋: Assets/_project/3.Textures/UI/PixelTheme/ (README.md 에 파일별 용도)
+    //  제작 의뢰서: Docs/ImageSpecs/PixelTheme_UI.md
+    //
+    //  ■ 버튼 스프라이트는 음각이 그림에 들어 있다 (UI 규칙 1 충족)
+    //    아래 그림자·위 하이라이트가 이미 그려져 있으니 RaisedSurface 를 덧대지 않는다.
+    //    구조는 RaisedBtn 과 같게 Root(Button) → Body(Image) 로 둔다 —
+    //    라벨·아이콘은 반드시 body 아래에 넣는다.
+    //
+    //  ■ borderScale — 9-slice 모서리를 몇 배로 그릴지
+    //    원본 모서리는 44px 안팎이라 88px 짜리 버튼에 그대로 쓰면 가운데가 없다.
+    //    작은 칸은 0.6~0.7 로 줄인다 (pixelsPerUnitMultiplier 의 역수).
+
+    public const string PixelThemeDir = "Assets/_project/3.Textures/UI/PixelTheme/";
+
+    /// <summary>
+    /// 경로의 첫 스프라이트. 없으면 null.
+    /// ⚠ LoadAssetAtPath&lt;Sprite&gt; 를 쓰지 않는다 — PixelTheme 은 Multiple 모드(서브 스프라이트 _0)다.
+    /// </summary>
+    public static Sprite FindSprite(string path)
+    {
+        foreach (var o in AssetDatabase.LoadAllAssetsAtPath(path))
+            if (o is Sprite s) return s;
+        return null;
+    }
+
+    /// <summary>PixelTheme 스프라이트. 없으면 터진다 — 필수 스킨이다.</summary>
+    public static Sprite PixelSprite(string file)
+    {
+        var path = PixelThemeDir + file + ".png";
+        return FindSprite(path)
+            ?? throw new InvalidOperationException($"[PixelTheme] 스프라이트 없음: {path}");
+    }
+
+    /// <summary>PixelTheme 이미지. border 가 있으면 Sliced, 없으면 Simple.</summary>
+    public static Image PixelImage(GameObject parent, string name, string file, float borderScale = 1f)
+    {
+        var img = Img(parent, name, Color.white);
+        img.sprite = PixelSprite(file);
+        img.type   = img.sprite.border == Vector4.zero ? Image.Type.Simple : Image.Type.Sliced;
+        img.pixelsPerUnitMultiplier = 1f / borderScale;
+        img.raycastTarget = false;
+        return img;
+    }
+
+    public static Button PixelBtn(GameObject parent, string name, string file,
+                                  out GameObject body, float borderScale = 1f)
+        => PixelBtnOn(Go(name, parent), file, out body, borderScale);
+
+    /// <summary>
+    /// 스프라이트 버튼. Body 의 Image.color 로 같은 판을 어둡게 칠할 수 있다
+    /// (눌림 색은 그 위에 곱해진다).
+    /// </summary>
+    public static Button PixelBtnOn(GameObject root, string file,
+                                    out GameObject body, float borderScale = 1f)
+    {
+        var img = PixelImage(root, "Body", file, borderScale);
+        img.raycastTarget = true;
+        Stretch(img.gameObject);
+        body = img.gameObject;
+
+        var btn = root.AddComponent<Button>();
+        btn.targetGraphic = img;
+        var cb = btn.colors;
+        cb.normalColor      = Color.white;
+        cb.highlightedColor = Color.white;
+        cb.pressedColor     = new Color(0.68f, 0.68f, 0.74f, 1f);
+        cb.selectedColor    = Color.white;
+        cb.disabledColor    = new Color(0.42f, 0.42f, 0.48f, 1f);
+        cb.fadeDuration     = 0.08f;
+        btn.colors = cb;
+        return btn;
+    }
+
+    /// <summary>
+    /// 스탯 아이콘 이미지 (Icons/Stats/{StatIcon.Key}.png) — 라벨 글자 대신 쓴다.
+    /// 그림이 아직 없으면(Codex 대기) 스프라이트가 비고 칸만 남는다 — 그림이 들어오면 다시 굽기만 하면 된다.
+    /// 무슨 스탯인지는 HeroDetailPopup 스탯 목록이 [아이콘 + 이름] 으로 알려 준다.
+    /// </summary>
+    public static Image StatIconImg(GameObject parent, string name, StatType stat, float size)
+    {
+        var img = Img(parent, name, Color.white);
+        img.sprite = FindSprite($"Assets/_project/3.Textures/Icons/Stats/{StatIcon.Key(stat)}.png");
+        img.preserveAspect = true;
+        img.raycastTarget  = false;
+        img.enabled        = img.sprite != null;
+        img.rectTransform.sizeDelta = new Vector2(size, size);
+        return img;
+    }
+
+    /// <summary>
+    /// PixelTheme 화면의 'i' 도움말 버튼 — 금테 사각 판 + 상아색 굵은 i.
+    /// 위치는 호출한 쪽이 잡는다 (크기만 정한다).
+    ///
+    /// ⚠ InfoBtn(평면 파란 RaisedBtn)을 PixelTheme 화면에 쓰지 않는다
+    ///   주변이 전부 도트 금테인데 혼자 평평한 사각이라 '구식' 으로 튀었다 (2026-10-02).
+    /// </summary>
+    public static Button PixelInfoBtn(GameObject parent, TutorialId tutorialId, float size)
+    {
+        var btn = PixelBtn(parent, "InfoBtn", "ui_button_square_9slice", out var body, size / 120f);
+        btn.GetComponent<RectTransform>().sizeDelta = new Vector2(size, size);
+
+        var label = TMP(body, "Mark", "i", size * 0.62f, FontStyles.Bold);
+        label.color         = new Color(0.96f, 0.91f, 0.76f, 1f);   // 상아 — 판의 금테와 같은 계열
+        label.raycastTarget = false;
+        Stretch(label.gameObject);
+
+        btn.gameObject.AddComponent<TutorialInfoButton>().SetTutorial(tutorialId);
+        return btn;
+    }
+
+    /// <summary>왼쪽 라벨과 오른쪽 입체 TMP 드롭다운으로 구성된 설정 행.</summary>
+    public static TMP_Dropdown LabeledDropdown(
+        GameObject parent, string name, string label, float yFromTop, float height,
+        float sidePad, float dropdownWidth = 480f)
+    {
+        var row = Panel(parent, name, Pop.SlotBg);
+        AnchorTop(row.GetComponent<RectTransform>(), yFromTop, height, sidePad * 2f);
+
+        var rowLabel = TMP(row, "Label", label, UIScale.FontSm, FontStyles.Bold);
+        rowLabel.color            = Color.white;
+        rowLabel.alignment        = TextAlignmentOptions.MidlineLeft;
+        rowLabel.raycastTarget    = false;
+        rowLabel.textWrappingMode = TextWrappingModes.NoWrap;
+        rowLabel.overflowMode     = TextOverflowModes.Ellipsis;
+        var labelRt = rowLabel.rectTransform;
+        labelRt.anchorMin = Vector2.zero;
+        labelRt.anchorMax = Vector2.one;
+        labelRt.offsetMin = new Vector2(28f, 0f);
+        labelRt.offsetMax = new Vector2(-(dropdownWidth + 40f), 0f);
+
+        var resources = new TMP_DefaultControls.Resources
+        {
+            standard   = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd"),
+            background = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Background.psd"),
+            inputField = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/InputFieldBackground.psd"),
+            knob       = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd"),
+            checkmark  = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Checkmark.psd"),
+            dropdown   = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/DropdownArrow.psd"),
+            mask       = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UIMask.psd"),
+        };
+
+        GameObject dropdownGo = TMP_DefaultControls.CreateDropdown(resources);
+        dropdownGo.name = "Dropdown";
+        dropdownGo.transform.SetParent(row.transform, false);
+        var dropdownRt = dropdownGo.GetComponent<RectTransform>();
+        dropdownRt.anchorMin = dropdownRt.anchorMax = new Vector2(1f, 0.5f);
+        dropdownRt.pivot = new Vector2(1f, 0.5f);
+        dropdownRt.anchoredPosition = Vector2.zero;
+        dropdownRt.sizeDelta = new Vector2(dropdownWidth, height);
+
+        var dropdown = dropdownGo.GetComponent<TMP_Dropdown>();
+        var rootImage = dropdownGo.GetComponent<Image>();
+        rootImage.color = Color.clear;
+        rootImage.raycastTarget = false;
+
+        Color face = new(0.18f, 0.34f, 0.58f, 1f);
+        RaisedSurface(dropdownGo, face, out var body);
+        body.transform.parent.Find("Shadow").SetSiblingIndex(0);
+        body.transform.SetSiblingIndex(1);
+        dropdown.targetGraphic = body.GetComponent<Image>();
+        var colors = dropdown.colors;
+        colors.normalColor      = Color.white;
+        colors.highlightedColor = TintFor(Color.Lerp(face, Color.white, 0.14f), face);
+        colors.pressedColor     = TintFor(Color.Lerp(face, Color.black, 0.28f), face);
+        colors.selectedColor    = Color.white;
+        colors.disabledColor    = TintFor(Color.Lerp(face, Color.black, 0.45f), face);
+        colors.fadeDuration     = 0.08f;
+        dropdown.colors = colors;
+
+        dropdown.captionText.fontSize          = UIScale.FontSm;
+        dropdown.captionText.fontStyle         = FontStyles.Bold;
+        dropdown.captionText.color             = Color.white;
+        dropdown.captionText.alignment         = TextAlignmentOptions.MidlineLeft;
+        dropdown.captionText.raycastTarget     = false;
+        dropdown.captionText.textWrappingMode  = TextWrappingModes.NoWrap;
+        dropdown.captionText.overflowMode      = TextOverflowModes.Ellipsis;
+        var captionRt = dropdown.captionText.rectTransform;
+        captionRt.offsetMin = new Vector2(20f, 0f);
+        captionRt.offsetMax = new Vector2(-58f, 0f);
+
+        var arrow = dropdownGo.transform.Find("Arrow").GetComponent<Image>();
+        arrow.color = Color.white;
+        arrow.raycastTarget = false;
+        arrow.rectTransform.sizeDelta = new Vector2(28f, 18f);
+        arrow.rectTransform.anchoredPosition = new Vector2(-22f, 0f);
+
+        // ⚠ 목록 칸은 RowMd 다 — RowSm 으로는 **한자·가나가 통째로 사라진다**
+        //   UIScale.Line 의 "폰트 × 1.25" 는 라틴·한글 기준이다. 한자·가나는 글자 상자를
+        //   꽉 채워 그보다 높다 — FontSm(34) 에 RowSm(43) 을 주면 그 줄만 잘린다.
+        //
+        //   ⚠ 증상이 지독하다 — 잘린 줄이 **빈칸**으로 보여 "폰트에 그 글자가 없다" 로 읽힌다.
+        //     캡션 줄은 칸이 넉넉해 멀쩡히 나오므로 더 헷갈린다.
+        //   ⚠ 라벨만 위아래로 넓혀서 때우지 말 것 — 칸 밖으로 넘쳐 위아래 줄과 겹친다.
+        //   ⚠ 글자를 FontMd 이상으로 올리면 이 값도 함께 올릴 것 (RowLg).
+        float itemH = UIScale.RowMd;
+
+        var template = dropdown.template;
+        template.sizeDelta = new Vector2(0f, itemH * 6f);
+        template.GetComponent<Image>().color = Pop.PanelBg;
+
+        var item = template.Find("Viewport/Content/Item").GetComponent<RectTransform>();
+        item.sizeDelta = new Vector2(0f, itemH);
+        var content = item.parent.GetComponent<RectTransform>();
+        content.sizeDelta = new Vector2(0f, itemH);
+
+        dropdown.itemText.fontSize         = UIScale.FontSm;
+        dropdown.itemText.fontStyle        = FontStyles.Normal;
+        dropdown.itemText.color            = Color.white;
+        dropdown.itemText.alignment        = TextAlignmentOptions.MidlineLeft;
+        dropdown.itemText.raycastTarget    = false;
+        dropdown.itemText.textWrappingMode = TextWrappingModes.NoWrap;
+        dropdown.itemText.overflowMode     = TextOverflowModes.Ellipsis;
+        dropdown.itemText.rectTransform.offsetMin = new Vector2(44f, 0f);
+        dropdown.itemText.rectTransform.offsetMax = new Vector2(-10f, 0f);
+
+        var toggle = item.GetComponent<Toggle>();
+        var itemBackground = toggle.targetGraphic.GetComponent<Image>();
+        itemBackground.color = Color.white;
+        var itemColors = toggle.colors;
+        itemColors.normalColor      = Pop.SlotBg;
+        itemColors.highlightedColor = new Color(0.20f, 0.30f, 0.50f, 1f);
+        itemColors.pressedColor     = new Color(0.12f, 0.20f, 0.36f, 1f);
+        itemColors.selectedColor    = new Color(0.18f, 0.34f, 0.58f, 1f);
+        toggle.colors = itemColors;
+        toggle.graphic.GetComponent<Image>().color = new Color(0.50f, 0.82f, 1f, 1f);
+
+        var checkmarkRt = toggle.graphic.rectTransform;
+        checkmarkRt.sizeDelta = new Vector2(26f, 26f);
+        checkmarkRt.anchoredPosition = new Vector2(18f, 0f);
+
+        var scrollbar = template.Find("Scrollbar").GetComponent<Scrollbar>();
+        scrollbar.GetComponent<Image>().color = new Color(0.08f, 0.10f, 0.18f, 1f);
+        scrollbar.targetGraphic.color = new Color(0.32f, 0.52f, 0.80f, 1f);
+
+        dropdown.ClearOptions();
+        return dropdown;
     }
 
     static void BtnEdge(GameObject parent, string name, Color color, bool top, float thickness)
@@ -451,6 +720,29 @@ public static class EditorUIBuilder
         float t = Mathf.Max(3f, size * 0.13f);
         Bar(root, "A", size * 0.92f, t,  45f, Vector2.zero, color);
         Bar(root, "B", size * 0.92f, t, -45f, Vector2.zero, color);
+        return root;
+    }
+
+    /// <summary>설정 슬라이더 표시. 폰트 기호 대신 막대와 손잡이로 그린다.</summary>
+    public static GameObject SlidersMark(GameObject parent, string name, float size, Color color)
+    {
+        var root = Go(name, parent);
+        root.GetComponent<RectTransform>().sizeDelta = new Vector2(size, size);
+
+        float thickness = Mathf.Max(3f, size * 0.09f);
+        float[] y = { size * 0.28f, 0f, -size * 0.28f };
+        float[] x = { -size * 0.18f, size * 0.20f, -size * 0.04f };
+        for (int i = 0; i < 3; i++)
+        {
+            Bar(root, $"Line{i}", size * 0.82f, thickness, 0f, new Vector2(0f, y[i]), color);
+            var knob = Img(root, $"Knob{i}", color);
+            knob.raycastTarget = false;
+            var rt = knob.rectTransform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = new Vector2(x[i], y[i]);
+            rt.sizeDelta = new Vector2(thickness * 2.4f, thickness * 2.4f);
+        }
         return root;
     }
 

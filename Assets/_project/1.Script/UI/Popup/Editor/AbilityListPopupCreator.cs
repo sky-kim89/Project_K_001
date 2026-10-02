@@ -90,6 +90,7 @@ public static class AbilityListPopupCreator
         Directory.CreateDirectory(Path.GetDirectoryName(PrefabPath));
 
         var root = Build();
+        PixelSkin.Apply(root);
         PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
         Object.DestroyImmediate(root);
 

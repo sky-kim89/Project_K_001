@@ -49,6 +49,7 @@ public static class TopBarCreator
     public static void Create()
     {
         var go = Build(null);
+        PixelSkin.Apply(go);
         PrefabUtility.SaveAsPrefabAsset(go, PrefabPath);
         Object.DestroyImmediate(go);
         AssetDatabase.Refresh();

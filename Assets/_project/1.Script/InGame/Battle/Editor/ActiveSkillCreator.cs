@@ -3,7 +3,7 @@ using UnityEditor;
 
 // ============================================================
 //  ActiveSkillCreator.cs  [Editor Only]
-//  액티브 스킬 SO 20종 + ActiveSkillDatabase 자동 생성 도구.
+//  액티브 스킬 SO 34종 + ActiveSkillDatabase 자동 생성 도구.
 //
 //  사용법:
 //    Unity 메뉴 → BattleGame → 데이터 생성 → 액티브 스킬 전체 생성
@@ -599,23 +599,24 @@ public static class ActiveSkillCreator
         EditorUtility.SetDirty(bossCharge);
 
         // ── ㉜ 분쇄 강타 (보스 전용 패턴) ────────────────────
-        //  돌진과 정반대로 잡았다 — 제자리 / 넓은 원 / 위로 띄운다.
-        //  둘 다 "달려와서 때린다" 면 패턴을 두 개 만든 의미가 없다.
+        //  타겟 위치까지 높이 날아가 넓은 착지 충격을 준다.
         var bossSlam = Make<ActiveBossSlam>(db,
             id          : ActiveSkillId.BossSlam,
             fileName    : "Active_BossSlam",
             skillName   : "분쇄 강타",
-            description : "도약해 내려찍으며 발밑을 분쇄한다. 반경 7 안의 적에게 " +
+            description : "타겟 위치로 높이 도약해 내려찍는다. 반경 7 안의 적에게 " +
                           "공격력 350% 피해와 강한 넉백. 가장자리는 피해가 줄어든다.",
             cooldown    : 13f,
             effectValue : 1f,
             radius      : 7f,
             duration    : 0f,
             jobs        : new UnitJob[0]);
-        bossSlam.WindupTime       = 0.8f;
-        bossSlam.JumpHeight       = 2.2f;
-        bossSlam.SlamTime         = 0.22f;
+        bossSlam.WindupTime       = 0.6f;
+        bossSlam.JumpHeight       = 3.2f;
+        bossSlam.SlamTime         = 0.65f;
         bossSlam.RecoverTime      = 0.5f;
+        bossSlam.LeapToTarget     = true;
+        bossSlam.MaxLeapDistance  = 9f;
         bossSlam.DamageMultiplier = 3.5f;
         bossSlam.SlamRadius       = 7f;
         bossSlam.KnockbackMult    = 9f;
@@ -641,6 +642,33 @@ public static class ActiveSkillCreator
         bossEnrage.MaxSizeStacks    = 10;    // 몸집만 2배에서 멈춘다 (공격력·관통은 계속)
         bossEnrage.CasterEffectKey  = "FX_Berserk";
         EditorUtility.SetDirty(bossEnrage);
+
+        // ── ㉞ 도약 충격파 (보스 전용 · 난이도 1~4) ─────────
+        //  제자리에서 낮게 뛰는 착지기. 5단계에서는 분쇄 강타로 교체된다.
+        var bossJumpShockwave = Make<ActiveBossSlam>(db,
+            id          : ActiveSkillId.BossJumpShockwave,
+            fileName    : "Active_BossJumpShockwave",
+            skillName   : "도약 충격파",
+            description : "제자리에서 짧게 도약한 뒤 착지 충격파를 일으킨다. 반경 4.5 안의 " +
+                          "적에게 공격력 180% 피해와 넉백을 준다.",
+            cooldown    : 9f,
+            effectValue : 1f,
+            radius      : 4.5f,
+            duration    : 0f,
+            jobs        : new UnitJob[0]);
+        bossJumpShockwave.WindupTime       = 0.35f;
+        bossJumpShockwave.JumpHeight       = 1.1f;
+        bossJumpShockwave.SlamTime         = 0.3f;
+        bossJumpShockwave.RecoverTime      = 0.35f;
+        bossJumpShockwave.LeapToTarget     = false;
+        bossJumpShockwave.MaxLeapDistance  = 0f;
+        bossJumpShockwave.DamageMultiplier = 1.8f;
+        bossJumpShockwave.SlamRadius       = 4.5f;
+        bossJumpShockwave.KnockbackMult    = 6f;
+        bossJumpShockwave.BaseEffectKey    = "FX_BossJumpShockwave_Lift";
+        bossJumpShockwave.CasterEffectKey  = "FX_BossJumpShockwave_Impact";
+        bossJumpShockwave.TargetEffectKey  = "FX_BossJumpShockwave_Hit";
+        EditorUtility.SetDirty(bossJumpShockwave);
 
         // ── 저장 ─────────────────────────────────────────────
         EditorUtility.SetDirty(db);
@@ -682,9 +710,27 @@ public static class ActiveSkillCreator
         so.EffectRadius   = radius;
         so.EffectDuration = duration;
         so.AllowedJobs    = jobs;
+        so.SkillSfx       = (SfxKey)(100 + (int)id);
+        so.SkillSfxDelay  = ImpactDelay(id);
 
         EditorUtility.SetDirty(so);
         db.Entries.Add(so);
         return so;
     }
+
+    // 예고/집중 뒤 결정타가 나는 스킬만 판정 시점까지 늦춘다.
+    // 이동 거리에 따라 달라지는 돌진형은 시전음을 바로 내고, 실제 이동음은 이펙트가 맡는다.
+    static float ImpactDelay(ActiveSkillId id) => id switch
+    {
+        ActiveSkillId.Meteor            => 1.5f,
+        ActiveSkillId.Bisect            => 2.35f,
+        ActiveSkillId.ArrowStorm        => 0.35f,
+        ActiveSkillId.GravityCollapse   => 2.5f,
+        ActiveSkillId.BloodPrice        => 0.3f,
+        ActiveSkillId.Gravestone        => 0.5f,
+        ActiveSkillId.BossCharge        => 0.45f,
+        ActiveSkillId.BossSlam          => 1.25f,
+        ActiveSkillId.BossJumpShockwave => 0.65f,
+        _                               => 0f,
+    };
 }

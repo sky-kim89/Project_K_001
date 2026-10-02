@@ -17,7 +17,8 @@ public class GeneralCandidateCardUI : MonoBehaviour
     [SerializeField] Image                _portraitImage;
     [SerializeField] UnitAppearanceBridge _portraitBridge;
     [SerializeField] TextMeshProUGUI      _nameText;
-    [SerializeField] TextMeshProUGUI      _jobChipText;    // 초상화 좌상단 배지
+    [SerializeField] Image                _jobIcon;        // 머리 줄 직업 아이콘
+    [SerializeField] TextMeshProUGUI      _jobChipText;    // 머리 줄 직업 이름
     [SerializeField] TextMeshProUGUI      _gradeChipText;  // 초상화 우상단 배지
     [SerializeField] TextMeshProUGUI      _hpText;
     [SerializeField] TextMeshProUGUI      _atkText;
@@ -60,6 +61,7 @@ public class GeneralCandidateCardUI : MonoBehaviour
         // 도감 미등록이면 이름 옆에 NEW — 이 카드는 장수 선택·용병 고용·상점이 함께 쓴다
         if (_nameText      != null) _nameText.text      = CodexMark.ForGeneral(entry.UnitName);
         if (_jobChipText   != null) _jobChipText.text   = JobStyle.GetLabel(job);
+        if (_jobIcon       != null) _jobIcon.sprite     = SpriteManager.Instance.Get(JobStyle.IconKey(job));
         if (_gradeChipText != null)
         {
             _gradeChipText.text  = GradeStyle.GetLabelWithQuality(entry.Grade, entry.UnitName);
@@ -69,7 +71,7 @@ public class GeneralCandidateCardUI : MonoBehaviour
         if (_hpText      != null) { _hpText.text      = $"{result.Total(StatType.MaxHp):N0}";                                           _hpText.color      = StatColors.Hp;      }
         if (_atkText     != null) { _atkText.text      = $"{result.Total(StatType.Attack):N0}";                                          _atkText.color     = StatColors.Atk;     }
         if (_defText     != null) { _defText.text      = $"{StatDisplayHelper.EffectiveDefensePct(result.Total(StatType.Defense)):F1}%"; _defText.color     = StatColors.Def;     }
-        if (_soldierText != null) { _soldierText.text  = $"{Mathf.RoundToInt(result.Total(StatType.SoldierCount))}명";                  _soldierText.color = StatColors.Soldier; }
+        if (_soldierText != null) { _soldierText.text  = Mathf.RoundToInt(result.Total(StatType.SoldierCount)).ToString(); _soldierText.color = StatColors.Soldier; }
 
         if (_selectBtn != null)
         {
@@ -129,7 +131,7 @@ public class GeneralCandidateCardUI : MonoBehaviour
         }
 
         if (_passiveSlotText != null)
-            _passiveSlotText.text = $"패시브 {slots}/{_passiveSkillIcons.Length}";
+            _passiveSlotText.text = LocalizationManager.Instance.Format("패시브 {0}/{1}", slots, _passiveSkillIcons.Length);
     }
 
     public void SetSelected(bool selected)

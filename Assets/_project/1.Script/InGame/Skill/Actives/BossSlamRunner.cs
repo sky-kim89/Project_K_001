@@ -7,19 +7,18 @@ using BattleGame.Units;
 
 // ============================================================
 //  BossSlamRunner.cs
-//  분쇄 강타 연출. 예고(팔 들기) → 도약 → 내려찍기 → 경직.
+//  분쇄 강타·도약 충격파 연출. 예고 → 포물선 도약 → 착지 → 경직.
 //
-//  ■ 도약을 y 오프셋으로만 처리한다
-//    보스 위치를 실제로 옮기면 SkillCastLock 이 풀린 뒤 이동 잡이
-//    공중에 뜬 좌표에서 이어받아 어색해진다. 시작 위치를 기억해 두고
-//    y 만 얹었다가 착지 때 정확히 되돌린다.
+//  ■ 같은 실행기로 이동형·제자리형을 나눈다
+//    BossSlam 은 타겟 위치까지 높게 날아가고, BossJumpShockwave 는
+//    시작 위치에서 낮게 뛴다. 착지 위치와 높이는 SO 가 결정한다.
 //
 //  ■ 피해는 착지 프레임에 한 번만
 //    돌진과 달리 경로가 없어 프레임마다 훑을 이유가 없다.
 //
 //  ⚠ EntityLink.SyncPosition 을 꺼야 도약이 보인다
 //    평소엔 EntityLink 가 매 프레임 ECS → GameObject 로 위치를 덮어쓴다.
-//    도약은 ECS 좌표를 바꾸지 않는 '보여주기용 y' 라 반드시 꺼야 한다.
+//    도약 중 transform 을 직접 움직이므로 반드시 꺼야 한다.
 // ============================================================
 
 public class BossSlamRunner : MonoBehaviour
@@ -47,9 +46,16 @@ public class BossSlamRunner : MonoBehaviour
         var       em = ctx.EntityManager;
         if (t == null) yield break;
 
-        Vector3 ground = t.position;
+        Vector3 start   = t.position;
+        Vector3 landing = d.LeapToTarget ? ctx.TargetPosition : start;
+        landing.z = start.z;
 
-        // 도약은 ECS 좌표를 건드리지 않는 연출이라 동기화를 꺼야 보인다
+        Vector3 toLanding = landing - start;
+        float   distance  = toLanding.magnitude;
+        if (distance > d.MaxLeapDistance && distance > 0.001f)
+            landing = start + toLanding / distance * d.MaxLeapDistance;
+
+        // 도약 중에는 transform 을 직접 움직인다.
         _held = t.GetComponent<EntityLink>();
         if (_held != null) _held.SyncPosition = false;
 
@@ -60,7 +66,7 @@ public class BossSlamRunner : MonoBehaviour
         //    피했다고 생각한 자리에서 맞으면 그건 예고가 아니다.
         //    (프리팹 기준 반경 3 — RareSkillEffectGenerator 의 스케일 연동 규칙)
         float fxScale = d.SlamRadius / 3f;
-        SkillEffectHelper.Spawn(d.BaseEffectKey, ground, d.WindupTime + d.SlamTime + 0.3f,
+        SkillEffectHelper.Spawn(d.BaseEffectKey, landing, d.WindupTime + d.SlamTime + 0.3f,
                                 default, fxScale);
 
         float e = 0f;
@@ -68,34 +74,42 @@ public class BossSlamRunner : MonoBehaviour
         {
             e += Time.deltaTime;
             float k = Mathf.Clamp01(e / d.WindupTime);
-            // 앞부분에서 살짝 가라앉았다가 뒤에서 들어올린다
+            // 출발 전에 살짝 가라앉아 도약을 읽게 한다.
             float dip = Mathf.Sin(k * Mathf.PI) * -0.35f;
-            float rise = Mathf.SmoothStep(0f, d.JumpHeight, Mathf.Clamp01((k - 0.55f) / 0.45f));
-            t.position = ground + new Vector3(0f, dip + rise, 0f);
+            t.position = start + new Vector3(0f, dip, 0f);
             yield return null;
         }
 
-        // ── ② 내려찍기 ─────────────────────────────────────────
-        Vector3 top = t.position;
+        // ── ② 포물선 도약 ───────────────────────────────────────
         e = 0f;
         while (e < d.SlamTime)
         {
             e += Time.deltaTime;
             float k = Mathf.Clamp01(e / d.SlamTime);
-            t.position = Vector3.Lerp(top, ground, k * k);   // 가속하며 떨어진다
+            Vector3 p = Vector3.Lerp(start, landing, Mathf.SmoothStep(0f, 1f, k));
+            p.y += Mathf.Sin(k * Mathf.PI) * d.JumpHeight;
+            t.position = p;
             yield return null;
         }
-        t.position = ground;
+        t.position = landing;
 
         // ── ③ 착탄 ─────────────────────────────────────────────
         // 착탄도 같은 배율 — 예고와 크기가 다르면 "예고보다 더 넓게 터졌다" 로 읽힌다
-        SkillEffectHelper.Spawn(d.CasterEffectKey, ground, d.EffectDespawnDelay,
+        SkillEffectHelper.Spawn(d.CasterEffectKey, landing, d.EffectDespawnDelay,
                                 default, fxScale);
-        CameraShaker.Impulse(0.6f, ground);
+        CameraShaker.Impulse(0.6f, landing);
 
-        Explode(em, ctx, ground, d);
+        Explode(em, ctx, landing, d);
 
-        // 제자리 스킬이라 ECS 좌표는 그대로다 — 동기화만 다시 켠다.
+        // 이동형 분쇄 강타는 착지 좌표를 ECS 에 넘겨야 동기화를 켠 뒤 되돌아가지 않는다.
+        if (d.LeapToTarget && em.Exists(ctx.CasterEntity)
+                           && em.HasComponent<LocalTransform>(ctx.CasterEntity))
+        {
+            var lt = em.GetComponentData<LocalTransform>(ctx.CasterEntity);
+            lt.Position = landing;
+            em.SetComponentData(ctx.CasterEntity, lt);
+        }
+
         if (_held != null) _held.SyncPosition = true;
         _held = null;
 

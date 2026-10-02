@@ -84,6 +84,8 @@ namespace BattleGame.Units
                 }
 
                 Debug.Log($"[ActiveSkill] {skillData.SkillName} ({skillData.SkillId}) 발동 | 시전자: {entity.Index} | 타겟: {(context.HasTarget ? context.TargetEntity.Index.ToString() : "없음")}");
+                AudioManager.Instance.Play(skillData.CastSfx);
+                AudioManager.Instance.PlayDelayed(skillData.SkillSfx, skillData.SkillSfxDelay);
                 skillData.Execute(context);
 
                 // OnSkillUse 패시브 트리거용 이벤트 기록

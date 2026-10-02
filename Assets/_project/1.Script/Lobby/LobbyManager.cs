@@ -123,6 +123,9 @@ public class LobbyManager : Singleton<LobbyManager>
 
     void Start()
     {
+        // 업적 시스템 이전 세이브의 소급 해제 + 도감 변경 구독 (DB 가 올라온 뒤여야 한다)
+        AchievementTracker.EvaluateAll();
+        PlatformAchievements.SyncAll();   // 로컬 달성분을 Steam·Google 에 재동기화 (연동 전에는 아무 일도 안 한다)
         _currentIndex = GetLatestAvailableIndex(BattleMode.Normal);
 
         // 진행바 표시를 위해 런 시퀀스를 OnStageChanged 발화 전에 미리 확보
